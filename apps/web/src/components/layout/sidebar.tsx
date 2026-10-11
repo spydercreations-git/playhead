@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  PlayheadLogo,
+  PlayheadLogoWithText,
   OverviewIcon,
   ProjectIcon,
   ReviewsIcon,
@@ -54,19 +54,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Top Header: Logo + Company */}
+        {/* Top Header: Official Playhead Logo */}
         <div className="flex h-20 items-center justify-between px-6 border-b border-[#424344]/50">
-          <div className="flex items-center gap-3.5">
-            <PlayheadLogo size={32} color="#FFFFFF" />
-            <div className="flex flex-col">
-              <span className="text-base font-bold text-white tracking-tight">
-                Playhead
-              </span>
-              <span className="text-[11px] text-[#9A9DA0] font-medium">
-                Idyll Productions
-              </span>
-            </div>
-          </div>
+          <Link href="/" className="flex items-center">
+            <PlayheadLogoWithText width={148} color="#FFFFFF" />
+          </Link>
 
           <button
             onClick={onClose}

@@ -1,6 +1,7 @@
 # Playhead: rules for the coding agent
 
 The full product spec is in `docs/PLAYHEAD_BUILD_SPEC.md`. It is the single source of truth. Read the section you need before every task. Do not invent behavior that the spec does not describe; ask instead.
+Project and player layout follows `docs/PROJECT_WORKSPACE.md`.
 
 ## How to work
 

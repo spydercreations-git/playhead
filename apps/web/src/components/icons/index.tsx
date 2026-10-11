@@ -382,3 +382,228 @@ export function CloudUploadIcon({ size = 20, color = "#4876F3", className, ...pr
     </svg>
   );
 }
+
+interface FileIconProps extends React.SVGProps<SVGSVGElement> {
+  size?: number;
+  color?: string;
+  withBackground?: boolean;
+}
+
+// Video File Icon (from videos.svg in Storage Dashboard V3)
+export function VideoFileIcon({
+  size = 32,
+  color = "#FFBB56",
+  withBackground = true,
+  className,
+  ...props
+}: FileIconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 53 53"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      {withBackground && (
+        <circle opacity="0.1" cx="26.5" cy="26.5" r="26.5" fill={color} />
+      )}
+      <path
+        d="M14.3 19.9C14.3 18.0775 15.7775 16.6 17.6 16.6H27.5C29.3226 16.6 30.8 18.0775 30.8 19.9V33.1C30.8 34.9225 29.3226 36.4 27.5 36.4H17.6C15.7775 36.4 14.3 34.9225 14.3 33.1V19.9Z"
+        fill={color}
+      />
+      <path
+        d="M35.0121 21.7242C34.4532 22.0037 34.1 22.575 34.1 23.2V29.8C34.1 30.425 34.4532 30.9963 35.0121 31.2758L38.3121 32.9258C38.8236 33.1816 39.4311 33.1542 39.9175 32.8536C40.404 32.5529 40.7 32.0219 40.7 31.45V21.55C40.7 20.9782 40.404 20.4471 39.9175 20.1464C39.4311 19.8458 38.8236 19.8185 38.3121 20.0742L35.0121 21.7242Z"
+        fill={color}
+      />
+    </svg>
+  );
+}
+
+// PDF / Document File Icon (from Document.svg in Storage Dashboard V3)
+export function PdfFileIcon({
+  size = 32,
+  color = "#4876F3",
+  withBackground = true,
+  className,
+  ...props
+}: FileIconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 53 53"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      {withBackground && (
+        <circle opacity="0.1" cx="26.5" cy="26.5" r="26.5" fill={color} />
+      )}
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M17 17.9C17 16.2984 18.2984 15 19.9 15H26.5494C27.3185 15 28.0561 15.3055 28.6 15.8494L33.5506 20.8C34.0945 21.3439 34.4 22.0815 34.4 22.8506V35.3C34.4 36.9016 33.1016 38.2 31.5 38.2H19.9C18.2984 38.2 17 36.9016 17 35.3V17.9Z"
+        fill={color}
+      />
+    </svg>
+  );
+}
+
+// Image File Icon (from Images.svg in Storage Dashboard V3)
+export function ImageFileIcon({
+  size = 32,
+  color = "#FA457B",
+  withBackground = true,
+  className,
+  ...props
+}: FileIconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 53 53"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      {withBackground && (
+        <circle opacity="0.1" cx="26.5" cy="26.5" r="26.5" fill={color} />
+      )}
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M17 14.25C15.067 14.25 13.5 15.817 13.5 17.75V35.25C13.5 37.183 15.067 38.75 17 38.75H38C39.933 38.75 41.5 37.183 41.5 35.25V17.75C41.5 15.817 39.933 14.25 38 14.25H17ZM38 35.25H17L24 21.25L29.25 31.75L32.75 24.75L38 35.25Z"
+        fill={color}
+      />
+    </svg>
+  );
+}
+
+// Audio File Icon (from Music.svg in Storage Dashboard V3)
+export function AudioFileIcon({
+  size = 32,
+  color = "#9787FF",
+  withBackground = true,
+  className,
+  ...props
+}: FileIconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 53 53"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      {...props}
+    >
+      {withBackground && (
+        <circle opacity="0.1" cx="26.5" cy="26.5" r="26.5" fill={color} />
+      )}
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M25.1357 16.3066C25.6588 16.5233 25.9999 17.0338 25.9999 17.6V34.4C25.9999 34.9663 25.6588 35.4768 25.1357 35.6935C24.6125 35.9102 24.0104 35.7904 23.61 35.39L18.42 30.2H14.7999C14.0267 30.2 13.3999 29.5732 13.3999 28.8V23.2C13.3999 22.4268 14.0267 21.8 14.7999 21.8H18.42L23.61 16.6101C24.0104 16.2097 24.6125 16.0899 25.1357 16.3066Z"
+        fill={color}
+      />
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M32.5195 16.1004C33.0662 15.5537 33.9526 15.5537 34.4994 16.1004C37.0313 18.6324 38.5999 22.1343 38.5999 25.9999C38.5999 29.8655 37.0313 33.3674 34.4994 35.8994C33.9526 36.4461 33.0662 36.4461 32.5195 35.8994C31.9727 35.3527 31.9727 34.4662 32.5195 33.9195C34.5478 31.8912 35.7999 29.0931 35.7999 25.9999C35.7999 22.9067 34.5478 20.1087 32.5195 18.0803C31.9727 17.5336 31.9727 16.6472 32.5195 16.1004ZM28.5597 20.0602C29.1064 19.5135 29.9928 19.5135 30.5396 20.0602C31.2758 20.7964 31.8766 21.6696 32.3003 22.6394C32.7507 23.6703 32.9999 24.8078 32.9999 25.9999C32.9999 28.3191 32.0582 30.421 30.5396 31.9396C29.9928 32.4863 29.1064 32.4863 28.5597 31.9396C28.0129 31.3929 28.0129 30.5064 28.5597 29.9597C29.5746 28.9448 30.1999 27.5467 30.1999 25.9999C30.1999 25.2009 30.0334 24.4444 29.7345 23.7604C29.4527 23.1154 29.0521 22.5326 28.5597 22.0401C28.0129 21.4934 28.0129 20.607 28.5597 20.0602Z"
+        fill={color}
+      />
+    </svg>
+  );
+}
+
+// Smart File Type Badge component that automatically renders the right icon
+export function FileTypeBadge({
+  type,
+  size = 32,
+  color,
+  withBackground = true,
+  className,
+}: {
+  type: string;
+  size?: number;
+  color?: string;
+  withBackground?: boolean;
+  className?: string;
+}) {
+  const normalized = type.toLowerCase();
+  if (
+    normalized === "video" ||
+    normalized === "mp4" ||
+    normalized === "mov" ||
+    normalized === "mkv"
+  ) {
+    return (
+      <VideoFileIcon
+        size={size}
+        color={color || "#FFBB56"}
+        withBackground={withBackground}
+        className={className}
+      />
+    );
+  }
+  if (
+    normalized === "pdf" ||
+    normalized === "doc" ||
+    normalized === "docx" ||
+    normalized === "txt"
+  ) {
+    return (
+      <PdfFileIcon
+        size={size}
+        color={color || "#4876F3"}
+        withBackground={withBackground}
+        className={className}
+      />
+    );
+  }
+  if (
+    normalized === "image" ||
+    normalized === "png" ||
+    normalized === "jpg" ||
+    normalized === "jpeg" ||
+    normalized === "gif"
+  ) {
+    return (
+      <ImageFileIcon
+        size={size}
+        color={color || "#FA457B"}
+        withBackground={withBackground}
+        className={className}
+      />
+    );
+  }
+  if (
+    normalized === "audio" ||
+    normalized === "wav" ||
+    normalized === "mp3" ||
+    normalized === "aac" ||
+    normalized === "flac"
+  ) {
+    return (
+      <AudioFileIcon
+        size={size}
+        color={color || "#9787FF"}
+        withBackground={withBackground}
+        className={className}
+      />
+    );
+  }
+  return (
+    <PdfFileIcon
+      size={size}
+      color={color || "#4876F3"}
+      withBackground={withBackground}
+      className={className}
+    />
+  );
+}

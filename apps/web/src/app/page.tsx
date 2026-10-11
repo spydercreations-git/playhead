@@ -10,6 +10,7 @@ import {
   VideoCutIcon,
   ReviewFeedbackIcon,
   DocumentIcon,
+  FileTypeBadge,
 } from "@/components/icons";
 
 export default function DashboardPage() {
@@ -70,13 +71,13 @@ export default function DashboardPage() {
     },
   ];
 
-  // Recent Files matching File1.svg - File5.svg
+  // Recent Files matching Storage Dashboard V3 icons
   const recentFiles = [
     {
       id: 0,
       name: "Nike_Commercial_v2.mp4",
       type: "video",
-      badgeColor: "#4876F3",
+      badgeColor: "#FFBB56",
       size: "420 MB",
       date: "Oct 11, 2026",
       collaborators: ["H", "R", "C"],
@@ -85,7 +86,7 @@ export default function DashboardPage() {
       id: 1,
       name: "Storyboards_Draft_v1.pdf",
       type: "pdf",
-      badgeColor: "#F34B46",
+      badgeColor: "#4876F3",
       size: "18 MB",
       date: "Oct 10, 2026",
       collaborators: ["H", "R"],
@@ -94,7 +95,7 @@ export default function DashboardPage() {
       id: 2,
       name: "Moodboard_Color_Grade.png",
       type: "image",
-      badgeColor: "#9787FF",
+      badgeColor: "#FA457B",
       size: "45 MB",
       date: "Oct 09, 2026",
       collaborators: ["H", "C"],
@@ -103,7 +104,7 @@ export default function DashboardPage() {
       id: 3,
       name: "Audio_Master_Track.wav",
       type: "audio",
-      badgeColor: "#FF9800",
+      badgeColor: "#9787FF",
       size: "120 MB",
       date: "Oct 08, 2026",
       collaborators: ["R"],
@@ -112,7 +113,7 @@ export default function DashboardPage() {
       id: 4,
       name: "Delivered_Final_Cut_v3.mov",
       type: "video",
-      badgeColor: "#4876F3",
+      badgeColor: "#FFBB56",
       size: "1.8 GB",
       date: "Oct 07, 2026",
       collaborators: ["H", "R", "C"],
@@ -308,17 +309,13 @@ export default function DashboardPage() {
                       {/* File Name & 32px Colored Circular Icon Badge */}
                       <td className="px-4">
                         <div className="flex items-center gap-3">
-                          <div
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                            style={{ backgroundColor: `${file.badgeColor}18` }}
-                          >
-                            <span
-                              className="text-[10px] font-bold uppercase"
-                              style={{ color: file.badgeColor }}
-                            >
-                              {file.type}
-                            </span>
-                          </div>
+                          <FileTypeBadge
+                            type={file.type}
+                            size={32}
+                            color={file.badgeColor}
+                            withBackground
+                            className="shrink-0"
+                          />
                           <span className="text-sm font-semibold text-white truncate max-w-[220px] sm:max-w-xs">
                             {file.name}
                           </span>

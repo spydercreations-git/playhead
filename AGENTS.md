@@ -30,6 +30,7 @@ The full product spec is in `docs/PLAYHEAD_BUILD_SPEC.md`. It is the single sour
 - Plan prices, limits and feature gates live only in `services/shared/plans/plans.go`.
 - Never commit secrets or `.env` files. Never log passwords, tokens or file contents.
 - Share link tokens and session tokens are stored only as hashes.
+- All UI must follow the design tokens and the files in /design.
 
 ## Quality
 

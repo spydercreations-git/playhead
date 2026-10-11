@@ -1,181 +1,362 @@
 "use client";
 
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState } from "react";
+import { StoragePanel } from "@/components/dashboard/storage-panel";
 import {
-  FolderKanban,
-  Clock,
-  CalendarDays,
-  HardDrive,
-  Activity,
-  CheckCircle2,
-  Video,
-  FileText,
-} from "lucide-react";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Skeleton } from "@/components/ui/skeleton";
-
-interface HealthStatus {
-  status: string;
-  database: string;
-  redis: string;
-  storage: string;
-}
+  FolderIcon,
+  MoreOptionsIcon,
+  SearchIcon,
+  VideoCutIcon,
+  ReviewFeedbackIcon,
+  DocumentIcon,
+} from "@/components/icons";
 
 export default function DashboardPage() {
-  const { data: health, isLoading: healthLoading } = useQuery<HealthStatus>({
-    queryKey: ["health"],
-    queryFn: async () => {
-      const res = await fetch("/api/v1/health");
-      if (!res.ok) throw new Error("Health check failed");
-      return res.json();
-    },
-    refetchInterval: 10000,
-  });
+  const [selectedRow, setSelectedRow] = useState<number | null>(0);
 
-  const statCards = [
+  // Top 4 Category Cards matching Figma (x=642, 838, 1034, 1231, y=132, w=172, h=216, rx=10, fill=#212121)
+  const categoryCards = [
     {
-      title: "Active Projects",
-      value: "3",
-      change: "2 updated today",
-      icon: FolderKanban,
-      color: "text-blue-500",
+      title: "Video Cuts",
+      count: "480 Files",
+      size: "38.5 GB",
+      color: "#FFBB56",
+      fillPercent: 65,
+      icon: VideoCutIcon,
     },
     {
-      title: "Needs Review",
-      value: "4",
-      change: "Waiting on client approval",
-      icon: Clock,
-      color: "text-amber-500",
+      title: "Client Reviews",
+      count: "124 Files",
+      size: "14.2 GB",
+      color: "#FA457B",
+      fillPercent: 40,
+      icon: ReviewFeedbackIcon,
     },
     {
-      title: "Due This Week",
-      value: "2",
-      change: "1 due tomorrow",
-      icon: CalendarDays,
-      color: "text-emerald-500",
+      title: "Active Boards",
+      count: "18 Boards",
+      size: "2.1 GB",
+      color: "#4876F3",
+      fillPercent: 55,
+      icon: DocumentIcon,
     },
     {
-      title: "Storage Used",
-      value: "0 B",
-      change: "25 GB limit (Trial)",
-      icon: HardDrive,
-      color: "text-primary",
+      title: "Audio & Music",
+      count: "210 Files",
+      size: "8.4 GB",
+      color: "#9787FF",
+      fillPercent: 30,
+      icon: DocumentIcon,
+    },
+  ];
+
+  // Folder Cards matching Figma (x=642, 905, 1167, y=435, w=239, h=78, rx=10, fill=#212121)
+  const folders = [
+    {
+      name: "Nike Campaign 2026",
+      files: "31 Files",
+      size: "2.6 GB",
+    },
+    {
+      name: "Idyll UGC Monthly",
+      files: "45 Files",
+      size: "5.8 GB",
+    },
+    {
+      name: "Client Delivered Cuts",
+      files: "18 Files",
+      size: "12.4 GB",
+    },
+  ];
+
+  // Recent Files matching File1.svg - File5.svg
+  const recentFiles = [
+    {
+      id: 0,
+      name: "Nike_Commercial_v2.mp4",
+      type: "video",
+      badgeColor: "#4876F3",
+      size: "420 MB",
+      date: "Oct 11, 2026",
+      collaborators: ["H", "R", "C"],
+    },
+    {
+      id: 1,
+      name: "Storyboards_Draft_v1.pdf",
+      type: "pdf",
+      badgeColor: "#F34B46",
+      size: "18 MB",
+      date: "Oct 10, 2026",
+      collaborators: ["H", "R"],
+    },
+    {
+      id: 2,
+      name: "Moodboard_Color_Grade.png",
+      type: "image",
+      badgeColor: "#9787FF",
+      size: "45 MB",
+      date: "Oct 09, 2026",
+      collaborators: ["H", "C"],
+    },
+    {
+      id: 3,
+      name: "Audio_Master_Track.wav",
+      type: "audio",
+      badgeColor: "#FF9800",
+      size: "120 MB",
+      date: "Oct 08, 2026",
+      collaborators: ["R"],
+    },
+    {
+      id: 4,
+      name: "Delivered_Final_Cut_v3.mov",
+      type: "video",
+      badgeColor: "#4876F3",
+      size: "1.8 GB",
+      date: "Oct 07, 2026",
+      collaborators: ["H", "R", "C"],
     },
   ];
 
   return (
-    <div className="space-y-8">
-      {/* Welcome Banner */}
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
-            Welcome to Playhead
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            All your video assets, Frame-accurate review, and tracking boards in one workspace.
-          </p>
-        </div>
-      </div>
+    <div className="flex flex-col lg:flex-row gap-8 pb-10">
+      {/* Middle Column: Storage & Upload Dropzone & New Project Card */}
+      <StoragePanel />
 
-      {/* Backend & Infrastructure Health Status */}
-      <div className="rounded-xl border border-card-border bg-card/60 p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <Activity className="h-4 w-4 text-primary animate-pulse" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Milestone 1 System Connectivity
-            </span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 text-xs">
-            {healthLoading ? (
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-24" />
+      {/* Right Column: Main Dashboard Content */}
+      <div className="flex-1 space-y-8 min-w-0">
+        {/* Top 4 Metric / Category Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {categoryCards.map((card) => (
+            <div
+              key={card.title}
+              className="flex flex-col justify-between rounded-[10px] bg-[#212121] p-5 h-[216px] transition-colors hover:bg-[#252525]"
+            >
+              <div className="flex items-center justify-between">
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-lg"
+                  style={{ backgroundColor: `${card.color}15` }}
+                >
+                  <card.icon size={20} color={card.color} />
+                </div>
+                <button
+                  title="Card options"
+                  className="text-[#9A9DA0] hover:text-white"
+                >
+                  <MoreOptionsIcon size={18} color="#9A9DA0" />
+                </button>
               </div>
-            ) : health ? (
-              <>
-                <span className="flex items-center gap-1.5 font-medium text-emerald-400">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> API: {health.status}
-                </span>
-                <span className="text-muted-foreground">•</span>
-                <span className="text-muted-foreground">
-                  DB: <strong className="text-foreground">{health.database}</strong>
-                </span>
-                <span className="text-muted-foreground">•</span>
-                <span className="text-muted-foreground">
-                  Redis: <strong className="text-foreground">{health.redis}</strong>
-                </span>
-                <span className="text-muted-foreground">•</span>
-                <span className="text-muted-foreground">
-                  Storage (MinIO): <strong className="text-foreground">{health.storage}</strong>
-                </span>
-              </>
-            ) : (
-              <span className="text-amber-400">API health pending startup</span>
-            )}
-          </div>
+
+              <div className="space-y-1">
+                <h3 className="text-base font-semibold text-white">
+                  {card.title}
+                </h3>
+                <p className="text-xs text-[#9A9DA0]">{card.count}</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-mono text-white">
+                  <span>{card.size}</span>
+                  <span className="text-[11px] text-[#9A9DA0]">
+                    {card.fillPercent}%
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+                  <div
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{
+                      width: `${card.fillPercent}%`,
+                      backgroundColor: card.color,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((stat) => (
-          <div
-            key={stat.title}
-            className="rounded-xl border border-card-border bg-card p-5 shadow-sm hover:border-sidebar-foreground/30 transition-colors"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-muted-foreground">
-                {stat.title}
-              </span>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </div>
-            <div className="mt-3 text-2xl font-bold text-foreground">
-              {stat.value}
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground truncate">
-              {stat.change}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Main Grid: Waiting for review & Activity */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-4">
+        {/* All Folders Section */}
+        <div className="space-y-3.5">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">
-              Waiting for Review
-            </h3>
-            <span className="text-xs text-muted-foreground">0 unresolved files</span>
+            <h2 className="text-lg font-bold text-white tracking-tight">
+              All Folders
+            </h2>
+            <button className="text-xs font-medium text-[#BCBFC2] hover:text-white transition-colors">
+              View more &gt;
+            </button>
           </div>
 
-          <EmptyState
-            icon={Video}
-            title="No files waiting for review"
-            description="When team members or clients request changes or upload cuts, they will appear here."
-            action={{
-              label: "Upload new cut",
-              onClick: () => {},
-            }}
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {folders.map((folder) => (
+              <div
+                key={folder.name}
+                className="flex items-center justify-between rounded-[10px] bg-[#212121] px-5 py-4 h-[78px] transition-colors hover:bg-[#252525] cursor-pointer"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <FolderIcon size={32} color="#4876F3" />
+                  <div className="flex flex-col truncate">
+                    <span className="text-sm font-semibold text-white truncate">
+                      {folder.name}
+                    </span>
+                    <span className="text-xs text-[#9A9DA0]">
+                      {folder.files} · {folder.size}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  title="Folder options"
+                  className="text-[#9A9DA0] hover:text-white shrink-0 ml-2"
+                >
+                  <MoreOptionsIcon size={18} color="#9A9DA0" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
 
+        {/* Recent Files Section ("Last Files") */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">
-              Recent Activity
-            </h3>
-            <span className="text-xs text-muted-foreground">Live feed</span>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-bold text-white tracking-tight">
+              Last Files
+            </h2>
+
+            {/* Filter Controls (Search + Details + Filter buttons from Figma) */}
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-[41px] items-center gap-2 rounded-[7.5px] border border-[#424344] bg-[#212121] px-3 text-xs text-[#9A9DA0]">
+                <SearchIcon size={15} color="#9A9DA0" />
+                <input
+                  type="text"
+                  placeholder="Search files..."
+                  className="w-36 sm:w-56 bg-transparent text-white placeholder-[#9A9DA0] focus:outline-none"
+                />
+              </div>
+
+              <button className="flex h-[41px] items-center justify-center rounded-[7.5px] border border-[#424344] bg-[#212121] px-3.5 text-xs font-medium text-white hover:bg-[#2E2F34] transition-colors">
+                Details
+              </button>
+              <button className="flex h-[41px] items-center justify-center rounded-[7.5px] border border-[#424344] bg-[#212121] px-3.5 text-xs font-medium text-white hover:bg-[#2E2F34] transition-colors">
+                Filter
+              </button>
+            </div>
           </div>
 
-          <EmptyState
-            icon={FileText}
-            title="Activity is quiet"
-            description="Events and comments will appear here in real-time as work happens."
-          />
+          {/* Files Table matching File1.svg to File5.svg */}
+          <div className="overflow-x-auto rounded-[10px] border border-[#424344] bg-[#212121]">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-[#424344] text-[#9A9DA0] font-medium h-12">
+                  <th className="w-12 px-4 text-center">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded-[3.5px] border border-[#9A9DA0] bg-transparent text-[#4876F3] focus:ring-0 cursor-pointer"
+                    />
+                  </th>
+                  <th className="px-4 font-medium text-white">Name</th>
+                  <th className="px-4 font-medium">File Size</th>
+                  <th className="px-4 font-medium">Date</th>
+                  <th className="px-4 font-medium">Assignee</th>
+                  <th className="w-12 px-4 text-center font-medium">Options</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#424344]/50">
+                {recentFiles.map((file) => {
+                  const isChecked = selectedRow === file.id;
+
+                  return (
+                    <tr
+                      key={file.id}
+                      onClick={() => setSelectedRow(file.id)}
+                      className={`h-16 transition-colors cursor-pointer ${
+                        isChecked ? "bg-[#2E2F34]/80" : "hover:bg-[#2E2F34]/40"
+                      }`}
+                    >
+                      {/* Checkbox */}
+                      <td className="px-4 text-center">
+                        <div
+                          className={`flex h-5 w-5 mx-auto items-center justify-center rounded-[4px] transition-colors ${
+                            isChecked
+                              ? "bg-[#4876F3] text-white"
+                              : "border border-[#424344]"
+                          }`}
+                        >
+                          {isChecked && (
+                            <svg
+                              width="12"
+                              height="10"
+                              viewBox="0 0 12 10"
+                              fill="none"
+                            >
+                              <path
+                                d="M1 5L4.5 8.5L11 1.5"
+                                stroke="white"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* File Name & 32px Colored Circular Icon Badge */}
+                      <td className="px-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                            style={{ backgroundColor: `${file.badgeColor}18` }}
+                          >
+                            <span
+                              className="text-[10px] font-bold uppercase"
+                              style={{ color: file.badgeColor }}
+                            >
+                              {file.type}
+                            </span>
+                          </div>
+                          <span className="text-sm font-semibold text-white truncate max-w-[220px] sm:max-w-xs">
+                            {file.name}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* File Size */}
+                      <td className="px-4 font-mono text-[#9A9DA0]">
+                        {file.size}
+                      </td>
+
+                      {/* Date */}
+                      <td className="px-4 text-[#9A9DA0]">{file.date}</td>
+
+                      {/* Assignee / Collaborator Avatars (overlapping 20x20 circles) */}
+                      <td className="px-4">
+                        <div className="flex items-center -space-x-1.5">
+                          {file.collaborators.map((initial, i) => (
+                            <div
+                              key={i}
+                              className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#212121] bg-[#424344] text-[9px] font-bold text-white"
+                            >
+                              {initial}
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+
+                      {/* 3-Dots Options */}
+                      <td className="px-4 text-center">
+                        <button
+                          title="File options"
+                          className="flex h-7 w-7 items-center justify-center mx-auto rounded text-[#9A9DA0] hover:text-white"
+                        >
+                          <MoreOptionsIcon size={16} color="#9A9DA0" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

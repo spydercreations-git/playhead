@@ -4,21 +4,18 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home,
-  FolderKanban,
-  CheckCircle2,
-  TableProperties,
-  Users2,
-  Bell,
-  Settings,
-  HelpCircle,
-  Search,
-  HardDrive,
-  ChevronDown,
-  Sparkles,
-  X,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+  PlayheadLogo,
+  OverviewIcon,
+  ProjectIcon,
+  ReviewsIcon,
+  BoardIcon,
+  TeamIcon,
+  TrashIcon,
+  SettingsIcon,
+  HelpIcon,
+  SearchIcon,
+  MoreOptionsIcon,
+} from "@/components/icons";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -28,31 +25,18 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
 
-  const navigation = [
-    { name: "Home", href: "/", icon: Home },
-    {
-      name: "Projects",
-      href: "/projects",
-      icon: FolderKanban,
-      subItems: [
-        { name: "Nike Campaign", href: "/projects/nike" },
-        { name: "Idyll UGC Monthly", href: "/projects/ugc" },
-      ],
-    },
-    { name: "Reviews", href: "/reviews", icon: CheckCircle2, badge: "3" },
-    {
-      name: "Boards",
-      href: "/boards",
-      icon: TableProperties,
-      subItems: [{ name: "My Tasks", href: "/boards/my-tasks" }],
-    },
-    { name: "Team", href: "/team", icon: Users2 },
+  const primaryNav = [
+    { name: "Overview", href: "/", icon: OverviewIcon },
+    { name: "Projects", href: "/projects", icon: ProjectIcon },
+    { name: "Reviews", href: "/reviews", icon: ReviewsIcon, badge: "3" },
+    { name: "Boards", href: "/boards", icon: BoardIcon },
+    { name: "Team", href: "/team", icon: TeamIcon },
+    { name: "Trash", href: "/trash", icon: TrashIcon },
   ];
 
-  const bottomNav = [
-    { name: "Notifications", href: "/notifications", icon: Bell, badge: "5" },
-    { name: "Settings", href: "/settings", icon: Settings },
-    { name: "Help", href: "/help", icon: HelpCircle },
+  const secondaryNav = [
+    { name: "Settings", href: "/settings", icon: SettingsIcon },
+    { name: "Support", href: "/help", icon: HelpIcon },
   ];
 
   return (
@@ -61,176 +45,129 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {isOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-40 bg-black/70 md:hidden"
         />
       )}
 
       <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-200 ease-in-out md:static md:translate-x-0",
+        className={`fixed inset-y-0 left-0 z-50 flex w-[304px] flex-col border-r border-[#424344] bg-[#212121] transition-transform duration-200 ease-in-out md:static md:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
-        )}
+        }`}
       >
-        {/* Top: Company Switcher */}
-        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white font-bold text-sm shadow-sm shadow-primary/30">
-              ID
-            </div>
-            <div className="flex flex-col text-left">
-              <span className="text-sm font-semibold text-foreground truncate max-w-[130px]">
+        {/* Top Header: Logo + Company */}
+        <div className="flex h-20 items-center justify-between px-6 border-b border-[#424344]/50">
+          <div className="flex items-center gap-3.5">
+            <PlayheadLogo size={32} />
+            <div className="flex flex-col">
+              <span className="text-base font-bold text-white tracking-tight">
+                Playhead
+              </span>
+              <span className="text-[11px] text-[#9A9DA0] font-medium">
                 Idyll Productions
               </span>
-              <span className="text-xs text-sidebar-muted flex items-center gap-1">
-                Trial Plan <Sparkles className="h-3 w-3 text-amber-400" />
-              </span>
             </div>
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              title="Switch company"
-              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-sidebar-accent text-sidebar-foreground"
-            >
-              <ChevronDown className="h-4 w-4" />
-            </button>
-            <button
-              onClick={onClose}
-              title="Close menu"
-              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-sidebar-accent text-sidebar-foreground md:hidden"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
 
-        {/* Global Search Trigger */}
-        <div className="px-3 pt-3">
           <button
-            onClick={() => {}}
-            className="flex w-full items-center justify-between rounded-lg border border-sidebar-border bg-background/50 px-3 py-2 text-xs text-sidebar-muted hover:border-sidebar-foreground/30 hover:text-foreground transition-colors"
+            onClick={onClose}
+            title="Close menu"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#9A9DA0] hover:bg-[#2E2F34] hover:text-white md:hidden"
           >
-            <span className="flex items-center gap-2">
-              <Search className="h-3.5 w-3.5" />
-              Search...
-            </span>
-            <kbd className="rounded border border-sidebar-border bg-sidebar px-1.5 py-0.5 text-[10px] font-mono text-sidebar-muted">
-              ⌘K
-            </kbd>
+            ✕
           </button>
         </div>
 
-        {/* Main Navigation */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {navigation.map((item) => {
+        {/* Search Bar matching Figma (x=24, y=118, w=256, h=53, rx=8, fill=#2E2F34) */}
+        <div className="px-6 pt-5 pb-3">
+          <div className="flex h-[50px] w-full items-center justify-between rounded-lg bg-[#2E2F34] px-4 text-[#9A9DA0] transition-colors focus-within:ring-1 focus-within:ring-[#4876F3]">
+            <div className="flex items-center gap-3">
+              <SearchIcon size={18} color="#9A9DA0" />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="w-28 bg-transparent text-sm text-white placeholder-[#9A9DA0] focus:outline-none"
+              />
+            </div>
+            <kbd className="rounded border border-[#424344] bg-[#212121] px-1.5 py-0.5 text-[10px] font-mono text-[#9A9DA0]">
+              ⌘K
+            </kbd>
+          </div>
+        </div>
+
+        {/* Primary Navigation List */}
+        <div className="flex-1 overflow-y-auto px-6 py-2 space-y-1">
+          {primaryNav.map((item) => {
             const isActive =
               item.href === "/"
                 ? pathname === "/"
                 : pathname.startsWith(item.href);
 
             return (
-              <div key={item.name} className="space-y-1">
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary text-white font-semibold"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground"
-                  )}
-                >
-                  <span className="flex items-center gap-3">
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    {item.name}
-                  </span>
-                  {item.badge && (
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-xs font-semibold",
-                        isActive
-                          ? "bg-white/20 text-white"
-                          : "bg-sidebar-accent text-sidebar-foreground"
-                      )}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-
-                {item.subItems && (
-                  <div className="ml-7 space-y-0.5 border-l border-sidebar-border/60 pl-2">
-                    {item.subItems.map((sub) => (
-                      <Link
-                        key={sub.name}
-                        href={sub.href}
-                        className="block rounded-md px-2 py-1 text-xs text-sidebar-muted hover:text-foreground hover:bg-sidebar-accent transition-colors"
-                      >
-                        {sub.name}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Bottom Section */}
-        <div className="border-t border-sidebar-border p-3 space-y-3">
-          {/* Secondary links */}
-          <div className="space-y-0.5">
-            {bottomNav.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className="flex items-center justify-between rounded-lg px-3 py-1.5 text-xs font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
+                className={`flex h-[48px] items-center justify-between rounded-lg px-4 text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-[#2E2F34] text-white font-semibold"
+                    : "text-[#9A9DA0] hover:bg-[#2E2F34]/60 hover:text-white"
+                }`}
               >
-                <span className="flex items-center gap-3">
-                  <item.icon className="h-3.5 w-3.5 shrink-0" />
-                  {item.name}
-                </span>
+                <div className="flex items-center gap-3.5">
+                  <item.icon
+                    size={20}
+                    color={isActive ? "#4876F3" : "#9A9DA0"}
+                  />
+                  <span>{item.name}</span>
+                </div>
                 {item.badge && (
-                  <span className="rounded-full bg-primary/20 text-primary px-1.5 py-0.2 text-[10px] font-bold">
+                  <span className="flex h-[22px] min-w-[28px] items-center justify-center rounded px-1.5 text-xs font-bold text-white bg-[#FF5A5A]">
                     {item.badge}
                   </span>
                 )}
               </Link>
-            ))}
+            );
+          })}
+
+          <div className="pt-4 pb-2">
+            <div className="h-[1px] w-full bg-[#424344]/50" />
           </div>
 
-          {/* Storage Meter */}
-          <div className="rounded-lg border border-sidebar-border bg-background/40 p-2.5">
-            <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="flex items-center gap-1.5 text-sidebar-muted">
-                <HardDrive className="h-3 w-3 text-primary" />
-                Storage
-              </span>
-              <span className="font-mono text-[11px] text-foreground">
-                0 B / 25 GB
-              </span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-sidebar-border">
-              <div
-                className="h-full bg-primary rounded-full transition-all duration-300"
-                style={{ width: "2%" }}
-              />
-            </div>
-          </div>
+          {/* Secondary Navigation */}
+          {secondaryNav.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className="flex h-[44px] items-center gap-3.5 rounded-lg px-4 text-sm font-medium text-[#9A9DA0] hover:bg-[#2E2F34]/60 hover:text-white transition-colors"
+            >
+              <item.icon size={20} color="#9A9DA0" />
+              <span>{item.name}</span>
+            </Link>
+          ))}
+        </div>
 
-          {/* Profile Card */}
-          <div className="flex items-center justify-between rounded-lg border border-sidebar-border/80 bg-sidebar-accent/50 p-2">
-            <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted font-bold text-xs text-foreground border border-border">
+        {/* User Profile Card at bottom (x=24, y=902, w=256, h=88, rx=8, fill=#2E2F34) */}
+        <div className="p-6 pt-2">
+          <div className="flex h-[80px] items-center justify-between rounded-lg bg-[#2E2F34] px-4">
+            <div className="flex items-center gap-3">
+              <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4876F3] text-sm font-bold text-white">
                 HP
+                <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#212121] bg-[#4876F3]" />
               </div>
               <div className="flex flex-col truncate">
-                <span className="truncate text-xs font-medium text-foreground">
+                <span className="text-sm font-semibold text-white truncate">
                   Harsh
                 </span>
-                <span className="truncate text-[10px] text-sidebar-muted">
+                <span className="text-xs text-[#9A9DA0] truncate">
                   harsh@playhead.app
                 </span>
               </div>
             </div>
+            <button
+              title="Profile menu"
+              className="flex h-7 w-7 items-center justify-center rounded text-[#9A9DA0] hover:text-white"
+            >
+              <MoreOptionsIcon size={18} color="#9A9DA0" />
+            </button>
           </div>
         </div>
       </aside>

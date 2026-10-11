@@ -1,0 +1,23 @@
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /app
+
+COPY go.work ./
+COPY services/shared/go.mod services/shared/go.sum ./services/shared/
+COPY services/api/go.mod services/api/go.sum ./services/api/
+COPY services/worker/go.mod services/worker/go.sum* ./services/worker/
+
+RUN go mod download -C services/shared && go mod download -C services/worker
+
+COPY services/shared ./services/shared
+COPY services/worker ./services/worker
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/worker ./services/worker/cmd/worker
+
+FROM alpine:3.20
+
+RUN apk --no-cache add ca-certificates ffmpeg poppler-utils
+
+COPY --from=builder /bin/worker /bin/worker
+
+CMD ["/bin/worker"]

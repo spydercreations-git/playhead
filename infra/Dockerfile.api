@@ -1,0 +1,26 @@
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /app
+
+# Copy Go workspaces and modules
+COPY go.work ./
+COPY services/shared/go.mod services/shared/go.sum ./services/shared/
+COPY services/api/go.mod services/api/go.sum ./services/api/
+COPY services/worker/go.mod services/worker/go.sum* ./services/worker/
+
+RUN go mod download -C services/shared && go mod download -C services/api
+
+COPY services/shared ./services/shared
+COPY services/api ./services/api
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/api ./services/api/cmd/server
+
+FROM alpine:3.20
+
+RUN apk --no-cache add ca-certificates curl
+
+COPY --from=builder /bin/api /bin/api
+
+EXPOSE 8080
+
+CMD ["/bin/api"]

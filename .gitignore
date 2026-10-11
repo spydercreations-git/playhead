@@ -1,0 +1,28 @@
+# Binaries & dependencies
+node_modules/
+.next/
+dist/
+out/
+build/
+bin/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+*.pem
+
+# Go
+services/api/bin/
+services/worker/bin/
+
+# MinIO / local dev data
+infra/data/
+
+# IDE
+.idea/
+.vscode/
+*.swp

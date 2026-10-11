@@ -7,48 +7,49 @@ import {
   FolderIcon,
   MoreOptionsIcon,
   SearchIcon,
-  VideoCutIcon,
-  ReviewFeedbackIcon,
-  DocumentIcon,
+  VideoFileIcon,
+  ImageFileIcon,
+  PdfFileIcon,
+  AudioFileIcon,
   FileTypeBadge,
 } from "@/components/icons";
 
 export default function DashboardPage() {
   const [selectedIds, setSelectedIds] = useState<number[]>([0]);
 
-  // Top 4 Category Cards matching Figma (x=642, 838, 1034, 1231, y=132, w=172, h=216, rx=10, fill=#212121)
+  // Top 4 Category Cards matching Figma (Videos, Images, Documents, Music)
   const categoryCards = [
     {
-      title: "Video Cuts",
+      title: "Videos",
       count: "480 Files",
       size: "38.5 GB",
       color: "#FFBB56",
       fillPercent: 65,
-      icon: VideoCutIcon,
+      icon: VideoFileIcon,
     },
     {
-      title: "Client Reviews",
+      title: "Images",
       count: "124 Files",
       size: "14.2 GB",
       color: "#FA457B",
       fillPercent: 40,
-      icon: ReviewFeedbackIcon,
+      icon: ImageFileIcon,
     },
     {
-      title: "Active Boards",
-      count: "18 Boards",
+      title: "Documents",
+      count: "18 Files",
       size: "2.1 GB",
       color: "#4876F3",
       fillPercent: 55,
-      icon: DocumentIcon,
+      icon: PdfFileIcon,
     },
     {
-      title: "Audio & Music",
+      title: "Music",
       count: "210 Files",
       size: "8.4 GB",
       color: "#9787FF",
       fillPercent: 30,
-      icon: DocumentIcon,
+      icon: AudioFileIcon,
     },
   ];
 
@@ -135,12 +136,12 @@ export default function DashboardPage() {
               className="flex flex-col justify-between rounded-[10px] bg-[#212121] p-3.5 sm:p-5 h-[175px] sm:h-[216px] transition-colors hover:bg-[#252525]"
             >
               <div className="flex items-center justify-between">
-                <div
-                  className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg"
-                  style={{ backgroundColor: `${card.color}15` }}
-                >
-                  <card.icon size={18} color={card.color} />
-                </div>
+                <card.icon
+                  size={42}
+                  color={card.color}
+                  withBackground
+                  className="shrink-0"
+                />
                 <button
                   title="Card options"
                   className="text-[#9A9DA0] hover:text-white"

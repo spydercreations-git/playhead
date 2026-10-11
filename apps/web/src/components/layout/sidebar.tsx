@@ -57,7 +57,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Top Header: Logo + Company */}
         <div className="flex h-20 items-center justify-between px-6 border-b border-[#424344]/50">
           <div className="flex items-center gap-3.5">
-            <PlayheadLogo size={32} />
+            <PlayheadLogo size={32} color="#FFFFFF" />
             <div className="flex flex-col">
               <span className="text-base font-bold text-white tracking-tight">
                 Playhead

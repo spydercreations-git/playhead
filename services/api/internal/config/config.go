@@ -16,6 +16,11 @@ type Config struct {
 	R2Bucket          string
 	R2Endpoint        string
 	SessionSecret     string
+	GoogleClientID    string
+	ResendAPIKey      string
+	SMTPHost          string
+	SMTPPort          int
+	Environment       string
 }
 
 func Load() *Config {
@@ -31,6 +36,11 @@ func Load() *Config {
 		R2Bucket:          getEnv("R2_BUCKET", "playhead-dev"),
 		R2Endpoint:        getEnv("R2_ENDPOINT", "http://localhost:9000"),
 		SessionSecret:     getEnv("SESSION_SECRET", "default-dev-secret-at-least-32-characters-long"),
+		GoogleClientID:    getEnv("GOOGLE_CLIENT_ID", ""),
+		ResendAPIKey:      getEnv("RESEND_API_KEY", ""),
+		SMTPHost:          getEnv("SMTP_HOST", "localhost"),
+		SMTPPort:          1025,
+		Environment:       getEnv("ENV", "development"),
 	}
 }
 

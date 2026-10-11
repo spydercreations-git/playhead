@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   title: "Playhead - Upload, Review and Track Every Video",
   description:
     "Unified cloud storage, Frame.io-style review and Monday-style project tracking for video agencies.",
+  icons: {
+    icon: "/playhead-icon.svg",
+  },
 };
 
 export default function RootLayout({

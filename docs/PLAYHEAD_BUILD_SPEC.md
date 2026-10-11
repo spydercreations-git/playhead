@@ -170,7 +170,7 @@ No free plan. New companies start a **14 day free trial**.
 
 | Plan | Price per seat per month | Minimum seats | Storage included | Max file size |
 |---|---|---|---|---|
-| Trial (14 days) | $0 | 1 | 25 GB total | 5 GB |
+| Trial (14 days) | $0 | 1 (max 5 seats) | 25 GB total | 5 GB |
 | Pro | $15 | 1 | 250 GB per seat, pooled | 50 GB |
 | Team | $25 | 3 | 500 GB per seat, pooled | 100 GB |
 | Company | $40 | 5 | 1 TB per seat, pooled | 250 GB |

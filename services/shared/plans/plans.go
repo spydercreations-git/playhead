@@ -34,6 +34,7 @@ const (
 
 	// Minimum seats per plan
 	TrialMinSeats   = 1
+	TrialMaxSeats   = 5 // 14-day trial capped at 5 members
 	ProMinSeats     = 1
 	TeamMinSeats    = 3
 	CompanyMinSeats = 5
@@ -70,6 +71,7 @@ type PlanDefinition struct {
 	MonthlySeatPrice   int64 // cents
 	AnnualSeatPrice    int64 // cents
 	MinSeats           int
+	MaxSeats           int   // 0 = unlimited, >0 = strict cap (e.g. 5 for trial)
 	StoragePerSeat     int64 // bytes (for trial: total storage)
 	MaxFileSizeBytes   int64
 	Features           map[Feature]bool
@@ -82,6 +84,7 @@ var allPlans = map[string]PlanDefinition{
 		MonthlySeatPrice: TrialPricePerSeatMonthly,
 		AnnualSeatPrice:  TrialPricePerSeatMonthly * AnnualMultiplier,
 		MinSeats:         TrialMinSeats,
+		MaxSeats:         TrialMaxSeats,
 		StoragePerSeat:   TrialStorageTotal,
 		MaxFileSizeBytes: TrialMaxFileSize,
 		Features: map[Feature]bool{
@@ -203,4 +206,9 @@ func CalculateStorageLimit(planID string, seats int, storageBlocks int) int64 {
 // MaxFileSize returns the maximum allowed file upload size in integer bytes.
 func MaxFileSize(planID string) int64 {
 	return Get(planID).MaxFileSizeBytes
+}
+
+// MaxSeats returns the maximum seats allowed for the plan (0 if unlimited, 5 for trial).
+func MaxSeats(planID string) int {
+	return Get(planID).MaxSeats
 }

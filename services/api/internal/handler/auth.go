@@ -1,0 +1,404 @@
+package handler
+
+import (
+	"encoding/json"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/playhead/playhead/services/api/internal/middleware"
+	"github.com/playhead/playhead/services/shared/authz"
+	"github.com/playhead/playhead/services/shared/db"
+	"github.com/playhead/playhead/services/shared/mailer"
+	"github.com/playhead/playhead/services/shared/plans"
+)
+
+type AuthHandler struct {
+	queries        *db.Queries
+	mailer         *mailer.Mailer
+	googleClientID string
+	appURL         string
+	isProduction   bool
+}
+
+func NewAuthHandler(queries *db.Queries, mailer *mailer.Mailer, googleClientID, appURL string, isProduction bool) *AuthHandler {
+	return &AuthHandler{
+		queries:        queries,
+		mailer:         mailer,
+		googleClientID: googleClientID,
+		appURL:         appURL,
+		isProduction:   isProduction,
+	}
+}
+
+type SignupRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Name     string `json:"name"`
+}
+
+func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
+	var req SignupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload", "message": "Invalid request format"})
+		return
+	}
+
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	name := strings.TrimSpace(req.Name)
+	if email == "" || !strings.Contains(email, "@") {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_email", "message": "Valid email address is required"})
+		return
+	}
+	if len(req.Password) < 8 {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "weak_password", "message": "Password must be at least 8 characters"})
+		return
+	}
+	if name == "" {
+		name = strings.Split(email, "@")[0]
+	}
+
+	// Check if user already exists
+	if _, err := h.queries.GetUserByEmail(r.Context(), email); err == nil {
+		respondJSON(w, http.StatusConflict, map[string]string{"error": "email_exists", "message": "An account with this email already exists"})
+		return
+	}
+
+	// Hash password using Argon2id
+	passHash, err := authz.HashPassword(req.Password)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to process password"})
+		return
+	}
+
+	// Create user
+	user, err := h.queries.CreateUser(r.Context(), db.CreateUserParams{
+		Email:        email,
+		Name:         name,
+		PasswordHash: pgtype.Text{String: passHash, Valid: true},
+		GoogleID:     pgtype.Text{Valid: false},
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to create user account"})
+		return
+	}
+
+	// Generate verification token (expires in 24 hours)
+	rawToken, err := authz.GenerateSecureToken(32)
+	if err == nil {
+		tokenHash := authz.HashToken(rawToken)
+		h.queries.CreateVerificationToken(r.Context(), db.CreateVerificationTokenParams{
+			UserID:    user.ID,
+			TokenHash: tokenHash,
+			ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(24 * time.Hour), Valid: true},
+		})
+
+		// Send verification email via Mailpit / Resend
+		_ = h.mailer.SendEmailVerification(email, name, rawToken)
+	}
+
+	respondJSON(w, http.StatusCreated, map[string]interface{}{
+		"status":  "ok",
+		"message": "Account created. Please check your email to verify your address.",
+		"user": map[string]interface{}{
+			"id":             user.ID,
+			"email":          user.Email,
+			"name":           user.Name,
+			"email_verified": false,
+		},
+	})
+}
+
+type VerifyEmailRequest struct {
+	Token string `json:"token"`
+}
+
+func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
+	var req VerifyEmailRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Token == "" {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_token", "message": "Verification token is required"})
+		return
+	}
+
+	tokenHash := authz.HashToken(strings.TrimSpace(req.Token))
+	vt, err := h.queries.GetVerificationTokenByHash(r.Context(), tokenHash)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_or_expired_token", "message": "This verification link is invalid or has expired"})
+		return
+	}
+
+	// Mark user verified
+	_ = h.queries.VerifyUserEmail(r.Context(), vt.UserID)
+	_ = h.queries.DeleteVerificationToken(r.Context(), tokenHash)
+
+	respondJSON(w, http.StatusOK, map[string]string{
+		"status":  "verified",
+		"message": "Email address verified successfully. You can now create your workspace.",
+	})
+}
+
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var req LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload", "message": "Invalid request format"})
+		return
+	}
+
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	user, err := h.queries.GetUserByEmail(r.Context(), email)
+	if err != nil || !user.PasswordHash.Valid {
+		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials", "message": "Invalid email or password"})
+		return
+	}
+
+	if !authz.VerifyPassword(req.Password, user.PasswordHash.String) {
+		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials", "message": "Invalid email or password"})
+		return
+	}
+
+	// Create session (expires in 30 days)
+	rawSessionToken, err := authz.GenerateSecureToken(32)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to generate session"})
+		return
+	}
+
+	sessionHash := authz.HashToken(rawSessionToken)
+	expiresAt := time.Now().Add(30 * 24 * time.Hour)
+
+	_, err = h.queries.CreateSession(r.Context(), db.CreateSessionParams{
+		UserID:    user.ID,
+		TokenHash: sessionHash,
+		ExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
+		UserAgent: pgtype.Text{String: r.UserAgent(), Valid: true},
+		Ip:        pgtype.Text{String: r.RemoteAddr, Valid: true},
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to persist session"})
+		return
+	}
+
+	// Generate CSRF token for double-submit cookie protection
+	rawCSRFToken, _ := authz.GenerateSecureToken(16)
+
+	// Set session cookie (HttpOnly)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "playhead_session",
+		Value:    rawSessionToken,
+		Path:     "/",
+		Expires:  expiresAt,
+		HttpOnly: true,
+		Secure:   h.isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	// Set readable CSRF cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     middleware.CSRFCookieName,
+		Value:    rawCSRFToken,
+		Path:     "/",
+		Expires:  expiresAt,
+		HttpOnly: false,
+		Secure:   h.isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"status":     "ok",
+		"csrf_token": rawCSRFToken,
+		"user": map[string]interface{}{
+			"id":             user.ID,
+			"email":          user.Email,
+			"name":           user.Name,
+			"avatar_url":     user.AvatarUrl.String,
+			"email_verified": user.EmailVerifiedAt.Valid,
+		},
+	})
+}
+
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	if cookie, err := r.Cookie("playhead_session"); err == nil && cookie.Value != "" {
+		tokenHash := authz.HashToken(cookie.Value)
+		_ = h.queries.DeleteSessionByTokenHash(r.Context(), tokenHash)
+	}
+
+	// Expire cookies
+	http.SetCookie(w, &http.Cookie{
+		Name:     "playhead_session",
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     middleware.CSRFCookieName,
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: false,
+	})
+
+	respondJSON(w, http.StatusOK, map[string]string{"status": "logged_out"})
+}
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email"`
+}
+
+func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req ForgotPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err == nil && req.Email != "" {
+		email := strings.ToLower(strings.TrimSpace(req.Email))
+		if user, err := h.queries.GetUserByEmail(r.Context(), email); err == nil {
+			rawToken, err := authz.GenerateSecureToken(32)
+			if err == nil {
+				tokenHash := authz.HashToken(rawToken)
+				h.queries.CreatePasswordResetToken(r.Context(), db.CreatePasswordResetTokenParams{
+					UserID:    user.ID,
+					TokenHash: tokenHash,
+					ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(1 * time.Hour), Valid: true},
+				})
+				_ = h.mailer.SendPasswordReset(user.Email, user.Name, rawToken)
+			}
+		}
+	}
+
+	// Always return 200 to prevent account enumeration
+	respondJSON(w, http.StatusOK, map[string]string{
+		"status":  "ok",
+		"message": "If an account exists with this email, instructions to reset your password have been sent.",
+	})
+}
+
+type ResetPasswordRequest struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"new_password"`
+}
+
+func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req ResetPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Token == "" || len(req.NewPassword) < 8 {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "invalid_request",
+			"message": "Token and password of at least 8 characters are required",
+		})
+		return
+	}
+
+	tokenHash := authz.HashToken(strings.TrimSpace(req.Token))
+	prt, err := h.queries.GetPasswordResetTokenByHash(r.Context(), tokenHash)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "invalid_or_expired_token",
+			"message": "Password reset link is invalid or has expired",
+		})
+		return
+	}
+
+	passHash, err := authz.HashPassword(req.NewPassword)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to hash password"})
+		return
+	}
+
+	_ = h.queries.UpdateUserPassword(r.Context(), db.UpdateUserPasswordParams{
+		ID:           prt.UserID,
+		PasswordHash: pgtype.Text{String: passHash, Valid: true},
+	})
+	_ = h.queries.MarkPasswordResetTokenUsed(r.Context(), tokenHash)
+	_ = h.queries.DeleteAllSessionsForUser(r.Context(), prt.UserID)
+
+	respondJSON(w, http.StatusOK, map[string]string{
+		"status":  "ok",
+		"message": "Password reset successfully. You can now log in with your new password.",
+	})
+}
+
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	user, ok := middleware.GetAuthenticatedUser(r.Context())
+	if !ok {
+		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	// Get all companies for user
+	companies, _ := h.queries.GetCompaniesForUser(r.Context(), user.ID)
+
+	var activeCompany *db.Company
+	var activeRole string
+
+	activeCompanyID, hasActive := middleware.GetActiveCompanyID(r.Context())
+	if hasActive {
+		for _, c := range companies {
+			if c.ID == activeCompanyID {
+				activeRole = c.UserRole
+				activeCompany = &db.Company{
+					ID:                 c.ID,
+					Name:               c.Name,
+					Slug:               c.Slug,
+					Plan:               c.Plan,
+					Status:             c.Status,
+					StorageLimitBytes:  c.StorageLimitBytes,
+					StorageUsedBytes:   c.StorageUsedBytes,
+					StorageReservedBytes: c.StorageReservedBytes,
+					Verified:           c.Verified,
+				}
+				break
+			}
+		}
+	}
+
+	// Feature flags for company plan
+	var features map[string]bool
+	if activeCompany != nil {
+		planDef := plans.Get(activeCompany.Plan)
+		features = make(map[string]bool)
+		for f, enabled := range planDef.Features {
+			features[string(f)] = enabled
+		}
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"user": map[string]interface{}{
+			"id":             user.ID,
+			"email":          user.Email,
+			"name":           user.Name,
+			"avatar_url":     user.AvatarURL.String,
+			"email_verified": user.EmailVerifiedAt.Valid,
+		},
+		"active_company": activeCompany,
+		"active_role":    activeRole,
+		"companies":      companies,
+		"features":       features,
+	})
+}
+
+// GoogleOAuthURL returns the Google authorization URL or disabled indicator
+func (h *AuthHandler) GoogleOAuthURL(w http.ResponseWriter, r *http.Request) {
+	if h.googleClientID == "" {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "google_auth_disabled",
+			"message": "Google Login is not configured. Set GOOGLE_CLIENT_ID to enable.",
+		})
+		return
+	}
+
+	redirectURI := h.appURL + "/api/v1/auth/google/callback"
+	authURL := "https://accounts.google.com/o/oauth2/v2/auth?client_id=" + h.googleClientID +
+		"&redirect_uri=" + redirectURI +
+		"&response_type=code&scope=openid%20email%20profile"
+
+	respondJSON(w, http.StatusOK, map[string]string{"url": authURL})
+}
+
+func respondJSON(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(data)
+}

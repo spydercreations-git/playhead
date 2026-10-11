@@ -4,8 +4,24 @@ import React, { useState } from "react";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 
+import { usePathname } from "next/navigation";
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
+
+  const isAuthRoute =
+    pathname?.startsWith("/login") ||
+    pathname?.startsWith("/signup") ||
+    pathname?.startsWith("/verify-email") ||
+    pathname?.startsWith("/forgot-password") ||
+    pathname?.startsWith("/reset-password") ||
+    pathname?.startsWith("/onboarding") ||
+    pathname?.startsWith("/invite");
+
+  if (isAuthRoute) {
+    return <main className="min-h-screen bg-[#181818]">{children}</main>;
+  }
 
   return (
     <div className="flex min-h-screen bg-[#181818]">

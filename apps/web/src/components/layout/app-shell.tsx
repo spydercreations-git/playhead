@@ -12,8 +12,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <Header onOpenSidebar={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto px-6 py-6 md:px-8 md:py-8 bg-[#181818]">
-          <div className="mx-auto max-w-[1440px]">{children}</div>
+        <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8 bg-[#181818]">
+          <div className="w-full max-w-[1920px] mx-auto">{children}</div>
         </main>
       </div>
     </div>

@@ -57,7 +57,7 @@ const config: Config = {
         full: "9999px",
       },
       fontFamily: {
-        sans: ["'Plus Jakarta Sans'", "sans-serif"],
+        sans: ["var(--font-inter)", "'Inter'", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
       },
     },
   },

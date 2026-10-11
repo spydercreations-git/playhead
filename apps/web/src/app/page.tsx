@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { StoragePanel } from "@/components/dashboard/storage-panel";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   FolderIcon,
   MoreOptionsIcon,
@@ -12,7 +13,7 @@ import {
 } from "@/components/icons";
 
 export default function DashboardPage() {
-  const [selectedRow, setSelectedRow] = useState<number | null>(0);
+  const [selectedIds, setSelectedIds] = useState<number[]>([0]);
 
   // Top 4 Category Cards matching Figma (x=642, 838, 1034, 1231, y=132, w=172, h=216, rx=10, fill=#212121)
   const categoryCards = [
@@ -119,45 +120,45 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 pb-10">
+    <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 pb-10">
       {/* Middle Column: Storage & Upload Dropzone & New Project Card */}
       <StoragePanel />
 
       {/* Right Column: Main Dashboard Content */}
-      <div className="flex-1 space-y-8 min-w-0">
-        {/* Top 4 Metric / Category Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="flex-1 space-y-6 sm:space-y-8 min-w-0">
+        {/* Top 4 Metric / Category Cards - 2x2 on mobile, 4 columns on large screens */}
+        <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
           {categoryCards.map((card) => (
             <div
               key={card.title}
-              className="flex flex-col justify-between rounded-[10px] bg-[#212121] p-5 h-[216px] transition-colors hover:bg-[#252525]"
+              className="flex flex-col justify-between rounded-[10px] bg-[#212121] p-3.5 sm:p-5 h-[175px] sm:h-[216px] transition-colors hover:bg-[#252525]"
             >
               <div className="flex items-center justify-between">
                 <div
-                  className="flex h-10 w-10 items-center justify-center rounded-lg"
+                  className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg"
                   style={{ backgroundColor: `${card.color}15` }}
                 >
-                  <card.icon size={20} color={card.color} />
+                  <card.icon size={18} color={card.color} />
                 </div>
                 <button
                   title="Card options"
                   className="text-[#9A9DA0] hover:text-white"
                 >
-                  <MoreOptionsIcon size={18} color="#9A9DA0" />
+                  <MoreOptionsIcon size={16} color="#9A9DA0" />
                 </button>
               </div>
 
-              <div className="space-y-1">
-                <h3 className="text-base font-semibold text-white">
+              <div className="space-y-0.5 sm:space-y-1">
+                <h3 className="text-sm sm:text-base font-semibold text-white truncate">
                   {card.title}
                 </h3>
-                <p className="text-xs text-[#9A9DA0]">{card.count}</p>
+                <p className="text-[11px] sm:text-xs text-[#9A9DA0]">{card.count}</p>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs font-mono text-white">
-                  <span>{card.size}</span>
-                  <span className="text-[11px] text-[#9A9DA0]">
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="flex items-center justify-between text-xs text-white">
+                  <span className="font-medium text-xs sm:text-sm">{card.size}</span>
+                  <span className="text-[10px] sm:text-[11px] text-[#9A9DA0]">
                     {card.fillPercent}%
                   </span>
                 </div>
@@ -186,14 +187,14 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4">
             {folders.map((folder) => (
               <div
                 key={folder.name}
-                className="flex items-center justify-between rounded-[10px] bg-[#212121] px-5 py-4 h-[78px] transition-colors hover:bg-[#252525] cursor-pointer"
+                className="flex items-center justify-between rounded-[10px] bg-[#212121] px-4 sm:px-5 py-3.5 sm:py-4 h-[74px] sm:h-[78px] transition-colors hover:bg-[#252525] cursor-pointer"
               >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <FolderIcon size={32} color="#4876F3" />
+                <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+                  <FolderIcon size={28} color="#4876F3" />
                   <div className="flex flex-col truncate">
                     <span className="text-sm font-semibold text-white truncate">
                       {folder.name}
@@ -217,26 +218,26 @@ export default function DashboardPage() {
 
         {/* Recent Files Section ("Last Files") */}
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h2 className="text-lg font-bold text-white tracking-tight">
               Last Files
             </h2>
 
             {/* Filter Controls (Search + Details + Filter buttons from Figma) */}
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-[41px] items-center gap-2 rounded-[7.5px] border border-[#424344] bg-[#212121] px-3 text-xs text-[#9A9DA0]">
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <div className="flex h-[41px] flex-1 sm:flex-initial items-center gap-2 rounded-[7.5px] border border-[#424344] bg-[#212121] px-3 text-xs text-[#9A9DA0]">
                 <SearchIcon size={15} color="#9A9DA0" />
                 <input
                   type="text"
                   placeholder="Search files..."
-                  className="w-36 sm:w-56 bg-transparent text-white placeholder-[#9A9DA0] focus:outline-none"
+                  className="w-full sm:w-56 bg-transparent text-white placeholder-[#9A9DA0] focus:outline-none"
                 />
               </div>
 
-              <button className="flex h-[41px] items-center justify-center rounded-[7.5px] border border-[#424344] bg-[#212121] px-3.5 text-xs font-medium text-white hover:bg-[#2E2F34] transition-colors">
+              <button className="flex h-[41px] items-center justify-center rounded-[7.5px] border border-[#424344] bg-[#212121] px-3 sm:px-3.5 text-xs font-medium text-white hover:bg-[#2E2F34] transition-colors shrink-0">
                 Details
               </button>
-              <button className="flex h-[41px] items-center justify-center rounded-[7.5px] border border-[#424344] bg-[#212121] px-3.5 text-xs font-medium text-white hover:bg-[#2E2F34] transition-colors">
+              <button className="flex h-[41px] items-center justify-center rounded-[7.5px] border border-[#424344] bg-[#212121] px-3 sm:px-3.5 text-xs font-medium text-white hover:bg-[#2E2F34] transition-colors shrink-0">
                 Filter
               </button>
             </div>
@@ -248,10 +249,19 @@ export default function DashboardPage() {
               <thead>
                 <tr className="border-b border-[#424344] text-[#9A9DA0] font-medium h-12">
                   <th className="w-12 px-4 text-center">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded-[3.5px] border border-[#9A9DA0] bg-transparent text-[#4876F3] focus:ring-0 cursor-pointer"
-                    />
+                    <div className="flex items-center justify-center">
+                      <Checkbox
+                        checked={recentFiles.length > 0 && selectedIds.length === recentFiles.length}
+                        onCheckedChange={() => {
+                          if (selectedIds.length === recentFiles.length) {
+                            setSelectedIds([]);
+                          } else {
+                            setSelectedIds(recentFiles.map((f) => f.id));
+                          }
+                        }}
+                        ariaLabel="Select all files"
+                      />
+                    </div>
                   </th>
                   <th className="px-4 font-medium text-white">Name</th>
                   <th className="px-4 font-medium">File Size</th>
@@ -262,41 +272,36 @@ export default function DashboardPage() {
               </thead>
               <tbody className="divide-y divide-[#424344]/50">
                 {recentFiles.map((file) => {
-                  const isChecked = selectedRow === file.id;
+                  const isChecked = selectedIds.includes(file.id);
 
                   return (
                     <tr
                       key={file.id}
-                      onClick={() => setSelectedRow(file.id)}
+                      onClick={() => {
+                        setSelectedIds((prev) =>
+                          prev.includes(file.id)
+                            ? prev.filter((id) => id !== file.id)
+                            : [...prev, file.id]
+                        );
+                      }}
                       className={`h-16 transition-colors cursor-pointer ${
                         isChecked ? "bg-[#2E2F34]/80" : "hover:bg-[#2E2F34]/40"
                       }`}
                     >
                       {/* Checkbox */}
                       <td className="px-4 text-center">
-                        <div
-                          className={`flex h-5 w-5 mx-auto items-center justify-center rounded-[4px] transition-colors ${
-                            isChecked
-                              ? "bg-[#4876F3] text-white"
-                              : "border border-[#424344]"
-                          }`}
-                        >
-                          {isChecked && (
-                            <svg
-                              width="12"
-                              height="10"
-                              viewBox="0 0 12 10"
-                              fill="none"
-                            >
-                              <path
-                                d="M1 5L4.5 8.5L11 1.5"
-                                stroke="white"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          )}
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={() => {
+                              setSelectedIds((prev) =>
+                                prev.includes(file.id)
+                                  ? prev.filter((id) => id !== file.id)
+                                  : [...prev, file.id]
+                              );
+                            }}
+                            ariaLabel={`Select ${file.name}`}
+                          />
                         </div>
                       </td>
 
@@ -321,7 +326,7 @@ export default function DashboardPage() {
                       </td>
 
                       {/* File Size */}
-                      <td className="px-4 font-mono text-[#9A9DA0]">
+                      <td className="px-4 text-[#9A9DA0] font-medium">
                         {file.size}
                       </td>
 

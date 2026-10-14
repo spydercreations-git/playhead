@@ -308,12 +308,43 @@ func (m *Mailer) SendItemSharedEmail(toEmail, toName, itemName, itemKind, itemUR
 	return m.send(toEmail, subject, html)
 }
 
-// SendCommentNotificationEmail sends comment notification or digest
-func (m *Mailer) SendCommentNotificationEmail(toEmail, toName, commenterName, itemName, itemURL, commentBody string) error {
-	subject := fmt.Sprintf("New comment on '%s' from %s", itemName, commenterName)
+// NotificationComment represents a single comment in an aggregated notification email
+type NotificationComment struct {
+	AuthorName  string
+	TimecodeStr string
+	Body        string
+}
+
+// SendGroupedCommentsNotificationEmail sends an aggregated digest of comments on an item
+func (m *Mailer) SendGroupedCommentsNotificationEmail(toEmail, toName, itemName, itemURL string, comments []NotificationComment) error {
+	if len(comments) == 0 {
+		return nil
+	}
 	if toName == "" {
 		toName = "there"
 	}
+
+	var subject string
+	if len(comments) == 1 {
+		subject = fmt.Sprintf("New comment on '%s'", itemName)
+	} else {
+		subject = fmt.Sprintf("%d new comments on '%s'", len(comments), itemName)
+	}
+
+	var commentsListHTML strings.Builder
+	for _, c := range comments {
+		tcBadge := ""
+		if c.TimecodeStr != "" {
+			tcBadge = fmt.Sprintf(`<span style="background-color: #2D2D2D; color: #FFA133; font-family: monospace; font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">%s</span>`, c.TimecodeStr)
+		}
+		commentsListHTML.WriteString(fmt.Sprintf(`
+      <div style="background-color: #181818; border-left: 3px solid #4876F3; padding: 12px 16px; margin: 12px 0; border-radius: 4px; color: #E0E0E0; font-size: 14px; line-height: 1.5;">
+        <div style="font-weight: 600; color: #FFFFFF; font-size: 13px; margin-bottom: 4px;">%s%s</div>
+        <div>%s</div>
+      </div>
+    `, c.AuthorName, tcBadge, c.Body))
+	}
+
 	settingsURL := fmt.Sprintf("%s/settings/notifications", strings.TrimRight(m.FrontendURL, "/"))
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
@@ -322,14 +353,12 @@ func (m *Mailer) SendCommentNotificationEmail(toEmail, toName, commenterName, it
     <div style="margin-bottom: 24px;">
       <span style="font-size: 20px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">playhead</span>
     </div>
-    <h2 style="color: #FFFFFF; margin-top: 0; font-size: 18px;">New Comment</h2>
+    <h2 style="color: #FFFFFF; margin-top: 0; font-size: 18px;">%s</h2>
     <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">Hi %s,</p>
-    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;"><strong>%s</strong> commented on <strong>%s</strong>:</p>
-    <div style="background-color: #181818; border-left: 3px solid #4876F3; padding: 12px 16px; margin: 20px 0; border-radius: 4px; color: #E0E0E0; font-size: 14px; line-height: 1.5;">
-      %s
-    </div>
+    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">There are new comments on <strong>%s</strong>:</p>
+    %s
     <div style="margin: 28px 0;">
-      <a href="%s" style="background-color: #4876F3; color: #FFFFFF; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">Reply to Comment</a>
+      <a href="%s" style="background-color: #4876F3; color: #FFFFFF; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">View in Playhead</a>
     </div>
     <hr style="border: none; border-top: 1px solid #333333; margin: 24px 0;" />
     <p style="color: #747678; font-size: 12px; margin: 0;">
@@ -337,9 +366,16 @@ func (m *Mailer) SendCommentNotificationEmail(toEmail, toName, commenterName, it
     </p>
   </div>
 </body>
-</html>`, toName, commenterName, itemName, commentBody, itemURL, settingsURL)
+</html>`, subject, toName, itemName, commentsListHTML.String(), itemURL, settingsURL)
 
 	return m.send(toEmail, subject, html)
+}
+
+// SendCommentNotificationEmail sends comment notification or digest
+func (m *Mailer) SendCommentNotificationEmail(toEmail, toName, commenterName, itemName, itemURL, commentBody string) error {
+	return m.SendGroupedCommentsNotificationEmail(toEmail, toName, itemName, itemURL, []NotificationComment{
+		{AuthorName: commenterName, Body: commentBody},
+	})
 }
 
 // SendReviewNotificationEmail sends approval or change request review notification

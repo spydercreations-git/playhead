@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	TypeProcessVideoVersion         = "media:process_video_version"
-	TypeGroupedCommentNotification  = "notification:grouped_comment"
+	TypeProcessVideoVersion        = "media:process_video_version"
+	TypeGroupedCommentNotification = "email:grouped_comment_notification"
 )
 
 type ProcessVideoPayload struct {
@@ -23,8 +23,6 @@ type ProcessVideoPayload struct {
 type GroupedCommentNotificationPayload struct {
 	CompanyID string `json:"company_id"`
 	ItemID    string `json:"item_id"`
-	VersionID string `json:"version_id"`
-	CommentID string `json:"comment_id"`
 }
 
 // NewProcessVideoTask creates an asynq Task with 3 retries

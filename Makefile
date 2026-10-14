@@ -15,7 +15,7 @@ all: dev
 
 # Start local infrastructure, apply database migrations, and boot backend & frontend
 dev:
-	@echo "==> Starting local infrastructure (Postgres, Redis, MinIO, Mailpit)..."
+	@echo "==> Starting local infrastructure (Postgres, Redis, MinIO, Mailpit, Worker)..."
 	@$(DOCKER) compose -f infra/docker-compose.yml up -d
 	@echo "==> Waiting for PostgreSQL to be ready..."
 	@until $(DOCKER) exec playhead-postgres pg_isready -U postgres -d playhead_dev >/dev/null 2>&1; do sleep 1; done
@@ -26,12 +26,12 @@ dev:
 	@echo "Web will run on http://localhost:3000"
 	@echo "MinIO Console on http://localhost:9001"
 	@echo "Mailpit Web on http://localhost:8025"
-	@(trap 'kill 0' SIGINT; cd services/api && $(GO) run cmd/server/main.go & cd services/worker && $(GO) run cmd/worker/main.go & cd apps/web && npm run dev & wait)
+	@(trap 'kill 0' SIGINT; cd services/api && $(GO) run cmd/server/main.go & cd apps/web && npm run dev & wait)
 
 # Re-queue all pending video versions
 requeue:
 	@echo "==> Re-queueing all pending video versions..."
-	@cd services/worker && $(GO) run cmd/worker/main.go -requeue
+	@$(DOCKER) exec playhead-worker /bin/worker -requeue
 
 # Run test suites across the stack
 test:

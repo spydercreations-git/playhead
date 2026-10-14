@@ -18,8 +18,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/playhead/playhead/services/shared/db"
 	"github.com/playhead/playhead/services/shared/jobs"
+	"github.com/playhead/playhead/services/shared/mailer"
 	"github.com/playhead/playhead/services/shared/storage"
 	"github.com/playhead/playhead/services/worker"
+	"github.com/redis/go-redis/v9"
 )
 
 func getEnv(key, fallback string) string {
@@ -123,6 +125,23 @@ func main() {
 
 	processor := worker.NewProcessor(queries, storageClient)
 
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     redisOpt.Addr,
+		Password: redisOpt.Password,
+		DB:       redisOpt.DB,
+	})
+	defer rdb.Close()
+
+	mailClient := mailer.New(mailer.Config{
+		SMTPHost:     getEnv("SMTP_HOST", "localhost"),
+		SMTPPort:     1025,
+		ResendAPIKey: getEnv("RESEND_API_KEY", ""),
+		FrontendURL:  getEnv("APP_URL", "http://localhost:3000"),
+		FromEmail:    getEnv("FROM_EMAIL", "no-reply@playhead.app"),
+		FromName:     "Playhead",
+	})
+	notifier := worker.NewNotifier(queries, mailClient, rdb)
+
 	srv := asynq.NewServer(
 		redisOpt,
 		asynq.Config{
@@ -176,7 +195,11 @@ func main() {
 			slog.Error("failed to unmarshal comment notification payload", "error", err)
 			return err
 		}
-		slog.Info("processing grouped comment notification", "comment_id", payload.CommentID, "item_id", payload.ItemID)
+		slog.Info("processing grouped comment notification", "item_id", payload.ItemID, "company_id", payload.CompanyID)
+		if err := notifier.ProcessGroupedCommentsNotification(c, payload); err != nil {
+			slog.Error("failed to process grouped comment notification", "error", err, "item_id", payload.ItemID)
+			return err
+		}
 		return nil
 	})
 

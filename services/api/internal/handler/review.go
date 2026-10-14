@@ -24,6 +24,7 @@ import (
 	"github.com/playhead/playhead/services/shared/jobs"
 	"github.com/playhead/playhead/services/shared/mailer"
 	"github.com/playhead/playhead/services/shared/storage"
+	"github.com/redis/go-redis/v9"
 )
 
 type ReviewHandler struct {
@@ -32,21 +33,33 @@ type ReviewHandler struct {
 	mailer      *mailer.Mailer
 	cfg         *config.Config
 	asynqClient *asynq.Client
+	rdb         *redis.Client
 	rateLimits  map[string][]time.Time
 	rateLimitMu sync.Mutex
 }
 
 func NewReviewHandler(queries *db.Queries, storageClient *storage.Client, cfg *config.Config) *ReviewHandler {
+	var rdb *redis.Client
+	if cfg != nil && cfg.RedisURL != "" {
+		if opt, err := redis.ParseURL(cfg.RedisURL); err == nil {
+			rdb = redis.NewClient(opt)
+		}
+	}
 	return &ReviewHandler{
 		queries:    queries,
 		storage:    storageClient,
 		cfg:        cfg,
+		rdb:        rdb,
 		rateLimits: make(map[string][]time.Time),
 	}
 }
 
 func (h *ReviewHandler) SetAsynqClient(c *asynq.Client) {
 	h.asynqClient = c
+}
+
+func (h *ReviewHandler) SetRedisClient(r *redis.Client) {
+	h.rdb = r
 }
 
 func (h *ReviewHandler) SetMailer(m *mailer.Mailer) {
@@ -585,7 +598,7 @@ func (h *ReviewHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		Details:   []byte(fmt.Sprintf(`{"body":%q,"visibility":%q,"author_name":%q}`, comment.Body, comment.Visibility, authorName)),
 	})
 
-	go h.dispatchCommentNotification(companyID, item, proj, comment, authorName, authorEmail, isTeam)
+	go h.enqueueGroupedCommentNotification(companyID, item.ID, comment.ID)
 
 	respondJSON(w, http.StatusCreated, comment)
 }
@@ -1738,8 +1751,7 @@ func (h *ReviewHandler) PublicCreateComment(w http.ResponseWriter, r *http.Reque
 		Details:   []byte(fmt.Sprintf(`{"body":%q,"visibility":"everyone","author_name":%q,"visitor":true}`, comment.Body, authorName)),
 	})
 
-	proj, _ := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{ID: item.ProjectID, CompanyID: link.CompanyID})
-	go h.dispatchCommentNotification(link.CompanyID, *item, proj, comment, authorName, authorEmail, false)
+	go h.enqueueGroupedCommentNotification(link.CompanyID, item.ID, comment.ID)
 
 	respondJSON(w, http.StatusCreated, comment)
 }
@@ -1869,94 +1881,35 @@ func (h *ReviewHandler) parseMentions(ctx context.Context, companyID pgtype.UUID
 	return mentioned
 }
 
-func (h *ReviewHandler) dispatchCommentNotification(
+func (h *ReviewHandler) enqueueGroupedCommentNotification(
 	companyID pgtype.UUID,
-	item db.GetItemByIDRow,
-	proj db.GetProjectByIDRow,
-	comment db.Comment,
-	authorName, authorEmail string,
-	isAuthorTeam bool,
+	itemID pgtype.UUID,
+	commentID pgtype.UUID,
 ) {
 	ctx := context.Background()
+	itemIDStr := pgUUIDToString(itemID)
+	commentIDStr := pgUUIDToString(commentID)
 
-	// 1. Enqueue asynq task for grouped comment email digest
+	// 1. Push comment ID to Redis pending comments list for this item
+	if h.rdb != nil {
+		key := fmt.Sprintf("playhead:pending_comments:%s", itemIDStr)
+		_ = h.rdb.RPush(ctx, key, commentIDStr).Err()
+	}
+
+	// 2. Enqueue grouped notification task debounced over 5-minute window
 	if h.asynqClient != nil {
 		task, err := jobs.NewGroupedCommentNotificationTask(jobs.GroupedCommentNotificationPayload{
 			CompanyID: pgUUIDToString(companyID),
-			ItemID:    pgUUIDToString(item.ID),
-			VersionID: pgUUIDToString(comment.VersionID),
-			CommentID: pgUUIDToString(comment.ID),
+			ItemID:    itemIDStr,
 		})
 		if err == nil {
-			_, _ = h.asynqClient.Enqueue(task, asynq.ProcessIn(2*time.Minute))
-		}
-	}
-
-	if h.mailer == nil {
-		return
-	}
-
-	// 2. Identify candidate recipients
-	recipientIDs := make(map[uuid.UUID]bool)
-	if item.CreatedBy.Valid && item.CreatedBy != comment.AuthorUserID {
-		recipientIDs[uuid.UUID(item.CreatedBy.Bytes)] = true
-	}
-	if comment.ParentID.Valid {
-		parent, err := h.queries.GetCommentByID(ctx, db.GetCommentByIDParams{
-			ID:        comment.ParentID,
-			CompanyID: companyID,
-		})
-		if err == nil && parent.AuthorUserID.Valid && parent.AuthorUserID != comment.AuthorUserID {
-			recipientIDs[uuid.UUID(parent.AuthorUserID.Bytes)] = true
-		}
-	}
-	for _, mUID := range h.parseMentions(ctx, companyID, comment.Body) {
-		if mUID != uuid.UUID(comment.AuthorUserID.Bytes) {
-			recipientIDs[mUID] = true
-		}
-	}
-
-	for rUID := range recipientIDs {
-		// Team only comments: never notify clients!
-		if comment.Visibility == "team" {
-			isTeam := false
-			if _, err := h.queries.GetMembership(ctx, db.GetMembershipParams{
-				CompanyID: companyID,
-				UserID:    pgtype.UUID{Bytes: rUID, Valid: true},
-			}); err == nil {
-				isTeam = true
-			}
-			if !isTeam {
-				continue
-			}
-		}
-
-		// Check project bell notification preference
-		pref, err := h.queries.GetProjectNotificationPref(ctx, db.GetProjectNotificationPrefParams{
-			UserID:    pgtype.UUID{Bytes: rUID, Valid: true},
-			ProjectID: item.ProjectID,
-		})
-		if err == nil && pref.Level == "off" {
-			continue
-		}
-
-		// Check user notification preference
-		uPrefs, _ := h.queries.ListUserNotificationPrefs(ctx, pgtype.UUID{Bytes: rUID, Valid: true})
-		emailEnabled := true
-		for _, up := range uPrefs {
-			if up.EventType == "comment" && !up.Email {
-				emailEnabled = false
-			}
-		}
-
-		if !emailEnabled {
-			continue
-		}
-
-		u, err := h.queries.GetUserByID(ctx, pgtype.UUID{Bytes: rUID, Valid: true})
-		if err == nil && u.Email != "" && u.Email != authorEmail {
-			itemURL := fmt.Sprintf("%s/projects/%s/review/%s", strings.TrimRight(h.mailer.FrontendURL, "/"), pgUUIDToString(item.ProjectID), pgUUIDToString(item.ID))
-			_ = h.mailer.SendCommentNotificationEmail(u.Email, u.Name, authorName, item.Name, itemURL, comment.Body)
+			taskID := fmt.Sprintf("grouped_comments:%s", itemIDStr)
+			_, _ = h.asynqClient.Enqueue(
+				task,
+				asynq.ProcessIn(5*time.Minute),
+				asynq.TaskID(taskID),
+				asynq.Unique(5*time.Minute),
+			)
 		}
 	}
 }

@@ -53,6 +53,29 @@ services:
       - "1025:1025" # SMTP
       - "8025:8025" # Web UI
 
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.worker
+    image: playhead-worker:latest
+    container_name: playhead-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/playhead_dev?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      R2_ENDPOINT: http://minio:9000
+      R2_ACCESS_KEY_ID: playhead
+      R2_SECRET_ACCESS_KEY: playheadsecret
+      R2_BUCKET: playhead-dev
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      APP_URL: http://localhost:3000
+
 volumes:
   postgres_data:
   redis_data:

@@ -303,6 +303,45 @@ func Access(ctx context.Context, q *db.Queries, person Person, project ProjectTa
 	}, nil
 }
 
+type accessSource struct {
+	Level       string
+	CanDownload bool
+}
+
+func resolveSources(sources []accessSource) AccessResult {
+	if len(sources) == 0 {
+		return AccessResult{Level: LevelNone, CanDownload: false}
+	}
+
+	maxRank := 0
+	bestLevel := LevelNone
+	for _, s := range sources {
+		r := accessHierarchy[s.Level]
+		if r > maxRank {
+			maxRank = r
+			bestLevel = s.Level
+		}
+	}
+
+	if maxRank == 0 {
+		return AccessResult{Level: LevelNone, CanDownload: false}
+	}
+
+	canDL := true
+	for _, s := range sources {
+		if accessHierarchy[s.Level] == maxRank {
+			if !s.CanDownload {
+				canDL = false
+			}
+		}
+	}
+
+	return AccessResult{
+		Level:       bestLevel,
+		CanDownload: canDL,
+	}
+}
+
 // AccessFolder evaluates permissions on a folder using ancestor chain in a single pass.
 // Fast rule: never check file by file. Resolve once for folder and apply to all children.
 func AccessFolder(ctx context.Context, q *db.Queries, person Person, project ProjectTarget, folderID uuid.UUID) (AccessResult, error) {
@@ -317,36 +356,45 @@ func AccessFolder(ctx context.Context, q *db.Queries, person Person, project Pro
 		return projAccess, nil
 	}
 
-	// Fetch ancestor hierarchy for folder in 1 query
-	ancestors, err := q.GetItemAncestors(ctx, db.GetItemAncestorsParams{
-		ItemID:    pgtype.UUID{Bytes: folderID, Valid: true},
-		CompanyID: pgtype.UUID{Bytes: project.CompanyID, Valid: true},
-	})
-	if err != nil {
-		return projAccess, nil
+	var sources []accessSource
+	if projAccess.Level != LevelNone && projAccess.Level != "" {
+		sources = append(sources, accessSource{
+			Level:       projAccess.Level,
+			CanDownload: projAccess.CanDownload,
+		})
 	}
 
-	currentAccess := projAccess
-	normEmail := NormalizeEmail(person.Email)
-
-	// Step down ancestor chain to elevate access if grants exist
-	for _, anc := range ancestors {
-		grant, gErr := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
-			TargetType: "item",
-			TargetID:   anc.ID,
-			Email:      normEmail,
+	if q != nil {
+		ancestors, err := q.GetItemAncestors(ctx, db.GetItemAncestorsParams{
+			ItemID:    pgtype.UUID{Bytes: folderID, Valid: true},
+			CompanyID: pgtype.UUID{Bytes: project.CompanyID, Valid: true},
 		})
-		if gErr == nil {
-			if accessHierarchy[grant.Level] > accessHierarchy[currentAccess.Level] {
-				currentAccess.Level = grant.Level
-			}
-			if !grant.CanDownload {
-				currentAccess.CanDownload = false
+		if err == nil {
+			normEmail := NormalizeEmail(person.Email)
+			for _, anc := range ancestors {
+				grant, gErr := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
+					TargetType: "item",
+					TargetID:   anc.ID,
+					Email:      normEmail,
+				})
+				if gErr != nil {
+					grant, gErr = q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
+						TargetType: "folder",
+						TargetID:   anc.ID,
+						Email:      normEmail,
+					})
+				}
+				if gErr == nil && grant.Level != LevelNone && grant.Level != "" {
+					sources = append(sources, accessSource{
+						Level:       grant.Level,
+						CanDownload: grant.CanDownload,
+					})
+				}
 			}
 		}
 	}
 
-	return currentAccess, nil
+	return resolveSources(sources), nil
 }
 
 // AccessItem evaluates permissions on an item by resolving its parent folder access.
@@ -360,25 +408,42 @@ func AccessItem(ctx context.Context, q *db.Queries, person Person, project Proje
 		return projAccess, nil
 	}
 
-	// Check if this specific item has a direct grant
-	normEmail := NormalizeEmail(person.Email)
-	grant, gErr := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
-		TargetType: "item",
-		TargetID:   pgtype.UUID{Bytes: item.ID, Valid: true},
-		Email:      normEmail,
-	})
-	if gErr == nil {
-		canDL := grant.CanDownload
-		if !projAccess.CanDownload && projAccess.Level != LevelNone {
-			canDL = false
+	folderAccess, err := AccessFolder(ctx, q, person, project, item.ID)
+	if err != nil {
+		return AccessResult{Level: LevelNone, CanDownload: false}, err
+	}
+
+	var sources []accessSource
+	if folderAccess.Level != LevelNone && folderAccess.Level != "" {
+		sources = append(sources, accessSource{
+			Level:       folderAccess.Level,
+			CanDownload: folderAccess.CanDownload,
+		})
+	}
+
+	if q != nil {
+		normEmail := NormalizeEmail(person.Email)
+		grant, gErr := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
+			TargetType: "item",
+			TargetID:   pgtype.UUID{Bytes: item.ID, Valid: true},
+			Email:      normEmail,
+		})
+		if gErr != nil {
+			grant, gErr = q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
+				TargetType: "folder",
+				TargetID:   pgtype.UUID{Bytes: item.ID, Valid: true},
+				Email:      normEmail,
+			})
 		}
-		if accessHierarchy[grant.Level] >= accessHierarchy[projAccess.Level] {
-			return AccessResult{Level: grant.Level, CanDownload: canDL}, nil
+		if gErr == nil && grant.Level != LevelNone && grant.Level != "" {
+			sources = append(sources, accessSource{
+				Level:       grant.Level,
+				CanDownload: grant.CanDownload,
+			})
 		}
 	}
 
-	// Otherwise, inherit from folder chain
-	return AccessFolder(ctx, q, person, project, item.ID)
+	return resolveSources(sources), nil
 }
 
 // HashToken produces a SHA-256 hex digest of a token string.

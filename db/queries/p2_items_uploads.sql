@@ -205,11 +205,11 @@ WHERE item_id = @item_id AND number = @number;
 -- Uploads
 -- name: CreateUpload :one
 INSERT INTO uploads (
-    company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime,
+    company_id, user_id, project_id, parent_id, target_item_id, share_link_id, filename, size_bytes, mime,
     storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at
 )
 VALUES (
-    @company_id, @user_id, @project_id, sqlc.narg('parent_id'), sqlc.narg('target_item_id'),
+    @company_id, @user_id, @project_id, sqlc.narg('parent_id'), sqlc.narg('target_item_id'), sqlc.narg('share_link_id'),
     @filename, @size_bytes, @mime, @storage_key, @upload_id, @part_size_bytes, @total_parts,
     '[]'::jsonb, 'pending', @expires_at
 )
@@ -218,6 +218,10 @@ RETURNING *;
 -- name: GetUploadByID :one
 SELECT * FROM uploads
 WHERE id = @id AND company_id = @company_id;
+
+-- name: GetUploadByIDSimple :one
+SELECT * FROM uploads
+WHERE id = @id;
 
 -- name: UpdateUploadCompletedParts :one
 UPDATE uploads

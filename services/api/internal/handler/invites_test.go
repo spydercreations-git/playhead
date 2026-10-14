@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
@@ -40,6 +41,7 @@ func TestTrialMaxFiveSeatsEnforcement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create test company: %v", err)
 	}
+	_ = SeedDefaultCompanyRoles(ctx, queries, testCompany.ID)
 
 	// 2. Create owner user
 	ownerUser, err := queries.CreateUser(ctx, db.CreateUserParams{
@@ -53,7 +55,7 @@ func TestTrialMaxFiveSeatsEnforcement(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: testCompany.ID,
 		UserID:    ownerUser.ID,
-		Role:      authz.RoleOwner,
+		Role:      authz.RoleAdmin,
 	})
 
 	authOwner := &middleware.AuthenticatedUser{
@@ -61,8 +63,17 @@ func TestTrialMaxFiveSeatsEnforcement(t *testing.T) {
 		Email: ownerUser.Email,
 		Name:  ownerUser.Name,
 	}
+	ownerPerson := authz.Person{
+		UserID:      uuid.UUID(ownerUser.ID.Bytes),
+		CompanyID:   uuid.UUID(testCompany.ID.Bytes),
+		Email:       ownerUser.Email,
+		Role:        "admin",
+		Permissions: authz.AllPermissions,
+	}
 	userCtx := context.WithValue(ctx, middleware.UserContextKey, authOwner)
 	userCtx = context.WithValue(userCtx, middleware.CompanyContextKey, testCompany.ID)
+	userCtx = context.WithValue(userCtx, middleware.RoleContextKey, authz.RoleAdmin)
+	userCtx = context.WithValue(userCtx, middleware.PersonContextKey, ownerPerson)
 
 	// Function to send invite
 	sendInvite := func(email string) int {

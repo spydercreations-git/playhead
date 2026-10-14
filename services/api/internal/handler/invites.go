@@ -52,6 +52,15 @@ func (h *InviteHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	person := middleware.GetPerson(r.Context())
+	if !person.HasPermission(authz.PermTeamInvite) {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "You do not have permission to invite members (team.invite)",
+		})
+		return
+	}
+
 	var req CreateInviteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
@@ -64,27 +73,50 @@ func (h *InviteHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	role := strings.ToLower(strings.TrimSpace(req.Role))
-	if role == "" {
-		role = "editor"
+	rawRole := strings.TrimSpace(req.Role)
+	if rawRole == "" {
+		rawRole = "Editor"
 	}
-	if role == "owner" || role == "member" || role == "guest" {
+	lowerRole := strings.ToLower(rawRole)
+	if lowerRole == "owner" || lowerRole == "member" || lowerRole == "guest" {
 		respondJSON(w, http.StatusBadRequest, map[string]string{
 			"error":   "invalid_role",
 			"message": "Invite role cannot be owner, member, or guest",
 		})
 		return
 	}
-	if role != "admin" && role != "manager" && role != "editor" {
-		_, err := h.queries.GetRoleByName(r.Context(), db.GetRoleByNameParams{
+
+	// Reject any role name that does not exist in the roles table (no free text roles)
+	roleObj, err := h.queries.GetRoleByName(r.Context(), db.GetRoleByNameParams{
+		CompanyID: companyID,
+		Name:      rawRole,
+	})
+	if err != nil {
+		// try title-case / capitalized
+		roleCapitalized := strings.ToUpper(rawRole[:1]) + strings.ToLower(rawRole[1:])
+		roleObj, err = h.queries.GetRoleByName(r.Context(), db.GetRoleByNameParams{
 			CompanyID: companyID,
-			Name:      role,
+			Name:      roleCapitalized,
 		})
-		if err != nil {
-			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_role", "message": "Role must be admin, manager, or editor"})
-			return
-		}
 	}
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "invalid_role",
+			"message": "Role does not exist in the roles table",
+		})
+		return
+	}
+
+	// Role escalation: only Admins can give or remove the Admin role
+	if strings.EqualFold(roleObj.Name, "admin") && !strings.EqualFold(person.Role, "admin") {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Only Admins can invite someone as Admin",
+		})
+		return
+	}
+
+	role := roleObj.Name
 
 	company, err := h.queries.GetCompanyByID(r.Context(), companyID)
 	if err != nil {
@@ -225,6 +257,15 @@ func (h *InviteHandler) ListForCompany(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusForbidden, map[string]string{
 			"error":   "forbidden",
 			"message": "Cannot list invitations of another company",
+		})
+		return
+	}
+
+	person := middleware.GetPerson(r.Context())
+	if !person.HasPermission(authz.PermTeamInvite) {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "You do not have permission to list invitations (team.invite)",
 		})
 		return
 	}

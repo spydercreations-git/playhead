@@ -16,7 +16,7 @@ UPDATE uploads
 SET status = 'aborted',
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at
+RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id
 `
 
 func (q *Queries) AbortUpload(ctx context.Context, id pgtype.UUID) (Upload, error) {
@@ -41,6 +41,7 @@ func (q *Queries) AbortUpload(ctx context.Context, id pgtype.UUID) (Upload, erro
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ShareLinkID,
 	)
 	return i, err
 }
@@ -68,7 +69,7 @@ UPDATE uploads
 SET status = 'completed',
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at
+RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id
 `
 
 func (q *Queries) CompleteUpload(ctx context.Context, id pgtype.UUID) (Upload, error) {
@@ -93,6 +94,7 @@ func (q *Queries) CompleteUpload(ctx context.Context, id pgtype.UUID) (Upload, e
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ShareLinkID,
 	)
 	return i, err
 }
@@ -259,15 +261,15 @@ func (q *Queries) CreateItemWithCounts(ctx context.Context, arg CreateItemWithCo
 
 const createUpload = `-- name: CreateUpload :one
 INSERT INTO uploads (
-    company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime,
+    company_id, user_id, project_id, parent_id, target_item_id, share_link_id, filename, size_bytes, mime,
     storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at
 )
 VALUES (
-    $1, $2, $3, $4, $5,
-    $6, $7, $8, $9, $10, $11, $12,
-    '[]'::jsonb, 'pending', $13
+    $1, $2, $3, $4, $5, $6,
+    $7, $8, $9, $10, $11, $12, $13,
+    '[]'::jsonb, 'pending', $14
 )
-RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at
+RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id
 `
 
 type CreateUploadParams struct {
@@ -276,6 +278,7 @@ type CreateUploadParams struct {
 	ProjectID     pgtype.UUID        `json:"project_id"`
 	ParentID      pgtype.UUID        `json:"parent_id"`
 	TargetItemID  pgtype.UUID        `json:"target_item_id"`
+	ShareLinkID   pgtype.UUID        `json:"share_link_id"`
 	Filename      string             `json:"filename"`
 	SizeBytes     int64              `json:"size_bytes"`
 	Mime          string             `json:"mime"`
@@ -294,6 +297,7 @@ func (q *Queries) CreateUpload(ctx context.Context, arg CreateUploadParams) (Upl
 		arg.ProjectID,
 		arg.ParentID,
 		arg.TargetItemID,
+		arg.ShareLinkID,
 		arg.Filename,
 		arg.SizeBytes,
 		arg.Mime,
@@ -323,6 +327,7 @@ func (q *Queries) CreateUpload(ctx context.Context, arg CreateUploadParams) (Upl
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ShareLinkID,
 	)
 	return i, err
 }
@@ -739,7 +744,7 @@ func (q *Queries) GetStorageBreakdownByClientAndProject(ctx context.Context, com
 }
 
 const getUploadByID = `-- name: GetUploadByID :one
-SELECT id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at FROM uploads
+SELECT id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id FROM uploads
 WHERE id = $1 AND company_id = $2
 `
 
@@ -770,6 +775,39 @@ func (q *Queries) GetUploadByID(ctx context.Context, arg GetUploadByIDParams) (U
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ShareLinkID,
+	)
+	return i, err
+}
+
+const getUploadByIDSimple = `-- name: GetUploadByIDSimple :one
+SELECT id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id FROM uploads
+WHERE id = $1
+`
+
+func (q *Queries) GetUploadByIDSimple(ctx context.Context, id pgtype.UUID) (Upload, error) {
+	row := q.db.QueryRow(ctx, getUploadByIDSimple, id)
+	var i Upload
+	err := row.Scan(
+		&i.ID,
+		&i.CompanyID,
+		&i.UserID,
+		&i.ProjectID,
+		&i.ParentID,
+		&i.TargetItemID,
+		&i.Filename,
+		&i.SizeBytes,
+		&i.Mime,
+		&i.StorageKey,
+		&i.UploadID,
+		&i.PartSizeBytes,
+		&i.TotalParts,
+		&i.CompletedParts,
+		&i.Status,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ShareLinkID,
 	)
 	return i, err
 }
@@ -830,7 +868,7 @@ func (q *Queries) ListAllProjectFolders(ctx context.Context, arg ListAllProjectF
 }
 
 const listExpiredPendingUploads = `-- name: ListExpiredPendingUploads :many
-SELECT id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at FROM uploads
+SELECT id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id FROM uploads
 WHERE status = 'pending' AND expires_at < NOW()
 LIMIT 100
 `
@@ -863,6 +901,7 @@ func (q *Queries) ListExpiredPendingUploads(ctx context.Context) ([]Upload, erro
 			&i.ExpiresAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ShareLinkID,
 		); err != nil {
 			return nil, err
 		}
@@ -1582,7 +1621,7 @@ UPDATE uploads
 SET completed_parts = $1,
     updated_at = NOW()
 WHERE id = $2
-RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at
+RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id
 `
 
 type UpdateUploadCompletedPartsParams struct {
@@ -1612,6 +1651,7 @@ func (q *Queries) UpdateUploadCompletedParts(ctx context.Context, arg UpdateUplo
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ShareLinkID,
 	)
 	return i, err
 }

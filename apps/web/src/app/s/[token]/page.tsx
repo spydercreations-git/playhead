@@ -180,7 +180,8 @@ export default function PublicSharePage() {
         return;
       }
 
-      const { upload_url } = await initRes.json();
+      const initData = await initRes.json();
+      const { upload_id, upload_url } = initData;
       setUploadProgress(`Uploading ${file.name}...`);
 
       const putRes = await fetch(upload_url, {
@@ -190,9 +191,24 @@ export default function PublicSharePage() {
       });
 
       if (!putRes.ok) {
+        if (upload_id) {
+          await fetch(`/api/v1/s/${token}/upload/abort`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ upload_id }),
+          });
+        }
         alert("Direct upload failed");
         setUploadProgress(null);
         return;
+      }
+
+      if (upload_id) {
+        await fetch(`/api/v1/s/${token}/upload/complete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ upload_id }),
+        });
       }
 
       setUploadProgress("Upload complete! File submitted.");

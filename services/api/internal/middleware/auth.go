@@ -235,6 +235,7 @@ func RequireVerifiedEmail(next http.Handler) http.Handler {
 	})
 }
 
+
 // RequireRole ensures the user has at least the required role in the active company.
 func RequireRole(requiredRole string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

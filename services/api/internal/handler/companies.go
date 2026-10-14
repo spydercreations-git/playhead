@@ -85,6 +85,8 @@ func (h *CompanyHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_ = SeedDefaultCompanyRoles(r.Context(), h.queries, company.ID)
+
 	// Create owner membership
 	_, err = h.queries.CreateMembership(r.Context(), db.CreateMembershipParams{
 		CompanyID: company.ID,
@@ -231,24 +233,57 @@ func (h *CompanyHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request
 			CompanyID: companyID,
 			Name:      req.Role,
 		})
+		if rErr != nil {
+			roleCapitalized := strings.ToUpper(req.Role[:1]) + strings.ToLower(req.Role[1:])
+			roleObj, rErr = h.queries.GetRoleByName(r.Context(), db.GetRoleByNameParams{
+				CompanyID: companyID,
+				Name:      roleCapitalized,
+			})
+		}
 		if rErr == nil {
 			newRoleID = roleObj.ID
 			newRoleName = roleObj.Name
-		} else {
-			newRoleName = strings.ToLower(req.Role)
 		}
+	}
+
+	// Reject any role name or id that does not exist in the roles table (no free text roles)
+	if !newRoleID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "invalid_role",
+			"message": "Role does not exist in the company's roles table",
+		})
+		return
 	}
 
 	lowerNewName := strings.ToLower(newRoleName)
 	if lowerNewName == "" || lowerNewName == "owner" || lowerNewName == "member" || lowerNewName == "guest" {
-		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_role", "message": "Role must be admin, manager, or editor"})
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_role", "message": "Role cannot be owner, member, or guest"})
 		return
 	}
 
-	// Last Admin guard: if demoting an Admin, company must have >1 Admin
 	isTargetAdmin := strings.ToLower(targetMembership.Role) == "admin" || (targetMembership.RoleName.Valid && strings.ToLower(targetMembership.RoleName.String) == "admin")
 	isNewAdmin := strings.ToLower(newRoleName) == "admin"
+	isCallerAdmin := strings.EqualFold(person.Role, "admin")
 
+	// Role escalation: only Admins can give or remove the Admin role
+	if !isCallerAdmin {
+		if isTargetAdmin {
+			respondJSON(w, http.StatusForbidden, map[string]string{
+				"error":   "forbidden",
+				"message": "Only Admins can remove the Admin role",
+			})
+			return
+		}
+		if isNewAdmin {
+			respondJSON(w, http.StatusForbidden, map[string]string{
+				"error":   "forbidden",
+				"message": "Only Admins can assign the Admin role",
+			})
+			return
+		}
+	}
+
+	// Last Admin guard: if demoting an Admin, company must have >1 Admin
 	if isTargetAdmin && !isNewAdmin {
 		adminCount, _ := h.queries.CountCompanyAdmins(r.Context(), companyID)
 		if adminCount <= 1 {
@@ -326,9 +361,17 @@ func (h *CompanyHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Last Admin guard: if removing an Admin, company must have >1 Admin
+	// Last Admin guard and Admin-only removal: only Admins can remove an Admin
 	isTargetAdmin := strings.ToLower(targetMembership.Role) == "admin" || (targetMembership.RoleName.Valid && strings.ToLower(targetMembership.RoleName.String) == "admin")
 	if isTargetAdmin {
+		if !strings.EqualFold(person.Role, "admin") {
+			respondJSON(w, http.StatusForbidden, map[string]string{
+				"error":   "forbidden",
+				"message": "Only Admins can remove an Admin",
+			})
+			return
+		}
+
 		adminCount, _ := h.queries.CountCompanyAdmins(r.Context(), companyID)
 		if adminCount <= 1 {
 			respondJSON(w, http.StatusBadRequest, map[string]string{

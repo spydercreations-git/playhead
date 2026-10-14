@@ -223,25 +223,27 @@ type Session struct {
 }
 
 type ShareLink struct {
-	ID               pgtype.UUID        `json:"id"`
-	CompanyID        pgtype.UUID        `json:"company_id"`
-	ProjectID        pgtype.UUID        `json:"project_id"`
-	Name             string             `json:"name"`
-	TokenHash        string             `json:"token_hash"`
-	Access           string             `json:"access"`
-	AllowDownload    bool               `json:"allow_download"`
-	LatestOnly       bool               `json:"latest_only"`
-	PasswordHash     pgtype.Text        `json:"password_hash"`
-	ExpiresAt        pgtype.Timestamptz `json:"expires_at"`
-	AskIdentity      bool               `json:"ask_identity"`
-	UploadLimitBytes pgtype.Int8        `json:"upload_limit_bytes"`
-	UploadedBytes    int64              `json:"uploaded_bytes"`
-	ViewCount        int32              `json:"view_count"`
-	LastOpenedAt     pgtype.Timestamptz `json:"last_opened_at"`
-	DisabledAt       pgtype.Timestamptz `json:"disabled_at"`
-	CreatedBy        pgtype.UUID        `json:"created_by"`
-	CreatedAt        pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	ID                  pgtype.UUID        `json:"id"`
+	CompanyID           pgtype.UUID        `json:"company_id"`
+	ProjectID           pgtype.UUID        `json:"project_id"`
+	Name                string             `json:"name"`
+	TokenHash           string             `json:"token_hash"`
+	Access              string             `json:"access"`
+	AllowDownload       bool               `json:"allow_download"`
+	LatestOnly          bool               `json:"latest_only"`
+	PasswordHash        pgtype.Text        `json:"password_hash"`
+	ExpiresAt           pgtype.Timestamptz `json:"expires_at"`
+	AskIdentity         bool               `json:"ask_identity"`
+	UploadLimitBytes    pgtype.Int8        `json:"upload_limit_bytes"`
+	UploadedBytes       int64              `json:"uploaded_bytes"`
+	ViewCount           int32              `json:"view_count"`
+	LastOpenedAt        pgtype.Timestamptz `json:"last_opened_at"`
+	DisabledAt          pgtype.Timestamptz `json:"disabled_at"`
+	CreatedBy           pgtype.UUID        `json:"created_by"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	PasswordVersion     int32              `json:"password_version"`
+	UploadReservedBytes int64              `json:"upload_reserved_bytes"`
 }
 
 type ShareLinkItem struct {
@@ -284,6 +286,7 @@ type Upload struct {
 	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	ShareLinkID    pgtype.UUID        `json:"share_link_id"`
 }
 
 type User struct {

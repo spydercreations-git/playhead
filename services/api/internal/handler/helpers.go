@@ -1,8 +1,14 @@
 package handler
 
 import (
+	"context"
+	"encoding/json"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/playhead/playhead/services/shared/authz"
+	"github.com/playhead/playhead/services/shared/db"
 )
 
 func pgUUIDToString(u pgtype.UUID) string {
@@ -10,4 +16,40 @@ func pgUUIDToString(u pgtype.UUID) string {
 		return ""
 	}
 	return uuid.UUID(u.Bytes).String()
+}
+
+func SeedDefaultCompanyRoles(ctx context.Context, q *db.Queries, companyID pgtype.UUID) error {
+	allPermsBytes, _ := json.Marshal(authz.AllPermissions)
+	managerPermsBytes, _ := json.Marshal([]string{
+		authz.PermProjectsViewAll,
+		authz.PermFilesDownloadAll,
+		authz.PermSharingCreatePublicLinks,
+		authz.PermTeamInvite,
+	})
+	editorPermsBytes, _ := json.Marshal([]string{
+		authz.PermFilesDownloadAll,
+	})
+
+	_, _ = q.CreateRole(ctx, db.CreateRoleParams{
+		CompanyID:   companyID,
+		Name:        "Admin",
+		Color:       "#0066FF",
+		Permissions: allPermsBytes,
+		IsSystem:    true,
+	})
+	_, _ = q.CreateRole(ctx, db.CreateRoleParams{
+		CompanyID:   companyID,
+		Name:        "Manager",
+		Color:       "#10B981",
+		Permissions: managerPermsBytes,
+		IsSystem:    false,
+	})
+	_, _ = q.CreateRole(ctx, db.CreateRoleParams{
+		CompanyID:   companyID,
+		Name:        "Editor",
+		Color:       "#8B5CF6",
+		Permissions: editorPermsBytes,
+		IsSystem:    false,
+	})
+	return nil
 }

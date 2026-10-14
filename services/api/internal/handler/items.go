@@ -190,8 +190,6 @@ func (h *ItemsHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 // ListFoldersTree returns the recursive folder hierarchy of a project for sidebar and move picker
 func (h *ItemsHandler) ListFoldersTree(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	user, _ := middleware.GetAuthenticatedUser(ctx)
-	role, _ := middleware.GetUserRole(ctx)
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -213,13 +211,11 @@ func (h *ItemsHandler) ListFoldersTree(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
-	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
-		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
-	})
-	if err != nil || !access.CanView() {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
-		return
+	person := middleware.GetPerson(ctx)
+	projTarget := authz.ProjectTarget{
+		ID:        uuid.UUID(proj.ID.Bytes),
+		CompanyID: uuid.UUID(proj.CompanyID.Bytes),
+		ClientID:  uuid.UUID(proj.ClientID.Bytes),
 	}
 
 	folders, err := h.queries.ListAllProjectFolders(ctx, db.ListAllProjectFoldersParams{
@@ -231,8 +227,26 @@ func (h *ItemsHandler) ListFoldersTree(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var visibleFolders []db.ListAllProjectFoldersRow
+	for _, f := range folders {
+		fAccess, err := authz.AccessFolder(ctx, h.queries, person, projTarget, uuid.UUID(f.ID.Bytes))
+		if err == nil && fAccess.CanView() {
+			visibleFolders = append(visibleFolders, f)
+		}
+	}
+
+	rootAccess, _ := authz.AccessFolder(ctx, h.queries, person, projTarget, uuid.Nil)
+	if !rootAccess.CanView() && len(visibleFolders) == 0 {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	if visibleFolders == nil {
+		visibleFolders = []db.ListAllProjectFoldersRow{}
+	}
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"folders": folders,
+		"folders": visibleFolders,
 	})
 }
 
@@ -246,7 +260,6 @@ type createFolderReq struct {
 func (h *ItemsHandler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, _ := middleware.GetAuthenticatedUser(ctx)
-	role, _ := middleware.GetUserRole(ctx)
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -280,18 +293,23 @@ func (h *ItemsHandler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
-	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
-		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
-	})
-	if err != nil || !access.CanUpload() {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to create folders in this project"})
-		return
-	}
+	person := middleware.GetPerson(ctx)
 
 	var parentUUID pgtype.UUID
+	var parentFolderUUID uuid.UUID
 	if req.ParentID != nil && *req.ParentID != "" && *req.ParentID != "null" {
-		_ = parentUUID.Scan(*req.ParentID)
+		if pid, pErr := uuid.Parse(*req.ParentID); pErr == nil {
+			parentUUID = pgtype.UUID{Bytes: pid, Valid: true}
+			parentFolderUUID = pid
+		}
+	}
+
+	access, err := authz.AccessFolder(ctx, h.queries, person, authz.ProjectTarget{
+		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	}, parentFolderUUID)
+	if err != nil || !access.CanUpload() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to create folders here"})
+		return
 	}
 
 	// Requirement 5: Folder uploads merge into existing folders with the same name
@@ -337,8 +355,6 @@ type renameItemReq struct {
 // RenameItem renames a folder or file
 func (h *ItemsHandler) RenameItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	user, _ := middleware.GetAuthenticatedUser(ctx)
-	role, _ := middleware.GetUserRole(ctx)
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -381,12 +397,17 @@ func (h *ItemsHandler) RenameItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
-	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+	person := middleware.GetPerson(ctx)
+	access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
 		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	}, authz.ItemTarget{
+		ID:        uuid.UUID(item.ID.Bytes),
+		ProjectID: uuid.UUID(item.ProjectID.Bytes),
+		CompanyID: uuid.UUID(item.CompanyID.Bytes),
+		CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
 	})
-	if err != nil {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "access_denied"})
+	if err != nil || !access.CanView() {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
 		return
 	}
 
@@ -421,8 +442,6 @@ type moveItemReq struct {
 // MoveItem moves an item to another folder, checking circular references
 func (h *ItemsHandler) MoveItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	user, _ := middleware.GetAuthenticatedUser(ctx)
-	role, _ := middleware.GetUserRole(ctx)
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -459,12 +478,17 @@ func (h *ItemsHandler) MoveItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
-	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+	person := middleware.GetPerson(ctx)
+	access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
 		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	}, authz.ItemTarget{
+		ID:        uuid.UUID(item.ID.Bytes),
+		ProjectID: uuid.UUID(item.ProjectID.Bytes),
+		CompanyID: uuid.UUID(item.CompanyID.Bytes),
+		CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
 	})
-	if err != nil {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "access_denied"})
+	if err != nil || !access.CanView() {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
 		return
 	}
 
@@ -478,8 +502,12 @@ func (h *ItemsHandler) MoveItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var targetParentUUID pgtype.UUID
+	var targetFolderUUID uuid.UUID
 	if req.TargetParentID != nil && *req.TargetParentID != "" && *req.TargetParentID != "null" {
-		if err := targetParentUUID.Scan(*req.TargetParentID); err != nil {
+		if pid, err := uuid.Parse(*req.TargetParentID); err == nil {
+			targetParentUUID = pgtype.UUID{Bytes: pid, Valid: true}
+			targetFolderUUID = pid
+		} else {
 			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_target_parent_id"})
 			return
 		}
@@ -506,6 +534,15 @@ func (h *ItemsHandler) MoveItem(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+
+	targetAccess, err := authz.AccessFolder(ctx, h.queries, person, authz.ProjectTarget{
+		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	}, targetFolderUUID)
+	if err != nil || !targetAccess.CanUpload() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to upload/move into target folder"})
+		return
+	}
+
 
 	oldParentUUID := item.ParentID
 
@@ -535,7 +572,6 @@ func (h *ItemsHandler) MoveItem(w http.ResponseWriter, r *http.Request) {
 func (h *ItemsHandler) CopyItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, _ := middleware.GetAuthenticatedUser(ctx)
-	role, _ := middleware.GetUserRole(ctx)
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -566,12 +602,30 @@ func (h *ItemsHandler) CopyItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
-	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+	person := middleware.GetPerson(ctx)
+	access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
 		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	}, authz.ItemTarget{
+		ID:        uuid.UUID(item.ID.Bytes),
+		ProjectID: uuid.UUID(item.ProjectID.Bytes),
+		CompanyID: uuid.UUID(item.CompanyID.Bytes),
+		CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
 	})
-	if err != nil || !access.CanUpload() {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to copy items in this project"})
+	if err != nil || !access.CanView() {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+
+	var parentFolderUUID uuid.UUID
+	if item.ParentID.Valid {
+		parentFolderUUID = uuid.UUID(item.ParentID.Bytes)
+	}
+
+	destAccess, err := authz.AccessFolder(ctx, h.queries, person, authz.ProjectTarget{
+		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	}, parentFolderUUID)
+	if err != nil || !destAccess.CanUpload() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to copy items here"})
 		return
 	}
 
@@ -627,7 +681,6 @@ func (h *ItemsHandler) CopyItem(w http.ResponseWriter, r *http.Request) {
 func (h *ItemsHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, _ := middleware.GetAuthenticatedUser(ctx)
-	role, _ := middleware.GetUserRole(ctx)
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -658,12 +711,17 @@ func (h *ItemsHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
-	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+	person := middleware.GetPerson(ctx)
+	access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
 		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	}, authz.ItemTarget{
+		ID:        uuid.UUID(item.ID.Bytes),
+		ProjectID: uuid.UUID(item.ProjectID.Bytes),
+		CompanyID: uuid.UUID(item.CompanyID.Bytes),
+		CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
 	})
-	if err != nil {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "access_denied"})
+	if err != nil || !access.CanView() {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
 		return
 	}
 
@@ -816,6 +874,40 @@ func (h *ItemsHandler) StarItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:        itemID,
+		CompanyID: companyID,
+	})
+	if err != nil || item.DeletedAt.Valid {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+
+	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+		ID:        item.ProjectID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	person := middleware.GetPerson(ctx)
+	access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
+		ID:        uuid.UUID(proj.ID.Bytes),
+		CompanyID: uuid.UUID(proj.CompanyID.Bytes),
+		ClientID:  uuid.UUID(proj.ClientID.Bytes),
+	}, authz.ItemTarget{
+		ID:        uuid.UUID(item.ID.Bytes),
+		ProjectID: uuid.UUID(item.ProjectID.Bytes),
+		CompanyID: uuid.UUID(item.CompanyID.Bytes),
+		CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
+	})
+	if err != nil || !access.CanView() {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+
 	if err := h.queries.StarItem(ctx, db.StarItemParams{
 		CompanyID: companyID,
 		UserID:    user.ID,
@@ -841,6 +933,40 @@ func (h *ItemsHandler) UnstarItem(w http.ResponseWriter, r *http.Request) {
 	var itemID pgtype.UUID
 	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
+		return
+	}
+
+	item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:        itemID,
+		CompanyID: companyID,
+	})
+	if err != nil || item.DeletedAt.Valid {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+
+	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+		ID:        item.ProjectID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	person := middleware.GetPerson(ctx)
+	access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
+		ID:        uuid.UUID(proj.ID.Bytes),
+		CompanyID: uuid.UUID(proj.CompanyID.Bytes),
+		ClientID:  uuid.UUID(proj.ClientID.Bytes),
+	}, authz.ItemTarget{
+		ID:        uuid.UUID(item.ID.Bytes),
+		ProjectID: uuid.UUID(item.ProjectID.Bytes),
+		CompanyID: uuid.UUID(item.CompanyID.Bytes),
+		CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
+	})
+	if err != nil || !access.CanView() {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
 		return
 	}
 
@@ -986,31 +1112,45 @@ func (h *ItemsHandler) RestoreTrashItem(w http.ResponseWriter, r *http.Request) 
 	isUploader := item.CreatedBy.Valid && item.CreatedBy == user.ID
 	isDeleter := item.DeletedBy.Valid && item.DeletedBy == user.ID
 
-	hasFullAccess := false
-	lowerRole := strings.ToLower(person.Role)
-	if lowerRole == authz.RoleAdmin || lowerRole == authz.RoleOwner || lowerRole == authz.RoleManager {
-		hasFullAccess = true
-	} else {
-		proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
-			ID:        item.ProjectID,
-			CompanyID: companyID,
-		})
-		if err == nil {
-			acc, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
-				ID:        uuid.UUID(proj.ID.Bytes),
-				CompanyID: uuid.UUID(proj.CompanyID.Bytes),
-				ClientID:  uuid.UUID(proj.ClientID.Bytes),
-			})
-			if err == nil && acc.Level == authz.LevelFull {
-				hasFullAccess = true
-			}
+	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+		ID:        item.ProjectID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	projTarget := authz.ProjectTarget{
+		ID:        uuid.UUID(proj.ID.Bytes),
+		CompanyID: uuid.UUID(proj.CompanyID.Bytes),
+		ClientID:  uuid.UUID(proj.ClientID.Bytes),
+	}
+
+	var parentFolderUUID uuid.UUID
+	if item.OriginalParentID.Valid {
+		parentFolderUUID = uuid.UUID(item.OriginalParentID.Bytes)
+	}
+
+	folderAccess, err := authz.AccessFolder(ctx, h.queries, person, projTarget, parentFolderUUID)
+	if err != nil {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+
+	canRestore := false
+	if folderAccess.Level == authz.LevelFull {
+		canRestore = true
+	} else if isUploader || isDeleter {
+		if folderAccess.Level == authz.LevelUploader || folderAccess.Level == authz.LevelFull {
+			canRestore = true
 		}
 	}
 
-	if !hasFullAccess && !isUploader && !isDeleter {
+	if !canRestore {
 		respondJSON(w, http.StatusForbidden, map[string]string{
 			"error":   "forbidden",
-			"message": "Only people with Full access, or the person who uploaded or deleted the item, can restore it",
+			"message": "The uploader or deleter can restore only if they still have at least Uploader access to the project or folder",
 		})
 		return
 	}

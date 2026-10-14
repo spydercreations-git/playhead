@@ -1,10 +1,13 @@
 package handler
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"strings"
 	"time"
@@ -20,12 +23,22 @@ import (
 )
 
 type ShareLinksHandler struct {
-	queries *db.Queries
-	storage *storage.Client
+	queries       *db.Queries
+	storage       *storage.Client
+	sessionSecret string
+	environment   string
 }
 
-func NewShareLinksHandler(queries *db.Queries, st *storage.Client) *ShareLinksHandler {
-	return &ShareLinksHandler{queries: queries, storage: st}
+func NewShareLinksHandler(queries *db.Queries, st *storage.Client, sessionSecret, environment string) *ShareLinksHandler {
+	if sessionSecret == "" {
+		sessionSecret = "default-dev-secret-at-least-32-characters-long"
+	}
+	return &ShareLinksHandler{
+		queries:       queries,
+		storage:       st,
+		sessionSecret: sessionSecret,
+		environment:   environment,
+	}
 }
 
 type ShareLinkItemResponse struct {
@@ -447,7 +460,7 @@ func (h *ShareLinksHandler) Update(w http.ResponseWriter, r *http.Request) {
 		DisabledAt:       disabledAt,
 	})
 	if err != nil {
-		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_update_link"})
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_update_link", "message": err.Error()})
 		return
 	}
 
@@ -487,7 +500,7 @@ func (h *ShareLinksHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // ---------------- PUBLIC VISITOR ENDPOINTS (/s/{token}) ----------------
 
-func (h *ShareLinksHandler) resolvePublicLink(w http.ResponseWriter, r *http.Request) (*db.ShareLink, bool) {
+func (h *ShareLinksHandler) resolvePublicLink(w http.ResponseWriter, r *http.Request) (*db.GetShareLinkByTokenHashRow, bool) {
 	token := chi.URLParam(r, "token")
 	if token == "" {
 		respondJSON(w, http.StatusNotFound, map[string]string{"error": "link_not_found"})
@@ -516,12 +529,45 @@ func (h *ShareLinksHandler) resolvePublicLink(w http.ResponseWriter, r *http.Req
 	return &link, true
 }
 
-func (h *ShareLinksHandler) isPasswordUnlocked(r *http.Request, token string) bool {
-	cookieName := fmt.Sprintf("ph_share_unlock_%s", token[:min(len(token), 16)])
-	if c, err := r.Cookie(cookieName); err == nil && c.Value == "unlocked" {
-		return true
+func (h *ShareLinksHandler) isProduction() bool {
+	return strings.ToLower(h.environment) == "production"
+}
+
+func (h *ShareLinksHandler) signUnlockCookie(linkID string, passwordVersion int32, expiryUnix int64) string {
+	payload := fmt.Sprintf("%s:%d:%d", linkID, passwordVersion, expiryUnix)
+	mac := hmac.New(sha256.New, []byte(h.sessionSecret))
+	mac.Write([]byte(payload))
+	sig := hex.EncodeToString(mac.Sum(nil))
+	return fmt.Sprintf("%d.%s", expiryUnix, sig)
+}
+
+func (h *ShareLinksHandler) isPasswordUnlocked(r *http.Request, link *db.GetShareLinkByTokenHashRow) bool {
+	if link == nil {
+		return false
 	}
-	return false
+	linkIDStr := pgUUIDToString(link.ID)
+	cookieName := fmt.Sprintf("ph_share_unlock_%s", linkIDStr)
+	c, err := r.Cookie(cookieName)
+	if err != nil || c.Value == "" {
+		return false
+	}
+
+	parts := strings.Split(c.Value, ".")
+	if len(parts) != 2 {
+		return false
+	}
+
+	var expiryUnix int64
+	if _, err := fmt.Sscanf(parts[0], "%d", &expiryUnix); err != nil {
+		return false
+	}
+
+	if time.Now().Unix() > expiryUnix {
+		return false
+	}
+
+	expectedVal := h.signUnlockCookie(linkIDStr, link.PasswordVersion, expiryUnix)
+	return hmac.Equal([]byte(c.Value), []byte(expectedVal))
 }
 
 func (h *ShareLinksHandler) PublicGet(w http.ResponseWriter, r *http.Request) {
@@ -530,11 +576,10 @@ func (h *ShareLinksHandler) PublicGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := chi.URLParam(r, "token")
 	hasPassword := link.PasswordHash.Valid && link.PasswordHash.String != ""
 	unlocked := true
 	if hasPassword {
-		unlocked = h.isPasswordUnlocked(r, token)
+		unlocked = h.isPasswordUnlocked(r, link)
 	}
 
 	// If password required and not unlocked, return gate
@@ -612,14 +657,17 @@ func (h *ShareLinksHandler) PublicUnlock(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	token := chi.URLParam(r, "token")
-	cookieName := fmt.Sprintf("ph_share_unlock_%s", token[:min(len(token), 16)])
+	expiry := time.Now().Add(12 * time.Hour).Unix()
+	linkIDStr := pgUUIDToString(link.ID)
+	cookieVal := h.signUnlockCookie(linkIDStr, link.PasswordVersion, expiry)
+	cookieName := fmt.Sprintf("ph_share_unlock_%s", linkIDStr)
 	http.SetCookie(w, &http.Cookie{
 		Name:     cookieName,
-		Value:    "unlocked",
+		Value:    cookieVal,
 		Path:     "/",
 		MaxAge:   3600 * 12, // 12 hours short-lived
 		HttpOnly: true,
+		Secure:   h.isProduction(),
 		SameSite: http.SameSiteLaxMode,
 	})
 
@@ -634,6 +682,11 @@ type IdentifyRequest struct {
 func (h *ShareLinksHandler) PublicIdentify(w http.ResponseWriter, r *http.Request) {
 	link, ok := h.resolvePublicLink(w, r)
 	if !ok {
+		return
+	}
+
+	if link.PasswordHash.Valid && link.PasswordHash.String != "" && !h.isPasswordUnlocked(r, link) {
+		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "password_required"})
 		return
 	}
 
@@ -673,8 +726,7 @@ func (h *ShareLinksHandler) PublicDownload(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	token := chi.URLParam(r, "token")
-	if link.PasswordHash.Valid && link.PasswordHash.String != "" && !h.isPasswordUnlocked(r, token) {
+	if link.PasswordHash.Valid && link.PasswordHash.String != "" && !h.isPasswordUnlocked(r, link) {
 		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "password_required"})
 		return
 	}
@@ -747,8 +799,7 @@ func (h *ShareLinksHandler) PublicUpload(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	token := chi.URLParam(r, "token")
-	if link.PasswordHash.Valid && link.PasswordHash.String != "" && !h.isPasswordUnlocked(r, token) {
+	if link.PasswordHash.Valid && link.PasswordHash.String != "" && !h.isPasswordUnlocked(r, link) {
 		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "password_required"})
 		return
 	}
@@ -764,20 +815,31 @@ func (h *ShareLinksHandler) PublicUpload(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Enforce upload_limit_bytes (user rule 1 & 7)
-	if link.UploadLimitBytes.Valid && link.UploadLimitBytes.Int64 > 0 {
-		if req.SizeBytes > link.UploadLimitBytes.Int64 {
-			respondJSON(w, http.StatusRequestEntityTooLarge, map[string]string{
-				"error":   "upload_limit_exceeded",
-				"message": fmt.Sprintf("File size exceeds upload limit of %d bytes", link.UploadLimitBytes.Int64),
-			})
-			return
-		}
+	if req.SizeBytes <= 0 {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_size", "message": "File size must be greater than 0"})
+		return
+	}
+
+	// 2. Upload link limit: enforce total uploaded_bytes + reserved bytes + new file size <= upload_limit_bytes in 1 transaction
+	_, err := h.queries.ReserveShareLinkUpload(r.Context(), db.ReserveShareLinkUploadParams{
+		ID:                  link.ID,
+		UploadReservedBytes: req.SizeBytes,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusRequestEntityTooLarge, map[string]string{
+			"error":   "upload_limit_exceeded",
+			"message": "File size exceeds the upload limit for this share link",
+		})
+		return
 	}
 
 	// Resolve target folder inside link
 	items, err := h.queries.ListShareLinkItems(r.Context(), link.ID)
 	if err != nil || len(items) == 0 {
+		_ = h.queries.ReleaseShareLinkReservedUpload(r.Context(), db.ReleaseShareLinkReservedUploadParams{
+			ID:                  link.ID,
+			UploadReservedBytes: req.SizeBytes,
+		})
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_upload_target_in_link"})
 		return
 	}
@@ -799,12 +861,20 @@ func (h *ShareLinksHandler) PublicUpload(w http.ResponseWriter, r *http.Request)
 	// Check company storage quota
 	company, err := h.queries.GetCompanyByID(r.Context(), link.CompanyID)
 	if err != nil {
+		_ = h.queries.ReleaseShareLinkReservedUpload(r.Context(), db.ReleaseShareLinkReservedUploadParams{
+			ID:                  link.ID,
+			UploadReservedBytes: req.SizeBytes,
+		})
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "company_lookup_failed"})
 		return
 	}
 
 	if company.Plan != "internal" && company.StorageLimitBytes > 0 {
 		if company.StorageUsedBytes+company.StorageReservedBytes+req.SizeBytes > company.StorageLimitBytes {
+			_ = h.queries.ReleaseShareLinkReservedUpload(r.Context(), db.ReleaseShareLinkReservedUploadParams{
+				ID:                  link.ID,
+				UploadReservedBytes: req.SizeBytes,
+			})
 			respondJSON(w, http.StatusPaymentRequired, map[string]string{
 				"error":   "storage_quota_exceeded",
 				"message": "Company storage quota reached",
@@ -813,14 +883,10 @@ func (h *ShareLinksHandler) PublicUpload(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	// Reserve storage bytes and update link uploaded bytes
+	// Reserve company storage
 	_ = h.queries.ReserveCompanyStorage(r.Context(), db.ReserveCompanyStorageParams{
 		ID:    link.CompanyID,
 		Bytes: req.SizeBytes,
-	})
-	_ = h.queries.AddShareLinkUploadedBytes(r.Context(), db.AddShareLinkUploadedBytesParams{
-		ID:            link.ID,
-		UploadedBytes: req.SizeBytes,
 	})
 
 	// Create item placeholder and presigned upload
@@ -830,32 +896,195 @@ func (h *ShareLinksHandler) PublicUpload(w http.ResponseWriter, r *http.Request)
 		ParentID:  targetFolderID,
 		Kind:      "file",
 		Name:      strings.TrimSpace(req.Filename),
-		Position:  pgtype.Numeric{Int: nil, Valid: false},
+		Position:  pgtype.Numeric{Int: big.NewInt(1000), Valid: true},
+		CreatedBy: link.CreatedBy,
 	})
 	if err != nil {
-		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "item_creation_failed"})
+		_ = h.queries.ReleaseShareLinkReservedUpload(r.Context(), db.ReleaseShareLinkReservedUploadParams{
+			ID:                  link.ID,
+			UploadReservedBytes: req.SizeBytes,
+		})
+		_ = h.queries.ReleaseCompanyReservedStorage(r.Context(), db.ReleaseCompanyReservedStorageParams{
+			ID:    link.CompanyID,
+			Bytes: req.SizeBytes,
+		})
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "item_creation_failed", "message": err.Error()})
 		return
+	}
+
+	mimeType := req.Mime
+	if mimeType == "" {
+		mimeType = "application/octet-stream"
 	}
 
 	storageKey := fmt.Sprintf("companies/%s/projects/%s/items/%s/%s",
 		pgUUIDToString(link.CompanyID), pgUUIDToString(link.ProjectID), pgUUIDToString(newItem.ID), req.Filename)
 
-	uploadURL, err := h.storage.PresignPutObject(r.Context(), storageKey, "application/octet-stream", 30*time.Minute)
+	uploadRecord, err := h.queries.CreateUpload(r.Context(), db.CreateUploadParams{
+		CompanyID:     link.CompanyID,
+		UserID:        pgtype.UUID{Valid: false},
+		ProjectID:     link.ProjectID,
+		ParentID:      targetFolderID,
+		TargetItemID:  newItem.ID,
+		ShareLinkID:   link.ID,
+		Filename:      req.Filename,
+		SizeBytes:     req.SizeBytes,
+		Mime:          mimeType,
+		StorageKey:    storageKey,
+		UploadID:      "single-put-" + uuid.NewString(),
+		PartSizeBytes: req.SizeBytes,
+		TotalParts:    1,
+		ExpiresAt:     pgtype.Timestamptz{Time: time.Now().Add(24 * time.Hour), Valid: true},
+	})
 	if err != nil {
+		_ = h.queries.ReleaseShareLinkReservedUpload(r.Context(), db.ReleaseShareLinkReservedUploadParams{
+			ID:                  link.ID,
+			UploadReservedBytes: req.SizeBytes,
+		})
+		_ = h.queries.ReleaseCompanyReservedStorage(r.Context(), db.ReleaseCompanyReservedStorageParams{
+			ID:    link.CompanyID,
+			Bytes: req.SizeBytes,
+		})
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "upload_record_failed"})
+		return
+	}
+
+	uploadURL, err := h.storage.PresignPutObject(r.Context(), storageKey, mimeType, 30*time.Minute)
+	if err != nil {
+		_ = h.queries.ReleaseShareLinkReservedUpload(r.Context(), db.ReleaseShareLinkReservedUploadParams{
+			ID:                  link.ID,
+			UploadReservedBytes: req.SizeBytes,
+		})
+		_ = h.queries.ReleaseCompanyReservedStorage(r.Context(), db.ReleaseCompanyReservedStorageParams{
+			ID:    link.CompanyID,
+			Bytes: req.SizeBytes,
+		})
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "presign_failed"})
 		return
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"upload_id":   pgUUIDToString(uploadRecord.ID),
 		"item_id":     pgUUIDToString(newItem.ID),
 		"storage_key": storageKey,
 		"upload_url":  uploadURL,
 	})
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
+type PublicUploadActionRequest struct {
+	UploadID string `json:"upload_id"`
+}
+
+func (h *ShareLinksHandler) PublicUploadComplete(w http.ResponseWriter, r *http.Request) {
+	link, ok := h.resolvePublicLink(w, r)
+	if !ok {
+		return
 	}
-	return b
+
+	var req PublicUploadActionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
+		return
+	}
+
+	uploadUUID, err := uuid.Parse(req.UploadID)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_upload_id"})
+		return
+	}
+
+	upload, err := h.queries.GetUploadByIDSimple(r.Context(), pgtype.UUID{Bytes: uploadUUID, Valid: true})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "upload_not_found"})
+		return
+	}
+
+	if !upload.ShareLinkID.Valid || upload.ShareLinkID != link.ID {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+
+	if upload.Status == "pending" {
+		// Commit share link bytes: decrement reserved, increment uploaded
+		_ = h.queries.CommitShareLinkUpload(r.Context(), db.CommitShareLinkUploadParams{
+			ID:                  link.ID,
+			UploadReservedBytes: upload.SizeBytes,
+		})
+
+		// Commit company storage
+		_ = h.queries.CommitCompanyStorage(r.Context(), db.CommitCompanyStorageParams{
+			ID:    link.CompanyID,
+			Bytes: upload.SizeBytes,
+		})
+
+		// Create file version
+		_, _ = h.queries.CreateFileVersion(r.Context(), db.CreateFileVersionParams{
+			CompanyID:     link.CompanyID,
+			ItemID:        upload.TargetItemID,
+			Number:        1,
+			StorageKey:    upload.StorageKey,
+			SizeBytes:     upload.SizeBytes,
+			Mime:          upload.Mime,
+			PreviewStatus: "none",
+			PreviewKeys:   []byte("{}"),
+			UploadedBy:    pgtype.UUID{Valid: false},
+		})
+
+		_, _ = h.queries.CompleteUpload(r.Context(), upload.ID)
+
+		_ = h.queries.RecalculateProjectAndFolderCounts(r.Context(), upload.ProjectID)
+		if upload.ParentID.Valid {
+			_ = h.queries.RecalculateFolderCounts(r.Context(), upload.ParentID)
+		}
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"status": "completed"})
+}
+
+func (h *ShareLinksHandler) PublicUploadAbort(w http.ResponseWriter, r *http.Request) {
+	link, ok := h.resolvePublicLink(w, r)
+	if !ok {
+		return
+	}
+
+	var req PublicUploadActionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
+		return
+	}
+
+	uploadUUID, err := uuid.Parse(req.UploadID)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_upload_id"})
+		return
+	}
+
+	upload, err := h.queries.GetUploadByIDSimple(r.Context(), pgtype.UUID{Bytes: uploadUUID, Valid: true})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "upload_not_found"})
+		return
+	}
+
+	if !upload.ShareLinkID.Valid || upload.ShareLinkID != link.ID {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+
+	if upload.Status == "pending" {
+		// Release share link reserved bytes
+		_ = h.queries.ReleaseShareLinkReservedUpload(r.Context(), db.ReleaseShareLinkReservedUploadParams{
+			ID:                  link.ID,
+			UploadReservedBytes: upload.SizeBytes,
+		})
+
+		// Release company reserved storage
+		_ = h.queries.ReleaseCompanyReservedStorage(r.Context(), db.ReleaseCompanyReservedStorageParams{
+			ID:    link.CompanyID,
+			Bytes: upload.SizeBytes,
+		})
+
+		_, _ = h.queries.AbortUpload(r.Context(), upload.ID)
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"status": "aborted"})
 }

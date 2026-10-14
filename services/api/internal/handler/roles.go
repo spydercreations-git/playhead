@@ -113,7 +113,17 @@ func (h *RolesHandler) Create(w http.ResponseWriter, r *http.Request) {
 		color = "#0066FF"
 	}
 
-	// Filter valid permissions
+	// When creating a role, a person can only grant permissions they have themselves
+	for _, p := range req.Permissions {
+		if !person.HasPermission(p) {
+			respondJSON(w, http.StatusForbidden, map[string]string{
+				"error":   "permission_escalation",
+				"message": "Cannot grant permission you do not have: " + p,
+			})
+			return
+		}
+	}
+
 	validPermMap := make(map[string]bool)
 	for _, p := range authz.AllPermissions {
 		validPermMap[p] = true
@@ -196,6 +206,15 @@ func (h *RolesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Nobody can edit the role they themselves have
+	if strings.EqualFold(existingRole.Name, person.Role) || (person.RoleID != uuid.Nil && existingRole.ID.Bytes == person.RoleID) {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "cannot_edit_own_role",
+			"message": "Nobody can edit the role they themselves have",
+		})
+		return
+	}
+
 	if existingRole.IsSystem {
 		respondJSON(w, http.StatusForbidden, map[string]string{
 			"error":   "system_role_immutable",
@@ -208,6 +227,17 @@ func (h *RolesHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
 		return
+	}
+
+	// When editing a role, a person can only grant permissions they have themselves
+	for _, p := range req.Permissions {
+		if !person.HasPermission(p) {
+			respondJSON(w, http.StatusForbidden, map[string]string{
+				"error":   "permission_escalation",
+				"message": "Cannot grant permission you do not have: " + p,
+			})
+			return
+		}
 	}
 
 	name := strings.TrimSpace(req.Name)
@@ -288,6 +318,15 @@ func (h *RolesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		respondJSON(w, http.StatusNotFound, map[string]string{"error": "role_not_found"})
+		return
+	}
+
+	// Nobody can delete the role they themselves have
+	if strings.EqualFold(existingRole.Name, person.Role) || (person.RoleID != uuid.Nil && existingRole.ID.Bytes == person.RoleID) {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "cannot_delete_own_role",
+			"message": "Nobody can delete the role they themselves have",
+		})
 		return
 	}
 

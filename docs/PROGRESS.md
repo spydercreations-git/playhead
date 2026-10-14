@@ -236,9 +236,20 @@ Google Login is built into the backend and UI, but hidden until configured. When
      8. Last Admin cannot be demoted or removed (400).
      9. Deleting role with active members is refused (400).
 
+8. **Advisor Audit Review 2 Security Fixes**:
+   - **Signed Share Link Cookies**: Unlock cookie signed with `HMAC(SESSION_SECRET, link_id:password_version:expiry)`, 12h expiry, HttpOnly, SameSite=Lax, Secure in prod. Verified on all public routes. Modifying password increments `password_version` to invalidate past unlocks.
+   - **Atomic Total Link Upload Limit**: `uploaded_bytes + upload_reserved_bytes + size_bytes <= upload_limit_bytes` enforced atomically. Reserved bytes committed on completion or released on abort.
+   - **Folder and Item Level Grants Everywhere**: Every item action (`view`, `download`, `upload`, `create folder`, `rename`, `move`, `copy`, `delete`, `star`, `folder tree`) scopes access via `AccessFolder`/`AccessItem`. Folder grantees cannot access outside items.
+   - **Inherited CanDownload**: Derived from the source providing final access level; tie-breaks resolve by strictest rule.
+   - **Role Escalation Guards**: Only Admins can grant/remove Admin role. Users cannot edit/delete their own role. Non-held permissions cannot be added to roles. Free-text roles rejected.
+   - **Permission-Based Routing**: Replaced `RequireRole("admin")` with `RequirePermission(authz.PermTeamInvite)`, `RequirePermission(authz.PermTeamChangeRoles)`, `RequirePermission(authz.PermAdminStorage)`.
+   - **Trash Restore Protection**: Requires at least `Uploader` access on destination folder/project.
+   - **Automated Test Suite**: Added `TestP3_AdvisorSecondReviewSecurityFixes` verifying all 9 audit test cases.
+
 ### How to test locally:
 1. Run all unit and permission tests: `go test -v -count=1 ./services/api/internal/handler -run "TestP3_"`
-2. See `docs/STATUS.md` Section 5 for step-by-step browser testing walkthrough of share links, roles, and grants.
+2. Run TypeScript typecheck: `cd apps/web && npm run typecheck`
+3. See `docs/STATUS.md` Section 5 for step-by-step browser testing walkthrough of share links, roles, and grants.
 
 ---
 

@@ -54,7 +54,6 @@ type initiateUploadReq struct {
 func (h *StorageUploadsHandler) InitiateUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, _ := middleware.GetAuthenticatedUser(ctx)
-	role, _ := middleware.GetUserRole(ctx)
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -99,13 +98,20 @@ func (h *StorageUploadsHandler) InitiateUpload(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
-	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+	person := middleware.GetPerson(ctx)
+
+	var targetFolderUUID uuid.UUID
+	if req.ParentID != nil && *req.ParentID != "" && *req.ParentID != "null" {
+		if pid, err := uuid.Parse(*req.ParentID); err == nil {
+			targetFolderUUID = pid
+		}
+	}
+
+	access, err := authz.AccessFolder(ctx, h.queries, person, authz.ProjectTarget{
 		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
-	})
+	}, targetFolderUUID)
 	if err != nil || !access.CanUpload() {
-		// Enforce: Viewer and Commenter cannot upload
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to upload files to this project"})
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to upload files to this folder"})
 		return
 	}
 
@@ -434,6 +440,13 @@ func (h *StorageUploadsHandler) CompleteUpload(w http.ResponseWriter, r *http.Re
 	// 4. Mark upload completed
 	_, _ = h.queries.CompleteUpload(ctx, upload.ID)
 
+	if upload.ShareLinkID.Valid {
+		_ = h.queries.CommitShareLinkUpload(ctx, db.CommitShareLinkUploadParams{
+			ID:                  upload.ShareLinkID,
+			UploadReservedBytes: upload.SizeBytes,
+		})
+	}
+
 	// 5. Recalculate counts
 	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, upload.ProjectID)
 	if upload.ParentID.Valid {
@@ -498,6 +511,12 @@ func (h *StorageUploadsHandler) AbortUpload(w http.ResponseWriter, r *http.Reque
 			ID:    companyID,
 			Bytes: upload.SizeBytes,
 		})
+		if upload.ShareLinkID.Valid {
+			_ = h.queries.ReleaseShareLinkReservedUpload(ctx, db.ReleaseShareLinkReservedUploadParams{
+				ID:                  upload.ShareLinkID,
+				UploadReservedBytes: upload.SizeBytes,
+			})
+		}
 		_, _ = h.queries.AbortUpload(ctx, upload.ID)
 	}
 
@@ -507,8 +526,6 @@ func (h *StorageUploadsHandler) AbortUpload(w http.ResponseWriter, r *http.Reque
 // ViewItem returns a short-lived (15 min) presigned URL with Content-Disposition inline for in-browser viewing
 func (h *StorageUploadsHandler) ViewItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	user, _ := middleware.GetAuthenticatedUser(ctx)
-	role, _ := middleware.GetUserRole(ctx)
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -539,9 +556,14 @@ func (h *StorageUploadsHandler) ViewItem(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
-	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+	person := middleware.GetPerson(ctx)
+	access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
 		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	}, authz.ItemTarget{
+		ID:        uuid.UUID(item.ID.Bytes),
+		ProjectID: uuid.UUID(item.ProjectID.Bytes),
+		CompanyID: uuid.UUID(item.CompanyID.Bytes),
+		CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
 	})
 	if err != nil || !access.CanView() {
 		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
@@ -576,8 +598,6 @@ func (h *StorageUploadsHandler) ViewItem(w http.ResponseWriter, r *http.Request)
 // DownloadItem issues direct presigned S3 download URL respecting CanDownload (Requirement 3)
 func (h *StorageUploadsHandler) DownloadItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	user, _ := middleware.GetAuthenticatedUser(ctx)
-	role, _ := middleware.GetUserRole(ctx)
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -608,9 +628,14 @@ func (h *StorageUploadsHandler) DownloadItem(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
-	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+	person := middleware.GetPerson(ctx)
+	access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
 		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	}, authz.ItemTarget{
+		ID:        uuid.UUID(item.ID.Bytes),
+		ProjectID: uuid.UUID(item.ProjectID.Bytes),
+		CompanyID: uuid.UUID(item.CompanyID.Bytes),
+		CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
 	})
 	if err != nil || !access.CanView() {
 		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
@@ -665,8 +690,6 @@ type downloadManifestItem struct {
 // PrepareDownload returns presigned direct storage URLs for browser downloads (no size limit)
 func (h *StorageUploadsHandler) PrepareDownload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	user, _ := middleware.GetAuthenticatedUser(ctx)
-	role, _ := middleware.GetUserRole(ctx)
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -699,20 +722,7 @@ func (h *StorageUploadsHandler) PrepareDownload(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
-	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
-		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
-	})
-	if err != nil || !access.CanView() {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
-		return
-	}
-
-	// Refuse the whole download if any item has Can download off!
-	if !access.CanDownload {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Download permission denied for one or more items"})
-		return
-	}
+	person := middleware.GetPerson(ctx)
 
 	var manifestFiles []downloadManifestItem
 	var totalSizeBytes int64
@@ -728,7 +738,26 @@ func (h *StorageUploadsHandler) PrepareDownload(w http.ResponseWriter, r *http.R
 			CompanyID: companyID,
 		})
 		if err != nil || item.DeletedAt.Valid {
-			continue
+			respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+			return
+		}
+
+		itemAccess, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
+			ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+		}, authz.ItemTarget{
+			ID:        uuid.UUID(item.ID.Bytes),
+			ProjectID: uuid.UUID(item.ProjectID.Bytes),
+			CompanyID: uuid.UUID(item.CompanyID.Bytes),
+			CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
+		})
+		if err != nil || !itemAccess.CanView() {
+			respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+			return
+		}
+
+		if !itemAccess.CanDownload {
+			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Download permission denied for one or more items"})
+			return
 		}
 
 		if item.Kind == "file" && item.LatestStorageKey != "" {

@@ -22,6 +22,7 @@ import (
 	"github.com/playhead/playhead/services/shared/mailer"
 	"github.com/playhead/playhead/services/shared/plans"
 	"github.com/playhead/playhead/services/shared/storage"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func contextWithPerson(parent context.Context, u db.User, companyID pgtype.UUID, person authz.Person) context.Context {
@@ -53,7 +54,7 @@ func TestP3PermissionsRolesAndSharing(t *testing.T) {
 	})
 
 	grantsH := NewGrantsHandler(queries, mailClient)
-	shareLinksH := NewShareLinksHandler(queries, stClient)
+	shareLinksH := NewShareLinksHandler(queries, stClient, cfg.SessionSecret, cfg.Environment)
 	itemsH := NewItemsHandler(queries, stClient)
 	rolesH := NewRolesHandler(queries)
 	companyH := NewCompanyHandler(queries)
@@ -1215,4 +1216,905 @@ func TestP3_AdvisorSecurityRequirements(t *testing.T) {
 	})
 	_ = grantsH
 }
+
+// ---------------------------------------------------------------------
+// TEST SUITE: Advisor Second Review Security Fixes (9 Required Scenarios)
+// ---------------------------------------------------------------------
+func TestP3_AdvisorSecondReviewSecurityFixes(t *testing.T) {
+	queries, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	mailClient := mailer.New(mailer.Config{})
+	cfg := config.Load()
+	stClient, _ := storage.NewClient(ctx, storage.Config{
+		Endpoint:        cfg.R2Endpoint,
+		AccessKeyID:     cfg.R2AccessKeyID,
+		SecretAccessKey: cfg.R2SecretAccessKey,
+		Bucket:          cfg.R2Bucket,
+		UsePathStyle:    true,
+	})
+
+	shareLinksH := NewShareLinksHandler(queries, stClient, cfg.SessionSecret, cfg.Environment)
+	itemsH := NewItemsHandler(queries, stClient)
+	rolesH := NewRolesHandler(queries)
+	companyH := NewCompanyHandler(queries)
+	inviteH := NewInviteHandler(queries, mailClient)
+	storageH := NewStorageUploadsHandler(queries, stClient, mailClient, cfg)
+	_ = itemsH
+
+	// Setup company with default roles
+	comp, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
+		Name:              "Advisor Fixes Studio",
+		Slug:              fmt.Sprintf("advisor-studio-%d", time.Now().UnixNano()),
+		Plan:              plans.PlanInternal,
+		Status:            "active",
+		StorageLimitBytes: 100 * 1024 * 1024 * 1024,
+		Seats:             10,
+	})
+	if err != nil {
+		t.Fatalf("failed to create company: %v", err)
+	}
+	_ = SeedDefaultCompanyRoles(ctx, queries, comp.ID)
+
+	// Admin Alice
+	adminEmail := fmt.Sprintf("alice-%d@studio.com", time.Now().UnixNano())
+	adminUser, err := queries.CreateUser(ctx, db.CreateUserParams{
+		Email: adminEmail,
+		Name:  "Alice Admin",
+	})
+	if err != nil {
+		t.Fatalf("failed to create admin: %v", err)
+	}
+	adminRoleObj, _ := queries.GetRoleByName(ctx, db.GetRoleByNameParams{
+		CompanyID: comp.ID,
+		Name:      "Admin",
+	})
+	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+		CompanyID: comp.ID,
+		UserID:    adminUser.ID,
+		Role:      "admin",
+	})
+	_ = queries.UpdateMembershipRole(ctx, db.UpdateMembershipRoleParams{
+		CompanyID: comp.ID,
+		UserID:    adminUser.ID,
+		Role:      "admin",
+		RoleID:    adminRoleObj.ID,
+	})
+	adminPerson := authz.Person{
+		UserID:      uuid.UUID(adminUser.ID.Bytes),
+		CompanyID:   uuid.UUID(comp.ID.Bytes),
+		Email:       adminUser.Email,
+		Role:        "admin",
+		RoleID:      uuid.UUID(adminRoleObj.ID.Bytes),
+		Permissions: authz.AllPermissions,
+	}
+
+	// Client & Project
+	client, err := queries.CreateClient(ctx, db.CreateClientParams{
+		CompanyID: comp.ID,
+		Name:      "Advisor Test Client",
+		CreatedBy: adminUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+	proj, err := queries.CreateProject(ctx, db.CreateProjectParams{
+		CompanyID: comp.ID,
+		ClientID:  client.ID,
+		Name:      "Advisor Test Project",
+		CreatedBy: adminUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create project: %v", err)
+	}
+	projIDStr := pgUUIDToString(proj.ID)
+
+	// Item inside project
+	testItem, err := queries.CreateItem(ctx, db.CreateItemParams{
+		CompanyID: comp.ID,
+		ProjectID: proj.ID,
+		Kind:      "file",
+		Name:      "test-file.mp4",
+		CreatedBy: adminUser.ID,
+		Position:  pgtype.Numeric{Int: big.NewInt(1000), Valid: true},
+	})
+	if err != nil {
+		t.Fatalf("failed to create item: %v", err)
+	}
+
+	// -----------------------------------------------------------------
+	// TEST 1: setting the unlock cookie by hand without the password does not unlock the link
+	// -----------------------------------------------------------------
+	t.Run("setting the unlock cookie by hand without the password does not unlock the link", func(t *testing.T) {
+		pwdHash, _ := bcrypt.GenerateFromPassword([]byte("supersecret123"), bcrypt.DefaultCost)
+		token, _ := authz.GenerateSecureToken(32)
+		tokenHash := authz.HashToken(token)
+
+		link, err := queries.CreateShareLink(ctx, db.CreateShareLinkParams{
+			CompanyID:     comp.ID,
+			ProjectID:     proj.ID,
+			TokenHash:     tokenHash,
+			Name:          "Protected Share Link",
+			Access:        "view",
+			AllowDownload: true,
+			PasswordHash:  pgtype.Text{String: string(pwdHash), Valid: true},
+			CreatedBy:     adminUser.ID,
+		})
+		if err != nil {
+			t.Fatalf("failed to create link: %v", err)
+		}
+		_ = queries.AttachShareLinkItem(ctx, db.AttachShareLinkItemParams{
+			ShareLinkID: link.ID,
+			ItemID:      testItem.ID,
+		})
+
+		rPublic := chi.NewRouter()
+		rPublic.Get("/s/{token}", shareLinksH.PublicGet)
+		rPublic.Post("/s/{token}/unlock", shareLinksH.PublicUnlock)
+
+		cookieName := fmt.Sprintf("ph_share_unlock_%s", pgUUIDToString(link.ID))
+
+		// 1. Visit without any cookie -> password_required
+		reqNoCookie := httptest.NewRequest("GET", "/s/"+token, nil)
+		recNoCookie := httptest.NewRecorder()
+		rPublic.ServeHTTP(recNoCookie, reqNoCookie)
+		if recNoCookie.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d", recNoCookie.Code)
+		}
+		var resp1 map[string]interface{}
+		_ = json.Unmarshal(recNoCookie.Body.Bytes(), &resp1)
+		if resp1["password_required"] != true {
+			t.Fatalf("expected password_required true, got %v", resp1["password_required"])
+		}
+
+		// 2. Visit with forged plain cookie "unlocked"
+		reqForgedPlain := httptest.NewRequest("GET", "/s/"+token, nil)
+		reqForgedPlain.AddCookie(&http.Cookie{Name: cookieName, Value: "unlocked"})
+		recForgedPlain := httptest.NewRecorder()
+		rPublic.ServeHTTP(recForgedPlain, reqForgedPlain)
+		var resp2 map[string]interface{}
+		_ = json.Unmarshal(recForgedPlain.Body.Bytes(), &resp2)
+		if resp2["password_required"] != true {
+			t.Fatalf("expected forged plain cookie to be rejected, got %v", resp2["password_required"])
+		}
+
+		// 3. Visit with forged signed cookie (invalid HMAC signature)
+		reqForgedHMAC := httptest.NewRequest("GET", "/s/"+token, nil)
+		reqForgedHMAC.AddCookie(&http.Cookie{Name: cookieName, Value: "fakesig:1:9999999999"})
+		recForgedHMAC := httptest.NewRecorder()
+		rPublic.ServeHTTP(recForgedHMAC, reqForgedHMAC)
+		var resp3 map[string]interface{}
+		_ = json.Unmarshal(recForgedHMAC.Body.Bytes(), &resp3)
+		if resp3["password_required"] != true {
+			t.Fatalf("expected forged HMAC cookie to be rejected, got %v", resp3["password_required"])
+		}
+
+		// 4. Legitimate unlock with correct password
+		unlockBody, _ := json.Marshal(map[string]string{"password": "supersecret123"})
+		reqUnlock := httptest.NewRequest("POST", "/s/"+token+"/unlock", bytes.NewReader(unlockBody))
+		recUnlock := httptest.NewRecorder()
+		rPublic.ServeHTTP(recUnlock, reqUnlock)
+		if recUnlock.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK unlocking with correct password, got %d: %s", recUnlock.Code, recUnlock.Body.String())
+		}
+		cookies := recUnlock.Result().Cookies()
+		var unlockCookie *http.Cookie
+		for _, c := range cookies {
+			if c.Name == cookieName {
+				unlockCookie = c
+				break
+			}
+		}
+		if unlockCookie == nil {
+			t.Fatalf("expected Set-Cookie %s to be returned on unlock", cookieName)
+		}
+		if !unlockCookie.HttpOnly {
+			t.Fatalf("expected unlock cookie to be HttpOnly")
+		}
+
+		// 5. Visit with legitimate unlock cookie -> unlocked!
+		reqLegit := httptest.NewRequest("GET", "/s/"+token, nil)
+		reqLegit.AddCookie(unlockCookie)
+		recLegit := httptest.NewRecorder()
+		rPublic.ServeHTTP(recLegit, reqLegit)
+		var respLegit map[string]interface{}
+		_ = json.Unmarshal(recLegit.Body.Bytes(), &respLegit)
+		if respLegit["items"] == nil {
+			t.Fatalf("expected items to be present with valid unlock cookie, got %v", respLegit)
+		}
+	})
+
+	// -----------------------------------------------------------------
+	// TEST 2: changing the link password locks out previously unlocked visitors
+	// -----------------------------------------------------------------
+	t.Run("changing the link password locks out previously unlocked visitors", func(t *testing.T) {
+		pwdHash, _ := bcrypt.GenerateFromPassword([]byte("firstpass"), bcrypt.DefaultCost)
+		token, _ := authz.GenerateSecureToken(32)
+		tokenHash := authz.HashToken(token)
+
+		link, err := queries.CreateShareLink(ctx, db.CreateShareLinkParams{
+			CompanyID:     comp.ID,
+			ProjectID:     proj.ID,
+			TokenHash:     tokenHash,
+			Name:          "Password Change Link",
+			Access:        "view",
+			AllowDownload: true,
+			PasswordHash:  pgtype.Text{String: string(pwdHash), Valid: true},
+			CreatedBy:     adminUser.ID,
+		})
+		if err != nil {
+			t.Fatalf("failed to create link: %v", err)
+		}
+		_ = queries.AttachShareLinkItem(ctx, db.AttachShareLinkItemParams{
+			ShareLinkID: link.ID,
+			ItemID:      testItem.ID,
+		})
+
+		rPublic := chi.NewRouter()
+		rPublic.Get("/s/{token}", shareLinksH.PublicGet)
+		rPublic.Post("/s/{token}/unlock", shareLinksH.PublicUnlock)
+
+		cookieName := fmt.Sprintf("ph_share_unlock_%s", pgUUIDToString(link.ID))
+
+		// Visitor unlocks with initial password
+		unlockBody, _ := json.Marshal(map[string]string{"password": "firstpass"})
+		reqUnlock := httptest.NewRequest("POST", "/s/"+token+"/unlock", bytes.NewReader(unlockBody))
+		recUnlock := httptest.NewRecorder()
+		rPublic.ServeHTTP(recUnlock, reqUnlock)
+		if recUnlock.Code != http.StatusOK {
+			t.Fatalf("unlock failed: %d", recUnlock.Code)
+		}
+		var initialCookie *http.Cookie
+		for _, c := range recUnlock.Result().Cookies() {
+			if c.Name == cookieName {
+				initialCookie = c
+				break
+			}
+		}
+
+		// Verify initial access works
+		reqCheck1 := httptest.NewRequest("GET", "/s/"+token, nil)
+		reqCheck1.AddCookie(initialCookie)
+		recCheck1 := httptest.NewRecorder()
+		rPublic.ServeHTTP(recCheck1, reqCheck1)
+		var resp1 map[string]interface{}
+		_ = json.Unmarshal(recCheck1.Body.Bytes(), &resp1)
+		if resp1["items"] == nil {
+			t.Fatalf("expected items before password change, got %v", resp1)
+		}
+
+		// Admin changes password on the share link via Update handler
+		rAdmin := chi.NewRouter()
+		rAdmin.Patch("/api/v1/share-links/{id}", shareLinksH.Update)
+
+		newPass := "secondpass"
+		updateBody, _ := json.Marshal(map[string]interface{}{
+			"password": &newPass,
+		})
+		reqUpdate := httptest.NewRequest("PATCH", "/api/v1/share-links/"+pgUUIDToString(link.ID), bytes.NewReader(updateBody))
+		reqUpdate = reqUpdate.WithContext(contextWithPerson(reqUpdate.Context(), adminUser, comp.ID, adminPerson))
+		recUpdate := httptest.NewRecorder()
+		rAdmin.ServeHTTP(recUpdate, reqUpdate)
+		if recUpdate.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK updating password, got %d: %s", recUpdate.Code, recUpdate.Body.String())
+		}
+
+		// Visitor visits with the OLD unlock cookie -> MUST be locked out now!
+		reqCheck2 := httptest.NewRequest("GET", "/s/"+token, nil)
+		reqCheck2.AddCookie(initialCookie)
+		recCheck2 := httptest.NewRecorder()
+		rPublic.ServeHTTP(recCheck2, reqCheck2)
+		var resp2 map[string]interface{}
+		_ = json.Unmarshal(recCheck2.Body.Bytes(), &resp2)
+		if resp2["password_required"] != true {
+			t.Fatalf("expected visitor to be locked out after password change, got %v", resp2["password_required"])
+		}
+	})
+
+	// -----------------------------------------------------------------
+	// TEST 3: several uploads through a link that together exceed its limit: the one that crosses the limit is refused
+	// -----------------------------------------------------------------
+	t.Run("several uploads through a link that together exceed its limit: the one that crosses the limit is refused", func(t *testing.T) {
+		token, _ := authz.GenerateSecureToken(32)
+		tokenHash := authz.HashToken(token)
+
+		// 10MB limit
+		limitBytes := int64(10 * 1024 * 1024)
+		dropFolder, _ := queries.CreateItem(ctx, db.CreateItemParams{
+			CompanyID: comp.ID,
+			ProjectID: proj.ID,
+			Kind:      "folder",
+			Name:      "Dropzone Folder",
+			CreatedBy: adminUser.ID,
+			Position:  pgtype.Numeric{Int: big.NewInt(500), Valid: true},
+		})
+
+		link, err := queries.CreateShareLink(ctx, db.CreateShareLinkParams{
+			CompanyID:        comp.ID,
+			ProjectID:        proj.ID,
+			TokenHash:        tokenHash,
+			Name:             "Dropzone Upload Limit",
+			Access:           "upload",
+			AllowDownload:    false,
+			UploadLimitBytes: pgtype.Int8{Int64: limitBytes, Valid: true},
+			CreatedBy:        adminUser.ID,
+		})
+		if err != nil {
+			t.Fatalf("failed to create upload link: %v", err)
+		}
+		_ = queries.AttachShareLinkItem(ctx, db.AttachShareLinkItemParams{
+			ShareLinkID: link.ID,
+			ItemID:      dropFolder.ID,
+		})
+
+		rPublic := chi.NewRouter()
+		rPublic.Post("/s/{token}/upload", shareLinksH.PublicUpload)
+		rPublic.Post("/s/{token}/upload/complete", shareLinksH.PublicUploadComplete)
+		rPublic.Post("/s/{token}/upload/abort", shareLinksH.PublicUploadAbort)
+
+		// Upload 1: 6MB -> should succeed (6MB <= 10MB)
+		up1Payload, _ := json.Marshal(map[string]interface{}{
+			"filename":   "video_part1.mp4",
+			"size_bytes": 6 * 1024 * 1024,
+			"mime":       "video/mp4",
+		})
+		reqUp1 := httptest.NewRequest("POST", "/s/"+token+"/upload", bytes.NewReader(up1Payload))
+		recUp1 := httptest.NewRecorder()
+		rPublic.ServeHTTP(recUp1, reqUp1)
+		if recUp1.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK for upload 1 (6MB), got %d: %s", recUp1.Code, recUp1.Body.String())
+		}
+		var up1Resp struct {
+			UploadID string `json:"upload_id"`
+		}
+		_ = json.Unmarshal(recUp1.Body.Bytes(), &up1Resp)
+
+		// Complete upload 1: permanent 6MB committed to link
+		comp1Payload, _ := json.Marshal(map[string]interface{}{
+			"upload_id": up1Resp.UploadID,
+			"parts":     []map[string]interface{}{{"part_number": 1, "etag": "etag1"}},
+		})
+		reqComp1 := httptest.NewRequest("POST", "/s/"+token+"/upload/complete", bytes.NewReader(comp1Payload))
+		recComp1 := httptest.NewRecorder()
+		rPublic.ServeHTTP(recComp1, reqComp1)
+		if recComp1.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK completing upload 1, got %d: %s", recComp1.Code, recComp1.Body.String())
+		}
+
+		// Upload 2: 3MB -> should succeed (6MB uploaded + 3MB reserved = 9MB <= 10MB)
+		up2Payload, _ := json.Marshal(map[string]interface{}{
+			"filename":   "video_part2.mp4",
+			"size_bytes": 3 * 1024 * 1024,
+			"mime":       "video/mp4",
+		})
+		reqUp2 := httptest.NewRequest("POST", "/s/"+token+"/upload", bytes.NewReader(up2Payload))
+		recUp2 := httptest.NewRecorder()
+		rPublic.ServeHTTP(recUp2, reqUp2)
+		if recUp2.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK for upload 2 (3MB), got %d: %s", recUp2.Code, recUp2.Body.String())
+		}
+		var up2Resp struct {
+			UploadID string `json:"upload_id"`
+		}
+		_ = json.Unmarshal(recUp2.Body.Bytes(), &up2Resp)
+
+		// Upload 3: 2MB -> crosses the limit! (6MB + 3MB + 2MB = 11MB > 10MB) -> MUST be refused with 413
+		up3Payload, _ := json.Marshal(map[string]interface{}{
+			"filename":   "video_part3.mp4",
+			"size_bytes": 2 * 1024 * 1024,
+			"mime":       "video/mp4",
+		})
+		reqUp3 := httptest.NewRequest("POST", "/s/"+token+"/upload", bytes.NewReader(up3Payload))
+		recUp3 := httptest.NewRecorder()
+		rPublic.ServeHTTP(recUp3, reqUp3)
+		if recUp3.Code != http.StatusRequestEntityTooLarge {
+			t.Fatalf("expected 413 Payload Too Large when exceeding total link limit, got %d: %s", recUp3.Code, recUp3.Body.String())
+		}
+
+		// Abort upload 2: releases the 3MB reserved bytes
+		abort2Payload, _ := json.Marshal(map[string]interface{}{
+			"upload_id": up2Resp.UploadID,
+		})
+		reqAbort2 := httptest.NewRequest("POST", "/s/"+token+"/upload/abort", bytes.NewReader(abort2Payload))
+		recAbort2 := httptest.NewRecorder()
+		rPublic.ServeHTTP(recAbort2, reqAbort2)
+		if recAbort2.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK aborting upload 2, got %d: %s", recAbort2.Code, recAbort2.Body.String())
+		}
+
+		// Now upload 3 (2MB) should succeed because reserved bytes were released! (6MB + 0 + 2MB = 8MB <= 10MB)
+		reqUp3Retry := httptest.NewRequest("POST", "/s/"+token+"/upload", bytes.NewReader(up3Payload))
+		recUp3Retry := httptest.NewRecorder()
+		rPublic.ServeHTTP(recUp3Retry, reqUp3Retry)
+		if recUp3Retry.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK on retrying upload 3 after aborting upload 2, got %d: %s", recUp3Retry.Code, recUp3Retry.Body.String())
+		}
+	})
+
+	// -----------------------------------------------------------------
+	// TEST 4: a person with only a folder grant can view and download files in that folder (when allowed) and gets 404 for files outside it
+	// -----------------------------------------------------------------
+	t.Run("person with only a folder grant can view and download files in that folder and gets 404 outside it", func(t *testing.T) {
+		// Folder A and Folder B in project
+		folderA, _ := queries.CreateItem(ctx, db.CreateItemParams{
+			CompanyID: comp.ID,
+			ProjectID: proj.ID,
+			Kind:      "folder",
+			Name:      "Folder A",
+			CreatedBy: adminUser.ID,
+			Position:  pgtype.Numeric{Int: big.NewInt(100), Valid: true},
+		})
+		folderB, _ := queries.CreateItem(ctx, db.CreateItemParams{
+			CompanyID: comp.ID,
+			ProjectID: proj.ID,
+			Kind:      "folder",
+			Name:      "Folder B",
+			CreatedBy: adminUser.ID,
+			Position:  pgtype.Numeric{Int: big.NewInt(200), Valid: true},
+		})
+
+		// File in Folder A
+		fileA, _ := queries.CreateItem(ctx, db.CreateItemParams{
+			CompanyID: comp.ID,
+			ProjectID: proj.ID,
+			ParentID:  folderA.ID,
+			Kind:      "file",
+			Name:      "file_in_a.mp4",
+			CreatedBy: adminUser.ID,
+			Position:  pgtype.Numeric{Int: big.NewInt(10), Valid: true},
+		})
+		_, _ = queries.CreateFileVersion(ctx, db.CreateFileVersionParams{
+			CompanyID:     comp.ID,
+			ItemID:        fileA.ID,
+			Number:        1,
+			StorageKey:    "test/fileA.mp4",
+			SizeBytes:     1024,
+			Mime:          "video/mp4",
+			UploadedBy:    adminUser.ID,
+			PreviewKeys:   []byte("[]"),
+			PreviewStatus: "ready",
+		})
+
+		// File in Folder B
+		fileB, _ := queries.CreateItem(ctx, db.CreateItemParams{
+			CompanyID: comp.ID,
+			ProjectID: proj.ID,
+			ParentID:  folderB.ID,
+			Kind:      "file",
+			Name:      "file_in_b.mp4",
+			CreatedBy: adminUser.ID,
+			Position:  pgtype.Numeric{Int: big.NewInt(20), Valid: true},
+		})
+		_, _ = queries.CreateFileVersion(ctx, db.CreateFileVersionParams{
+			CompanyID:     comp.ID,
+			ItemID:        fileB.ID,
+			Number:        1,
+			StorageKey:    "test/fileB.mp4",
+			SizeBytes:     1024,
+			Mime:          "video/mp4",
+			UploadedBy:    adminUser.ID,
+			PreviewKeys:   []byte("[]"),
+			PreviewStatus: "ready",
+		})
+
+		// User with grant on Folder A ONLY (viewer, can_download: true)
+		folderUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("folderuser-%d@external.com", time.Now().UnixNano()),
+			Name:  "Folder Only Frank",
+		})
+		_, _ = queries.CreateGrant(ctx, db.CreateGrantParams{
+			CompanyID:   comp.ID,
+			TargetType:  "folder",
+			TargetID:    folderA.ID,
+			Email:       folderUser.Email,
+			UserID:      folderUser.ID,
+			Level:       authz.LevelViewer,
+			CanDownload: true,
+			GrantedBy:   adminUser.ID,
+		})
+		folderPerson := authz.Person{
+			UserID:    uuid.UUID(folderUser.ID.Bytes),
+			CompanyID: uuid.UUID(comp.ID.Bytes),
+			Email:     folderUser.Email,
+		}
+
+		rStorage := chi.NewRouter()
+		rStorage.Get("/api/v1/items/{id}/view", storageH.ViewItem)
+		rStorage.Get("/api/v1/items/{id}/download", storageH.DownloadItem)
+
+		// 1. Can view File A
+		reqViewA := httptest.NewRequest("GET", "/api/v1/items/"+pgUUIDToString(fileA.ID)+"/view", nil)
+		reqViewA = reqViewA.WithContext(contextWithPerson(reqViewA.Context(), folderUser, comp.ID, folderPerson))
+		recViewA := httptest.NewRecorder()
+		rStorage.ServeHTTP(recViewA, reqViewA)
+		if recViewA.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK viewing file inside granted folder, got %d: %s", recViewA.Code, recViewA.Body.String())
+		}
+
+		// 2. Can download File A (can_download is true from the folder grant!)
+		reqDlA := httptest.NewRequest("GET", "/api/v1/items/"+pgUUIDToString(fileA.ID)+"/download", nil)
+		reqDlA = reqDlA.WithContext(contextWithPerson(reqDlA.Context(), folderUser, comp.ID, folderPerson))
+		recDlA := httptest.NewRecorder()
+		rStorage.ServeHTTP(recDlA, reqDlA)
+		if recDlA.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK downloading file inside granted folder, got %d: %s", recDlA.Code, recDlA.Body.String())
+		}
+
+		// 3. Gets 404 for File B (outside the granted folder)
+		reqViewB := httptest.NewRequest("GET", "/api/v1/items/"+pgUUIDToString(fileB.ID)+"/view", nil)
+		reqViewB = reqViewB.WithContext(contextWithPerson(reqViewB.Context(), folderUser, comp.ID, folderPerson))
+		recViewB := httptest.NewRecorder()
+		rStorage.ServeHTTP(recViewB, reqViewB)
+		if recViewB.Code != http.StatusNotFound {
+			t.Fatalf("expected 404 Not Found viewing file outside folder grant, got %d: %s", recViewB.Code, recViewB.Body.String())
+		}
+
+		// 4. Gets 404 for downloading File B
+		reqDlB := httptest.NewRequest("GET", "/api/v1/items/"+pgUUIDToString(fileB.ID)+"/download", nil)
+		reqDlB = reqDlB.WithContext(contextWithPerson(reqDlB.Context(), folderUser, comp.ID, folderPerson))
+		recDlB := httptest.NewRecorder()
+		rStorage.ServeHTTP(recDlB, reqDlB)
+		if recDlB.Code != http.StatusNotFound {
+			t.Fatalf("expected 404 Not Found downloading file outside folder grant, got %d: %s", recDlB.Code, recDlB.Body.String())
+		}
+	})
+
+	// -----------------------------------------------------------------
+	// TEST 5: a folder grant Uploader can upload into that folder but not into its parent
+	// -----------------------------------------------------------------
+	t.Run("folder grant Uploader can upload into that folder but not into its parent", func(t *testing.T) {
+		folderUp, _ := queries.CreateItem(ctx, db.CreateItemParams{
+			CompanyID: comp.ID,
+			ProjectID: proj.ID,
+			Kind:      "folder",
+			Name:      "Uploader Folder",
+			CreatedBy: adminUser.ID,
+			Position:  pgtype.Numeric{Int: big.NewInt(300), Valid: true},
+		})
+
+		uploaderUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("uploader-%d@external.com", time.Now().UnixNano()),
+			Name:  "Upload Only Uri",
+		})
+		_, _ = queries.CreateGrant(ctx, db.CreateGrantParams{
+			CompanyID:   comp.ID,
+			TargetType:  "folder",
+			TargetID:    folderUp.ID,
+			Email:       uploaderUser.Email,
+			UserID:      uploaderUser.ID,
+			Level:       authz.LevelUploader,
+			CanDownload: true,
+			GrantedBy:   adminUser.ID,
+		})
+		uploaderPerson := authz.Person{
+			UserID:    uuid.UUID(uploaderUser.ID.Bytes),
+			CompanyID: uuid.UUID(comp.ID.Bytes),
+			Email:     uploaderUser.Email,
+		}
+
+		rUpload := chi.NewRouter()
+		rUpload.Post("/api/v1/uploads", storageH.InitiateUpload)
+
+		// 1. Upload into granted folder -> 201 Created
+		folderUpIDStr := pgUUIDToString(folderUp.ID)
+		upBodyFolder, _ := json.Marshal(map[string]interface{}{
+			"project_id":  projIDStr,
+			"parent_id":   folderUpIDStr,
+			"filename":    "good_upload.mp4",
+			"size_bytes":  2048,
+			"mime":        "video/mp4",
+			"total_parts": 1,
+		})
+		reqUpFolder := httptest.NewRequest("POST", "/api/v1/uploads", bytes.NewReader(upBodyFolder))
+		reqUpFolder = reqUpFolder.WithContext(contextWithPerson(reqUpFolder.Context(), uploaderUser, comp.ID, uploaderPerson))
+		recUpFolder := httptest.NewRecorder()
+		rUpload.ServeHTTP(recUpFolder, reqUpFolder)
+		if recUpFolder.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK uploading into granted folder, got %d: %s", recUpFolder.Code, recUpFolder.Body.String())
+		}
+
+		// 2. Upload into parent/root project -> 403 Forbidden
+		upBodyParent, _ := json.Marshal(map[string]interface{}{
+			"project_id":  projIDStr,
+			"filename":    "illegal_root_upload.mp4",
+			"size_bytes":  2048,
+			"mime":        "video/mp4",
+			"total_parts": 1,
+		})
+		reqUpParent := httptest.NewRequest("POST", "/api/v1/uploads", bytes.NewReader(upBodyParent))
+		reqUpParent = reqUpParent.WithContext(contextWithPerson(reqUpParent.Context(), uploaderUser, comp.ID, uploaderPerson))
+		recUpParent := httptest.NewRecorder()
+		rUpload.ServeHTTP(recUpParent, reqUpParent)
+		if recUpParent.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden uploading into parent project root without project grant, got %d: %s", recUpParent.Code, recUpParent.Body.String())
+		}
+	})
+
+	// -----------------------------------------------------------------
+	// TEST 6: a person with team.manage_roles cannot add permissions they don't have, and cannot edit their own role
+	// -----------------------------------------------------------------
+	t.Run("person with team.manage_roles cannot add permissions they lack, and cannot edit their own role", func(t *testing.T) {
+		// Custom role: has team.manage_roles and projects.view_all, but NOT admin.storage
+		roleManagerUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("rm-%d@studio.com", time.Now().UnixNano()),
+			Name:  "Role Manager Ron",
+		})
+		ronPerms := []string{authz.PermTeamManageRoles, authz.PermProjectsViewAll}
+		ronPermsBytes, _ := json.Marshal(ronPerms)
+		ronRole, err := queries.CreateRole(ctx, db.CreateRoleParams{
+			CompanyID:   comp.ID,
+			Name:        fmt.Sprintf("RoleCoordinator-%d", time.Now().UnixNano()),
+			Color:       "#4F46E5",
+			Permissions: ronPermsBytes,
+			IsSystem:    false,
+		})
+		if err != nil {
+			t.Fatalf("failed to create ron role: %v", err)
+		}
+		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+			CompanyID: comp.ID,
+			UserID:    roleManagerUser.ID,
+			Role:      ronRole.Name,
+		})
+		_ = queries.UpdateMembershipRole(ctx, db.UpdateMembershipRoleParams{
+			CompanyID: comp.ID,
+			UserID:    roleManagerUser.ID,
+			Role:      ronRole.Name,
+			RoleID:    ronRole.ID,
+		})
+		ronPerson := authz.Person{
+			UserID:      uuid.UUID(roleManagerUser.ID.Bytes),
+			CompanyID:   uuid.UUID(comp.ID.Bytes),
+			Email:       roleManagerUser.Email,
+			Role:        ronRole.Name,
+			RoleID:      uuid.UUID(ronRole.ID.Bytes),
+			Permissions: ronPerms,
+		}
+
+		rRole := chi.NewRouter()
+		rRole.Post("/api/v1/roles", rolesH.Create)
+		rRole.Patch("/api/v1/roles/{id}", rolesH.Update)
+		rRole.Delete("/api/v1/roles/{id}", rolesH.Delete)
+
+		// 1. Attempt to create role with admin.storage (permission Ron lacks) -> 403
+		createEscalateBody, _ := json.Marshal(map[string]interface{}{
+			"name":        fmt.Sprintf("Escalated-%d", time.Now().UnixNano()),
+			"permissions": []string{authz.PermProjectsViewAll, authz.PermAdminStorage},
+		})
+		reqCreateEsc := httptest.NewRequest("POST", "/api/v1/roles", bytes.NewReader(createEscalateBody))
+		reqCreateEsc = reqCreateEsc.WithContext(contextWithPerson(reqCreateEsc.Context(), roleManagerUser, comp.ID, ronPerson))
+		recCreateEsc := httptest.NewRecorder()
+		rRole.ServeHTTP(recCreateEsc, reqCreateEsc)
+		if recCreateEsc.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden when creating role with unheld permissions, got %d: %s", recCreateEsc.Code, recCreateEsc.Body.String())
+		}
+
+		// 2. Attempt to edit Ron's OWN role -> 403
+		updateSelfBody, _ := json.Marshal(map[string]interface{}{
+			"name": "RenamedRonRole",
+		})
+		reqUpdateSelf := httptest.NewRequest("PATCH", "/api/v1/roles/"+pgUUIDToString(ronRole.ID), bytes.NewReader(updateSelfBody))
+		reqUpdateSelf = reqUpdateSelf.WithContext(contextWithPerson(reqUpdateSelf.Context(), roleManagerUser, comp.ID, ronPerson))
+		recUpdateSelf := httptest.NewRecorder()
+		rRole.ServeHTTP(recUpdateSelf, reqUpdateSelf)
+		if recUpdateSelf.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden when editing own role, got %d: %s", recUpdateSelf.Code, recUpdateSelf.Body.String())
+		}
+
+		// 3. Attempt to delete Ron's OWN role -> 403
+		reqDelSelf := httptest.NewRequest("DELETE", "/api/v1/roles/"+pgUUIDToString(ronRole.ID), nil)
+		reqDelSelf = reqDelSelf.WithContext(contextWithPerson(reqDelSelf.Context(), roleManagerUser, comp.ID, ronPerson))
+		recDelSelf := httptest.NewRecorder()
+		rRole.ServeHTTP(recDelSelf, reqDelSelf)
+		if recDelSelf.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden when deleting own role, got %d: %s", recDelSelf.Code, recDelSelf.Body.String())
+		}
+	})
+
+	// -----------------------------------------------------------------
+	// TEST 7: a non-Admin cannot make someone Admin
+	// -----------------------------------------------------------------
+	t.Run("non-Admin cannot make someone Admin", func(t *testing.T) {
+		managerRoleObj, _ := queries.GetRoleByName(ctx, db.GetRoleByNameParams{
+			CompanyID: comp.ID,
+			Name:      "Manager",
+		})
+		editorRoleObj, _ := queries.GetRoleByName(ctx, db.GetRoleByNameParams{
+			CompanyID: comp.ID,
+			Name:      "Editor",
+		})
+
+		// Manager Manny (has team.change_roles, but is NOT Admin)
+		managerUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("manny-%d@studio.com", time.Now().UnixNano()),
+			Name:  "Manny Manager",
+		})
+		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+			CompanyID: comp.ID,
+			UserID:    managerUser.ID,
+			Role:      "manager",
+		})
+		_ = queries.UpdateMembershipRole(ctx, db.UpdateMembershipRoleParams{
+			CompanyID: comp.ID,
+			UserID:    managerUser.ID,
+			Role:      "manager",
+			RoleID:    managerRoleObj.ID,
+		})
+		managerPerson := authz.Person{
+			UserID:      uuid.UUID(managerUser.ID.Bytes),
+			CompanyID:   uuid.UUID(comp.ID.Bytes),
+			Email:       managerUser.Email,
+			Role:        "manager",
+			RoleID:      uuid.UUID(managerRoleObj.ID.Bytes),
+			Permissions: []string{authz.PermTeamChangeRoles, authz.PermTeamInvite},
+		}
+
+		// Target Editor Ted
+		targetUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("ted-%d@studio.com", time.Now().UnixNano()),
+			Name:  "Ted Editor",
+		})
+		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+			CompanyID: comp.ID,
+			UserID:    targetUser.ID,
+			Role:      "editor",
+		})
+		_ = queries.UpdateMembershipRole(ctx, db.UpdateMembershipRoleParams{
+			CompanyID: comp.ID,
+			UserID:    targetUser.ID,
+			Role:      "editor",
+			RoleID:    editorRoleObj.ID,
+		})
+
+		rComp := chi.NewRouter()
+		rComp.Patch("/api/v1/companies/{company_id}/members/{user_id}", companyH.UpdateMemberRole)
+		rInvite := chi.NewRouter()
+		rInvite.Post("/api/v1/companies/{company_id}/invites", inviteH.Create)
+
+		compIDStr := pgUUIDToString(comp.ID)
+		targetIDStr := pgUUIDToString(targetUser.ID)
+
+		// 1. Manager tries to promote Ted to Admin -> 403 Forbidden!
+		promoteAdminBody, _ := json.Marshal(map[string]string{"role": "admin"})
+		reqPromote := httptest.NewRequest("PATCH", fmt.Sprintf("/api/v1/companies/%s/members/%s", compIDStr, targetIDStr), bytes.NewReader(promoteAdminBody))
+		reqPromote = reqPromote.WithContext(contextWithPerson(reqPromote.Context(), managerUser, comp.ID, managerPerson))
+		recPromote := httptest.NewRecorder()
+		rComp.ServeHTTP(recPromote, reqPromote)
+		if recPromote.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden when non-admin tries to assign Admin role, got %d: %s", recPromote.Code, recPromote.Body.String())
+		}
+
+		// 2. Manager tries to invite someone as Admin -> 403 Forbidden!
+		inviteAdminBody, _ := json.Marshal(map[string]string{"email": "superadmin@studio.com", "role": "admin"})
+		reqInvAdmin := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/companies/%s/invites", compIDStr), bytes.NewReader(inviteAdminBody))
+		reqInvAdmin = reqInvAdmin.WithContext(contextWithPerson(reqInvAdmin.Context(), managerUser, comp.ID, managerPerson))
+		recInvAdmin := httptest.NewRecorder()
+		rInvite.ServeHTTP(recInvAdmin, reqInvAdmin)
+		if recInvAdmin.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden when non-admin invites someone as Admin, got %d: %s", recInvAdmin.Code, recInvAdmin.Body.String())
+		}
+
+		// 3. Admin Alice can promote Ted to Admin -> 200 OK
+		reqPromoteAdmin := httptest.NewRequest("PATCH", fmt.Sprintf("/api/v1/companies/%s/members/%s", compIDStr, targetIDStr), bytes.NewReader(promoteAdminBody))
+		reqPromoteAdmin = reqPromoteAdmin.WithContext(contextWithPerson(reqPromoteAdmin.Context(), adminUser, comp.ID, adminPerson))
+		recPromoteAdmin := httptest.NewRecorder()
+		rComp.ServeHTTP(recPromoteAdmin, reqPromoteAdmin)
+		if recPromoteAdmin.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK when Admin assigns Admin role, got %d: %s", recPromoteAdmin.Code, recPromoteAdmin.Body.String())
+		}
+	})
+
+	// -----------------------------------------------------------------
+	// TEST 8: a Manager with team.invite can invite; a role without team.invite cannot
+	// -----------------------------------------------------------------
+	t.Run("Manager with team.invite can invite; role without team.invite cannot", func(t *testing.T) {
+		rInvite := chi.NewRouter()
+		rInvite.Post("/api/v1/companies/{company_id}/invites", inviteH.Create)
+		compIDStr := pgUUIDToString(comp.ID)
+
+		// 1. Manager with team.invite
+		managerUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("inviter-%d@studio.com", time.Now().UnixNano()),
+			Name:  "Ian Inviter",
+		})
+		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+			CompanyID: comp.ID,
+			UserID:    managerUser.ID,
+			Role:      "manager",
+		})
+		managerPerson := authz.Person{
+			UserID:      uuid.UUID(managerUser.ID.Bytes),
+			CompanyID:   uuid.UUID(comp.ID.Bytes),
+			Email:       managerUser.Email,
+			Role:        "manager",
+			Permissions: []string{authz.PermTeamInvite},
+		}
+
+		validInvBody, _ := json.Marshal(map[string]string{
+			"email": fmt.Sprintf("invited-%d@freelance.com", time.Now().UnixNano()),
+			"role":  "editor",
+		})
+		reqValid := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/companies/%s/invites", compIDStr), bytes.NewReader(validInvBody))
+		reqValid = reqValid.WithContext(contextWithPerson(reqValid.Context(), managerUser, comp.ID, managerPerson))
+		recValid := httptest.NewRecorder()
+		rInvite.ServeHTTP(recValid, reqValid)
+		if recValid.Code != http.StatusCreated {
+			t.Fatalf("expected 201 Created when user with team.invite invites member, got %d: %s", recValid.Code, recValid.Body.String())
+		}
+
+		// 2. Editor without team.invite -> 403 Forbidden
+		editorUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("noinviter-%d@studio.com", time.Now().UnixNano()),
+			Name:  "Ned NoInvite",
+		})
+		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+			CompanyID: comp.ID,
+			UserID:    editorUser.ID,
+			Role:      "editor",
+		})
+		editorPerson := authz.Person{
+			UserID:      uuid.UUID(editorUser.ID.Bytes),
+			CompanyID:   uuid.UUID(comp.ID.Bytes),
+			Email:       editorUser.Email,
+			Role:        "editor",
+			Permissions: []string{authz.PermFilesDownloadAll}, // No team.invite
+		}
+
+		reqNoInv := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/companies/%s/invites", compIDStr), bytes.NewReader(validInvBody))
+		reqNoInv = reqNoInv.WithContext(contextWithPerson(reqNoInv.Context(), editorUser, comp.ID, editorPerson))
+		recNoInv := httptest.NewRecorder()
+		rInvite.ServeHTTP(recNoInv, reqNoInv)
+		if recNoInv.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden when user without team.invite invites, got %d: %s", recNoInv.Code, recNoInv.Body.String())
+		}
+	})
+
+	// -----------------------------------------------------------------
+	// TEST 9: assigning a role name that doesn't exist is rejected
+	// -----------------------------------------------------------------
+	t.Run("assigning a role name that doesn't exist is rejected", func(t *testing.T) {
+		rComp := chi.NewRouter()
+		rComp.Patch("/api/v1/companies/{company_id}/members/{user_id}", companyH.UpdateMemberRole)
+		rInvite := chi.NewRouter()
+		rInvite.Post("/api/v1/companies/{company_id}/invites", inviteH.Create)
+
+		compIDStr := pgUUIDToString(comp.ID)
+
+		targetUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("member-%d@studio.com", time.Now().UnixNano()),
+			Name:  "Mark Member",
+		})
+		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+			CompanyID: comp.ID,
+			UserID:    targetUser.ID,
+			Role:      "editor",
+		})
+		targetIDStr := pgUUIDToString(targetUser.ID)
+
+		// 1. Changing member role to non-existent role "wizard" -> 400 Bad Request
+		fakeRoleBody, _ := json.Marshal(map[string]string{"role": "wizard"})
+		reqFakeRole := httptest.NewRequest("PATCH", fmt.Sprintf("/api/v1/companies/%s/members/%s", compIDStr, targetIDStr), bytes.NewReader(fakeRoleBody))
+		reqFakeRole = reqFakeRole.WithContext(contextWithPerson(reqFakeRole.Context(), adminUser, comp.ID, adminPerson))
+		recFakeRole := httptest.NewRecorder()
+		rComp.ServeHTTP(recFakeRole, reqFakeRole)
+		if recFakeRole.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 Bad Request for non-existent role name, got %d: %s", recFakeRole.Code, recFakeRole.Body.String())
+		}
+
+		// 2. Inviting with non-existent role "superstar" -> 400 Bad Request
+		fakeInvBody, _ := json.Marshal(map[string]string{
+			"email": "rockstar@studio.com",
+			"role":  "superstar",
+		})
+		reqFakeInv := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/companies/%s/invites", compIDStr), bytes.NewReader(fakeInvBody))
+		reqFakeInv = reqFakeInv.WithContext(contextWithPerson(reqFakeInv.Context(), adminUser, comp.ID, adminPerson))
+		recFakeInv := httptest.NewRecorder()
+		rInvite.ServeHTTP(recFakeInv, reqFakeInv)
+		if recFakeInv.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 Bad Request inviting with non-existent role, got %d: %s", recFakeInv.Code, recFakeInv.Body.String())
+		}
+	})
+}
+
 

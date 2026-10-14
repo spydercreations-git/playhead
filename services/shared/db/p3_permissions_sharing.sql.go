@@ -43,6 +43,24 @@ func (q *Queries) AttachShareLinkItem(ctx context.Context, arg AttachShareLinkIt
 	return err
 }
 
+const commitShareLinkUpload = `-- name: CommitShareLinkUpload :exec
+UPDATE share_links
+SET upload_reserved_bytes = GREATEST(0, upload_reserved_bytes - $2),
+    uploaded_bytes = uploaded_bytes + $2,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+type CommitShareLinkUploadParams struct {
+	ID                  pgtype.UUID `json:"id"`
+	UploadReservedBytes int64       `json:"upload_reserved_bytes"`
+}
+
+func (q *Queries) CommitShareLinkUpload(ctx context.Context, arg CommitShareLinkUploadParams) error {
+	_, err := q.db.Exec(ctx, commitShareLinkUpload, arg.ID, arg.UploadReservedBytes)
+	return err
+}
+
 const countCompanyAdmins = `-- name: CountCompanyAdmins :one
 SELECT COUNT(*)::int
 FROM memberships m
@@ -113,7 +131,8 @@ INSERT INTO share_links (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 ) RETURNING id, company_id, project_id, name, token_hash, access, allow_download, latest_only,
-            expires_at, ask_identity, upload_limit_bytes, uploaded_bytes, view_count, created_at
+            password_version, expires_at, ask_identity, upload_limit_bytes, uploaded_bytes,
+            upload_reserved_bytes, view_count, created_at
 `
 
 type CreateShareLinkParams struct {
@@ -132,20 +151,22 @@ type CreateShareLinkParams struct {
 }
 
 type CreateShareLinkRow struct {
-	ID               pgtype.UUID        `json:"id"`
-	CompanyID        pgtype.UUID        `json:"company_id"`
-	ProjectID        pgtype.UUID        `json:"project_id"`
-	Name             string             `json:"name"`
-	TokenHash        string             `json:"token_hash"`
-	Access           string             `json:"access"`
-	AllowDownload    bool               `json:"allow_download"`
-	LatestOnly       bool               `json:"latest_only"`
-	ExpiresAt        pgtype.Timestamptz `json:"expires_at"`
-	AskIdentity      bool               `json:"ask_identity"`
-	UploadLimitBytes pgtype.Int8        `json:"upload_limit_bytes"`
-	UploadedBytes    int64              `json:"uploaded_bytes"`
-	ViewCount        int32              `json:"view_count"`
-	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	ID                  pgtype.UUID        `json:"id"`
+	CompanyID           pgtype.UUID        `json:"company_id"`
+	ProjectID           pgtype.UUID        `json:"project_id"`
+	Name                string             `json:"name"`
+	TokenHash           string             `json:"token_hash"`
+	Access              string             `json:"access"`
+	AllowDownload       bool               `json:"allow_download"`
+	LatestOnly          bool               `json:"latest_only"`
+	PasswordVersion     int32              `json:"password_version"`
+	ExpiresAt           pgtype.Timestamptz `json:"expires_at"`
+	AskIdentity         bool               `json:"ask_identity"`
+	UploadLimitBytes    pgtype.Int8        `json:"upload_limit_bytes"`
+	UploadedBytes       int64              `json:"uploaded_bytes"`
+	UploadReservedBytes int64              `json:"upload_reserved_bytes"`
+	ViewCount           int32              `json:"view_count"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) CreateShareLink(ctx context.Context, arg CreateShareLinkParams) (CreateShareLinkRow, error) {
@@ -173,10 +194,12 @@ func (q *Queries) CreateShareLink(ctx context.Context, arg CreateShareLinkParams
 		&i.Access,
 		&i.AllowDownload,
 		&i.LatestOnly,
+		&i.PasswordVersion,
 		&i.ExpiresAt,
 		&i.AskIdentity,
 		&i.UploadLimitBytes,
 		&i.UploadedBytes,
+		&i.UploadReservedBytes,
 		&i.ViewCount,
 		&i.CreatedAt,
 	)
@@ -295,7 +318,8 @@ func (q *Queries) GetRoleByName(ctx context.Context, arg GetRoleByNameParams) (R
 const getShareLinkByID = `-- name: GetShareLinkByID :one
 SELECT id, company_id, project_id, name, token_hash, access, allow_download, latest_only,
        (password_hash IS NOT NULL AND password_hash != '') as has_password,
-       expires_at, ask_identity, upload_limit_bytes, uploaded_bytes, view_count,
+       password_version, expires_at, ask_identity, upload_limit_bytes, uploaded_bytes,
+       upload_reserved_bytes, view_count,
        last_opened_at, disabled_at, created_by, created_at, updated_at
 FROM share_links
 WHERE id = $1 AND company_id = $2
@@ -307,25 +331,27 @@ type GetShareLinkByIDParams struct {
 }
 
 type GetShareLinkByIDRow struct {
-	ID               pgtype.UUID        `json:"id"`
-	CompanyID        pgtype.UUID        `json:"company_id"`
-	ProjectID        pgtype.UUID        `json:"project_id"`
-	Name             string             `json:"name"`
-	TokenHash        string             `json:"token_hash"`
-	Access           string             `json:"access"`
-	AllowDownload    bool               `json:"allow_download"`
-	LatestOnly       bool               `json:"latest_only"`
-	HasPassword      pgtype.Bool        `json:"has_password"`
-	ExpiresAt        pgtype.Timestamptz `json:"expires_at"`
-	AskIdentity      bool               `json:"ask_identity"`
-	UploadLimitBytes pgtype.Int8        `json:"upload_limit_bytes"`
-	UploadedBytes    int64              `json:"uploaded_bytes"`
-	ViewCount        int32              `json:"view_count"`
-	LastOpenedAt     pgtype.Timestamptz `json:"last_opened_at"`
-	DisabledAt       pgtype.Timestamptz `json:"disabled_at"`
-	CreatedBy        pgtype.UUID        `json:"created_by"`
-	CreatedAt        pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	ID                  pgtype.UUID        `json:"id"`
+	CompanyID           pgtype.UUID        `json:"company_id"`
+	ProjectID           pgtype.UUID        `json:"project_id"`
+	Name                string             `json:"name"`
+	TokenHash           string             `json:"token_hash"`
+	Access              string             `json:"access"`
+	AllowDownload       bool               `json:"allow_download"`
+	LatestOnly          bool               `json:"latest_only"`
+	HasPassword         pgtype.Bool        `json:"has_password"`
+	PasswordVersion     int32              `json:"password_version"`
+	ExpiresAt           pgtype.Timestamptz `json:"expires_at"`
+	AskIdentity         bool               `json:"ask_identity"`
+	UploadLimitBytes    pgtype.Int8        `json:"upload_limit_bytes"`
+	UploadedBytes       int64              `json:"uploaded_bytes"`
+	UploadReservedBytes int64              `json:"upload_reserved_bytes"`
+	ViewCount           int32              `json:"view_count"`
+	LastOpenedAt        pgtype.Timestamptz `json:"last_opened_at"`
+	DisabledAt          pgtype.Timestamptz `json:"disabled_at"`
+	CreatedBy           pgtype.UUID        `json:"created_by"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) GetShareLinkByID(ctx context.Context, arg GetShareLinkByIDParams) (GetShareLinkByIDRow, error) {
@@ -341,10 +367,12 @@ func (q *Queries) GetShareLinkByID(ctx context.Context, arg GetShareLinkByIDPara
 		&i.AllowDownload,
 		&i.LatestOnly,
 		&i.HasPassword,
+		&i.PasswordVersion,
 		&i.ExpiresAt,
 		&i.AskIdentity,
 		&i.UploadLimitBytes,
 		&i.UploadedBytes,
+		&i.UploadReservedBytes,
 		&i.ViewCount,
 		&i.LastOpenedAt,
 		&i.DisabledAt,
@@ -357,15 +385,40 @@ func (q *Queries) GetShareLinkByID(ctx context.Context, arg GetShareLinkByIDPara
 
 const getShareLinkByTokenHash = `-- name: GetShareLinkByTokenHash :one
 SELECT id, company_id, project_id, name, token_hash, access, allow_download, latest_only,
-       password_hash, expires_at, ask_identity, upload_limit_bytes, uploaded_bytes, view_count,
+       password_hash, password_version, expires_at, ask_identity, upload_limit_bytes, uploaded_bytes,
+       upload_reserved_bytes, view_count,
        last_opened_at, disabled_at, created_by, created_at, updated_at
 FROM share_links
 WHERE token_hash = $1
 `
 
-func (q *Queries) GetShareLinkByTokenHash(ctx context.Context, tokenHash string) (ShareLink, error) {
+type GetShareLinkByTokenHashRow struct {
+	ID                  pgtype.UUID        `json:"id"`
+	CompanyID           pgtype.UUID        `json:"company_id"`
+	ProjectID           pgtype.UUID        `json:"project_id"`
+	Name                string             `json:"name"`
+	TokenHash           string             `json:"token_hash"`
+	Access              string             `json:"access"`
+	AllowDownload       bool               `json:"allow_download"`
+	LatestOnly          bool               `json:"latest_only"`
+	PasswordHash        pgtype.Text        `json:"password_hash"`
+	PasswordVersion     int32              `json:"password_version"`
+	ExpiresAt           pgtype.Timestamptz `json:"expires_at"`
+	AskIdentity         bool               `json:"ask_identity"`
+	UploadLimitBytes    pgtype.Int8        `json:"upload_limit_bytes"`
+	UploadedBytes       int64              `json:"uploaded_bytes"`
+	UploadReservedBytes int64              `json:"upload_reserved_bytes"`
+	ViewCount           int32              `json:"view_count"`
+	LastOpenedAt        pgtype.Timestamptz `json:"last_opened_at"`
+	DisabledAt          pgtype.Timestamptz `json:"disabled_at"`
+	CreatedBy           pgtype.UUID        `json:"created_by"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetShareLinkByTokenHash(ctx context.Context, tokenHash string) (GetShareLinkByTokenHashRow, error) {
 	row := q.db.QueryRow(ctx, getShareLinkByTokenHash, tokenHash)
-	var i ShareLink
+	var i GetShareLinkByTokenHashRow
 	err := row.Scan(
 		&i.ID,
 		&i.CompanyID,
@@ -376,10 +429,12 @@ func (q *Queries) GetShareLinkByTokenHash(ctx context.Context, tokenHash string)
 		&i.AllowDownload,
 		&i.LatestOnly,
 		&i.PasswordHash,
+		&i.PasswordVersion,
 		&i.ExpiresAt,
 		&i.AskIdentity,
 		&i.UploadLimitBytes,
 		&i.UploadedBytes,
+		&i.UploadReservedBytes,
 		&i.ViewCount,
 		&i.LastOpenedAt,
 		&i.DisabledAt,
@@ -763,6 +818,56 @@ func (q *Queries) ListUserNotificationPrefs(ctx context.Context, userID pgtype.U
 	return items, nil
 }
 
+const releaseShareLinkReservedUpload = `-- name: ReleaseShareLinkReservedUpload :exec
+UPDATE share_links
+SET upload_reserved_bytes = GREATEST(0, upload_reserved_bytes - $2),
+    updated_at = NOW()
+WHERE id = $1
+`
+
+type ReleaseShareLinkReservedUploadParams struct {
+	ID                  pgtype.UUID `json:"id"`
+	UploadReservedBytes int64       `json:"upload_reserved_bytes"`
+}
+
+func (q *Queries) ReleaseShareLinkReservedUpload(ctx context.Context, arg ReleaseShareLinkReservedUploadParams) error {
+	_, err := q.db.Exec(ctx, releaseShareLinkReservedUpload, arg.ID, arg.UploadReservedBytes)
+	return err
+}
+
+const reserveShareLinkUpload = `-- name: ReserveShareLinkUpload :one
+UPDATE share_links
+SET upload_reserved_bytes = upload_reserved_bytes + $2,
+    updated_at = NOW()
+WHERE id = $1
+  AND (upload_limit_bytes IS NULL OR upload_limit_bytes <= 0 OR (uploaded_bytes + upload_reserved_bytes + $2) <= upload_limit_bytes)
+RETURNING id, upload_limit_bytes, uploaded_bytes, upload_reserved_bytes
+`
+
+type ReserveShareLinkUploadParams struct {
+	ID                  pgtype.UUID `json:"id"`
+	UploadReservedBytes int64       `json:"upload_reserved_bytes"`
+}
+
+type ReserveShareLinkUploadRow struct {
+	ID                  pgtype.UUID `json:"id"`
+	UploadLimitBytes    pgtype.Int8 `json:"upload_limit_bytes"`
+	UploadedBytes       int64       `json:"uploaded_bytes"`
+	UploadReservedBytes int64       `json:"upload_reserved_bytes"`
+}
+
+func (q *Queries) ReserveShareLinkUpload(ctx context.Context, arg ReserveShareLinkUploadParams) (ReserveShareLinkUploadRow, error) {
+	row := q.db.QueryRow(ctx, reserveShareLinkUpload, arg.ID, arg.UploadReservedBytes)
+	var i ReserveShareLinkUploadRow
+	err := row.Scan(
+		&i.ID,
+		&i.UploadLimitBytes,
+		&i.UploadedBytes,
+		&i.UploadReservedBytes,
+	)
+	return i, err
+}
+
 const updateRole = `-- name: UpdateRole :one
 UPDATE roles
 SET name = $3, color = $4, permissions = $5, updated_at = NOW()
@@ -802,17 +907,20 @@ func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, e
 
 const updateShareLink = `-- name: UpdateShareLink :one
 UPDATE share_links
-SET name = $3, access = $4, allow_download = $5, latest_only = $6,
-    password_hash = $7, expires_at = $8, ask_identity = $9, upload_limit_bytes = $10,
-    disabled_at = $11, updated_at = NOW()
-WHERE id = $1 AND company_id = $2
+SET name = $1, access = $2, allow_download = $3, latest_only = $4,
+    password_hash = $5::text,
+    password_version = CASE 
+        WHEN $5::text IS DISTINCT FROM password_hash THEN password_version + 1 
+        ELSE password_version 
+    END,
+    expires_at = $6, ask_identity = $7, upload_limit_bytes = $8,
+    disabled_at = $9, updated_at = NOW()
+WHERE id = $10 AND company_id = $11
 RETURNING id, company_id, project_id, name, token_hash, access, allow_download, latest_only,
-          expires_at, ask_identity, upload_limit_bytes, disabled_at, updated_at
+          password_version, expires_at, ask_identity, upload_limit_bytes, disabled_at, updated_at
 `
 
 type UpdateShareLinkParams struct {
-	ID               pgtype.UUID        `json:"id"`
-	CompanyID        pgtype.UUID        `json:"company_id"`
 	Name             string             `json:"name"`
 	Access           string             `json:"access"`
 	AllowDownload    bool               `json:"allow_download"`
@@ -822,6 +930,8 @@ type UpdateShareLinkParams struct {
 	AskIdentity      bool               `json:"ask_identity"`
 	UploadLimitBytes pgtype.Int8        `json:"upload_limit_bytes"`
 	DisabledAt       pgtype.Timestamptz `json:"disabled_at"`
+	ID               pgtype.UUID        `json:"id"`
+	CompanyID        pgtype.UUID        `json:"company_id"`
 }
 
 type UpdateShareLinkRow struct {
@@ -833,6 +943,7 @@ type UpdateShareLinkRow struct {
 	Access           string             `json:"access"`
 	AllowDownload    bool               `json:"allow_download"`
 	LatestOnly       bool               `json:"latest_only"`
+	PasswordVersion  int32              `json:"password_version"`
 	ExpiresAt        pgtype.Timestamptz `json:"expires_at"`
 	AskIdentity      bool               `json:"ask_identity"`
 	UploadLimitBytes pgtype.Int8        `json:"upload_limit_bytes"`
@@ -842,8 +953,6 @@ type UpdateShareLinkRow struct {
 
 func (q *Queries) UpdateShareLink(ctx context.Context, arg UpdateShareLinkParams) (UpdateShareLinkRow, error) {
 	row := q.db.QueryRow(ctx, updateShareLink,
-		arg.ID,
-		arg.CompanyID,
 		arg.Name,
 		arg.Access,
 		arg.AllowDownload,
@@ -853,6 +962,8 @@ func (q *Queries) UpdateShareLink(ctx context.Context, arg UpdateShareLinkParams
 		arg.AskIdentity,
 		arg.UploadLimitBytes,
 		arg.DisabledAt,
+		arg.ID,
+		arg.CompanyID,
 	)
 	var i UpdateShareLinkRow
 	err := row.Scan(
@@ -864,6 +975,7 @@ func (q *Queries) UpdateShareLink(ctx context.Context, arg UpdateShareLinkParams
 		&i.Access,
 		&i.AllowDownload,
 		&i.LatestOnly,
+		&i.PasswordVersion,
 		&i.ExpiresAt,
 		&i.AskIdentity,
 		&i.UploadLimitBytes,

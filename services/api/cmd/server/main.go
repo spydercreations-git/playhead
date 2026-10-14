@@ -15,6 +15,7 @@ import (
 	"github.com/playhead/playhead/services/api/internal/config"
 	"github.com/playhead/playhead/services/api/internal/handler"
 	"github.com/playhead/playhead/services/api/internal/middleware"
+	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
 	"github.com/playhead/playhead/services/shared/mailer"
 	"github.com/playhead/playhead/services/shared/storage"
@@ -94,7 +95,7 @@ func main() {
 
 	rolesHandler := handler.NewRolesHandler(queries)
 	notifHandler := handler.NewNotificationSettingsHandler(queries)
-	shareLinksHandler := handler.NewShareLinksHandler(queries, storageClient)
+	shareLinksHandler := handler.NewShareLinksHandler(queries, storageClient, cfg.SessionSecret, cfg.Environment)
 	grantsHandler := handler.NewGrantsHandler(queries, mailClient)
 
 	// Hourly abandoned upload cleanup (Requirement 2)
@@ -148,6 +149,8 @@ func main() {
 			share.Post("/identify", shareLinksHandler.PublicIdentify)
 			share.Get("/items/{itemId}/download", shareLinksHandler.PublicDownload)
 			share.Post("/upload", shareLinksHandler.PublicUpload)
+			share.Post("/upload/complete", shareLinksHandler.PublicUploadComplete)
+			share.Post("/upload/abort", shareLinksHandler.PublicUploadAbort)
 		})
 
 		// Protected endpoints (Requires authentication and CSRF token validation)
@@ -160,8 +163,8 @@ func main() {
 			// Company management
 			protected.Post("/companies", companyHandler.Create)
 			protected.Get("/companies/{company_id}/members", companyHandler.GetMembers)
-			protected.With(middleware.RequireRole("admin")).Patch("/companies/{company_id}/members/{user_id}", companyHandler.UpdateMemberRole)
-			protected.With(middleware.RequireRole("admin")).Delete("/companies/{company_id}/members/{user_id}", companyHandler.RemoveMember)
+			protected.With(middleware.RequirePermission(authz.PermTeamChangeRoles)).Patch("/companies/{company_id}/members/{user_id}", companyHandler.UpdateMemberRole)
+			protected.With(middleware.RequirePermission(authz.PermTeamChangeRoles)).Delete("/companies/{company_id}/members/{user_id}", companyHandler.RemoveMember)
 
 			// Custom Roles RBAC (P3)
 			protected.Get("/roles", rolesHandler.List)
@@ -176,8 +179,8 @@ func main() {
 			protected.Put("/projects/{id}/notifications", notifHandler.UpdateProjectBell)
 
 			// Invites
-			protected.With(middleware.RequireRole("admin")).Post("/companies/{company_id}/invites", inviteHandler.Create)
-			protected.With(middleware.RequireRole("admin")).Get("/companies/{company_id}/invites", inviteHandler.ListForCompany)
+			protected.With(middleware.RequirePermission(authz.PermTeamInvite)).Post("/companies/{company_id}/invites", inviteHandler.Create)
+			protected.With(middleware.RequirePermission(authz.PermTeamInvite)).Get("/companies/{company_id}/invites", inviteHandler.ListForCompany)
 			protected.Post("/invites/{token}/accept", inviteHandler.Accept)
 
 			// Clients and Contacts (P1)
@@ -247,7 +250,7 @@ func main() {
 			protected.Post("/downloads/zip", storageUploadsHandler.ZipDownload)
 
 			// Admin Storage Dashboard (P2 Requirement 1)
-			protected.With(middleware.RequireRole("admin")).Get("/admin/storage", storageUploadsHandler.GetStorageAdminStats)
+			protected.With(middleware.RequirePermission(authz.PermAdminStorage)).Get("/admin/storage", storageUploadsHandler.GetStorageAdminStats)
 		})
 	})
 

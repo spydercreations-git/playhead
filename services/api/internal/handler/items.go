@@ -763,7 +763,6 @@ type batchActionReq struct {
 func (h *ItemsHandler) BatchAction(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, _ := middleware.GetAuthenticatedUser(ctx)
-	role, _ := middleware.GetUserRole(ctx)
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -782,6 +781,49 @@ func (h *ItemsHandler) BatchAction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	affectedProjects := make(map[pgtype.UUID]bool)
+	person := middleware.GetPerson(ctx)
+
+	type folderKey struct {
+		projectID uuid.UUID
+		parentID  uuid.UUID
+	}
+	folderAccessCache := make(map[folderKey]authz.AccessResult)
+	projectCache := make(map[uuid.UUID]db.GetProjectByIDRow)
+
+	getProject := func(projID pgtype.UUID) (db.GetProjectByIDRow, error) {
+		pUUID := uuid.UUID(projID.Bytes)
+		if p, ok := projectCache[pUUID]; ok {
+			return p, nil
+		}
+		p, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+			ID:        projID,
+			CompanyID: companyID,
+		})
+		if err == nil {
+			projectCache[pUUID] = p
+		}
+		return p, err
+	}
+
+	getParentFolderAccess := func(proj db.GetProjectByIDRow, parentFolderID uuid.UUID) (authz.AccessResult, error) {
+		key := folderKey{
+			projectID: uuid.UUID(proj.ID.Bytes),
+			parentID:  parentFolderID,
+		}
+		if res, ok := folderAccessCache[key]; ok {
+			return res, nil
+		}
+		pt := authz.ProjectTarget{
+			ID:        uuid.UUID(proj.ID.Bytes),
+			CompanyID: uuid.UUID(proj.CompanyID.Bytes),
+			ClientID:  uuid.UUID(proj.ClientID.Bytes),
+		}
+		res, err := authz.AccessFolder(ctx, h.queries, person, pt, parentFolderID)
+		if err == nil {
+			folderAccessCache[key] = res
+		}
+		return res, err
+	}
 
 	for _, idStr := range req.ItemIDs {
 		var itemID pgtype.UUID
@@ -797,33 +839,52 @@ func (h *ItemsHandler) BatchAction(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
-			ID:        item.ProjectID,
-			CompanyID: companyID,
-		})
+		proj, err := getProject(item.ProjectID)
 		if err != nil {
 			continue
 		}
 
-		person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
-		access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
-			ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
-		})
+		var parentUUID uuid.UUID
+		if item.ParentID.Valid {
+			parentUUID = uuid.UUID(item.ParentID.Bytes)
+		}
+
+		parentAccess, err := getParentFolderAccess(proj, parentUUID)
 		if err != nil {
 			continue
+		}
+
+		var itemAccess authz.AccessResult
+		if parentAccess.Level == authz.LevelFull {
+			itemAccess = parentAccess
+		} else {
+			pt := authz.ProjectTarget{
+				ID:        uuid.UUID(proj.ID.Bytes),
+				CompanyID: uuid.UUID(proj.CompanyID.Bytes),
+				ClientID:  uuid.UUID(proj.ClientID.Bytes),
+			}
+			itTarget := authz.ItemTarget{
+				ID:        uuid.UUID(item.ID.Bytes),
+				ProjectID: uuid.UUID(item.ProjectID.Bytes),
+				CompanyID: uuid.UUID(item.CompanyID.Bytes),
+				CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
+			}
+			itemAccess, err = authz.AccessItem(ctx, h.queries, person, pt, itTarget)
+			if err != nil {
+				continue
+			}
 		}
 
 		var createdByUUID uuid.UUID
 		if item.CreatedBy.Valid {
 			createdByUUID = uuid.UUID(item.CreatedBy.Bytes)
 		}
-		if !access.CanModifyItem(person, createdByUUID) {
+		if !itemAccess.CanModifyItem(person, createdByUUID) {
 			continue
 		}
 
-		affectedProjects[item.ProjectID] = true
-
 		if req.Action == "delete" {
+			affectedProjects[item.ProjectID] = true
 			_, _ = h.queries.SoftDeleteItem(ctx, db.SoftDeleteItemParams{
 				ID:        itemID,
 				CompanyID: companyID,
@@ -834,9 +895,48 @@ func (h *ItemsHandler) BatchAction(w http.ResponseWriter, r *http.Request) {
 			}
 		} else if req.Action == "move" {
 			var targetParentUUID pgtype.UUID
+			var targetFolderUUID uuid.UUID
 			if req.TargetParentID != nil && *req.TargetParentID != "" && *req.TargetParentID != "null" {
-				_ = targetParentUUID.Scan(*req.TargetParentID)
+				if pid, err := uuid.Parse(*req.TargetParentID); err == nil {
+					targetParentUUID = pgtype.UUID{Bytes: pid, Valid: true}
+					targetFolderUUID = pid
+				} else {
+					continue
+				}
 			}
+
+			// Must have upload access to destination folder
+			destAccess, err := getParentFolderAccess(proj, targetFolderUUID)
+			if err != nil || !destAccess.CanUpload() {
+				continue
+			}
+
+			// Prevent moving a folder into itself or a subfolder
+			if item.Kind == "folder" {
+				if targetParentUUID.Valid && item.ID == targetParentUUID {
+					continue
+				}
+				if targetParentUUID.Valid {
+					ancestors, err := h.queries.GetItemAncestors(ctx, db.GetItemAncestorsParams{
+						ItemID:    targetParentUUID,
+						CompanyID: companyID,
+					})
+					isCircular := false
+					if err == nil {
+						for _, a := range ancestors {
+							if a.ID == item.ID {
+								isCircular = true
+								break
+							}
+						}
+					}
+					if isCircular {
+						continue
+					}
+				}
+			}
+
+			affectedProjects[item.ProjectID] = true
 			_, _ = h.queries.MoveItem(ctx, db.MoveItemParams{
 				ID:          itemID,
 				CompanyID:   companyID,
@@ -1032,32 +1132,49 @@ func (h *ItemsHandler) ListTrash(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Others: only items in projects where they have Uploader or Full access
-	projectAccessCache := make(map[uuid.UUID]bool)
+	// Others: only items in folders/projects where they have Uploader or Full access
+	type folderKey struct {
+		projectID uuid.UUID
+		parentID  uuid.UUID
+	}
+	folderAccessCache := make(map[folderKey]bool)
+	projectCache := make(map[uuid.UUID]db.GetProjectByIDRow)
 	var visibleItems []db.ListTrashItemsRow
 	for _, it := range items {
-		pID := uuid.UUID(it.ProjectID.Bytes)
-		hasAccess, found := projectAccessCache[pID]
+		pUUID := uuid.UUID(it.ProjectID.Bytes)
+		var parentUUID uuid.UUID
+		if it.OriginalParentID.Valid {
+			parentUUID = uuid.UUID(it.OriginalParentID.Bytes)
+		}
+		key := folderKey{projectID: pUUID, parentID: parentUUID}
+
+		hasAccess, found := folderAccessCache[key]
 		if !found {
-			proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
-				ID:        it.ProjectID,
-				CompanyID: companyID,
-			})
-			if err != nil {
-				projectAccessCache[pID] = false
-				continue
+			proj, ok := projectCache[pUUID]
+			if !ok {
+				var err error
+				proj, err = h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+					ID:        it.ProjectID,
+					CompanyID: companyID,
+				})
+				if err != nil {
+					folderAccessCache[key] = false
+					continue
+				}
+				projectCache[pUUID] = proj
 			}
-			acc, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+			pt := authz.ProjectTarget{
 				ID:        uuid.UUID(proj.ID.Bytes),
 				CompanyID: uuid.UUID(proj.CompanyID.Bytes),
 				ClientID:  uuid.UUID(proj.ClientID.Bytes),
-			})
+			}
+			acc, err := authz.AccessFolder(ctx, h.queries, person, pt, parentUUID)
 			if err == nil && (acc.Level == authz.LevelFull || acc.Level == authz.LevelUploader) {
 				hasAccess = true
 			} else {
 				hasAccess = false
 			}
-			projectAccessCache[pID] = hasAccess
+			folderAccessCache[key] = hasAccess
 		}
 		if hasAccess {
 			visibleItems = append(visibleItems, it)

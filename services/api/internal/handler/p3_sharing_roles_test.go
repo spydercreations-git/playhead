@@ -2117,4 +2117,285 @@ func TestP3_AdvisorSecondReviewSecurityFixes(t *testing.T) {
 	})
 }
 
+func TestFolderGrantBatchActionsAndTrash(t *testing.T) {
+	queries, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	itemsH := NewItemsHandler(queries, nil)
+
+	// 1. Setup Company, Admin User, Client, Project
+	comp, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
+		Name:              "Batch Test Studio",
+		Slug:              fmt.Sprintf("batch-studio-%d", time.Now().UnixNano()),
+		Plan:              plans.PlanInternal,
+		Status:            "active",
+		StorageLimitBytes: 0,
+		Seats:             10,
+	})
+	if err != nil {
+		t.Fatalf("failed to create company: %v", err)
+	}
+
+	adminUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+		Email: fmt.Sprintf("admin-%d@studio.com", time.Now().UnixNano()),
+		Name:  "Admin Boss",
+	})
+	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+		CompanyID: comp.ID,
+		UserID:    adminUser.ID,
+		Role:      authz.RoleAdmin,
+	})
+
+	client, _ := queries.CreateClient(ctx, db.CreateClientParams{
+		CompanyID: comp.ID,
+		Name:      "Client Alpha",
+		CreatedBy: adminUser.ID,
+	})
+
+	proj, _ := queries.CreateProject(ctx, db.CreateProjectParams{
+		CompanyID: comp.ID,
+		ClientID:  client.ID,
+		Name:      "Batch Project",
+		CreatedBy: adminUser.ID,
+	})
+
+	// 2. Create Folders: Folder 1 and Folder 2, plus Subfolder inside Folder 1
+	pos := pgtype.Numeric{Int: big.NewInt(1000), Valid: true}
+	folder1, err := queries.CreateItem(ctx, db.CreateItemParams{
+		CompanyID: comp.ID,
+		ProjectID: proj.ID,
+		Kind:      "folder",
+		Name:      "Folder 1",
+		CreatedBy: adminUser.ID,
+		Position:  pos,
+	})
+	if err != nil {
+		t.Fatalf("failed to create folder1: %v", err)
+	}
+
+	folder1Sub, err := queries.CreateItem(ctx, db.CreateItemParams{
+		CompanyID: comp.ID,
+		ProjectID: proj.ID,
+		ParentID:  folder1.ID,
+		Kind:      "folder",
+		Name:      "Folder 1 Sub",
+		CreatedBy: adminUser.ID,
+		Position:  pos,
+	})
+	if err != nil {
+		t.Fatalf("failed to create folder1Sub: %v", err)
+	}
+
+	folder2, err := queries.CreateItem(ctx, db.CreateItemParams{
+		CompanyID: comp.ID,
+		ProjectID: proj.ID,
+		Kind:      "folder",
+		Name:      "Folder 2",
+		CreatedBy: adminUser.ID,
+		Position:  pos,
+	})
+	if err != nil {
+		t.Fatalf("failed to create folder2: %v", err)
+	}
+
+	// Files inside Folder 1
+	file1, err := queries.CreateItem(ctx, db.CreateItemParams{
+		CompanyID: comp.ID,
+		ProjectID: proj.ID,
+		ParentID:  folder1.ID,
+		Kind:      "file",
+		Name:      "file1.mp4",
+		CreatedBy: adminUser.ID,
+		Position:  pos,
+	})
+	if err != nil {
+		t.Fatalf("failed to create file1: %v", err)
+	}
+
+	file2, err := queries.CreateItem(ctx, db.CreateItemParams{
+		CompanyID: comp.ID,
+		ProjectID: proj.ID,
+		ParentID:  folder1.ID,
+		Kind:      "file",
+		Name:      "file2.mp4",
+		CreatedBy: adminUser.ID,
+		Position:  pos,
+	})
+	if err != nil {
+		t.Fatalf("failed to create file2: %v", err)
+	}
+
+	// File inside Folder 2
+	file3, err := queries.CreateItem(ctx, db.CreateItemParams{
+		CompanyID: comp.ID,
+		ProjectID: proj.ID,
+		ParentID:  folder2.ID,
+		Kind:      "file",
+		Name:      "file3.mp4",
+		CreatedBy: adminUser.ID,
+		Position:  pos,
+	})
+	if err != nil {
+		t.Fatalf("failed to create file3: %v", err)
+	}
+
+	// 3. Create folderUser with NO project-level access, only Full grant on Folder 1
+	folderUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+		Email: fmt.Sprintf("folderuser-%d@studio.com", time.Now().UnixNano()),
+		Name:  "Folder Grant User",
+	})
+
+	// Grant Full access to Folder 1
+	_, err = queries.CreateGrant(ctx, db.CreateGrantParams{
+		CompanyID:   comp.ID,
+		TargetType:  "folder",
+		TargetID:    folder1.ID,
+		Email:       folderUser.Email,
+		UserID:      folderUser.ID,
+		Level:       authz.LevelFull,
+		CanDownload: true,
+		GrantedBy:   adminUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create folder grant: %v", err)
+	}
+
+	folderPerson := authz.Person{
+		UserID:    uuid.UUID(folderUser.ID.Bytes),
+		Email:     folderUser.Email,
+		Role:      "",
+		CompanyID: uuid.UUID(comp.ID.Bytes),
+	}
+
+	r := chi.NewRouter()
+	r.Post("/api/v1/items/batch", itemsH.BatchAction)
+	r.Get("/api/v1/trash", itemsH.ListTrash)
+
+	// A. Batch Move inside folder:
+	// Move file1 into folder1Sub (both inside folder1, which user has Full grant on)
+	f1SubIDStr := pgUUIDToString(folder1Sub.ID)
+	moveBody, _ := json.Marshal(map[string]interface{}{
+		"action":           "move",
+		"item_ids":         []string{pgUUIDToString(file1.ID)},
+		"target_parent_id": f1SubIDStr,
+	})
+	reqMove := httptest.NewRequest("POST", "/api/v1/items/batch", bytes.NewReader(moveBody))
+	reqMove = reqMove.WithContext(contextWithPerson(reqMove.Context(), folderUser, comp.ID, folderPerson))
+	recMove := httptest.NewRecorder()
+	r.ServeHTTP(recMove, reqMove)
+	if recMove.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for batch move inside granted folder, got %d: %s", recMove.Code, recMove.Body.String())
+	}
+
+	// Verify file1 moved to folder1Sub
+	file1AfterMove, _ := queries.GetItemByID(ctx, db.GetItemByIDParams{ID: file1.ID, CompanyID: comp.ID})
+	if file1AfterMove.ParentID != folder1Sub.ID {
+		t.Fatalf("expected file1 parent to be folder1Sub, got %v", file1AfterMove.ParentID)
+	}
+
+	// B. Batch Move outside folder:
+	// Attempt to move file2 (inside folder1) to folder2 (outside grant) -> must be rejected/ignored
+	f2IDStr := pgUUIDToString(folder2.ID)
+	invalidMoveBody, _ := json.Marshal(map[string]interface{}{
+		"action":           "move",
+		"item_ids":         []string{pgUUIDToString(file2.ID)},
+		"target_parent_id": f2IDStr,
+	})
+	reqInvalidMove := httptest.NewRequest("POST", "/api/v1/items/batch", bytes.NewReader(invalidMoveBody))
+	reqInvalidMove = reqInvalidMove.WithContext(contextWithPerson(reqInvalidMove.Context(), folderUser, comp.ID, folderPerson))
+	recInvalidMove := httptest.NewRecorder()
+	r.ServeHTTP(recInvalidMove, reqInvalidMove)
+
+	// Verify file2 did NOT move to folder2
+	file2After, _ := queries.GetItemByID(ctx, db.GetItemByIDParams{ID: file2.ID, CompanyID: comp.ID})
+	if file2After.ParentID == folder2.ID {
+		t.Fatalf("security violation: folder grant user was able to move file into unauthorized folder2")
+	}
+
+	// Also attempt to move file3 (in folder2) -> must not move
+	invalidMoveBody2, _ := json.Marshal(map[string]interface{}{
+		"action":           "move",
+		"item_ids":         []string{pgUUIDToString(file3.ID)},
+		"target_parent_id": f1SubIDStr,
+	})
+	reqInvalidMove2 := httptest.NewRequest("POST", "/api/v1/items/batch", bytes.NewReader(invalidMoveBody2))
+	reqInvalidMove2 = reqInvalidMove2.WithContext(contextWithPerson(reqInvalidMove2.Context(), folderUser, comp.ID, folderPerson))
+	recInvalidMove2 := httptest.NewRecorder()
+	r.ServeHTTP(recInvalidMove2, reqInvalidMove2)
+
+	file3After, _ := queries.GetItemByID(ctx, db.GetItemByIDParams{ID: file3.ID, CompanyID: comp.ID})
+	if file3After.ParentID == folder1Sub.ID {
+		t.Fatalf("security violation: folder grant user was able to move unauthorized file3")
+	}
+
+	// C. Batch Delete inside vs outside folder:
+	// Attempt batch delete targeting file2 (inside folder1) and file3 (inside folder2)
+	deleteBody, _ := json.Marshal(map[string]interface{}{
+		"action":   "delete",
+		"item_ids": []string{pgUUIDToString(file2.ID), pgUUIDToString(file3.ID)},
+	})
+	reqDelete := httptest.NewRequest("POST", "/api/v1/items/batch", bytes.NewReader(deleteBody))
+	reqDelete = reqDelete.WithContext(contextWithPerson(reqDelete.Context(), folderUser, comp.ID, folderPerson))
+	recDelete := httptest.NewRecorder()
+	r.ServeHTTP(recDelete, reqDelete)
+	if recDelete.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for batch delete, got %d: %s", recDelete.Code, recDelete.Body.String())
+	}
+
+	// Verify file2 is deleted (it was inside granted folder)
+	file2Deleted, _ := queries.GetItemByID(ctx, db.GetItemByIDParams{ID: file2.ID, CompanyID: comp.ID})
+	if !file2Deleted.DeletedAt.Valid {
+		t.Fatalf("expected file2 to be soft deleted inside granted folder")
+	}
+
+	// Verify file3 is NOT deleted (it was in folder2 outside user's grant)
+	file3NotDeleted, _ := queries.GetItemByID(ctx, db.GetItemByIDParams{ID: file3.ID, CompanyID: comp.ID})
+	if file3NotDeleted.DeletedAt.Valid {
+		t.Fatalf("security violation: folder grant user was able to delete file3 outside their folder grant")
+	}
+
+	// D. Check Trash visibility:
+	// Now admin deletes file3 so it's also in trash
+	_, _ = queries.SoftDeleteItem(ctx, db.SoftDeleteItemParams{
+		ID:        file3.ID,
+		CompanyID: comp.ID,
+		DeletedBy: adminUser.ID,
+	})
+
+	// When folderUser lists trash, they should see file2 (from their granted folder) but NOT file3
+	reqTrash := httptest.NewRequest("GET", "/api/v1/trash", nil)
+	reqTrash = reqTrash.WithContext(contextWithPerson(reqTrash.Context(), folderUser, comp.ID, folderPerson))
+	recTrash := httptest.NewRecorder()
+	r.ServeHTTP(recTrash, reqTrash)
+	if recTrash.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for trash listing, got %d: %s", recTrash.Code, recTrash.Body.String())
+	}
+
+	var trashResp struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
+	}
+	_ = json.Unmarshal(recTrash.Body.Bytes(), &trashResp)
+	foundFile2 := false
+	foundFile3 := false
+	for _, it := range trashResp.Items {
+		if it.ID == pgUUIDToString(file2.ID) {
+			foundFile2 = true
+		}
+		if it.ID == pgUUIDToString(file3.ID) {
+			foundFile3 = true
+		}
+	}
+
+	if !foundFile2 {
+		t.Fatalf("expected folderUser to see deleted file2 from their granted folder in trash")
+	}
+	if foundFile3 {
+		t.Fatalf("security violation: folderUser saw file3 in trash from unauthorized folder2")
+	}
+}
+
+
 

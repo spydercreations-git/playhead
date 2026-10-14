@@ -1,8 +1,17 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"strconv"
+	"strings"
+)
+
+const (
+	DefaultDevSessionSecret     = "default-dev-secret-at-least-32-characters-long"
+	DefaultDevDatabaseURL       = "postgres://postgres:postgres@localhost:5432/playhead_dev?sslmode=disable"
+	DefaultDevR2AccessKeyID     = "playhead"
+	DefaultDevR2SecretAccessKey = "playheadsecret"
 )
 
 type Config struct {
@@ -26,6 +35,49 @@ type Config struct {
 	StorageAlertGB    int
 }
 
+func (c *Config) IsProduction() bool {
+	return strings.ToLower(c.Environment) == "production" || strings.ToLower(os.Getenv("ENVIRONMENT")) == "production"
+}
+
+func (c *Config) Validate() error {
+	if !c.IsProduction() {
+		return nil
+	}
+
+	if c.SessionSecret == "" {
+		return errors.New("SESSION_SECRET is required in production")
+	}
+	if c.SessionSecret == DefaultDevSessionSecret {
+		return errors.New("SESSION_SECRET cannot be set to the development default in production")
+	}
+	if len(c.SessionSecret) < 32 {
+		return errors.New("SESSION_SECRET must be at least 32 characters long in production")
+	}
+
+	if c.DatabaseURL == "" {
+		return errors.New("DATABASE_URL is required in production")
+	}
+	if c.DatabaseURL == DefaultDevDatabaseURL {
+		return errors.New("DATABASE_URL cannot be set to the development default in production")
+	}
+
+	if c.R2AccessKeyID == "" {
+		return errors.New("R2_ACCESS_KEY_ID is required in production")
+	}
+	if c.R2AccessKeyID == DefaultDevR2AccessKeyID {
+		return errors.New("R2_ACCESS_KEY_ID cannot be set to the development default in production")
+	}
+
+	if c.R2SecretAccessKey == "" {
+		return errors.New("R2_SECRET_ACCESS_KEY is required in production")
+	}
+	if c.R2SecretAccessKey == DefaultDevR2SecretAccessKey {
+		return errors.New("R2_SECRET_ACCESS_KEY cannot be set to the development default in production")
+	}
+
+	return nil
+}
+
 func Load() *Config {
 	storagePriceStr := getEnv("STORAGE_PRICE_PER_GB", "0.015")
 	var storagePrice float64 = 0.015
@@ -43,19 +95,19 @@ func Load() *Config {
 		Port:              getEnv("PORT", "8080"),
 		AppURL:            getEnv("APP_URL", "http://localhost:3000"),
 		ApiURL:            getEnv("API_URL", "http://localhost:8080"),
-		DatabaseURL:       getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/playhead_dev?sslmode=disable"),
+		DatabaseURL:       getEnv("DATABASE_URL", DefaultDevDatabaseURL),
 		RedisURL:          getEnv("REDIS_URL", "redis://localhost:6379"),
 		R2AccountID:       getEnv("R2_ACCOUNT_ID", "local"),
-		R2AccessKeyID:     getEnv("R2_ACCESS_KEY_ID", "playhead"),
-		R2SecretAccessKey: getEnv("R2_SECRET_ACCESS_KEY", "playheadsecret"),
+		R2AccessKeyID:     getEnv("R2_ACCESS_KEY_ID", DefaultDevR2AccessKeyID),
+		R2SecretAccessKey: getEnv("R2_SECRET_ACCESS_KEY", DefaultDevR2SecretAccessKey),
 		R2Bucket:          getEnv("R2_BUCKET", "playhead-dev"),
 		R2Endpoint:        getEnv("R2_ENDPOINT", "http://localhost:9000"),
-		SessionSecret:     getEnv("SESSION_SECRET", "default-dev-secret-at-least-32-characters-long"),
+		SessionSecret:     getEnv("SESSION_SECRET", DefaultDevSessionSecret),
 		GoogleClientID:    getEnv("GOOGLE_CLIENT_ID", ""),
 		ResendAPIKey:      getEnv("RESEND_API_KEY", ""),
 		SMTPHost:          getEnv("SMTP_HOST", "localhost"),
 		SMTPPort:          1025,
-		Environment:       getEnv("ENV", "development"),
+		Environment:       getEnv("ENV", getEnv("ENVIRONMENT", "development")),
 		StoragePricePerGB: storagePrice,
 		StorageAlertGB:    storageAlert,
 	}
@@ -67,3 +119,4 @@ func getEnv(key, fallback string) string {
 	}
 	return fallback
 }
+

@@ -246,10 +246,16 @@ Google Login is built into the backend and UI, but hidden until configured. When
    - **Trash Restore Protection**: Requires at least `Uploader` access on destination folder/project.
    - **Automated Test Suite**: Added `TestP3_AdvisorSecondReviewSecurityFixes` verifying all 9 audit test cases.
 
+   - **Production Secret Validation**: Refuses to start in `ENV=production` if `SESSION_SECRET` is missing, equals dev default, or is shorter than 32 characters. Enforces production secrets for `DATABASE_URL`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY`. Documented key generation in `docs/DEPLOY_NOTES.md`.
+   - **Go Modules & Docker Validation**: Standalone module builds verified (`GOWORK=off go build ./...` passes across `services/api`, `services/shared`, `services/worker`). Docker images `infra/Dockerfile.api` and `infra/Dockerfile.worker` verified to build cleanly.
+   - **Folder-Scoped Batch Actions & Trash**: `BatchAction` and `ListTrash` resolve access once per parent folder with caching. Users with folder-level Full grants can batch move and delete inside their folder, but are strictly prevented from moving/deleting outside it.
+
 ### How to test locally:
-1. Run all unit and permission tests: `go test -v -count=1 ./services/api/internal/handler -run "TestP3_"`
-2. Run TypeScript typecheck: `cd apps/web && npm run typecheck`
-3. See `docs/STATUS.md` Section 5 for step-by-step browser testing walkthrough of share links, roles, and grants.
+1. Run all unit and permission tests: `go test -v -count=1 ./services/api/... ./services/shared/... ./services/worker/...`
+2. Test production secret validator: `go test -v ./services/api/internal/config -run TestConfig_Validate_`
+3. Test folder grant batch actions: `go test -v ./services/api/internal/handler -run TestFolderGrantBatchActionsAndTrash`
+4. Run TypeScript typecheck: `cd apps/web && npm run typecheck`
+5. See `docs/STATUS.md` Section 5 for step-by-step browser testing walkthrough of share links, roles, and grants.
 
 ---
 

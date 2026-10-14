@@ -7,7 +7,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { UploadTray, UploadItem } from "@/components/uploads/upload-tray";
+import {
+  DownloadTray,
+  DownloadSession,
+  DownloadFile,
+  startBrowserDownload,
+} from "@/components/downloads/download-tray";
 import { FileViewer, ViewerItem } from "@/components/files/file-viewer";
+import { Download, FolderDown, ChevronDown } from "lucide-react";
 
 function formatBytes(bytes: number): string {
   if (!bytes || bytes === 0) return "0 B";
@@ -49,6 +56,20 @@ export default function ProjectWorkspacePage() {
   const [uploads, setUploads] = useState<UploadItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+
+  // Download Tray & Session state
+  const [downloadSession, setDownloadSession] = useState<DownloadSession | null>(null);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const downloadPausedRef = useRef(false);
+  const downloadCancelledRef = useRef(false);
+
+  // Check if browser has File System Access API (Chrome, Edge, Opera)
+  const [hasFileSystemAccess, setHasFileSystemAccess] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined" && "showDirectoryPicker" in window) {
+      setHasFileSystemAccess(true);
+    }
+  }, []);
 
   // Name conflict prompt state (Requirement 5)
   const [conflictPrompt, setConflictPrompt] = useState<{
@@ -224,24 +245,120 @@ export default function ProjectWorkspacePage() {
     }
   };
 
+  // Restore unfinished uploads after browser refresh
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem(`playhead_uploads_${projectId}`);
+      if (saved) {
+        const parsed: UploadItem[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setUploads((prev) => {
+            const existingIds = new Set(prev.map((u) => u.id));
+            const newItems = parsed.filter((u) => !existingIds.has(u.id));
+            return [...prev, ...newItems];
+          });
+        }
+      }
+    } catch (e) {}
+  }, [projectId]);
+
+  // Persist unfinished uploads to localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const unfinished = uploads.filter((u) => u.status !== "completed" && u.status !== "aborted");
+    if (unfinished.length > 0) {
+      const toSave = unfinished.map((u) => ({
+        id: u.id,
+        uploadId: u.uploadId,
+        itemId: u.itemId,
+        projectId: u.projectId,
+        parentId: u.parentId,
+        filename: u.filename,
+        sizeBytes: u.sizeBytes,
+        mime: u.mime,
+        storageKey: u.storageKey,
+        partSizeBytes: u.partSizeBytes,
+        totalParts: u.totalParts,
+        parts: u.parts,
+        completedParts: u.completedParts,
+        progressPercent: u.progressPercent,
+        status: "paused",
+      }));
+      localStorage.setItem(`playhead_uploads_${projectId}`, JSON.stringify(toSave));
+    } else {
+      localStorage.removeItem(`playhead_uploads_${projectId}`);
+    }
+  }, [uploads, projectId]);
+
+  // Handle re-attaching file after browser refresh
+  const handleAttachFileAndResume = async (id: string, picked: File) => {
+    const item = uploads.find((u) => u.id === id);
+    if (!item) return;
+
+    try {
+      // Query completed parts from server/storage
+      const partsRes = await apiRequest(`/uploads/${item.uploadId}/parts`);
+      const completedParts: Array<{ part_number: number; etag: string }> = partsRes.parts || [];
+
+      let completedBytes = 0;
+      for (const cp of completedParts) {
+        const start = (cp.part_number - 1) * item.partSizeBytes;
+        const end = Math.min(start + item.partSizeBytes, item.sizeBytes);
+        completedBytes += (end - start);
+      }
+      const percent = Math.min(99, Math.round((completedBytes / item.sizeBytes) * 100));
+
+      const updated: UploadItem = {
+        ...item,
+        file: picked,
+        completedParts,
+        progressPercent: percent,
+        status: "uploading",
+      };
+
+      setUploads((prev) => prev.map((u) => (u.id === id ? updated : u)));
+
+      // Resume uploading only the missing parts
+      await uploadFileParts(updated, picked);
+    } catch (err: any) {
+      alert("Failed to resume upload: " + err.message);
+    }
+  };
+
   const uploadFileParts = async (uploadItem: UploadItem, file: File) => {
     const partSize = uploadItem.partSizeBytes;
     const totalParts = uploadItem.totalParts;
-    const completedParts: Array<{ part_number: number; etag: string }> = [];
-    let uploadedBytes = 0;
-    const startTime = Date.now();
+    const completedParts: Array<{ part_number: number; etag: string }> = [
+      ...(uploadItem.completedParts || []),
+    ];
 
-    // Concurrency limit: 6 parts in parallel
+    let uploadedBytes = 0;
+    for (const cp of completedParts) {
+      const start = (cp.part_number - 1) * partSize;
+      const end = Math.min(start + partSize, file.size);
+      uploadedBytes += (end - start);
+    }
+
+    const startTime = Date.now();
     const maxConcurrent = 6;
     let currentPartIndex = 0;
 
     const uploadNextPart = async (): Promise<void> => {
-      if (currentPartIndex >= totalParts) return;
+      // Find next part number that is NOT yet in completedParts
+      let partNum = -1;
+      while (currentPartIndex < totalParts) {
+        const candidate = currentPartIndex + 1;
+        currentPartIndex++;
+        if (!completedParts.some((cp) => cp.part_number === candidate)) {
+          partNum = candidate;
+          break;
+        }
+      }
 
-      const partNum = currentPartIndex + 1;
+      if (partNum === -1) return;
+
       const partInfo = uploadItem.parts.find((p) => p.part_number === partNum);
-      currentPartIndex++;
-
       if (!partInfo) return;
 
       const start = (partNum - 1) * partSize;
@@ -279,14 +396,12 @@ export default function ProjectWorkspacePage() {
           )
         );
 
-        // Upload next part
         return uploadNextPart();
       } catch (err: any) {
         throw err;
       }
     };
 
-    // Spawn 6 workers
     const workers = [];
     for (let i = 0; i < Math.min(maxConcurrent, totalParts); i++) {
       workers.push(uploadNextPart());
@@ -294,10 +409,8 @@ export default function ProjectWorkspacePage() {
 
     await Promise.all(workers);
 
-    // Sort completed parts by part_number
     completedParts.sort((a, b) => a.part_number - b.part_number);
 
-    // Finalize on server
     await apiRequest(`/uploads/${uploadItem.uploadId}/complete`, {
       method: "POST",
       body: JSON.stringify({ parts: completedParts }),
@@ -360,44 +473,59 @@ export default function ProjectWorkspacePage() {
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
-  // Download zip of selected items
-  const handleDownloadSelectedZip = async () => {
+  // Browser-direct downloads (Requirement 1: client-zip default, folder in Chrome/Edge)
+  const handleStartDownload = async (mode: "zip" | "folder") => {
     if (selectedItemIds.length === 0) return;
 
     try {
-      const res = await fetch("/api/v1/downloads/zip", {
+      const res = await apiRequest("/downloads/prepare", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           project_id: projectId,
           item_ids: selectedItemIds,
         }),
       });
 
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => null);
-        alert(errJson?.message || "Failed to download zip archive");
+      const manifest = res as { files: DownloadFile[]; total_bytes: number; file_count: number };
+      if (!manifest.files || manifest.files.length === 0) {
+        alert("No downloadable files in selected items.");
         return;
       }
 
-      const contentType = res.headers.get("Content-Type");
-      if (contentType && contentType.includes("application/zip")) {
-        // Directly download stream
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${workspaceData?.project?.name || "playhead"}-download.zip`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else {
-        const data = await res.json();
-        alert(data.message || "Your download is being prepared in the background.");
-      }
+      downloadPausedRef.current = false;
+      downloadCancelledRef.current = false;
+
+      const newSession: DownloadSession = {
+        id: Math.random().toString(36).substring(2),
+        name: project?.name || "Download",
+        mode,
+        totalBytes: manifest.total_bytes,
+        downloadedBytes: 0,
+        speedBytesPerSec: 0,
+        status: "downloading",
+        files: manifest.files.map((f) => ({
+          id: f.id,
+          name: f.name,
+          path: f.path,
+          sizeBytes: f.size_bytes,
+          downloadedBytes: 0,
+          status: "pending",
+        })),
+      };
+
+      setDownloadSession(newSession);
+
+      await startBrowserDownload({
+        manifest,
+        mode,
+        onProgress: (updates) => {
+          setDownloadSession((prev) => (prev ? { ...prev, ...updates } : null));
+        },
+        isPausedRef: downloadPausedRef,
+        isCancelledRef: downloadCancelledRef,
+      });
     } catch (e: any) {
-      alert("Zip download error: " + e.message);
+      alert(e.message || "Download failed");
     }
   };
 
@@ -742,7 +870,7 @@ export default function ProjectWorkspacePage() {
                                   {folder.name}
                                 </p>
                                 <p className="text-[10px] text-[#9A9DA0]">
-                                  {folder.file_count || 0} files • {formatBytes(folder.total_bytes || 0)}
+                                  {folder.video_count || 0} videos · {folder.file_count || 0} files • {formatBytes(folder.total_bytes || 0)}
                                 </p>
                               </div>
                             </div>
@@ -933,13 +1061,59 @@ export default function ProjectWorkspacePage() {
               <div className="h-4 w-px bg-[#424344]" />
 
               {canDownload && (
-                <button
-                  onClick={handleDownloadSelectedZip}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#4876F3] text-white font-semibold hover:bg-[#3b66df] transition-colors"
-                >
-                  <span>↓</span>
-                  <span>Download zip</span>
-                </button>
+                <div className="relative inline-flex items-center rounded-lg bg-[#4876F3] text-white font-semibold shadow">
+                  <button
+                    onClick={() => handleStartDownload("zip")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-[#3b66df] transition-colors rounded-l-lg"
+                    title="Download all selected items as a single zip archive"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Download (Zip)</span>
+                  </button>
+
+                  {hasFileSystemAccess && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+                        className="px-1.5 py-1.5 hover:bg-[#3b66df] border-l border-white/20 transition-colors rounded-r-lg"
+                        title="More download options"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+
+                      {showDownloadMenu && (
+                        <div className="absolute bottom-full right-0 mb-2 w-52 rounded-xl border border-[#424344] bg-[#212121] py-1 shadow-2xl text-xs z-50">
+                          <button
+                            onClick={() => {
+                              setShowDownloadMenu(false);
+                              handleStartDownload("zip");
+                            }}
+                            className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-[#2E2F34] text-white"
+                          >
+                            <Download className="h-3.5 w-3.5 text-neutral-300" />
+                            <div>
+                              <p className="font-semibold">Download as Zip</p>
+                              <p className="text-[10px] text-[#9A9DA0]">Default streaming zip</p>
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowDownloadMenu(false);
+                              handleStartDownload("folder");
+                            }}
+                            className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-[#2E2F34] text-white"
+                          >
+                            <FolderDown className="h-3.5 w-3.5 text-amber-400" />
+                            <div>
+                              <p className="font-semibold">Download into a folder</p>
+                              <p className="text-[10px] text-[#9A9DA0]">Save directly into a folder</p>
+                            </div>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
 
               <button
@@ -1110,13 +1284,14 @@ export default function ProjectWorkspacePage() {
         }
         onResume={(id) => {
           const item = uploads.find((u) => u.id === id);
-          if (item) {
+          if (item && item.file) {
             setUploads((prev) =>
               prev.map((u) => (u.id === id ? { ...u, status: "uploading" } : u))
             );
             uploadFileParts(item, item.file);
           }
         }}
+        onAttachFile={handleAttachFileAndResume}
         onCancel={(id) => {
           const item = uploads.find((u) => u.id === id);
           if (item && item.uploadId) {
@@ -1127,6 +1302,24 @@ export default function ProjectWorkspacePage() {
         onClearCompleted={() =>
           setUploads((prev) => prev.filter((u) => u.status !== "completed"))
         }
+      />
+
+      {/* Browser Direct Download Tray */}
+      <DownloadTray
+        session={downloadSession}
+        onPause={() => {
+          downloadPausedRef.current = true;
+          setDownloadSession((prev) => (prev ? { ...prev, status: "paused" } : null));
+        }}
+        onResume={() => {
+          downloadPausedRef.current = false;
+          setDownloadSession((prev) => (prev ? { ...prev, status: "downloading" } : null));
+        }}
+        onCancel={() => {
+          downloadCancelledRef.current = true;
+          setDownloadSession((prev) => (prev ? { ...prev, status: "cancelled" } : null));
+        }}
+        onClose={() => setDownloadSession(null)}
       />
     </>
   );

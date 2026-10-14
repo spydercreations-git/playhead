@@ -347,3 +347,30 @@ ORDER BY c.name ASC, p.name ASC;
 INSERT INTO activity (company_id, project_id, item_id, actor_id, action, details)
 VALUES (@company_id, @project_id, sqlc.narg('item_id'), sqlc.narg('actor_id'), @action, @details)
 RETURNING *;
+
+-- Recursive file gathering for direct-to-storage folder downloads
+-- name: GetFolderFilesRecursive :many
+WITH RECURSIVE folder_tree AS (
+    SELECT i.id, i.parent_id, i.name, i.kind, CAST(i.name AS TEXT) AS relative_path
+    FROM items i
+    WHERE i.id = @folder_id AND i.deleted_at IS NULL
+    UNION ALL
+    SELECT c.id, c.parent_id, c.name, c.kind, ft.relative_path || '/' || c.name AS relative_path
+    FROM items c
+    JOIN folder_tree ft ON c.parent_id = ft.id
+    WHERE c.deleted_at IS NULL
+)
+SELECT ft.id, ft.name, ft.kind, ft.relative_path,
+       COALESCE(fv.storage_key, '') AS storage_key,
+       COALESCE(fv.size_bytes, 0) AS size_bytes,
+       COALESCE(fv.mime, '') AS mime
+FROM folder_tree ft
+LEFT JOIN LATERAL (
+    SELECT storage_key, size_bytes, mime
+    FROM file_versions
+    WHERE item_id = ft.id
+    ORDER BY number DESC
+    LIMIT 1
+) fv ON true
+WHERE ft.kind = 'file';
+

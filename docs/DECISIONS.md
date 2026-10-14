@@ -82,4 +82,13 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
   - Backed by `notification_prefs(user_id, event_type, in_app, email)` and `project_notification_prefs(user_id, project_id, level)`.
 - **Reason**: Ensures notifications respect both global user desire and granular project focus without alert fatigue.
 
+## 19. Browser-Based Direct-to-Storage Downloads (No Size Limit)
+- **Decision**: Removed server-side zip streaming and background zip jobs completely. All folder and multi-file downloads now execute entirely in the browser directly from storage presigned URLs:
+  - **Default in all browsers**: One zip file built in the browser using `client-zip` (MIT licensed, store mode / no compression). Streams file data directly to disk without loading entire folders into memory, supporting archives of any size.
+  - **Chrome & Edge option**: Offers "Download into a folder" in the Download menu using the File System Access API (`showDirectoryPicker`), saving every file directly into the user's chosen folder and preserving full subfolder structure.
+  - **Download Tray & Concurrency**: Downloads run 3 files in parallel using presigned GET URLs, with progress shown in a floating Download Tray (per file and overall progress, pause, cancel).
+  - **API Role**: The API (`/api/v1/downloads/prepare`) strictly verifies permissions and returns the file manifest with presigned URLs. If ANY item has `can_download == false`, the entire download is refused with 403. This same mechanism applies to share link visitors.
+- **Reason**: Eliminates server CPU, bandwidth, and memory bottlenecks for multi-gigabyte downloads and guarantees zero file bytes ever pass through the API server for uploads or downloads.
+
+
 

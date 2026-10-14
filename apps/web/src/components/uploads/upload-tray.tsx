@@ -9,7 +9,7 @@ export interface UploadItem {
   itemId?: string;
   projectId: string;
   parentId?: string | null;
-  file: File;
+  file?: File;
   filename: string;
   sizeBytes: number;
   mime: string;
@@ -30,6 +30,7 @@ interface UploadTrayProps {
   onResume: (id: string) => void;
   onCancel: (id: string) => void;
   onClearCompleted: () => void;
+  onAttachFile?: (id: string, file: File) => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -59,6 +60,7 @@ export function UploadTray({
   onResume,
   onCancel,
   onClearCompleted,
+  onAttachFile,
 }: UploadTrayProps) {
   const [minimized, setMinimized] = useState(false);
 
@@ -131,7 +133,9 @@ export function UploadTray({
                         </>
                       )}
                       {item.status === "paused" && (
-                        <span className="text-amber-400">Paused</span>
+                        <span className="text-amber-400">
+                          {!item.file ? "Waiting for file selection" : "Paused"}
+                        </span>
                       )}
                       {item.status === "completed" && (
                         <span className="text-emerald-400">Completed</span>
@@ -143,23 +147,46 @@ export function UploadTray({
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {item.status === "uploading" && (
-                      <button
-                        onClick={() => onPause(item.id)}
-                        title="Pause"
-                        className="px-2 py-0.5 rounded bg-[#2E2F34] text-[#9A9DA0] hover:text-white hover:bg-[#3b3d44]"
-                      >
-                        ⏸
-                      </button>
-                    )}
-                    {item.status === "paused" && (
-                      <button
-                        onClick={() => onResume(item.id)}
-                        title="Resume"
-                        className="px-2 py-0.5 rounded bg-[#2E2F34] text-emerald-400 hover:text-white hover:bg-[#3b3d44]"
-                      >
-                        ▶
-                      </button>
+                    {!item.file && item.status !== "completed" ? (
+                      <label className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#4876F3] text-white text-[11px] font-semibold hover:bg-[#3b66df] transition-colors shrink-0">
+                        <span>Select file to resume</span>
+                        <input
+                          type="file"
+                          className="hidden"
+                          onChange={(e) => {
+                            const picked = e.target.files?.[0];
+                            if (!picked) return;
+                            if (picked.name !== item.filename || picked.size !== item.sizeBytes) {
+                              alert(
+                                `Selected file "${picked.name}" (${formatBytes(picked.size)}) does not match "${item.filename}" (${formatBytes(item.sizeBytes)}).`
+                              );
+                              return;
+                            }
+                            onAttachFile?.(item.id, picked);
+                          }}
+                        />
+                      </label>
+                    ) : (
+                      <>
+                        {item.status === "uploading" && (
+                          <button
+                            onClick={() => onPause(item.id)}
+                            title="Pause"
+                            className="px-2 py-0.5 rounded bg-[#2E2F34] text-[#9A9DA0] hover:text-white hover:bg-[#3b3d44]"
+                          >
+                            ⏸
+                          </button>
+                        )}
+                        {item.status === "paused" && (
+                          <button
+                            onClick={() => onResume(item.id)}
+                            title="Resume"
+                            className="px-2 py-0.5 rounded bg-[#2E2F34] text-emerald-400 hover:text-white hover:bg-[#3b3d44]"
+                          >
+                            ▶
+                          </button>
+                        )}
+                      </>
                     )}
                     {item.status !== "completed" && (
                       <button

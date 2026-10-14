@@ -454,6 +454,71 @@ func (q *Queries) GetFileVersionByNumber(ctx context.Context, arg GetFileVersion
 	return i, err
 }
 
+const getFolderFilesRecursive = `-- name: GetFolderFilesRecursive :many
+WITH RECURSIVE folder_tree AS (
+    SELECT i.id, i.parent_id, i.name, i.kind, CAST(i.name AS TEXT) AS relative_path
+    FROM items i
+    WHERE i.id = $1 AND i.deleted_at IS NULL
+    UNION ALL
+    SELECT c.id, c.parent_id, c.name, c.kind, ft.relative_path || '/' || c.name AS relative_path
+    FROM items c
+    JOIN folder_tree ft ON c.parent_id = ft.id
+    WHERE c.deleted_at IS NULL
+)
+SELECT ft.id, ft.name, ft.kind, ft.relative_path,
+       COALESCE(fv.storage_key, '') AS storage_key,
+       COALESCE(fv.size_bytes, 0) AS size_bytes,
+       COALESCE(fv.mime, '') AS mime
+FROM folder_tree ft
+LEFT JOIN LATERAL (
+    SELECT storage_key, size_bytes, mime
+    FROM file_versions
+    WHERE item_id = ft.id
+    ORDER BY number DESC
+    LIMIT 1
+) fv ON true
+WHERE ft.kind = 'file'
+`
+
+type GetFolderFilesRecursiveRow struct {
+	ID           pgtype.UUID `json:"id"`
+	Name         string      `json:"name"`
+	Kind         string      `json:"kind"`
+	RelativePath string      `json:"relative_path"`
+	StorageKey   string      `json:"storage_key"`
+	SizeBytes    int64       `json:"size_bytes"`
+	Mime         string      `json:"mime"`
+}
+
+// Recursive file gathering for direct-to-storage folder downloads
+func (q *Queries) GetFolderFilesRecursive(ctx context.Context, folderID pgtype.UUID) ([]GetFolderFilesRecursiveRow, error) {
+	rows, err := q.db.Query(ctx, getFolderFilesRecursive, folderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetFolderFilesRecursiveRow{}
+	for rows.Next() {
+		var i GetFolderFilesRecursiveRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Kind,
+			&i.RelativePath,
+			&i.StorageKey,
+			&i.SizeBytes,
+			&i.Mime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getItemAncestors = `-- name: GetItemAncestors :many
 WITH RECURSIVE item_ancestors AS (
     SELECT items.id, items.parent_id, items.name, items.kind, 0 as depth

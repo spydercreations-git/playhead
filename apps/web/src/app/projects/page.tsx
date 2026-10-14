@@ -217,7 +217,7 @@ export default function ProjectsPage() {
                 </h3>
 
                 <p className="mt-2 text-xs text-[#9A9DA0]">
-                  {project.file_count || 0} files · {project.folder_count || 0} folders · {formatBytes(project.total_bytes || 0)}
+                  {project.video_count || 0} videos · {project.file_count || 0} files · {project.folder_count || 0} folders · {formatBytes(project.total_bytes || 0)}
                 </p>
               </div>
 
@@ -273,7 +273,7 @@ export default function ProjectsPage() {
                     </span>
                   </td>
                   <td className="py-3.5 px-4 text-[#9A9DA0]">
-                    {project.file_count || 0} files, {project.folder_count || 0} folders
+                    {project.video_count || 0} videos, {project.file_count || 0} files, {project.folder_count || 0} folders
                   </td>
                   <td className="py-3.5 px-4 text-[#9A9DA0]">
                     {formatBytes(project.total_bytes || 0)}

@@ -1,11 +1,9 @@
 package handler
 
 import (
-	"archive/zip"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"math/big"
 	"net/http"
@@ -569,8 +567,17 @@ type zipDownloadReq struct {
 	ItemIDs   []string `json:"item_ids"`
 }
 
-// ZipDownload handles streaming zip for <= 2 GB or background zip for > 2 GB (Requirement 3)
-func (h *StorageUploadsHandler) ZipDownload(w http.ResponseWriter, r *http.Request) {
+type downloadManifestItem struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Path        string `json:"path"`
+	SizeBytes   int64  `json:"size_bytes"`
+	Mime        string `json:"mime"`
+	DownloadURL string `json:"download_url"`
+}
+
+// PrepareDownload returns presigned direct storage URLs for browser downloads (no size limit)
+func (h *StorageUploadsHandler) PrepareDownload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, _ := middleware.GetAuthenticatedUser(ctx)
 	role, _ := middleware.GetUserRole(ctx)
@@ -615,19 +622,13 @@ func (h *StorageUploadsHandler) ZipDownload(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Requirement 3: If any selected item has Can download off, refuse the whole zip!
+	// Refuse the whole download if any item has Can download off!
 	if !access.CanDownload {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Download permission denied for one or more items"})
 		return
 	}
 
-	type fileItem struct {
-		Name       string
-		StorageKey string
-		SizeBytes  int64
-	}
-
-	var filesToZip []fileItem
+	var manifestFiles []downloadManifestItem
 	var totalSizeBytes int64
 
 	for _, idStr := range req.ItemIDs {
@@ -645,70 +646,61 @@ func (h *StorageUploadsHandler) ZipDownload(w http.ResponseWriter, r *http.Reque
 		}
 
 		if item.Kind == "file" && item.LatestStorageKey != "" {
-			filesToZip = append(filesToZip, fileItem{
-				Name:       item.Name,
-				StorageKey: item.LatestStorageKey,
-				SizeBytes:  item.LatestSizeBytes,
+			url, err := h.storage.PresignGetObject(ctx, item.LatestStorageKey, item.Name, 24*time.Hour)
+			if err != nil {
+				continue
+			}
+			manifestFiles = append(manifestFiles, downloadManifestItem{
+				ID:          uuid.UUID(item.ID.Bytes).String(),
+				Name:        item.Name,
+				Path:        item.Name,
+				SizeBytes:   item.LatestSizeBytes,
+				Mime:        item.LatestMime,
+				DownloadURL: url,
 			})
 			totalSizeBytes += item.LatestSizeBytes
+		} else if item.Kind == "folder" {
+			// Recursively gather all nested files
+			folderFiles, err := h.queries.GetFolderFilesRecursive(ctx, item.ID)
+			if err != nil {
+				continue
+			}
+			for _, ff := range folderFiles {
+				if ff.StorageKey == "" {
+					continue
+				}
+				url, err := h.storage.PresignGetObject(ctx, ff.StorageKey, ff.Name, 24*time.Hour)
+				if err != nil {
+					continue
+				}
+				manifestFiles = append(manifestFiles, downloadManifestItem{
+					ID:          uuid.UUID(ff.ID.Bytes).String(),
+					Name:        ff.Name,
+					Path:        ff.RelativePath,
+					SizeBytes:   ff.SizeBytes,
+					Mime:        ff.Mime,
+					DownloadURL: url,
+				})
+				totalSizeBytes += ff.SizeBytes
+			}
 		}
 	}
 
-	if len(filesToZip) == 0 {
+	if len(manifestFiles) == 0 {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_downloadable_files"})
 		return
 	}
 
-	// Stream directly if total size <= 2 GB
-	if totalSizeBytes <= 2*plans.GB {
-		w.Header().Set("Content-Type", "application/zip")
-		w.Header().Set("Content-Disposition", "attachment; filename=\"playhead-download.zip\"")
-
-		zipWriter := zip.NewWriter(w)
-		defer zipWriter.Close()
-
-		for _, f := range filesToZip {
-			if h.storage == nil {
-				continue
-			}
-			reader, _, err := h.storage.GetObject(ctx, f.StorageKey)
-			if err != nil {
-				continue
-			}
-
-			header := &zip.FileHeader{
-				Name:   f.Name,
-				Method: zip.Store, // Store mode, no compression for media per Requirement 3
-			}
-			entryWriter, err := zipWriter.CreateHeader(header)
-			if err != nil {
-				reader.Close()
-				continue
-			}
-
-			_, _ = io.Copy(entryWriter, reader)
-			reader.Close()
-		}
-		return
-	}
-
-	// Above 2 GB: Asynchronous background build with email notification
-	go func() {
-		bgCtx := context.Background()
-		zipKey := fmt.Sprintf("companies/%s/zips/%s.zip", uuid.UUID(companyID.Bytes).String(), uuid.NewString())
-
-		if h.storage != nil {
-			url, err := h.storage.PresignGetObject(bgCtx, zipKey, "playhead-large-download.zip", 24*time.Hour)
-			if err == nil && h.mailer != nil {
-				_ = h.mailer.SendZipReadyEmail(user.Email, user.Name, url)
-			}
-		}
-	}()
-
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"status":  "processing",
-		"message": "Your zip download is being prepared in the background. You'll receive a link valid for 24 hours via email.",
+		"files":       manifestFiles,
+		"total_bytes": totalSizeBytes,
+		"file_count":  len(manifestFiles),
 	})
+}
+
+// ZipDownload aliases PrepareDownload for backward compatibility
+func (h *StorageUploadsHandler) ZipDownload(w http.ResponseWriter, r *http.Request) {
+	h.PrepareDownload(w, r)
 }
 
 // GetStorageAdminStats returns breakdown and cost estimate (Requirement 1)

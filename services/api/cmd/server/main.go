@@ -201,6 +201,7 @@ func main() {
 			protected.Post("/uploads/{id}/complete", storageUploadsHandler.CompleteUpload)
 			protected.Delete("/uploads/{id}", storageUploadsHandler.AbortUpload)
 			protected.Get("/items/{id}/download", storageUploadsHandler.DownloadItem)
+			protected.Post("/downloads/prepare", storageUploadsHandler.PrepareDownload)
 			protected.Post("/downloads/zip", storageUploadsHandler.ZipDownload)
 
 			// Admin Storage Dashboard (P2 Requirement 1)

@@ -35,7 +35,7 @@ export default function TeamPage() {
   // Invite modal
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"admin" | "member" | "guest">("member");
+  const [inviteRole, setInviteRole] = useState<"admin" | "manager" | "editor">("editor");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
@@ -243,11 +243,11 @@ export default function TeamPage() {
                           <select
                             value={m.role}
                             onChange={(e) => handleUpdateRole(m.user_id, e.target.value)}
-                            className="rounded border border-[#424344] bg-[#2E2F34] px-2 py-1 text-xs text-white focus:outline-none"
+                            className="rounded border border-[#424344] bg-[#2E2F34] px-2 py-1 text-xs text-white focus:outline-none capitalize"
                           >
                             <option value="admin">Admin</option>
-                            <option value="member">Member</option>
-                            <option value="guest">Guest</option>
+                            <option value="manager">Manager</option>
+                            <option value="editor">Editor</option>
                           </select>
                         )}
                       </td>
@@ -361,9 +361,9 @@ export default function TeamPage() {
                   onChange={(e) => setInviteRole(e.target.value as any)}
                   className="w-full rounded-lg border border-[#424344] bg-[#2E2F34] px-3 py-2.5 text-sm text-white focus:border-[#4876F3] focus:outline-none"
                 >
-                  <option value="admin">Admin (can manage members & settings)</option>
-                  <option value="member">Member (can create projects & upload)</option>
-                  <option value="guest">Guest (review and comment only)</option>
+                  <option value="admin">Admin (everything: team, settings, all clients, all projects)</option>
+                  <option value="manager">Manager (add/edit clients, create projects, assign people)</option>
+                  <option value="editor">Editor (sees only assigned projects)</option>
                 </select>
               </div>
 

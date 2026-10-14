@@ -1,6 +1,7 @@
 package authz
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -10,29 +11,62 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/playhead/playhead/services/shared/db"
 	"golang.org/x/crypto/argon2"
 )
 
-// Roles
+// Roles at Company Level
 const (
+	RoleAdmin   = "admin"
+	RoleManager = "manager"
+	RoleEditor  = "editor"
+
+	// Legacy aliases maintained for backward compatibility
 	RoleOwner  = "owner"
-	RoleAdmin  = "admin"
 	RoleMember = "member"
 	RoleGuest  = "guest"
 )
 
 var roleHierarchy = map[string]int{
-	RoleOwner:  40,
-	RoleAdmin:  30,
-	RoleMember: 20,
-	RoleGuest:  10,
+	RoleOwner:   40,
+	RoleAdmin:   30,
+	RoleManager: 20,
+	RoleEditor:  10,
+	RoleMember:  10,
+	RoleGuest:   5,
+}
+
+// Access Levels at Project, Folder, and File Level
+const (
+	LevelNone      = "none"
+	LevelViewer    = "viewer"
+	LevelCommenter = "commenter"
+	LevelUploader  = "uploader"
+	LevelFull      = "full"
+)
+
+var accessHierarchy = map[string]int{
+	LevelFull:      40,
+	LevelUploader:  30,
+	LevelCommenter: 20,
+	LevelViewer:    10,
+	LevelNone:      0,
 }
 
 // Errors
 var (
 	ErrForbidden    = errors.New("forbidden: insufficient permissions")
 	ErrUnauthorized = errors.New("unauthorized: authentication required")
+	ErrNotFound     = errors.New("not found")
 )
+
+// NormalizeEmail converts an email to lowercase and trims surrounding whitespace.
+func NormalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
+}
 
 // IsAtLeast verifies that the user's role meets or exceeds the required minimum role.
 func IsAtLeast(userRole, requiredRole string) bool {
@@ -52,8 +86,138 @@ func Authorize(userRole, requiredRole string) error {
 	return nil
 }
 
+// Person represents an identity acting upon resources.
+type Person struct {
+	UserID    uuid.UUID
+	Email     string
+	Role      string // company membership role (admin, manager, editor) or empty for outside clients
+	CompanyID uuid.UUID
+}
+
+// ProjectTarget represents the project resource being accessed.
+type ProjectTarget struct {
+	ID        uuid.UUID
+	CompanyID uuid.UUID
+	ClientID  uuid.UUID
+}
+
+// AccessResult describes the evaluated access level and download rights.
+type AccessResult struct {
+	Level       string
+	CanDownload bool
+}
+
+func (a AccessResult) CanView() bool {
+	return a.Level != LevelNone && a.Level != ""
+}
+
+func (a AccessResult) CanComment() bool {
+	return a.Level == LevelCommenter || a.Level == LevelUploader || a.Level == LevelFull
+}
+
+func (a AccessResult) CanUpload() bool {
+	return a.Level == LevelUploader || a.Level == LevelFull
+}
+
+func (a AccessResult) CanManage() bool {
+	return a.Level == LevelFull
+}
+
+// CanManagePeople checks if a person is allowed to add, edit, or remove members on a project.
+// Allowed for: Admins, Managers, and people with Full access on that project.
+func CanManagePeople(person Person, access AccessResult) bool {
+	if person.Role == RoleAdmin || person.Role == RoleManager || person.Role == RoleOwner {
+		return true
+	}
+	return access.Level == LevelFull
+}
+
+// Access evaluates a person's permissions on a project by combining:
+// 1. Team role (Admin/Manager have Full access + CanDownload=true)
+// 2. Project grants
+// 3. Client contact default access
+// Returning the highest level and appropriate CanDownload flag.
+func Access(ctx context.Context, q *db.Queries, person Person, project ProjectTarget) (AccessResult, error) {
+	normEmail := NormalizeEmail(person.Email)
+
+	// 1. Team role: Admins and Managers have Full access to everything in the company
+	if person.Role == RoleAdmin || person.Role == RoleManager || person.Role == RoleOwner {
+		return AccessResult{
+			Level:       LevelFull,
+			CanDownload: true,
+		}, nil
+	}
+
+	var hasGrant bool
+	var grantLevel string
+	var grantCanDownload bool
+
+	// 2. Check project grant
+	if q != nil && project.ID != uuid.Nil && normEmail != "" {
+		grant, err := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
+			TargetType: "project",
+			TargetID:   pgtype.UUID{Bytes: project.ID, Valid: true},
+			Email:      normEmail,
+		})
+		if err == nil {
+			hasGrant = true
+			grantLevel = grant.Level
+			grantCanDownload = grant.CanDownload
+		} else if !errors.Is(err, pgx.ErrNoRows) {
+			return AccessResult{Level: LevelNone, CanDownload: false}, err
+		}
+	}
+
+	var hasContactDefault bool
+	var contactLevel string
+	var contactCanDownload bool
+
+	// 3. Check client contact default access for this project's client
+	if q != nil && project.ClientID != uuid.Nil && normEmail != "" {
+		contact, err := q.GetClientContactByClientAndEmail(ctx, db.GetClientContactByClientAndEmailParams{
+			ClientID: pgtype.UUID{Bytes: project.ClientID, Valid: true},
+			Email:    normEmail,
+		})
+		if err == nil && contact.DefaultLevel != LevelNone && contact.DefaultLevel != "" {
+			hasContactDefault = true
+			contactLevel = contact.DefaultLevel
+			contactCanDownload = contact.CanDownload
+		} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return AccessResult{Level: LevelNone, CanDownload: false}, err
+		}
+	}
+
+	// 4. Combine highest level
+	if !hasGrant && !hasContactDefault {
+		return AccessResult{Level: LevelNone, CanDownload: false}, nil
+	}
+
+	if hasGrant && !hasContactDefault {
+		return AccessResult{Level: grantLevel, CanDownload: grantCanDownload}, nil
+	}
+
+	if !hasGrant && hasContactDefault {
+		return AccessResult{Level: contactLevel, CanDownload: contactCanDownload}, nil
+	}
+
+	// Both grant and contact default exist: pick highest rank
+	grantRank := accessHierarchy[grantLevel]
+	contactRank := accessHierarchy[contactLevel]
+
+	if grantRank > contactRank {
+		return AccessResult{Level: grantLevel, CanDownload: grantCanDownload}, nil
+	} else if contactRank > grantRank {
+		return AccessResult{Level: contactLevel, CanDownload: contactCanDownload}, nil
+	}
+
+	// Equal rank: apply strictest CanDownload
+	return AccessResult{
+		Level:       grantLevel,
+		CanDownload: grantCanDownload && contactCanDownload,
+	}, nil
+}
+
 // HashToken produces a SHA-256 hex digest of a token string.
-// Tokens (sessions, email verification, password reset, invites) are stored ONLY as hashes.
 func HashToken(rawToken string) string {
 	sum := sha256.Sum256([]byte(rawToken))
 	return hex.EncodeToString(sum[:])
@@ -66,6 +230,16 @@ func GenerateSecureToken(n int) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// Generate6DigitCode produces a 6-digit verification code like "482915".
+func Generate6DigitCode() (string, error) {
+	b := make([]byte, 3)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	num := (int(b[0])<<16 | int(b[1])<<8 | int(b[2])) % 1000000
+	return fmt.Sprintf("%06d", num), nil
 }
 
 // Argon2id Parameters according to OWASP guidelines:
@@ -87,7 +261,6 @@ func HashPassword(password string) (string, error) {
 
 	hash := argon2.IDKey([]byte(password), salt, argonIterations, argonMemory, argonParallelism, argonKeyLen)
 
-	// Format: $argon2id$v=19$m=65536,t=1,p=4$<salt-b64>$<hash-b64>
 	encoded := fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
 		argon2.Version,
 		argonMemory,

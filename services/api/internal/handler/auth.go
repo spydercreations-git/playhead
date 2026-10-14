@@ -45,7 +45,7 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email := strings.ToLower(strings.TrimSpace(req.Email))
+	email := authz.NormalizeEmail(req.Email)
 	name := strings.TrimSpace(req.Name)
 	if email == "" || !strings.Contains(email, "@") {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_email", "message": "Valid email address is required"})
@@ -57,6 +57,16 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 	}
 	if name == "" {
 		name = strings.Split(email, "@")[0]
+	}
+
+	// Internal restriction: only known emails (team members, client contacts, grants, invites) can join
+	isKnown, _ := h.queries.CheckEmailIsKnown(r.Context(), email)
+	if !isKnown {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "access_denied",
+			"message": "This email doesn't have access to Playhead yet. Ask the person who invited you.",
+		})
+		return
 	}
 
 	// Check if user already exists
@@ -84,6 +94,16 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Link client contacts and grants
+	_ = h.queries.LinkClientContactsToUser(r.Context(), db.LinkClientContactsToUserParams{
+		Email:  email,
+		UserID: user.ID,
+	})
+	_ = h.queries.LinkGrantsToUser(r.Context(), db.LinkGrantsToUserParams{
+		Email:  email,
+		UserID: user.ID,
+	})
+
 	// Generate verification token (expires in 24 hours)
 	rawToken, err := authz.GenerateSecureToken(32)
 	if err == nil {
@@ -106,6 +126,179 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 			"email":          user.Email,
 			"name":           user.Name,
 			"email_verified": false,
+		},
+	})
+}
+
+type SendLoginCodeRequest struct {
+	Email string `json:"email"`
+}
+
+func (h *AuthHandler) SendLoginCode(w http.ResponseWriter, r *http.Request) {
+	var req SendLoginCodeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload", "message": "Invalid request format"})
+		return
+	}
+
+	email := authz.NormalizeEmail(req.Email)
+	if email == "" || !strings.Contains(email, "@") {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_email", "message": "Valid email address is required"})
+		return
+	}
+
+	isKnown, err := h.queries.CheckEmailIsKnown(r.Context(), email)
+	if err != nil || !isKnown {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "access_denied",
+			"message": "This email doesn't have access to Playhead yet. Ask the person who invited you.",
+		})
+		return
+	}
+
+	code, err := authz.Generate6DigitCode()
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to generate code"})
+		return
+	}
+
+	codeHash := authz.HashToken(code)
+	expiresAt := time.Now().Add(10 * time.Minute)
+
+	_, err = h.queries.CreateLoginCode(r.Context(), db.CreateLoginCodeParams{
+		Email:     email,
+		CodeHash:  codeHash,
+		ExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to store login code"})
+		return
+	}
+
+	_ = h.mailer.SendLoginCode(email, code)
+
+	respondJSON(w, http.StatusOK, map[string]string{
+		"status":  "ok",
+		"message": "Verification code sent to your email",
+	})
+}
+
+type VerifyLoginCodeRequest struct {
+	Email string `json:"email"`
+	Code  string `json:"code"`
+}
+
+func (h *AuthHandler) VerifyLoginCode(w http.ResponseWriter, r *http.Request) {
+	var req VerifyLoginCodeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload", "message": "Invalid request format"})
+		return
+	}
+
+	email := authz.NormalizeEmail(req.Email)
+	code := strings.TrimSpace(req.Code)
+	if email == "" || code == "" {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "missing_fields", "message": "Email and code are required"})
+		return
+	}
+
+	codeHash := authz.HashToken(code)
+	loginCode, err := h.queries.GetValidLoginCode(r.Context(), db.GetValidLoginCodeParams{
+		Email:    email,
+		CodeHash: codeHash,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusUnauthorized, map[string]string{
+			"error":   "invalid_code",
+			"message": "Invalid or expired verification code",
+		})
+		return
+	}
+
+	_ = h.queries.IncrementLoginCodeAttempts(r.Context(), loginCode.ID)
+
+	// Check if user exists; if not, auto-create user
+	user, err := h.queries.GetUserByEmail(r.Context(), email)
+	if err != nil {
+		name := strings.Split(email, "@")[0]
+		user, err = h.queries.CreateUser(r.Context(), db.CreateUserParams{
+			Email:        email,
+			Name:         name,
+			PasswordHash: pgtype.Text{Valid: false},
+			GoogleID:     pgtype.Text{Valid: false},
+		})
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to create user account"})
+			return
+		}
+		_ = h.queries.VerifyUserEmail(r.Context(), user.ID)
+	}
+
+	// Link client contacts and grants
+	_ = h.queries.LinkClientContactsToUser(r.Context(), db.LinkClientContactsToUserParams{
+		Email:  email,
+		UserID: user.ID,
+	})
+	_ = h.queries.LinkGrantsToUser(r.Context(), db.LinkGrantsToUserParams{
+		Email:  email,
+		UserID: user.ID,
+	})
+
+	_ = h.queries.DeleteLoginCodesForEmail(r.Context(), email)
+
+	// Create session (expires in 30 days)
+	rawSessionToken, err := authz.GenerateSecureToken(32)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to generate session"})
+		return
+	}
+
+	sessionHash := authz.HashToken(rawSessionToken)
+	expiresAt := time.Now().Add(30 * 24 * time.Hour)
+
+	_, err = h.queries.CreateSession(r.Context(), db.CreateSessionParams{
+		UserID:    user.ID,
+		TokenHash: sessionHash,
+		ExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
+		UserAgent: pgtype.Text{String: r.UserAgent(), Valid: true},
+		Ip:        pgtype.Text{String: r.RemoteAddr, Valid: true},
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to create session"})
+		return
+	}
+
+	rawCSRFToken, _ := authz.GenerateSecureToken(16)
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "playhead_session",
+		Value:    rawSessionToken,
+		Path:     "/",
+		Expires:  expiresAt,
+		HttpOnly: true,
+		Secure:   h.isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     middleware.CSRFCookieName,
+		Value:    rawCSRFToken,
+		Path:     "/",
+		Expires:  expiresAt,
+		HttpOnly: false,
+		Secure:   h.isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"status":     "ok",
+		"csrf_token": rawCSRFToken,
+		"user": map[string]interface{}{
+			"id":             user.ID,
+			"email":          user.Email,
+			"name":           user.Name,
+			"avatar_url":     user.AvatarUrl.String,
+			"email_verified": true,
 		},
 	})
 }
@@ -150,7 +343,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email := strings.ToLower(strings.TrimSpace(req.Email))
+	email := authz.NormalizeEmail(req.Email)
+	isKnown, _ := h.queries.CheckEmailIsKnown(r.Context(), email)
+	if !isKnown {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "access_denied",
+			"message": "This email doesn't have access to Playhead yet. Ask the person who invited you.",
+		})
+		return
+	}
+
 	user, err := h.queries.GetUserByEmail(r.Context(), email)
 	if err != nil || !user.PasswordHash.Valid {
 		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials", "message": "Invalid email or password"})
@@ -352,7 +554,28 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
+
+		// Fallback for client users (no direct company membership)
+		if activeCompany == nil && activeCompanyID.Valid {
+			c, err := h.queries.GetCompanyByID(r.Context(), activeCompanyID)
+			if err == nil {
+				activeCompany = &db.Company{
+					ID:                   c.ID,
+					Name:                 c.Name,
+					Slug:                 c.Slug,
+					Plan:                 c.Plan,
+					Status:               c.Status,
+					StorageLimitBytes:    c.StorageLimitBytes,
+					StorageUsedBytes:     c.StorageUsedBytes,
+					StorageReservedBytes: c.StorageReservedBytes,
+					Verified:             c.Verified,
+				}
+			}
+		}
 	}
+
+	// Client users have no company team role (or guest role)
+	isClient := activeRole == "" || activeRole == "guest"
 
 	// Feature flags for company plan
 	var features map[string]bool
@@ -374,6 +597,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		},
 		"active_company": activeCompany,
 		"active_role":    activeRole,
+		"is_client":      isClient,
 		"companies":      companies,
 		"features":       features,
 	})

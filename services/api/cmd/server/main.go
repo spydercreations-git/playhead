@@ -85,6 +85,8 @@ func main() {
 	authHandler := handler.NewAuthHandler(queries, mailClient, cfg.GoogleClientID, cfg.AppURL, cfg.Environment == "production")
 	companyHandler := handler.NewCompanyHandler(queries)
 	inviteHandler := handler.NewInviteHandler(queries, mailClient)
+	clientHandler := handler.NewClientHandler(queries, mailClient)
+	projectHandler := handler.NewProjectHandler(queries)
 	rateLimiter := middleware.NewRateLimiter(rdb, 5, 15*time.Minute) // 5 attempts per 15 min per IP/email
 	authMw := middleware.NewAuthMiddleware(queries)
 
@@ -109,6 +111,8 @@ func main() {
 		api.Route("/auth", func(auth chi.Router) {
 			auth.With(rateLimiter.LimitAuth("signup")).Post("/signup", authHandler.Signup)
 			auth.With(rateLimiter.LimitAuth("login")).Post("/login", authHandler.Login)
+			auth.With(rateLimiter.LimitAuth("code_send")).Post("/code/send", authHandler.SendLoginCode)
+			auth.With(rateLimiter.LimitAuth("code_verify")).Post("/code/verify", authHandler.VerifyLoginCode)
 			auth.With(rateLimiter.LimitAuth("forgot")).Post("/forgot-password", authHandler.ForgotPassword)
 			auth.With(rateLimiter.LimitAuth("reset")).Post("/reset-password", authHandler.ResetPassword)
 			auth.Post("/verify-email", authHandler.VerifyEmail)
@@ -136,6 +140,30 @@ func main() {
 			protected.With(middleware.RequireRole("admin")).Post("/companies/{company_id}/invites", inviteHandler.Create)
 			protected.With(middleware.RequireRole("admin")).Get("/companies/{company_id}/invites", inviteHandler.ListForCompany)
 			protected.Post("/invites/{token}/accept", inviteHandler.Accept)
+
+			// Clients and Contacts (P1)
+			protected.Get("/clients", clientHandler.List)
+			protected.Post("/clients", clientHandler.Create)
+			protected.Get("/clients/{id}", clientHandler.Get)
+			protected.Patch("/clients/{id}", clientHandler.Update)
+			protected.Delete("/clients/{id}", clientHandler.Delete)
+			protected.Get("/clients/{id}/contacts", clientHandler.ListContacts)
+			protected.Post("/clients/{id}/contacts", clientHandler.AddContact)
+			protected.Patch("/contacts/{id}", clientHandler.UpdateContact)
+			protected.Delete("/contacts/{id}", clientHandler.DeleteContact)
+
+			// Projects and People (P1)
+			protected.Get("/projects", projectHandler.List)
+			protected.Post("/projects", projectHandler.Create)
+			protected.Get("/projects/{id}", projectHandler.Get)
+			protected.Patch("/projects/{id}", projectHandler.Update)
+			protected.Post("/projects/{id}/archive", projectHandler.Archive)
+			protected.Delete("/projects/{id}", projectHandler.Delete)
+
+			protected.Get("/projects/{id}/people", projectHandler.GetPeople)
+			protected.Post("/projects/{id}/people", projectHandler.AddPerson)
+			protected.Patch("/projects/{id}/people/{person_id}", projectHandler.UpdatePerson)
+			protected.Delete("/projects/{id}/people/{person_id}", projectHandler.RemovePerson)
 		})
 	})
 

@@ -6,16 +6,65 @@ import { useRouter } from "next/navigation";
 import { PlayheadLogoWithText } from "@/components/icons";
 import { apiRequest, ApiError } from "@/lib/api";
 
+type AuthMode = "code" | "password";
+
 export default function LoginPage() {
   const router = useRouter();
+  const [mode, setMode] = useState<AuthMode>("code");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSendCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      await apiRequest("/auth/code/send", {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      setCodeSent(true);
+    } catch (err: any) {
+      const apiErr = err as ApiError;
+      setError(
+        apiErr.error ||
+          "This email doesn't have access to Playhead yet. Ask the person who invited you."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      await apiRequest("/auth/code/verify", {
+        method: "POST",
+        body: JSON.stringify({
+          email: email.trim(),
+          code: code.trim(),
+        }),
+      });
+      router.push("/");
+    } catch (err: any) {
+      const apiErr = err as ApiError;
+      setError(apiErr.error || "Invalid or expired verification code.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handlePasswordLogin(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
@@ -23,23 +72,18 @@ export default function LoginPage() {
     try {
       await apiRequest("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
       });
-
-      // Check current user companies to route properly
-      try {
-        const me = await apiRequest("/auth/me");
-        if (me.companies && me.companies.length > 0) {
-          router.push("/");
-        } else {
-          router.push("/onboarding");
-        }
-      } catch {
-        router.push("/");
-      }
+      router.push("/");
     } catch (err: any) {
       const apiErr = err as ApiError;
-      setError(apiErr.error || "Invalid email or password.");
+      setError(
+        apiErr.error ||
+          "This email doesn't have access to Playhead yet. Ask the person who invited you."
+      );
     } finally {
       setLoading(false);
     }
@@ -55,10 +99,44 @@ export default function LoginPage() {
 
       <div className="w-full max-w-[420px] rounded-2xl border border-[#424344] bg-[#212121] p-8 shadow-2xl">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-white">Log in to Playhead</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            Log in to Playhead
+          </h1>
           <p className="mt-1 text-sm text-[#9A9DA0]">
-            Enter your credentials to access your workspace
+            Internal workspace for Idyll Productions & clients
           </p>
+        </div>
+
+        {/* Auth Mode Toggle */}
+        <div className="mb-6 flex rounded-lg bg-[#2E2F34] p-1 border border-[#424344]">
+          <button
+            type="button"
+            onClick={() => {
+              setMode("code");
+              setError(null);
+            }}
+            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              mode === "code"
+                ? "bg-[#4876F3] text-white shadow"
+                : "text-[#9A9DA0] hover:text-white"
+            }`}
+          >
+            Email Code
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode("password");
+              setError(null);
+            }}
+            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              mode === "password"
+                ? "bg-[#4876F3] text-white shadow"
+                : "text-[#9A9DA0] hover:text-white"
+            }`}
+          >
+            Password
+          </button>
         </div>
 
         {error && (
@@ -104,57 +182,125 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-[#9A9DA0]">
-              Email address
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="alex@agency.com"
-              className="w-full rounded-lg border border-[#424344] bg-[#2E2F34] px-3.5 py-2.5 text-sm text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3]"
-            />
-          </div>
+        {mode === "code" ? (
+          !codeSent ? (
+            <form onSubmit={handleSendCode} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[#9A9DA0]">
+                  Email address
+                </label>
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@company.com"
+                  className="w-full rounded-lg border border-[#424344] bg-[#2E2F34] px-3.5 py-2.5 text-sm text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3]"
+                />
+              </div>
 
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <label className="block text-xs font-medium text-[#9A9DA0]">
-                Password
-              </label>
-              <Link
-                href="/forgot-password"
-                className="text-xs text-[#4876F3] hover:underline"
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-lg bg-[#4876F3] py-2.5 text-sm font-semibold text-white shadow hover:bg-[#3b66df] focus:outline-none focus:ring-2 focus:ring-[#4876F3] disabled:opacity-50 transition-colors"
               >
-                Forgot password?
-              </Link>
+                {loading ? "Checking email..." : "Send 6-digit code"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyCode} className="space-y-4">
+              <div className="rounded-lg bg-[#2E2F34]/50 border border-[#424344] p-3 text-xs text-[#9A9DA0]">
+                We sent a 6-digit code to{" "}
+                <span className="font-semibold text-white">{email}</span>. Code is valid for 10 minutes.
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[#9A9DA0]">
+                  6-Digit Code
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  maxLength={6}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="123456"
+                  className="w-full tracking-widest text-center text-xl font-bold rounded-lg border border-[#424344] bg-[#2E2F34] px-3.5 py-2.5 text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || code.length !== 6}
+                className="w-full rounded-lg bg-[#4876F3] py-2.5 text-sm font-semibold text-white shadow hover:bg-[#3b66df] focus:outline-none focus:ring-2 focus:ring-[#4876F3] disabled:opacity-50 transition-colors"
+              >
+                {loading ? "Verifying..." : "Verify & Sign in"}
+              </button>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setCodeSent(false)}
+                  className="text-xs text-[#4876F3] hover:underline"
+                >
+                  Use a different email or re-send code
+                </button>
+              </div>
+            </form>
+          )
+        ) : (
+          <form onSubmit={handlePasswordLogin} className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-[#9A9DA0]">
+                Email address
+              </label>
+              <input
+                type="email"
+                required
+                autoFocus
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@company.com"
+                className="w-full rounded-lg border border-[#424344] bg-[#2E2F34] px-3.5 py-2.5 text-sm text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3]"
+              />
             </div>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full rounded-lg border border-[#424344] bg-[#2E2F34] px-3.5 py-2.5 text-sm text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3]"
-            />
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-[#4876F3] py-2.5 text-sm font-semibold text-white shadow hover:bg-[#3b66df] focus:outline-none focus:ring-2 focus:ring-[#4876F3] disabled:opacity-50 transition-colors"
-          >
-            {loading ? "Signing in..." : "Log in"}
-          </button>
-        </form>
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="block text-xs font-medium text-[#9A9DA0]">
+                  Password
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-[#4876F3] hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full rounded-lg border border-[#424344] bg-[#2E2F34] px-3.5 py-2.5 text-sm text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3]"
+              />
+            </div>
 
-        <div className="mt-6 text-center text-xs text-[#9A9DA0]">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-[#4876F3] font-medium hover:underline">
-            Start 14-day free trial
-          </Link>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-lg bg-[#4876F3] py-2.5 text-sm font-semibold text-white shadow hover:bg-[#3b66df] focus:outline-none focus:ring-2 focus:ring-[#4876F3] disabled:opacity-50 transition-colors"
+            >
+              {loading ? "Signing in..." : "Log in"}
+            </button>
+          </form>
+        )}
+
+        <div className="mt-8 border-t border-[#424344]/50 pt-5 text-center text-xs text-[#747678]">
+          Playhead is private. Only team members and invited clients can sign in.
         </div>
       </div>
     </div>

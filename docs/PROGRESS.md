@@ -78,14 +78,82 @@ Google Login is built into the backend and UI, but hidden until configured. When
 
 ---
 
-## Upcoming Milestones
-- **Milestone 3**: Projects and folders.
-- **Milestone 4**: Uploads.
-- **Milestone 5**: Processing worker.
-- **Milestone 6**: Review player.
-- **Milestone 7**: Sharing.
-- **Milestone 8**: Boards.
-- **Milestone 9**: Events, automations, and notifications.
-  > **CRITICAL NOTE for Milestone 9**: The 4 overview dashboard cards must be wired to live data: **Active projects**, **Waiting for review**, **Due today**, and **Storage used** (as specified in Spec Section 9.12), strictly preserving the Figma visual card layout and styles designed in Milestone 1.
-- **Milestone 10**: Billing and plans (Paddle).
-- **Milestone 11**: Polish for public launch.
+---
+
+## Milestone P1: Roles, Clients, Projects
+
+### Status: Completed ✅ (Verified end-to-end in browser and tests)
+
+### What was built:
+1. **Roles and Access Engine**:
+   - `services/shared/authz`: Migrated to V2 roles (`admin`, `manager`, `editor`). Added centralized `authz.Access(person, project)` returning `{Level, CanDownload}` combining company membership, project grants, and client contact defaults ("Access to all projects" above None).
+   - Enforced project management rules: Only Admins, Managers, and Full access grantees can add/edit/remove members on a project.
+   - Case-insensitive email normalization across users, client contacts, grants, and login codes.
+2. **Authentication Updates**:
+   - Disabled public self-signup; redirected to closed workspace notice.
+   - Added passwordless 6-digit email sign-in code flow (`/auth/login-code/send`, `/auth/login-code/verify`) with SHA-256 hash storage and 10-minute expiry.
+   - Known email validation: unregistered emails get friendly notification *"This email doesn't have access to Playhead yet. Ask the person who invited you."*
+   - Client user company resolution fallback granting streamlined client sidebar navigation (Home, Projects, Shared with me, Starred, Trash; hiding internal-only tabs and "+ New" unless permitted).
+3. **Database Migration & Models**:
+   - `00003_p1_roles_clients_projects.sql`: Migrated roles; created `login_codes`, `clients`, `client_contacts`, `projects`, `items`, and `grants` tables.
+   - Sqlc queries in `db/queries/clients_projects.sql` with type-safe Go models.
+4. **Clients & Contacts**:
+   - Backend CRUD (`/api/v1/clients`, `/api/v1/clients/{id}/contacts`).
+   - Frontend Clients page (`/clients`) with grid/list views and search.
+   - Client detail page (`/clients/[id]`) with Projects list, Contacts manager with default project access controls, and plain text Notes tab.
+   - New Client dialog with instant initial contact creation.
+5. **Projects & Workspace**:
+   - Backend CRUD (`/api/v1/projects`).
+   - Templates support: Blank project and Video Project (pre-populating folders `Briefs`, `Raw footage`, `Edits`, `Deliverables`).
+   - Frontend Projects page (`/projects`) with status filters, client filter, grid/table view.
+   - Project Workspace shell (`/projects/[id]`) with folder tree navigator, storage quota display, and People & Access dialog.
+6. **Automated Testing Suite**:
+   - Full suite in `services/api/internal/handler/p1_projects_clients_test.go` covering client contacts, role restrictions, editor 404 isolation, commenter permission limits, and case-insensitive email matching.
+
+### How to test locally:
+1. Run `make test` to verify all Go unit and integration tests and Next.js TypeScript compilation.
+2. Run `make dev` and visit `http://localhost:3000` to interact with Clients, Projects, and People management.
+3. Check Mailpit at `http://localhost:8025` for login verification codes.
+
+---
+
+## Upcoming Milestones (Version 2: P2 – P7)
+
+Per `docs/PLAYHEAD_SPEC_V2.md` Section 13:
+
+- **Milestone P2: Files, folders, fast upload and download**
+  - Items table and hierarchical counts (`Section 3.1`).
+  - Project page per `PROJECT_WORKSPACE.md`, folder tree, unlimited nesting.
+  - Item operations: create, rename, move, copy, star, delete, Trash, multiple select.
+  - Fast parallel resumable uploads of any type and whole folders directly to R2/MinIO.
+  - Downloads and zips.
+  - File viewer for non-video files.
+
+- **Milestone P3: Permissions and sharing**
+  - Central `authz.Access(person, item)` engine with access levels (Viewer, Commenter, Uploader, Full access) and `Can download`.
+  - Permission inheritance, client contact defaults, move confirmation for access changes.
+  - Share dialog (People tab + Share link tab).
+  - Public share link page with password, expiry, download toggle, upload drop zone.
+  - "Shared with me" section. Comprehensive permission test suite.
+
+- **Milestone P4: Video review**
+  - Asynchronous processing worker for HLS previews (720p/1080p).
+  - Video review player with frame-accurate comments, drawings, and "Team only" visibility.
+  - Versions and side-by-side compare.
+  - Approval flow (Approve, Request changes) and Reviews page.
+  - Comment export (PDF/CSV). Audio and image comments.
+
+- **Milestone P5: Documents**
+  - Node.js collaboration service (`/services/collab`) with Hocuspocus and Yjs.
+  - Tiptap document editor (`/d/{id}`), live collaborative editing, presence/cursors, comments, version history, export/import.
+
+- **Milestone P6: Spreadsheets and Tracker**
+  - Spreadsheet engine evaluation, comparison, and approval.
+  - Full spreadsheet editor (`/s/{id}`) with formulas and collaborative live editing.
+  - Automatic Tracker sheet generated for every project.
+
+- **Milestone P7: Search, notifications, polish**
+  - Global search across clients, projects, folders, files, document text, and comments.
+  - In-app notification bell and email notifications.
+  - Client Notes. Performance validation against Section 7 benchmarks. Security audit.
+  - **Internal launch for the Idyll team and clients after P7.**

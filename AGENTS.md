@@ -1,11 +1,11 @@
 # Playhead: rules for the coding agent
 
-The full product spec is in `docs/PLAYHEAD_BUILD_SPEC.md`. It is the single source of truth. Read the section you need before every task. Do not invent behavior that the spec does not describe; ask instead.
+Current plan is `docs/PLAYHEAD_SPEC_V2.md`. Where it conflicts with other docs, it wins.
 Project and player layout follows `docs/PROJECT_WORKSPACE.md`.
 
 ## How to work
 
-1. Build in the milestone order in Section 16 of the spec. Finish one milestone, with tests passing, before starting the next.
+1. Build in the milestone order in Section 13 of `docs/PLAYHEAD_SPEC_V2.md` (P1 to P7). Finish one milestone, with tests passing, before starting the next.
 2. Before writing code for a milestone, produce a plan (tasks, files to create, tables, endpoints) and wait for approval.
 3. After each milestone, update `docs/PROGRESS.md`: what was built, what is left, how to run it.
 4. Record every decision the spec does not cover in `docs/DECISIONS.md`.

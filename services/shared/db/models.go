@@ -8,6 +8,34 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Client struct {
+	ID          pgtype.UUID        `json:"id"`
+	CompanyID   pgtype.UUID        `json:"company_id"`
+	Name        string             `json:"name"`
+	Website     pgtype.Text        `json:"website"`
+	Notes       pgtype.Text        `json:"notes"`
+	NotesItemID pgtype.UUID        `json:"notes_item_id"`
+	LogoKey     pgtype.Text        `json:"logo_key"`
+	CreatedBy   pgtype.UUID        `json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type ClientContact struct {
+	ID             pgtype.UUID        `json:"id"`
+	CompanyID      pgtype.UUID        `json:"company_id"`
+	ClientID       pgtype.UUID        `json:"client_id"`
+	Name           string             `json:"name"`
+	Email          string             `json:"email"`
+	DefaultLevel   string             `json:"default_level"`
+	CanDownload    bool               `json:"can_download"`
+	UserID         pgtype.UUID        `json:"user_id"`
+	LastSignedInAt pgtype.Timestamptz `json:"last_signed_in_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Company struct {
 	ID                   pgtype.UUID        `json:"id"`
 	Name                 string             `json:"name"`
@@ -29,6 +57,20 @@ type Company struct {
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 }
 
+type Grant struct {
+	ID          pgtype.UUID        `json:"id"`
+	CompanyID   pgtype.UUID        `json:"company_id"`
+	TargetType  string             `json:"target_type"`
+	TargetID    pgtype.UUID        `json:"target_id"`
+	Email       string             `json:"email"`
+	UserID      pgtype.UUID        `json:"user_id"`
+	Level       string             `json:"level"`
+	CanDownload bool               `json:"can_download"`
+	GrantedBy   pgtype.UUID        `json:"granted_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Invite struct {
 	ID         pgtype.UUID        `json:"id"`
 	CompanyID  pgtype.UUID        `json:"company_id"`
@@ -40,6 +82,36 @@ type Invite struct {
 	AcceptedAt pgtype.Timestamptz `json:"accepted_at"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Item struct {
+	ID               pgtype.UUID        `json:"id"`
+	CompanyID        pgtype.UUID        `json:"company_id"`
+	ProjectID        pgtype.UUID        `json:"project_id"`
+	ParentID         pgtype.UUID        `json:"parent_id"`
+	Kind             string             `json:"kind"`
+	Name             string             `json:"name"`
+	Position         pgtype.Numeric     `json:"position"`
+	CreatedBy        pgtype.UUID        `json:"created_by"`
+	FileCount        int32              `json:"file_count"`
+	FolderCount      int32              `json:"folder_count"`
+	TotalBytes       int64              `json:"total_bytes"`
+	ReviewStatus     string             `json:"review_status"`
+	Locked           bool               `json:"locked"`
+	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy        pgtype.UUID        `json:"deleted_by"`
+	OriginalParentID pgtype.UUID        `json:"original_parent_id"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+type LoginCode struct {
+	ID        pgtype.UUID        `json:"id"`
+	Email     string             `json:"email"`
+	CodeHash  string             `json:"code_hash"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	Attempts  int32              `json:"attempts"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Membership struct {
@@ -58,6 +130,23 @@ type PasswordResetToken struct {
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	UsedAt    pgtype.Timestamptz `json:"used_at"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type Project struct {
+	ID            pgtype.UUID        `json:"id"`
+	CompanyID     pgtype.UUID        `json:"company_id"`
+	ClientID      pgtype.UUID        `json:"client_id"`
+	Name          string             `json:"name"`
+	Status        string             `json:"status"`
+	TrackerItemID pgtype.UUID        `json:"tracker_item_id"`
+	FileCount     int32              `json:"file_count"`
+	FolderCount   int32              `json:"folder_count"`
+	VideoCount    int32              `json:"video_count"`
+	TotalBytes    int64              `json:"total_bytes"`
+	CreatedBy     pgtype.UUID        `json:"created_by"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type Session struct {

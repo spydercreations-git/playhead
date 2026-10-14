@@ -1,21 +1,22 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   PlayheadLogoWithText,
   OverviewIcon,
   ProjectIcon,
   ReviewsIcon,
-  BoardIcon,
   TeamIcon,
   TrashIcon,
   SettingsIcon,
-  HelpIcon,
   SearchIcon,
-  MoreOptionsIcon,
 } from "@/components/icons";
+import { useAuth } from "@/lib/use-auth";
+import { apiRequest } from "@/lib/api";
+import { NewClientDialog } from "@/components/clients/new-client-dialog";
+import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -24,19 +25,40 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, role, isClient, isAdmin, isManager, canCreateClientOrProject } = useAuth();
 
-  const primaryNav = [
-    { name: "Overview", href: "/", icon: OverviewIcon },
-    { name: "Projects", href: "/projects", icon: ProjectIcon },
-    { name: "Reviews", href: "/reviews", icon: ReviewsIcon, badge: "3" },
-    { name: "Boards", href: "/boards", icon: BoardIcon },
-    { name: "Team", href: "/team", icon: TeamIcon },
-    { name: "Trash", href: "/trash", icon: TrashIcon },
-  ];
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
+  const [showNewClient, setShowNewClient] = useState(false);
+  const [showNewProject, setShowNewProject] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
-  const secondaryNav = [
-    { name: "Settings", href: "/settings", icon: SettingsIcon },
-    { name: "Support", href: "/help", icon: HelpIcon },
+  async function handleLogout() {
+    try {
+      await apiRequest("/auth/logout", { method: "POST" });
+    } catch {}
+    router.push("/login");
+  }
+
+  // Navigation items based on role
+  const navItems = [
+    { name: "Home", href: "/", icon: OverviewIcon, show: true },
+    {
+      name: "Clients",
+      href: "/clients",
+      icon: TeamIcon,
+      show: !isClient && (isAdmin || isManager),
+    },
+    { name: "Projects", href: "/projects", icon: ProjectIcon, show: true },
+    { name: "Reviews", href: "/reviews", icon: ReviewsIcon, show: true },
+    {
+      name: "Shared with me",
+      href: "/shared-with-me",
+      icon: OverviewIcon,
+      show: true,
+    },
+    { name: "Starred", href: "/starred", icon: OverviewIcon, show: true },
+    { name: "Trash", href: "/trash", icon: TrashIcon, show: true },
   ];
 
   return (
@@ -50,14 +72,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[304px] flex-col border-r border-[#424344] bg-[#212121] transition-transform duration-200 ease-in-out md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col border-r border-[#424344] bg-[#212121] transition-transform duration-200 ease-in-out md:static md:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Top Header: Official Playhead Logo */}
-        <div className="flex h-20 items-center justify-between px-6 border-b border-[#424344]/50">
+        <div className="flex h-16 items-center justify-between px-6 border-b border-[#424344]/50">
           <Link href="/" className="flex items-center">
-            <PlayheadLogoWithText width={148} color="#FFFFFF" />
+            <PlayheadLogoWithText width={140} color="#FFFFFF" />
           </Link>
 
           <button
@@ -69,100 +91,188 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
-        {/* Search Bar matching Figma (x=24, y=118, w=256, h=53, rx=8, fill=#2E2F34) */}
-        <div className="px-6 pt-5 pb-3">
-          <div className="flex h-[50px] w-full items-center justify-between rounded-lg bg-[#2E2F34] px-4 text-[#9A9DA0] transition-colors focus-within:ring-1 focus-within:ring-[#4876F3]">
-            <div className="flex items-center gap-3">
-              <SearchIcon size={18} color="#9A9DA0" />
+        {/* Action: + New Button (for Admins and Managers) */}
+        {canCreateClientOrProject && (
+          <div className="relative px-6 pt-5 pb-2">
+            <button
+              onClick={() => setNewMenuOpen(!newMenuOpen)}
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#4876F3] text-sm font-semibold text-white shadow hover:bg-[#3b66df] transition-colors"
+            >
+              <span>+ New</span>
+              <span className="text-xs opacity-80">▾</span>
+            </button>
+
+            {newMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={() => setNewMenuOpen(false)}
+                />
+                <div className="absolute left-6 right-6 top-[66px] z-40 rounded-lg border border-[#424344] bg-[#212121] py-1.5 shadow-2xl">
+                  <button
+                    onClick={() => {
+                      setNewMenuOpen(false);
+                      setShowNewClient(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2E2F34]"
+                  >
+                    <span>🏢</span>
+                    <span>New Client</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setNewMenuOpen(false);
+                      setShowNewProject(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2E2F34]"
+                  >
+                    <span>📁</span>
+                    <span>New Project</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Search Bar */}
+        <div className="px-6 py-2">
+          <div className="flex h-[42px] w-full items-center justify-between rounded-lg bg-[#2E2F34] px-3.5 text-[#9A9DA0] transition-colors focus-within:ring-1 focus-within:ring-[#4876F3]">
+            <div className="flex items-center gap-2.5">
+              <SearchIcon size={16} color="#9A9DA0" />
               <input
                 type="text"
-                placeholder="Search..."
-                className="w-28 bg-transparent text-sm text-white placeholder-[#9A9DA0] focus:outline-none"
+                placeholder="Search (⌘K)"
+                className="w-28 bg-transparent text-xs text-white placeholder-[#9A9DA0] focus:outline-none"
               />
             </div>
-            <kbd className="rounded border border-[#424344] bg-[#212121] px-1.5 py-0.5 text-[10px] font-mono text-[#9A9DA0]">
+            <kbd className="rounded border border-[#424344] bg-[#212121] px-1.5 py-0.5 text-[9px] font-mono text-[#9A9DA0]">
               ⌘K
             </kbd>
           </div>
         </div>
 
         {/* Primary Navigation List */}
-        <div className="flex-1 overflow-y-auto px-6 py-2 space-y-1">
-          {primaryNav.map((item) => {
-            const isActive =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
+        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-1">
+          {navItems
+            .filter((item) => item.show)
+            .map((item) => {
+              const isActive =
+                item.href === "/"
+                  ? pathname === "/"
+                  : pathname.startsWith(item.href);
 
-            return (
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex h-[42px] items-center justify-between rounded-lg px-3 text-xs font-medium transition-colors ${
+                    isActive
+                      ? "bg-[#2E2F34] text-white font-semibold"
+                      : "text-[#9A9DA0] hover:bg-[#2E2F34]/60 hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <item.icon
+                      size={18}
+                      color={isActive ? "#4876F3" : "#9A9DA0"}
+                    />
+                    <span>{item.name}</span>
+                  </div>
+                </Link>
+              );
+            })}
+
+          {/* Admin Team Setting */}
+          {!isClient && isAdmin && (
+            <div className="pt-3 pb-1 border-t border-[#424344]/50 mt-3">
               <Link
-                key={item.name}
-                href={item.href}
-                className={`flex h-[48px] items-center justify-between rounded-lg px-4 text-sm font-medium transition-colors ${
-                  isActive
+                href="/team"
+                className={`flex h-[42px] items-center gap-3 rounded-lg px-3 text-xs font-medium transition-colors ${
+                  pathname.startsWith("/team")
                     ? "bg-[#2E2F34] text-white font-semibold"
                     : "text-[#9A9DA0] hover:bg-[#2E2F34]/60 hover:text-white"
                 }`}
               >
-                <div className="flex items-center gap-3.5">
-                  <item.icon
-                    size={20}
-                    color={isActive ? "#4876F3" : "#9A9DA0"}
-                  />
-                  <span>{item.name}</span>
-                </div>
-                {item.badge && (
-                  <span className="flex h-[22px] min-w-[28px] items-center justify-center rounded px-1.5 text-xs font-bold text-white bg-[#FF5A5A]">
-                    {item.badge}
-                  </span>
-                )}
+                <TeamIcon size={18} color="#9A9DA0" />
+                <span>Team</span>
               </Link>
-            );
-          })}
-
-          <div className="pt-4 pb-2">
-            <div className="h-[1px] w-full bg-[#424344]/50" />
-          </div>
-
-          {/* Secondary Navigation */}
-          {secondaryNav.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className="flex h-[44px] items-center gap-3.5 rounded-lg px-4 text-sm font-medium text-[#9A9DA0] hover:bg-[#2E2F34]/60 hover:text-white transition-colors"
-            >
-              <item.icon size={20} color="#9A9DA0" />
-              <span>{item.name}</span>
-            </Link>
-          ))}
+              <Link
+                href="/settings"
+                className={`flex h-[42px] items-center gap-3 rounded-lg px-3 text-xs font-medium transition-colors ${
+                  pathname.startsWith("/settings")
+                    ? "bg-[#2E2F34] text-white font-semibold"
+                    : "text-[#9A9DA0] hover:bg-[#2E2F34]/60 hover:text-white"
+                }`}
+              >
+                <SettingsIcon size={18} color="#9A9DA0" />
+                <span>Settings</span>
+              </Link>
+            </div>
+          )}
         </div>
 
-        {/* User Profile Card at bottom (x=24, y=902, w=256, h=88, rx=8, fill=#2E2F34) */}
-        <div className="p-6 pt-2">
-          <div className="flex h-[80px] items-center justify-between rounded-lg bg-[#2E2F34] px-4">
-            <div className="flex items-center gap-3">
-              <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#4876F3] text-sm font-bold text-white">
-                HP
-                <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#212121] bg-[#4876F3]" />
+        {/* User Profile Card */}
+        <div className="relative p-4 border-t border-[#424344]/50">
+          <div
+            onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+            className="flex h-[60px] items-center justify-between rounded-lg bg-[#2E2F34] px-3 cursor-pointer hover:bg-[#383a42] transition-colors"
+          >
+            <div className="flex items-center gap-2.5 truncate">
+              <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#4876F3] text-xs font-bold text-white uppercase">
+                {user?.name ? user.name.slice(0, 2) : "PH"}
               </div>
               <div className="flex flex-col truncate">
-                <span className="text-sm font-semibold text-white truncate">
-                  Harsh
+                <span className="text-xs font-semibold text-white truncate">
+                  {user?.name || "Playhead User"}
                 </span>
-                <span className="text-xs text-[#9A9DA0] truncate">
-                  harsh@playhead.app
+                <span className="text-[10px] text-[#9A9DA0] truncate">
+                  {user?.email || ""}
                 </span>
               </div>
             </div>
-            <button
-              title="Profile menu"
-              className="flex h-7 w-7 items-center justify-center rounded text-[#9A9DA0] hover:text-white"
-            >
-              <MoreOptionsIcon size={18} color="#9A9DA0" />
-            </button>
+
+            {/* Role Badge (hidden for clients) */}
+            {!isClient && role && (
+              <span className="shrink-0 rounded bg-[#4876F3]/20 px-1.5 py-0.5 text-[10px] font-semibold text-[#4876F3] capitalize">
+                {role}
+              </span>
+            )}
           </div>
+
+          {profileMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-30"
+                onClick={() => setProfileMenuOpen(false)}
+              />
+              <div className="absolute bottom-[76px] left-4 right-4 z-40 rounded-lg border border-[#424344] bg-[#212121] py-1 shadow-2xl">
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-xs font-medium text-red-400 hover:bg-[#2E2F34]"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </aside>
+
+      {/* Dialogs */}
+      <NewClientDialog
+        isOpen={showNewClient}
+        onClose={() => setShowNewClient(false)}
+        onSuccess={() => router.refresh()}
+      />
+      <NewProjectDialog
+        isOpen={showNewProject}
+        onClose={() => setShowNewProject(false)}
+        onClientCreatedPrompt={() => {
+          setShowNewProject(false);
+          setShowNewClient(true);
+        }}
+      />
     </>
   );
 }

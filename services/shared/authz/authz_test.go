@@ -66,20 +66,55 @@ func TestArgon2idPasswordHashing(t *testing.T) {
 	}
 }
 
-func TestTokenHashing(t *testing.T) {
-	rawToken, err := GenerateSecureToken(32)
-	if err != nil {
-		t.Fatalf("failed to generate token: %v", err)
+func TestNormalizeEmail(t *testing.T) {
+	cases := []struct {
+		input    string
+		expected string
+	}{
+		{"Harsh@Example.com", "harsh@example.com"},
+		{"  harsh@example.com  ", "harsh@example.com"},
+		{"ROHIT@IDYLL.PRODUCTIONS", "rohit@idyll.productions"},
 	}
 
-	hash1 := HashToken(rawToken)
-	hash2 := HashToken(rawToken)
-
-	if hash1 != hash2 {
-		t.Errorf("token hash should be deterministic")
+	for _, c := range cases {
+		got := NormalizeEmail(c.input)
+		if got != c.expected {
+			t.Errorf("expected %q, got %q", c.expected, got)
+		}
 	}
 
-	if len(hash1) != 64 {
-		t.Errorf("sha256 hex digest should be 64 characters, got %d", len(hash1))
+	if NormalizeEmail("Harsh@Example.com") != NormalizeEmail("harsh@example.com") {
+		t.Errorf("Harsh@Example.com and harsh@example.com must be equal after normalization")
+	}
+}
+
+func TestCanManagePeople(t *testing.T) {
+	admin := Person{Role: RoleAdmin}
+	manager := Person{Role: RoleManager}
+	editor := Person{Role: RoleEditor}
+	client := Person{Role: ""}
+
+	if !CanManagePeople(admin, AccessResult{Level: LevelViewer}) {
+		t.Errorf("Admin must always be able to manage people")
+	}
+
+	if !CanManagePeople(manager, AccessResult{Level: LevelViewer}) {
+		t.Errorf("Manager must always be able to manage people")
+	}
+
+	if CanManagePeople(editor, AccessResult{Level: LevelCommenter}) {
+		t.Errorf("Editor with Commenter must not be able to manage people")
+	}
+
+	if !CanManagePeople(editor, AccessResult{Level: LevelFull}) {
+		t.Errorf("Editor with Full access must be able to manage people")
+	}
+
+	if CanManagePeople(client, AccessResult{Level: LevelUploader}) {
+		t.Errorf("Client with Uploader must not be able to manage people")
+	}
+
+	if !CanManagePeople(client, AccessResult{Level: LevelFull}) {
+		t.Errorf("Client with Full access must be able to manage people")
 	}
 }

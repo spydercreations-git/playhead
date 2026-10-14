@@ -22,7 +22,9 @@ services/worker/bin/
 # MinIO / local dev data
 infra/data/
 
-# IDE
+# IDE & Build Caches
 .idea/
 .vscode/
 *.swp
+*.tsbuildinfo
+

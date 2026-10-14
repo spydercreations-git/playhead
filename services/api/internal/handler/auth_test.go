@@ -43,7 +43,7 @@ func TestSignupAndLoginFlow(t *testing.T) {
 	testEmail := "test-" + time.Now().Format("20060102150405.000000") + "@playhead.dev"
 	testPassword := "CorrectPassword123!"
 
-	// 1. Signup
+	// 1. Unknown email signup must be rejected with 403 Forbidden
 	signupBody, _ := json.Marshal(SignupRequest{
 		Email:    testEmail,
 		Password: testPassword,
@@ -53,8 +53,36 @@ func TestSignupAndLoginFlow(t *testing.T) {
 	rec := httptest.NewRecorder()
 	authH.Signup(rec, req)
 
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("expected 201 Created on signup, got %d: %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden on unknown signup, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// 2. Add an invite for testEmail so it becomes a known email
+	comp, err := queries.CreateCompany(context.Background(), db.CreateCompanyParams{
+		Name: "Test Company",
+		Slug: "test-comp-" + time.Now().Format("20060102150405000000"),
+	})
+	if err != nil {
+		t.Fatalf("failed to create test company: %v", err)
+	}
+	_, err = queries.CreateInvite(context.Background(), db.CreateInviteParams{
+		CompanyID: comp.ID,
+		Email:     testEmail,
+		Role:      "editor",
+		TokenHash: authz.HashToken("test-invite-token-" + testEmail),
+		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(24 * time.Hour), Valid: true},
+	})
+	if err != nil {
+		t.Fatalf("failed to create test invite: %v", err)
+	}
+
+	// 3. Known email signup should now succeed
+	recKnown := httptest.NewRecorder()
+	reqKnown := httptest.NewRequest("POST", "/api/v1/auth/signup", bytes.NewReader(signupBody))
+	authH.Signup(recKnown, reqKnown)
+
+	if recKnown.Code != http.StatusCreated {
+		t.Fatalf("expected 201 Created on known signup, got %d: %s", recKnown.Code, recKnown.Body.String())
 	}
 
 	// 2. Duplicate Signup should be rejected with 409 Conflict

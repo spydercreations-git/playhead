@@ -108,10 +108,18 @@ func (am *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 		if requestedCompany != "" {
 			companyID.Scan(requestedCompany)
 		} else {
-			// Default to user's first company membership
+			// 1. Try company memberships
 			companies, err := am.queries.GetCompaniesForUser(ctx, authUser.ID)
 			if err == nil && len(companies) > 0 {
 				companyID = companies[0].ID
+			}
+
+			// 2. Fallback to client contacts or grants
+			if !companyID.Valid {
+				compID, err := am.queries.GetCompanyContextForEmail(ctx, authUser.Email)
+				if err == nil && compID.Valid {
+					companyID = compID
+				}
 			}
 		}
 
@@ -125,6 +133,9 @@ func (am *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 			})
 			if err == nil {
 				ctx = context.WithValue(ctx, RoleContextKey, membership.Role)
+			} else {
+				// External client / outside person (no company membership role)
+				ctx = context.WithValue(ctx, RoleContextKey, "")
 			}
 		}
 

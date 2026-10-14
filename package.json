@@ -1,0 +1,11 @@
+{
+  "name": "playhead-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "make dev",
+    "dev:web": "npm --prefix apps/web run dev",
+    "test": "make test",
+    "stop": "make stop"
+  }
+}

@@ -182,3 +182,23 @@ func (m *Mailer) SendTeamInvite(toEmail, companyName, inviterName, token string)
 
 	return m.send(toEmail, subject, html)
 }
+
+// SendLoginCode sends a 6-digit email sign-in code.
+func (m *Mailer) SendLoginCode(toEmail, code string) error {
+	subject := fmt.Sprintf("%s is your Playhead verification code", code)
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+  <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px; text-align: center;">
+    <h2 style="color: #FFFFFF; margin-top: 0;">Your Playhead Verification Code</h2>
+    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">Enter this 6-digit code on the sign-in screen to access your workspace:</p>
+    <div style="margin: 32px 0;">
+      <span style="background-color: #2B2C2D; color: #FFFFFF; font-size: 32px; font-weight: 700; letter-spacing: 8px; padding: 12px 24px; border-radius: 8px; border: 1px solid #4876F3; display: inline-block;">%s</span>
+    </div>
+    <p style="color: #747678; font-size: 12px;">This code is valid for 10 minutes and can only be used once. If you did not request this code, you can safely ignore this email.</p>
+  </div>
+</body>
+</html>`, code)
+
+	return m.send(toEmail, subject, html)
+}

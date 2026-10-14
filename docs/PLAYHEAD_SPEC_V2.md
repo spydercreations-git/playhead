@@ -15,8 +15,10 @@ October 2026
 4. Build in the order of Section 13: plan, wait for approval, build, test, check in the browser, push to GitHub, update `docs/PROGRESS.md`.
 5. **Permissions are the core of this product** (Section 4). Every API call, download, share link and live editing connection checks them. Every rule has a test proving a person without access is refused.
 6. **Speed is the other core**: uploads and downloads go directly between the browser and storage, in parallel parts, resumable (Section 7).
-7. References: Google Drive (files and sharing), Google Docs (documents), Google Sheets (spreadsheets), Frame.io (video review). Copy behavior and layout only. Never copy their logos, colors, icons or wording.
-8. Small decisions this spec leaves open: pick the most Google Drive or Frame.io like option and record it in `docs/DECISIONS.md`.
+7. **Strict UI Rule (Every Milestone)**: All UI must match `design/01-project-folder-view.svg` (and `.png`), `Dashboard.svg`, and the design tokens. **No gradients, glows, emojis, or placeholder text.** After each milestone, capture and save screenshots of all new screens in `docs/screenshots/<milestone>/`. In Milestone P3, adjust the P2 project page to match `01-project-folder-view.svg` exactly.
+8. **Card Shapes (Everywhere)**: Follow physical card silhouettes (Section 3.2): tabbed folders with 1 large + 2 small previews; folded-corner documents with paper preview and blue `DOC` label; spreadsheets with dark grid preview, green header row, colored status cells, hanging sheet tabs, and green `SHEET` label. Real metadata only: name, project, last editor & relative time ("Rik · 20m ago"), and collaborator avatars.
+9. References: Google Drive (files and sharing), Google Docs (documents), Google Sheets (spreadsheets), Frame.io (video review). Copy behavior and layout only. Never copy their logos, colors, icons or wording.
+10. Small decisions this spec leaves open: pick the most Google Drive or Frame.io like option and record it in `docs/DECISIONS.md`.
 
 ---
 
@@ -26,21 +28,36 @@ Clients send footage through Google Drive, WeTransfer, Dropbox and others. The t
 
 **Playhead puts it all in one place:** every client, every project, every file, every comment and every tracking sheet, with clear permissions on everything.
 
-Version 1 includes: clients, projects, unlimited folders and files of any type, fast uploads and downloads, file and folder counts, Frame.io style video review with versions and approval, documents, spreadsheets with an automatic project tracker, share links, and permissions on everything.
+Version 1 includes: clients, projects, unlimited folders and files of any type, fast uploads and downloads, file and folder counts, Frame.io style video review with versions and approval, documents, spreadsheets with an automatic project tracker, share links, custom roles, notification settings, and permissions on everything.
 
 ---
 
-## 2. People and roles
+## 2. People, custom roles, and permissions
 
-### 2.1 Team roles (company level)
+### 2.1 Team roles and custom RBAC (company level, built in P3)
 
-| Role | What they can do |
-|---|---|
-| **Admin** | Everything: team, settings, all clients, all projects, all files |
-| **Manager** | Add and edit clients, create projects, assign people to projects, sees all clients and projects |
-| **Editor** | The video editors. See **only projects assigned to them**, with the access level they were given. Cannot add clients or projects |
-
-Admins manage the team on the Team page: invite by email, choose a role, change role, remove.
+Playhead uses a database-driven custom roles engine:
+- Table `roles(id, company_id, name, color, permissions jsonb, is_system, created_at, updated_at)`.
+- Memberships reference a role (`memberships.role_id`).
+- **Granular Permissions (17 total)**:
+  - Clients: `clients.view_all`, `clients.create`, `clients.edit`, `clients.delete`
+  - Projects: `projects.view_all` (if unset, sees only assigned projects), `projects.create`, `projects.archive`, `projects.delete`, `projects.manage_people`
+  - Files: `files.delete_forever`, `files.empty_trash`, `files.download_all`
+  - Sharing: `sharing.create_public_links`
+  - Team: `team.invite`, `team.change_roles`, `team.manage_roles`
+  - Admin: `admin.storage`, `admin.settings`
+- **System Roles vs Starter Roles**:
+  - **Admin**: Immutable system role (`is_system = true`) containing every permission. Cannot be edited or deleted. A company must always maintain at least one Admin.
+  - **Manager** and **Editor**: Configured as editable starter roles seeded per company. Existing members retain their current role.
+- **Team Management**:
+  - The Team page features a dedicated **Roles** tab: lists existing roles with member count, allows creating a **New role** (name, color badge, granular permission checkboxes grouped by category), editing custom roles, and deleting roles (requires reassigning existing members first).
+- **Enforcement Rule**:
+  - `authz` checks specific permissions (`authz.HasPermission(person, perm)`), **never role names**.
+  - Project access levels (`Viewer`, `Commenter`, `Uploader`, `Full access`) remain intact and operate within project boundaries.
+- **Automated Tests**:
+  - A role without `clients.create` receives `403 Forbidden` when attempting to create a client.
+  - The last Admin in a company cannot be removed or assigned to a non-Admin role.
+  - Deleting a role that has active assigned members is refused with an error.
 
 ### 2.2 Clients and outside people
 
@@ -79,6 +96,23 @@ Company (Idyll Productions)
 - **Project header**: total files, folders, videos and size, for example "148 files · 22 folders · 96 videos · 312 GB".
 - **Client page**: number of projects and total size.
 - Counts update live when files are added, moved or deleted. Keep counters in the database (updated in the same transaction as each change), never by scanning all files on page load.
+
+### 3.2 Card shapes and physical silhouettes (everywhere)
+
+Every card across project workspaces, lists, documents, and spreadsheets enforces realistic physical styling:
+- **Folders**: Physical silhouette with top tab; preview displays 1 large thumbnail on the left and 2 small stacked thumbnails on the right.
+- **Documents**: Page silhouette with folded top-right corner; paper preview showing text excerpts; blue `DOC` badge.
+- **Spreadsheets**: Dark grid preview with green header row, colored status cells, green `SHEET` badge, and physical sheet tabs hanging beneath the card's bottom edge (e.g. `[Tracker]`, `[Payments | Summary]`).
+- **Metadata**: Every card displays name, project name, last editor and relative time ("Rik · 20m ago"), and collaborator avatars.
+
+### 3.3 Dedicated Documents and Spreadsheets Pages (built in P5 & P6)
+
+*Note: Main sidebar navigation links for "Documents" and "Spreadsheets" are positioned directly below "Projects", but remain hidden until Milestones P5 and P6.*
+
+- **Header**: Title, aggregate count ("14 documents across 4 clients"), "New document" or "New spreadsheet" primary button.
+- **Filters**: Instant search box, Client dropdown, Project dropdown, Owner dropdown, sort selector, and Grid/List toggle.
+- **Client Chips**: Quick horizontal filter chips ("All clients", "Everygen 5", "Launchpoint 3").
+- **Grouped Layout**: When "All clients" is selected, cards are visually grouped by client with client logo, name, and total item count as a section heading. Full specifications documented in `docs/FEATURES_DOCS_SHEETS.md`.
 
 ---
 
@@ -241,41 +275,57 @@ Opens over the project page.
 - Anything else: file icon, name, size, **Download**.
 - Right panel: **Comments** and **Details** (size, type, uploaded by, date, version, location, activity).
 
-### 6.9 Video review (Frame.io style)
+### 6.9 Video review screen (Frame.io style, Milestone P4)
 
-Layout and controls follow section 4 of `docs/PROJECT_WORKSPACE.md`: video on the left, comments on the right.
+The video review interface follows the strict layout in `docs/PROJECT_WORKSPACE.md` and detailed specifications:
 
-- **Player**: play, pause, frame step, speed, loop, volume, quality, fullscreen, timecode, timeline with comment markers.
-- **Comments**: typing pauses the video and stamps the exact time; optional time range; draw on the frame (pen, arrow, box, color); attach an image; mention people; replies; resolve; edit and delete own.
-- **Visibility** on each comment: **Everyone** or **Team only**. Team only comments are never shown to clients or link visitors.
-- **Versions**: uploading a new cut onto the file (Upload new version, or drop a file on it) makes v2, v3. Version dropdown in the top bar. Comments belong to each version. **Compare** shows two versions side by side, synced.
-- **Approval**: **Approve** and **Request changes** buttons in the top bar for anyone with Commenter or above. Status chip on the file: Needs review (new version uploaded), Changes requested, Approved. Approved locks new versions until someone with Full access reopens it. Each decision notifies the uploader and project members.
-- Export comments to PDF or CSV for editors.
+- **Top Bar**:
+  - Back navigation, breadcrumb path, file name, version dropdown (e.g. `v3`), review status chip (`Needs review`, `Changes requested`, `Approved`).
+  - Item position counter (`"1 of N"` with previous and next arrows).
+  - Primary actions: **Request changes** (red outline), **Approve** (green button).
+  - Collaboration actions: **Share** button, **Copy link**, and live active user avatars.
+- **Left / Center Player Canvas**:
+  - Matte black player area rendering the video in its native aspect ratio.
+  - Interactive overlay: when a comment is selected, its on-frame drawing (boxes, arrows, freehand lines) renders over the paused frame.
+  - **Timeline**:
+    - Comment avatars positioned at their exact timecode marker.
+    - Range comments rendered as continuous colored bands across the scrubber.
+    - Lock badge on team-only comment markers.
+  - **Player Controls**:
+    - Play/pause, loop toggle, playback speed selector (0.5x, 1x, 1.25x, 1.5x, 2x), volume slider with mute.
+    - Centered timecode display with format dropdown (`Timecode SMPTE`, `Frames`, `Seconds`).
+    - HD quality selector, markers visibility toggle (on/off), version compare mode (side-by-side synchronized scrubbing), fullscreen toggle.
+  - **Metadata Strip** (directly beneath controls):
+    - Current version badge, uploader name, upload date, resolution (e.g. `3840×2160`), frame rate (`24 fps`), file size.
+- **Right Panel (Tabs: Comments [count] and Details)**:
+  - Header: `"All comments"` with status filter (All, Unresolved, Resolved), sort (Timecode, Newest), and quick search.
+  - Threaded comment list:
+    - Commenter avatar, name, badge (**Client** or **Team**), company affiliation, relative timestamp.
+    - Clickable orange timecode chip (e.g. `01:24.08`) jumping the player instantly to that frame.
+    - Comment body text, `"Drawing"` indicator link, and `"N replies"` expandable thread link.
+    - Resolve circle button (transforms into green checkmark when resolved; comment greys out).
+    - Threaded replies indented under parent comment.
+    - **Team-Only Comments**: Rendered with light yellow background and `"Team only"` lock badge. Never sent or visible to client contacts or share link visitors.
+- **Bottom Comment Composer**:
+  - Removable orange timecode chip reflecting current player playhead position.
+  - Placeholder: `"Leave a comment at this moment..."`.
+  - Action buttons: Draw tool, Attach file, Mention (`@`), Audience visibility dropdown (**Everyone** / **Team only**), and blue **Send** button.
 
-### 6.10 Documents (Google Docs style)
+### 6.10 Documents (Google Docs style, Milestone P5)
 
-Opens at `/d/{id}`. Same as the document editor described previously:
-- Top bar: back, title (rename), star, location, save status ("Saved", "Saving...", "Offline, changes will sync"), avatars of people in the document, comment history, **Share**.
-- Menus: File (New, Make a copy, Move, Rename, Download PDF/Word/Markdown, Version history, Print, Delete), Edit, View, Insert (image, table, link, line, checklist, comment), Format.
-- Toolbar: undo, redo, style (Normal, Title, H1 to H3), font size, bold, italic, underline, text and highlight color, link, comment, image, align, line spacing, lists, checklist, indent, clear formatting. Right: Editing or Viewing mode.
-- White page centered on the dark app; outline panel from headings; everyone's cursor in their color with name.
-- Comments beside the text: reply, resolve, mentions.
-- Version history with restore; automatic versions every 10 minutes of editing.
-- Live editing together (Section 8). Only Full access can edit; others read only.
+Opens at `/d/{id}`. Full feature breakdown governed by `docs/FEATURES_DOCS_SHEETS.md` Section 3:
+- **Build Now (P5)**: Text styles (Normal, Title, H1-H3); bold, italic, underline, strikethrough; text and highlight colors; font size and alignment; bulleted and numbered lists with indent; task checklists; tables (insert/delete rows/cols, cell background, resize); images (paste, drag, upload); links to web and internal Playhead files; find and replace; slash menu (`/`); markdown shortcuts; collapsible outline panel; word count and reading time; live multi-cursor editing via Yjs + Hocuspocus; version history with restore; embedded Playhead video cards (thumbnail, version, review status); templates (brief, script, shot list, creator notes); server-scrubbed team-only notes block (automatically stripped for clients and share links); export (PDF, Word `.docx`, Markdown `.md`); Word import; print stylesheet; page vs full-width view; dark page mode; offline editing with automatic sync.
+- **Deferred (Do NOT build in P5)**: In-line text comments, text `@mentions`, suggestion/track-changes mode.
 
-### 6.11 Spreadsheets (Google Sheets style) and the project Tracker
+### 6.11 Spreadsheets (Google Sheets style, Milestone P6) and the Project Tracker
 
-Opens at `/s/{id}`.
-- Top bar same as documents.
-- Menus: File (New, Make a copy, Import Excel/CSV, Download Excel/CSV, Version history, Print, Delete), Edit, View (freeze, gridlines, formula bar, zoom), Insert (rows, columns, sheet, checkbox, dropdown, comment, link), Format (number formats, bold, italic, strikethrough, colors, borders, merge, align, wrap, conditional formatting), Data (sort, filter, dropdown lists).
-- Toolbar, formula bar (cell box + `fx`), grid with resize, fill handle, right click menu, sheet tabs at the bottom (+, rename, duplicate, color, delete).
-- Formulas: operators, relative and absolute references, ranges, other sheets; functions SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, COUNTIF, SUMIF, IF, IFS, IFERROR, AND, OR, NOT, ROUND, ABS, CONCATENATE, TEXT, LEN, LEFT, RIGHT, MID, UPPER, LOWER, TRIM, TODAY, NOW, DATE, DAYS, VLOOKUP, XLOOKUP, INDEX, MATCH, UNIQUE, SORT, FILTER. Errors explained on hover.
-- Smooth with 10,000 rows by 50 columns. Paste from Google Sheets and Excel keeps values, formulas and basic formatting.
-- Live editing together; everyone's selected cell shown in their color.
+Opens at `/s/{id}`. Full feature breakdown governed by `docs/FEATURES_DOCS_SHEETS.md` Section 4:
+- **Build Now (P6)**: Full Google Sheets-style cell editing; insert, delete, move, resize, hide, and group rows/columns; copy-paste from Excel and Google Sheets with formatting preserved; fill handle; freeze rows/columns; merge cells; multi-level undo/redo; find and replace; multiple sheets with tabs (rename, reorder, duplicate, color, hide, delete); cell styles, fill colors, and borders; horizontal/vertical alignment and text wrap; number formatting (USD currency, percent, dates, time); conditional formatting rules; dropdown cells with customizable color tag per option; interactive checkboxes; date picker popup; person cells with photo; Playhead file link cells (thumbnail, version, status); 30+ core formulas (`SUM`, `AVERAGE`, `COUNT`, `COUNTIF`, `SUMIF`, `IF`, `IFS`, `IFERROR`, `AND`, `OR`, `ROUND`, `CONCATENATE`, `TEXT`, `LEFT`, `RIGHT`, `MID`, `LEN`, `UPPER`, `LOWER`, `TRIM`, `TODAY`, `NOW`, `DATE`, `DAYS`, `VLOOKUP`, `XLOOKUP`, `INDEX`, `MATCH`, `UNIQUE`, `SORT`, `FILTER`); cross-sheet references; formula documentation help; live collaboration with colored cell selections; cell comments with replies, resolve, and mentions; revision history; client column locking; pre-built templates (Tracker, Creator payments, Budget, Shot schedule); Excel/CSV import and export; PDF print.
+- **Deferred (Do NOT build in P6)**: Charts and graphs, pivot tables, automatic status webhooks, and Kanban board view.
 
-**Tracker sheet (created with every project)**
-- Named "Tracker", pinned at the top of the project sidebar.
-- Columns: Video, File (link to the file in Playhead), Editor (dropdown of project members), Status (dropdown: Not started, Editing, Needs review, Changes requested, Approved, Delivered, each with a color), Due date, Revisions, Notes.
+**Automatic Project Tracker Sheet**:
+- Named "Tracker", automatically generated and pinned at the top of the project sidebar upon project creation.
+- Pre-configured columns: Video Name, File Link, Editor, Status chip dropdown (Not started, Editing, Needs review, Changes requested, Approved, Delivered), Due Date, Revision, Notes.
 - Status colors use conditional formatting so they show like chips.
 - In a later milestone, review actions can update the Tracker automatically; in version 1 it is updated by hand.
 
@@ -365,7 +415,11 @@ Opened from the avatars in the project header. Lists team Editors and client peo
 
 **Downloads**
 - Single files: signed URL straight from storage through Cloudflare's network. Supports resume and seeking.
-- Many files or folders: the worker builds a zip in the background and streams it to storage; the person gets a notification and a download link. For selections under 2 GB, start the zip download right away by streaming.
+- Folders and multiple files: browser-based streaming download directly from storage presigned URLs (no server zip streaming, no size limit, zero file bytes through API).
+  - Default for all browsers: one zip file assembled on-the-fly in the browser using `client-zip` (store mode, no compression), streaming chunks directly to disk without loading full folders into RAM.
+  - Chrome and Edge: optional "Download into a folder" in the Download menu using the File System Access API (`showDirectoryPicker`), saving files directly with folder hierarchies preserved.
+  - 3 files in parallel; floating Download Tray displays progress, pause, and cancel.
+  - Strict permission check: if any item has `can_download == false`, the API refuses with 403.
 
 **Playback**
 - Videos start fast using preview copies (HLS at 720p and 1080p) made by the worker after upload, as in section 9.6 of the main spec. Until the preview is ready, play the original if the browser supports it.
@@ -374,8 +428,9 @@ Opened from the avatars in the project header. Lists team Editors and client peo
 
 ---
 
-## 8. Live editing (documents and sheets)
+## 8. Live editing & unified email service
 
+### 8.1 Live editing (documents and sheets)
 - Documents and sheets are stored as **Yjs** documents so several people can edit at once without overwriting each other.
 - One small **Node.js collaboration service** (`/services/collab`) running **Hocuspocus**, started by `make dev`, served at `/collab`.
 - On connect, it asks the Go API (internal endpoint with a shared secret) for the person's access. No access: refuse. Not Full access: read only.
@@ -384,6 +439,13 @@ Opened from the avatars in the project header. Lists team Editors and client peo
 - Documents use **Tiptap** with free open source extensions only.
 - Spreadsheets: in the spreadsheet milestone plan, compare 2 or 3 spreadsheet engines that are free for commercial use (no paid license, no watermark), work with Yjs, and support the formulas in 6.11. Do not use Univer's paid collaboration features or any library needing a commercial license. Recommend one and wait for approval.
 
+### 8.2 Unified email service
+- All system and notification emails are routed through `services/shared/email` (Mailpit locally, Resend in production via `RESEND_API_KEY` and `EMAIL_FROM`).
+- Clean visual template with Playhead logo, dark/neutral typography, and exactly one primary call-to-action button.
+- Every notification email includes a mandatory clickable **"Notification settings"** footer link (`/settings/notifications`).
+- **5-Minute Comment Debouncing**: When multiple comments or replies occur on the same file within 5 minutes, notifications are aggregated and dispatched as a single consolidated digest email.
+- Full email catalog and templates documented in `docs/EMAILS.md`.
+
 ---
 
 ## 9. Data model (new and changed)
@@ -391,14 +453,17 @@ Opened from the avatars in the project header. Lists team Editors and client peo
 UUID ids, `created_at`, `updated_at`, `company_id` on every row, soft delete with `deleted_at` where Trash applies.
 
 ```
-memberships.role                 [admin, manager, editor]
+roles(company_id, name, color, permissions jsonb, is_system)
+memberships(user_id, company_id, role_id -> roles.id)
+notification_prefs(user_id, event_type, in_app bool, email bool, unique(user_id, event_type))
+project_notification_prefs(user_id, project_id, level [all, mentions_and_mine, off], unique(user_id, project_id))
 clients(company_id, name, website, notes_item_id, logo_key, created_by, deleted_at)
 client_contacts(company_id, client_id, name, email, default_level [none, viewer, commenter, uploader, full],
                 can_download bool, user_id null, last_signed_in_at, unique(client_id, email))
 projects(company_id, client_id not null, name, status [active, archived], tracker_item_id,
          file_count, folder_count, video_count, total_bytes, created_by, deleted_at)
 items(company_id, project_id, parent_id null, kind [folder, file, document, spreadsheet], name,
-      position numeric, created_by, file_count, folder_count, total_bytes,   -- counts for folders
+      position numeric, created_by, file_count, folder_count, video_count, total_bytes,
       review_status [none, needs_review, changes_requested, approved], locked bool,
       deleted_at, deleted_by, original_parent_id)
 file_versions(item_id, number, storage_key, size_bytes, mime, duration_ms, width, height, fps,
@@ -422,7 +487,7 @@ stars(user_id, item_id); recent_items(user_id, item_id, last_opened_at)
 activity(company_id, project_id, item_id, actor, action, details jsonb)
 notifications(user_id, type, payload jsonb, read_at, emailed_at)
 login_codes(email, code_hash, expires_at, attempts)
-uploads(...)  -- as in the main spec, with item_id
+uploads(...)  -- multipart tracker with item_id, status, parts, reserved bytes
 ```
 
 - Grants are stored by email, so access works before someone's first sign in.
@@ -434,10 +499,12 @@ uploads(...)  -- as in the main spec, with item_id
 ## 10. API outline (under `/api/v1`)
 
 Clients and contacts: `GET|POST /clients`, `GET|PATCH|DELETE /clients/{id}`, `GET|POST /clients/{id}/contacts`, `PATCH|DELETE /contacts/{id}`.
-Projects: `GET|POST /projects`, `GET|PATCH|DELETE /projects/{id}`, `POST /projects/{id}/archive`, `GET|POST|PATCH|DELETE /projects/{id}/people`.
+Projects: `GET|POST /projects`, `GET|PATCH|DELETE /projects/{id}`, `POST /projects/{id}/archive`, `GET|POST|PATCH|DELETE /projects/{id}/people`, `GET|PUT /projects/{id}/notifications`.
+Roles: `GET|POST /roles`, `GET|PATCH|DELETE /roles/{id}`.
+Notification Prefs: `GET|PUT /settings/notifications`.
 Items: `GET /projects/{id}/items?parent_id=&type=&sort=`, `POST /items`, `GET|PATCH|DELETE /items/{id}`, `POST /items/move`, `POST /items/copy`, `GET /items/{id}/path`, `GET /items/{id}/counts`.
 Uploads: `POST /uploads`, `/uploads/{id}/parts`, `/uploads/{id}/complete`, `DELETE /uploads/{id}`; new versions with `item_id`.
-Downloads: `GET /items/{id}/download?version=&format=`, `POST /downloads/zip`, `GET /downloads/{id}`.
+Downloads: `GET /items/{id}/download?version=&format=`, `POST /downloads/prepare` (manifest with presigned URLs).
 Review: `GET /items/{id}/versions`, `GET /items/{id}/versions/{v}/playlist.m3u8`, `GET|POST /items/{id}/comments`, `PATCH|DELETE /comments/{id}`, `POST /comments/{id}/resolve|reopen`, `POST /items/{id}/review`, `POST /items/{id}/reopen`, `GET /items/{id}/comments/export`.
 Access: `GET /items/{id}/access`, `GET /projects/{id}/access`, `POST /grants`, `PATCH|DELETE /grants/{id}`, `POST /items/{id}/request-access`.
 Share links: `GET|POST /share-links`, `PATCH|DELETE /share-links/{id}`; public `GET /s/{token}`, `POST /s/{token}/unlock`, `POST /s/{token}/identify`, `GET /s/{token}/items`, comments, review, download and upload under `/s/{token}/...`.
@@ -449,11 +516,13 @@ Internal (collab service only): `POST /internal/collab/authorize`, `POST /intern
 
 ## 11. Design notes
 
-- Follow the design tokens, `/design` files and `docs/PROJECT_WORKSPACE.md`.
-- File type icons: folder, video, audio, image, PDF, document (blue), spreadsheet (green), archive, generic.
+- Follow the design tokens, `/design` files (especially `design/01-project-folder-view.svg` and `Dashboard.svg`), and `docs/PROJECT_WORKSPACE.md`.
+- Strict UI styling: No gradients, no glows, no emojis, no placeholder text.
+- File type icons: folder (tabbed silhouette), video, audio, image, PDF, document (folded paper, blue `DOC`), spreadsheet (dark grid, green header, hanging tabs, green `SHEET`), archive, generic.
 - Loading skeletons, empty states with one action, error states with **Try again**.
 - Toasts with **Undo** for move, rename and delete.
 - Confirm dialogs only for: delete client, delete project, delete forever, moves that change access.
+- Screenshot archiving: `docs/screenshots/<milestone>/` populated at the end of every milestone.
 
 ---
 
@@ -468,9 +537,10 @@ Billing and public sign up, boards and automations, automatic Tracker updates fr
 | # | Milestone | Includes |
 |---|---|---|
 | P1 | Roles, clients, projects | Team roles Admin, Manager, Editor; disable public sign up; email code and Google sign in for known emails; clients list, client dialog with contacts, client page; projects list; new project dialog with client dropdown, people and template; project people and access dialog; Editors see only assigned projects |
-| P2 | Files, folders, fast upload and download | Items, project page per `PROJECT_WORKSPACE.md`, folder tree, unlimited nesting, counts (Section 3.1), create, rename, move, copy, star, delete, Trash, multiple select, fast parallel resumable uploads of any type and whole folders, downloads and zips, file viewer for non video files |
-| P3 | Permissions and sharing | `authz.Access`, access levels and Can download, inheritance, client contact defaults, Share dialog People tab, Copy link, share links with all settings, share link page, Shared with me, move confirm, full permission test suite |
-| P4 | Video review | Processing worker and HLS previews, player, timestamp comments, drawing, Team only comments, versions and compare, Approve and Request changes, review status, Reviews page, comment export, audio and image comments |
-| P5 | Documents | Collab service, Tiptap editor, live editing, cursors, comments, version history, export and import |
-| P6 | Spreadsheets and Tracker | Engine comparison and approval first, then editor, live editing, formulas, import and export, automatic Tracker sheet in every project |
-| P7 | Search, notifications, polish | Search across names and contents, notifications in app and email, client Notes, performance check against Section 7 targets, security review. **Internal launch for the Idyll team and clients after P7.** |
+| P2 | Files, folders, fast upload and download | Items, project page per `PROJECT_WORKSPACE.md`, folder tree, unlimited nesting, counts (Section 3.1), create, rename, move, copy, star, delete, Trash, multiple select, fast parallel resumable uploads of any type and whole folders, browser-direct downloads (`client-zip` and File System Access API), file viewer for non video files |
+| P3 | Permissions, Custom Roles, Notification Settings & Sharing | • **Pixel-perfect UI**: Adjust P2 project page to match `design/01-project-folder-view.svg` exactly (folder tab silhouette with 1 large + 2 small previews, file card comment counts and author overlays, floating selection pill bar, upload tray styling).<br>• **Custom Roles RBAC**: `roles` table with 17 permissions, immutable system Admin role (last Admin protected), editable starter roles Manager and Editor, Team page Roles tab, `authz.HasPermission()` checks.<br>• **Notification Settings**: Settings > Notifications page with In app / Email toggles per event, email frequency (instant vs daily summary), project header bell button (All, Mentions & Mine, Off), `notification_prefs` and `project_notification_prefs` tables.<br>• **Permissions & Sharing**: `authz.Access` engine (combining roles, grants, client contact defaults), Can download enforcement, inheritance, Share dialog People tab, Copy link, public share links with passwords/expiry/access types, public share link viewer, Shared with me view, move permission confirmation, full test suite.<br>• **Milestone Screenshots**: Save completed screens in `docs/screenshots/p3/`. |
+| P4 | Video review screen | Frame.io style 3-column / fixed-header player: top bar (breadcrumb, v3 dropdown, Needs review chip, 1 of N arrows, Request changes, Approve, Share, Copy link, people avatars); left player area with true video aspect ratio, on-frame drawing display on paused frames, timeline with precise comment avatars, range bands, team-only lock markers, playback controls (SMPTE timecode / frames / seconds, loop, speed, volume, HD, compare, fullscreen), metadata strip (version, uploader, date, resolution, fps, size); right panel with Comments (orange jump chips, replies, resolve tick, team-only yellow badge/lock) and Details tabs; bottom composer with current orange timecode chip, draw, attach, mention, Everyone/Team only dropdown, blue Send button; background processing worker generating HLS previews; comment PDF/CSV export. |
+| P5 | Documents | Collab service (`/services/collab` via Hocuspocus + Yjs), Tiptap editor at `/d/{id}`; build features per `docs/FEATURES_DOCS_SHEETS.md`: typography (Title, H1-H3), formatting, indent lists, checklists, rich tables, images, links, find/replace, slash menu (`/`), markdown shortcuts, outline panel, word count/reading time, live cursors, version history with restore, embedded Playhead video cards, templates (brief, script, shot list, creator notes), server-scrubbed team-only notes block, export (PDF, Word, Markdown), Word import, print, page vs full width, dark page mode, offline editing. Main menu "Documents" page with aggregate counts, filters, and client grouping. (Deferred: in-line text comments, text mentions, suggest mode). |
+| P6 | Spreadsheets and Tracker | Engine evaluation and approval first, then editor at `/s/{id}`; build features per `docs/FEATURES_DOCS_SHEETS.md`: Google Sheets-like grid editing, rows/cols insert/delete/resize/hide/group, copy-paste with formatting, fill handle, freeze, merge, undo/redo, multiple sheets & tabs, cell styles, borders, number formats, conditional formatting, dropdowns with color tags, checkboxes, date pickers, person cells, Playhead file link cells, 30+ core formulas (`SUM`, `AVERAGE`, `COUNT`, `IF`, `VLOOKUP`, `XLOOKUP`, `INDEX`, `MATCH`, `UNIQUE`, `SORT`, `FILTER`, etc.), cross-sheet references, formula help, live editing, cell comments with replies/resolve/mentions, version history, client column locking, pre-built templates (Tracker, Creator payments, Budget, Shot schedule), Excel/CSV import/export, PDF print. Automatic Tracker sheet created with every project. Main menu "Spreadsheets" page with aggregate counts, filters, and client grouping. (Deferred: charts, pivot tables, auto status, board view). |
+| P7 | Search, Notifications, Polish & Launch | Full text and metadata search across files, documents, sheets, and comments; background notification worker with 5-minute comment debouncing/aggregation and daily digests; client collaborative Notes doc; comprehensive performance benchmarks against Section 7 latency targets; security audit; internal launch for Idyll Productions team and clients. |
+

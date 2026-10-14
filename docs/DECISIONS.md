@@ -90,5 +90,48 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
   - **API Role**: The API (`/api/v1/downloads/prepare`) strictly verifies permissions and returns the file manifest with presigned URLs. If ANY item has `can_download == false`, the entire download is refused with 403. This same mechanism applies to share link visitors.
 - **Reason**: Eliminates server CPU, bandwidth, and memory bottlenecks for multi-gigabyte downloads and guarantees zero file bytes ever pass through the API server for uploads or downloads.
 
+## 20. Strict Design System Compliance & Milestone Screenshots
+- **Decision**: Strict UI rule across every milestone: all UI must match `design/01-project-folder-view.svg` (and `.png`), `Dashboard.svg`, and design tokens. Absolutely no gradients, glows, emojis, or placeholder text. After each milestone, screenshots of newly implemented screens must be saved in `docs/screenshots/<milestone>/`. In Milestone P3, the P2 project workspace must be refined to match `01-project-folder-view.svg` pixel-for-pixel.
+- **Reason**: Ensures an ultra-clean, studio-grade aesthetic without visual noise, drift, or unbranded fluff.
+
+## 21. Distinct Card Shapes Across the Entire Application
+- **Decision**: All asset and container cards everywhere in Playhead must use physical silhouette styling:
+  - **Folders**: Tab silhouette on top, 1 large preview on left, 2 small stacked previews on right.
+  - **Documents**: Page silhouette with folded top-right corner, paper-style text preview, and blue `DOC` badge.
+  - **Spreadsheets**: Dark grid preview with green header row, colored status cells, green `SHEET` badge, and physical sheet tabs hanging beneath the bottom card edge (e.g. `[Tracker]`, `[Payments | Summary]`).
+  - **Metadata**: Every card displays name, project, last editor & relative time ("Rik · 20m ago"), and collaborator avatars.
+- **Reason**: Provides immediate visual recognition and tactile feedback across all files and workspaces.
+
+## 22. Dedicated Top-Level Pages for Documents & Spreadsheets (P5 & P6)
+- **Decision**: Main sidebar menu will include "Documents" and "Spreadsheets" directly beneath "Projects", hidden until Milestones P5 and P6 respectively. Each page features aggregate count banners ("14 documents across 4 clients"), "New document" / "New spreadsheet" primary actions, search, Client/Project/Owner dropdowns, sort, grid/list toggle, and client filter chips ("All clients", "Everygen 5"). When "All clients" is active, cards are grouped with client logo, name, and count as section headings.
+- **Reason**: Enables studio-wide discovery and management of scripts, briefs, budgets, and trackers across all projects.
+
+## 23. Video Review Screen Architecture (P4)
+- **Decision**: Video player screen follows a dedicated 3-column / fixed-header layout:
+  - **Top Bar**: Back navigation, breadcrumb, file name, version dropdown (`v3`), status chip (`Needs review`), item counter (`1 of N` with arrows), `Request changes` (red outline), `Approve` (green button), `Share`, `Copy link`, and collaborator avatars.
+  - **Left / Center**: Player area in true video aspect ratio, timeline with comment avatars at precise timecodes, range comments as colored bands, team-only lock badges, playback controls (play, loop, speed, volume, central timecode with format dropdown, HD, markers toggle, version comparison, fullscreen), and asset metadata row (uploader, date, resolution, fps, size).
+  - **Right Panel**: Tabs for `Comments (count)` and `Details`. Threaded comments with orange timecode chips (click to jump), drawing overlays, resolve circles (green tick), and yellow background + lock badge for team-only comments (never sent to clients). Bottom composer with orange timecode chip, draw, attach, mention, and audience dropdown (`Everyone` / `Team only`).
+- **Reason**: Delivers frame-accurate, professional video collaboration matching Frame.io/Filestage studio standards.
+
+## 24. Documents Engine & Feature Scope (P5)
+- **Decision**: Documents feature set strictly delimited in `docs/FEATURES_DOCS_SHEETS.md`:
+  - **Build in P5**: Typography (Title, H1-H3), formatting, indent lists, checklists, rich tables, images, hyperlinks & Playhead file links, find/replace, slash menu (`/`), markdown shortcuts, outline panel, word count/reading time, live Yjs collaborative editing with cursors, version history with restore, embedded Playhead video cards, templates (brief, script, shot list, creator notes), server-scrubbed team-only notes block, export (PDF, Word, Markdown), import Word, print styling, page vs full-width view, dark page mode, offline editing with sync.
+  - **Deferred (Do NOT build in P5)**: In-line text comments, text `@mentions`, and suggest/track-changes mode.
+- **Reason**: Focuses P5 on world-class document creation, templates, and video embedding while keeping comment systems focused on the review player.
+
+## 25. Spreadsheet Engine & Formula Scope (P6)
+- **Decision**: Spreadsheets feature set strictly delimited in `docs/FEATURES_DOCS_SHEETS.md`:
+  - **Build in P6**: Google Sheets-like grid editing, rows/cols insert/delete/resize/hide/group, copy-paste from Excel/Sheets with formatting, fill handle, freeze rows/cols, merge cells, undo/redo, find/replace, multi-sheet tabs (rename, reorder, color, duplicate, hide, delete), cell styling, fill colors & borders, number formats (currency, percent, dates), conditional formatting, colored dropdowns, checkboxes, date pickers, person cells with photo, Playhead file link cells with thumbnail/status, core formula engine (30+ formulas: `SUM`, `AVERAGE`, `COUNT`, `IF`, `VLOOKUP`, `XLOOKUP`, `INDEX`, `MATCH`, `UNIQUE`, `SORT`, `FILTER`, etc.), cross-sheet references, formula help, live collaboration with colored active cells, cell comments with mentions & resolve, version history, client column locking, templates (Tracker, Creator payments, Budget, Shot schedule), Excel/CSV import/export, and PDF print.
+  - **Deferred (Do NOT build in P6)**: Charts/graphs, pivot tables, auto-status webhooks, and Kanban board view.
+- **Reason**: Delivers maximum studio utility for production tracking, budgets, and payments without bloat.
+
+## 26. Unified Email Service, 5-Minute Aggregation & Custom Roles RBAC Engine (P3)
+- **Decision**:
+  - **Email Service**: All outbound emails routed through `services/shared/email` (Mailpit locally, Resend in prod) with Playhead branding, single CTA button, and notification settings footer links. Implemented 5-minute comment debouncing/aggregation per file in the background worker. Documented all emails in `docs/EMAILS.md`.
+  - **Notification Settings (P3)**: Settings > Notifications dual toggles (In app / Email) across all events, plus project header bell buttons (`All activity`, `Only mentions and my files`, `Off`).
+  - **Custom Roles RBAC Engine (P3)**: Added `roles(id, company_id, name, color, permissions jsonb, is_system)` table. System role `Admin` is immutable and company must retain at least one Admin. `Manager` and `Editor` become editable starter roles. Added 17 granular permissions (`clients.*`, `projects.*`, `files.*`, `sharing.*`, `team.*`, `admin.*`). Refactored `authz` to evaluate permissions rather than raw role names. Team page gets a dedicated Roles management tab.
+- **Reason**: Empowers studios to define custom roles matching their agency structure while guaranteeing strict permission enforcement and preventing notification fatigue.
+
+
 
 

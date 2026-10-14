@@ -42,10 +42,11 @@ const (
 
 // Plan identifiers
 const (
-	PlanTrial   = "trial"
-	PlanPro     = "pro"
-	PlanTeam    = "team"
-	PlanCompany = "company"
+	PlanTrial    = "trial"
+	PlanPro      = "pro"
+	PlanTeam     = "team"
+	PlanCompany  = "company"
+	PlanInternal = "internal" // Pay as you go internal workspace
 )
 
 // Feature identifiers
@@ -163,6 +164,28 @@ var allPlans = map[string]PlanDefinition{
 			FeatureMadeWithPlayhead:   false,
 		},
 	},
+	PlanInternal: {
+		ID:               PlanInternal,
+		Name:             "Internal (Pay as you go)",
+		MonthlySeatPrice: 0,
+		AnnualSeatPrice:  0,
+		MinSeats:         1,
+		MaxSeats:         0, // Unlimited seats
+		StoragePerSeat:   0, // Unlimited storage
+		MaxFileSizeBytes: 100 * GB,
+		Features: map[Feature]bool{
+			FeatureCoreMedia:          true,
+			FeatureShareLinks:         true,
+			FeatureBoards:             true,
+			FeatureBoardAutomations:   true,
+			FeatureRequestFilesLinks:  true,
+			FeatureVersionCompare:     true,
+			FeatureProjectPermissions: true,
+			FeatureBrandedSharePages:  true,
+			FeatureVerifiedBadge:      true,
+			FeatureMadeWithPlayhead:   false,
+		},
+	},
 }
 
 // Get returns the plan definition by plan ID, defaulting to Trial if invalid.
@@ -180,10 +203,19 @@ func Has(planID string, feature Feature) bool {
 	return p.Features[feature]
 }
 
+// IsUnlimitedStorage returns true if the plan has no storage cap (e.g. internal pay-as-you-go).
+func IsUnlimitedStorage(planID string) bool {
+	return planID == PlanInternal
+}
+
 // CalculateStorageLimit computes storage limit in integer bytes according to Section 7.3:
 // companies.storage_limit_bytes = plan storage x seats + storage blocks.
 // For trial, storage is fixed at 25 GB total.
+// For internal, storage limit is 0 (indicating unlimited).
 func CalculateStorageLimit(planID string, seats int, storageBlocks int) int64 {
+	if planID == PlanInternal {
+		return 0 // Unlimited
+	}
 	p := Get(planID)
 	if seats < p.MinSeats {
 		seats = p.MinSeats
@@ -212,3 +244,4 @@ func MaxFileSize(planID string) int64 {
 func MaxSeats(planID string) int {
 	return Get(planID).MaxSeats
 }
+

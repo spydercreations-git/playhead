@@ -1,0 +1,1057 @@
+package handler
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"math/big"
+	"net/http"
+	"strings"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/playhead/playhead/services/api/internal/middleware"
+	"github.com/playhead/playhead/services/shared/authz"
+	"github.com/playhead/playhead/services/shared/db"
+	"github.com/playhead/playhead/services/shared/storage"
+)
+
+// ItemsHandler handles item (folder & file) operations
+type ItemsHandler struct {
+	queries *db.Queries
+	storage *storage.Client
+}
+
+func NewItemsHandler(queries *db.Queries, storage *storage.Client) *ItemsHandler {
+	return &ItemsHandler{
+		queries: queries,
+		storage: storage,
+	}
+}
+
+// ListItems returns non-deleted items in a folder or root of a project
+func (h *ItemsHandler) ListItems(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := middleware.GetAuthenticatedUser(ctx)
+	role, _ := middleware.GetUserRole(ctx)
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var projectID pgtype.UUID
+	if err := projectID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_project_id"})
+		return
+	}
+
+	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+		ID:        projectID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	person := authz.Person{
+		UserID:    uuid.UUID(user.ID.Bytes),
+		Email:     user.Email,
+		Role:      role,
+		CompanyID: uuid.UUID(companyID.Bytes),
+	}
+	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+		ID:        uuid.UUID(proj.ID.Bytes),
+		CompanyID: uuid.UUID(proj.CompanyID.Bytes),
+		ClientID:  uuid.UUID(proj.ClientID.Bytes),
+	})
+	if err != nil || !access.CanView() {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	var parentUUID pgtype.UUID
+	parentIDStr := r.URL.Query().Get("parent_id")
+	if parentIDStr != "" && parentIDStr != "null" && parentIDStr != "undefined" {
+		if pid, err := uuid.Parse(parentIDStr); err == nil {
+			parentUUID = pgtype.UUID{Bytes: pid, Valid: true}
+		}
+	}
+
+	items, err := h.queries.ListItemsWithVersions(ctx, db.ListItemsWithVersionsParams{
+		CompanyID: companyID,
+		ProjectID: projectID,
+		ParentID:  parentUUID,
+		UserID:    user.ID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_list_items"})
+		return
+	}
+
+	// Filter by type if requested
+	typeFilter := strings.ToLower(r.URL.Query().Get("type"))
+	filtered := make([]map[string]interface{}, 0, len(items))
+
+	for _, item := range items {
+		if typeFilter != "" && typeFilter != "all" && item.Kind == "file" {
+			mime := strings.ToLower(item.LatestMime)
+			name := strings.ToLower(item.Name)
+			matches := false
+
+			switch typeFilter {
+			case "videos":
+				matches = strings.HasPrefix(mime, "video/") || strings.HasSuffix(name, ".mp4") || strings.HasSuffix(name, ".mov") || strings.HasSuffix(name, ".webm")
+			case "audio":
+				matches = strings.HasPrefix(mime, "audio/") || strings.HasSuffix(name, ".mp3") || strings.HasSuffix(name, ".wav") || strings.HasSuffix(name, ".aac")
+			case "images":
+				matches = strings.HasPrefix(mime, "image/") || strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg") || strings.HasSuffix(name, ".jpeg")
+			case "documents":
+				matches = strings.Contains(mime, "pdf") || strings.Contains(mime, "word") || strings.Contains(mime, "document") || strings.HasSuffix(name, ".pdf") || strings.HasSuffix(name, ".docx")
+			case "spreadsheets":
+				matches = strings.Contains(mime, "sheet") || strings.Contains(mime, "excel") || strings.Contains(mime, "csv") || strings.HasSuffix(name, ".xlsx") || strings.HasSuffix(name, ".csv")
+			default:
+				matches = true
+			}
+
+			if !matches {
+				continue
+			}
+		}
+
+		itemMap := map[string]interface{}{
+			"id":              item.ID,
+			"project_id":      item.ProjectID,
+			"parent_id":       item.ParentID,
+			"kind":            item.Kind,
+			"name":            item.Name,
+			"position":        item.Position,
+			"file_count":      item.FileCount,
+			"folder_count":    item.FolderCount,
+			"video_count":     item.VideoCount,
+			"total_bytes":     item.TotalBytes,
+			"review_status":   item.ReviewStatus,
+			"storage_key":     item.LatestStorageKey,
+			"size_bytes":      item.LatestSizeBytes,
+			"mime":            item.LatestMime,
+			"version_number":  item.LatestVersionNumber,
+			"created_by":      item.CreatedBy,
+			"created_by_name": item.CreatedByName,
+			"is_starred":      item.IsStarred,
+			"created_at":      item.CreatedAt,
+			"updated_at":      item.UpdatedAt,
+		}
+		filtered = append(filtered, itemMap)
+	}
+
+	// Ancestors / Breadcrumbs if parent_id is specified
+	var breadcrumbs []map[string]interface{}
+	if parentUUID.Valid {
+		ancestors, err := h.queries.GetItemAncestors(ctx, db.GetItemAncestorsParams{
+			ItemID:    parentUUID,
+			CompanyID: companyID,
+		})
+		if err == nil {
+			for _, a := range ancestors {
+				breadcrumbs = append(breadcrumbs, map[string]interface{}{
+					"id":        a.ID,
+					"parent_id": a.ParentID,
+					"name":      a.Name,
+					"kind":      a.Kind,
+				})
+			}
+		}
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"project": map[string]interface{}{
+			"id":           proj.ID,
+			"name":         proj.Name,
+			"client_id":    proj.ClientID,
+			"file_count":   proj.FileCount,
+			"folder_count": proj.FolderCount,
+			"video_count":  proj.VideoCount,
+			"total_bytes":  proj.TotalBytes,
+		},
+		"access": map[string]interface{}{
+			"level":        access.Level,
+			"can_download": access.CanDownload,
+			"can_upload":   access.CanUpload(),
+			"can_manage":   access.CanManage(),
+		},
+		"breadcrumbs": breadcrumbs,
+		"items":       filtered,
+	})
+}
+
+// ListFoldersTree returns the recursive folder hierarchy of a project for sidebar and move picker
+func (h *ItemsHandler) ListFoldersTree(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := middleware.GetAuthenticatedUser(ctx)
+	role, _ := middleware.GetUserRole(ctx)
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var projectID pgtype.UUID
+	if err := projectID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_project_id"})
+		return
+	}
+
+	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+		ID:        projectID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
+	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	})
+	if err != nil || !access.CanView() {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	folders, err := h.queries.ListAllProjectFolders(ctx, db.ListAllProjectFoldersParams{
+		CompanyID: companyID,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_load_folders"})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"folders": folders,
+	})
+}
+
+type createFolderReq struct {
+	ProjectID string  `json:"project_id"`
+	ParentID  *string `json:"parent_id"`
+	Name      string  `json:"name"`
+}
+
+// CreateFolder creates a new folder, or returns existing if merging same-named folder
+func (h *ItemsHandler) CreateFolder(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := middleware.GetAuthenticatedUser(ctx)
+	role, _ := middleware.GetUserRole(ctx)
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var req createFolderReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
+		return
+	}
+
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "name_required"})
+		return
+	}
+
+	var projID pgtype.UUID
+	if err := projID.Scan(req.ProjectID); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_project_id"})
+		return
+	}
+
+	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+		ID:        projID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
+	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	})
+	if err != nil || !access.CanUpload() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to create folders in this project"})
+		return
+	}
+
+	var parentUUID pgtype.UUID
+	if req.ParentID != nil && *req.ParentID != "" && *req.ParentID != "null" {
+		_ = parentUUID.Scan(*req.ParentID)
+	}
+
+	// Requirement 5: Folder uploads merge into existing folders with the same name
+	existing, err := h.queries.FindItemInParentByName(ctx, db.FindItemInParentByNameParams{
+		CompanyID: companyID,
+		ProjectID: projID,
+		ParentID:  parentUUID,
+		Name:      req.Name,
+	})
+	if err == nil && existing.Kind == "folder" {
+		// Existing folder found: return it directly to merge
+		respondJSON(w, http.StatusOK, existing)
+		return
+	}
+
+	item, err := h.queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+		CompanyID: companyID,
+		ProjectID: projID,
+		ParentID:  parentUUID,
+		Kind:      "folder",
+		Name:      req.Name,
+		Position:  pgtype.Numeric{Int: big.NewInt(0), Valid: true},
+		CreatedBy: user.ID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_folder"})
+		return
+	}
+
+	// Update counts
+	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, projID)
+	if parentUUID.Valid {
+		_ = h.queries.RecalculateFolderCounts(ctx, parentUUID)
+	}
+
+	respondJSON(w, http.StatusCreated, item)
+}
+
+type renameItemReq struct {
+	Name string `json:"name"`
+}
+
+// RenameItem renames a folder or file
+func (h *ItemsHandler) RenameItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := middleware.GetAuthenticatedUser(ctx)
+	role, _ := middleware.GetUserRole(ctx)
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var itemID pgtype.UUID
+	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
+		return
+	}
+
+	var req renameItemReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
+		return
+	}
+
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "name_required"})
+		return
+	}
+
+	item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:        itemID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+
+	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+		ID:        item.ProjectID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
+	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	})
+	if err != nil {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "access_denied"})
+		return
+	}
+
+	var createdByUUID uuid.UUID
+	if item.CreatedBy.Valid {
+		createdByUUID = uuid.UUID(item.CreatedBy.Bytes)
+	}
+
+	// Enforce Requirement 4: Uploader cannot rename someone else's file; Viewer/Commenter cannot rename
+	if !access.CanModifyItem(person, createdByUUID) {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to rename this item"})
+		return
+	}
+
+	updated, err := h.queries.RenameItem(ctx, db.RenameItemParams{
+		ID:        itemID,
+		CompanyID: companyID,
+		Name:      req.Name,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_rename_item"})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, updated)
+}
+
+type moveItemReq struct {
+	TargetParentID *string `json:"target_parent_id"`
+}
+
+// MoveItem moves an item to another folder, checking circular references
+func (h *ItemsHandler) MoveItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := middleware.GetAuthenticatedUser(ctx)
+	role, _ := middleware.GetUserRole(ctx)
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var itemID pgtype.UUID
+	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
+		return
+	}
+
+	var req moveItemReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
+		return
+	}
+
+	item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:        itemID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+
+	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+		ID:        item.ProjectID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
+	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	})
+	if err != nil {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "access_denied"})
+		return
+	}
+
+	var createdByUUID uuid.UUID
+	if item.CreatedBy.Valid {
+		createdByUUID = uuid.UUID(item.CreatedBy.Bytes)
+	}
+	if !access.CanModifyItem(person, createdByUUID) {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to move this item"})
+		return
+	}
+
+	var targetParentUUID pgtype.UUID
+	if req.TargetParentID != nil && *req.TargetParentID != "" && *req.TargetParentID != "null" {
+		if err := targetParentUUID.Scan(*req.TargetParentID); err != nil {
+			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_target_parent_id"})
+			return
+		}
+
+		// Prevent moving folder into itself
+		if item.Kind == "folder" && item.ID == targetParentUUID {
+			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "cannot_move_into_self", "message": "Cannot move a folder into itself"})
+			return
+		}
+
+		// Prevent circular moves: target cannot be a child/descendant of source folder
+		if item.Kind == "folder" {
+			ancestors, err := h.queries.GetItemAncestors(ctx, db.GetItemAncestorsParams{
+				ItemID:    targetParentUUID,
+				CompanyID: companyID,
+			})
+			if err == nil {
+				for _, a := range ancestors {
+					if a.ID == item.ID {
+						respondJSON(w, http.StatusBadRequest, map[string]string{"error": "circular_move", "message": "Cannot move a folder into its own subfolder"})
+						return
+					}
+				}
+			}
+		}
+	}
+
+	oldParentUUID := item.ParentID
+
+	moved, err := h.queries.MoveItem(ctx, db.MoveItemParams{
+		ID:          itemID,
+		CompanyID:   companyID,
+		NewParentID: targetParentUUID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_move_item"})
+		return
+	}
+
+	// Update counts for old parent and new parent
+	if oldParentUUID.Valid {
+		_ = h.queries.RecalculateFolderCounts(ctx, oldParentUUID)
+	}
+	if targetParentUUID.Valid {
+		_ = h.queries.RecalculateFolderCounts(ctx, targetParentUUID)
+	}
+	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, item.ProjectID)
+
+	respondJSON(w, http.StatusOK, moved)
+}
+
+// CopyItem makes a server-side copy of an item (Requirement 9: zero bytes through API)
+func (h *ItemsHandler) CopyItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := middleware.GetAuthenticatedUser(ctx)
+	role, _ := middleware.GetUserRole(ctx)
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var itemID pgtype.UUID
+	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
+		return
+	}
+
+	item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:        itemID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+
+	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+		ID:        item.ProjectID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
+	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	})
+	if err != nil || !access.CanUpload() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to copy items in this project"})
+		return
+	}
+
+	copyName := fmt.Sprintf("%s (Copy)", item.Name)
+	newItem, err := h.queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+		CompanyID: companyID,
+		ProjectID: item.ProjectID,
+		ParentID:  item.ParentID,
+		Kind:      item.Kind,
+		Name:      copyName,
+		Position:  pgtype.Numeric{Int: big.NewInt(0), Valid: true},
+		CreatedBy: user.ID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_copy_item"})
+		return
+	}
+
+	// If file, copy S3 storage key server-side: Requirement 7 & 9
+	if item.Kind == "file" && item.LatestStorageKey != "" {
+		newStorageKey := fmt.Sprintf("companies/%s/items/%s/v1", uuid.UUID(companyID.Bytes).String(), uuid.UUID(newItem.ID.Bytes).String())
+		if h.storage != nil {
+			_ = h.storage.CopyObject(ctx, item.LatestStorageKey, newStorageKey)
+		}
+
+		_, _ = h.queries.CreateFileVersion(ctx, db.CreateFileVersionParams{
+			CompanyID:     companyID,
+			ItemID:        newItem.ID,
+			Number:        1,
+			StorageKey:    newStorageKey,
+			SizeBytes:     item.LatestSizeBytes,
+			Mime:          item.LatestMime,
+			PreviewStatus: "none",
+			PreviewKeys:   []byte("{}"),
+			UploadedBy:    user.ID,
+		})
+
+		_ = h.queries.CommitCompanyStorage(ctx, db.CommitCompanyStorageParams{
+			ID:    companyID,
+			Bytes: item.LatestSizeBytes,
+		})
+	}
+
+	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, item.ProjectID)
+	if item.ParentID.Valid {
+		_ = h.queries.RecalculateFolderCounts(ctx, item.ParentID)
+	}
+
+	respondJSON(w, http.StatusCreated, newItem)
+}
+
+// DeleteItem soft deletes an item into Trash (recalculating active counts)
+func (h *ItemsHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := middleware.GetAuthenticatedUser(ctx)
+	role, _ := middleware.GetUserRole(ctx)
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var itemID pgtype.UUID
+	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
+		return
+	}
+
+	item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:        itemID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+
+	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+		ID:        item.ProjectID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
+	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	})
+	if err != nil {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "access_denied"})
+		return
+	}
+
+	var createdByUUID uuid.UUID
+	if item.CreatedBy.Valid {
+		createdByUUID = uuid.UUID(item.CreatedBy.Bytes)
+	}
+	if !access.CanModifyItem(person, createdByUUID) {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to delete this item"})
+		return
+	}
+
+	deleted, err := h.queries.SoftDeleteItem(ctx, db.SoftDeleteItemParams{
+		ID:        itemID,
+		CompanyID: companyID,
+		DeletedBy: user.ID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_delete_item"})
+		return
+	}
+
+	// Recalculate counts without Trash
+	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, item.ProjectID)
+	if item.ParentID.Valid {
+		_ = h.queries.RecalculateFolderCounts(ctx, item.ParentID)
+	}
+
+	respondJSON(w, http.StatusOK, deleted)
+}
+
+type batchActionReq struct {
+	ItemIDs        []string `json:"item_ids"`
+	Action         string   `json:"action"` // "delete", "move"
+	TargetParentID *string  `json:"target_parent_id"`
+}
+
+// BatchAction performs multiple item moves or soft-deletes
+func (h *ItemsHandler) BatchAction(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := middleware.GetAuthenticatedUser(ctx)
+	role, _ := middleware.GetUserRole(ctx)
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var req batchActionReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
+		return
+	}
+
+	if len(req.ItemIDs) == 0 {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_item_ids_provided"})
+		return
+	}
+
+	affectedProjects := make(map[pgtype.UUID]bool)
+
+	for _, idStr := range req.ItemIDs {
+		var itemID pgtype.UUID
+		if err := itemID.Scan(idStr); err != nil {
+			continue
+		}
+
+		item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+			ID:        itemID,
+			CompanyID: companyID,
+		})
+		if err != nil {
+			continue
+		}
+
+		proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+			ID:        item.ProjectID,
+			CompanyID: companyID,
+		})
+		if err != nil {
+			continue
+		}
+
+		person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
+		access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+			ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+		})
+		if err != nil {
+			continue
+		}
+
+		var createdByUUID uuid.UUID
+		if item.CreatedBy.Valid {
+			createdByUUID = uuid.UUID(item.CreatedBy.Bytes)
+		}
+		if !access.CanModifyItem(person, createdByUUID) {
+			continue
+		}
+
+		affectedProjects[item.ProjectID] = true
+
+		if req.Action == "delete" {
+			_, _ = h.queries.SoftDeleteItem(ctx, db.SoftDeleteItemParams{
+				ID:        itemID,
+				CompanyID: companyID,
+				DeletedBy: user.ID,
+			})
+			if item.ParentID.Valid {
+				_ = h.queries.RecalculateFolderCounts(ctx, item.ParentID)
+			}
+		} else if req.Action == "move" {
+			var targetParentUUID pgtype.UUID
+			if req.TargetParentID != nil && *req.TargetParentID != "" && *req.TargetParentID != "null" {
+				_ = targetParentUUID.Scan(*req.TargetParentID)
+			}
+			_, _ = h.queries.MoveItem(ctx, db.MoveItemParams{
+				ID:          itemID,
+				CompanyID:   companyID,
+				NewParentID: targetParentUUID,
+			})
+			if item.ParentID.Valid {
+				_ = h.queries.RecalculateFolderCounts(ctx, item.ParentID)
+			}
+			if targetParentUUID.Valid {
+				_ = h.queries.RecalculateFolderCounts(ctx, targetParentUUID)
+			}
+		}
+	}
+
+	for pID := range affectedProjects {
+		_ = h.queries.RecalculateProjectAndFolderCounts(ctx, pID)
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{"success": true})
+}
+
+// StarItem stars an item
+func (h *ItemsHandler) StarItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := middleware.GetAuthenticatedUser(ctx)
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var itemID pgtype.UUID
+	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
+		return
+	}
+
+	if err := h.queries.StarItem(ctx, db.StarItemParams{
+		CompanyID: companyID,
+		UserID:    user.ID,
+		ItemID:    itemID,
+	}); err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_star_item"})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{"starred": true})
+}
+
+// UnstarItem unstars an item
+func (h *ItemsHandler) UnstarItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := middleware.GetAuthenticatedUser(ctx)
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var itemID pgtype.UUID
+	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
+		return
+	}
+
+	if err := h.queries.UnstarItem(ctx, db.UnstarItemParams{
+		CompanyID: companyID,
+		UserID:    user.ID,
+		ItemID:    itemID,
+	}); err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_unstar_item"})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{"starred": false})
+}
+
+// ListStarred lists user's starred items across projects
+func (h *ItemsHandler) ListStarred(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := middleware.GetAuthenticatedUser(ctx)
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	items, err := h.queries.ListStarredItems(ctx, db.ListStarredItemsParams{
+		CompanyID: companyID,
+		UserID:    user.ID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_list_starred_items"})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"items": items,
+	})
+}
+
+// ListTrash lists soft-deleted items
+func (h *ItemsHandler) ListTrash(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	items, err := h.queries.ListTrashItems(ctx, companyID)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_list_trash_items"})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"items": items,
+	})
+}
+
+// RestoreTrashItem restores an item from Trash
+func (h *ItemsHandler) RestoreTrashItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var itemID pgtype.UUID
+	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
+		return
+	}
+
+	restored, err := h.queries.RestoreItem(ctx, db.RestoreItemParams{
+		ID:        itemID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_restore_item"})
+		return
+	}
+
+	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, restored.ProjectID)
+	if restored.ParentID.Valid {
+		_ = h.queries.RecalculateFolderCounts(ctx, restored.ParentID)
+	}
+
+	respondJSON(w, http.StatusOK, restored)
+}
+
+// PermanentDeleteTrashItem permanently removes an item and deletes all versions from S3 (Requirement 9)
+func (h *ItemsHandler) PermanentDeleteTrashItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := middleware.GetAuthenticatedUser(ctx)
+	role, _ := middleware.GetUserRole(ctx)
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var itemID pgtype.UUID
+	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
+		return
+	}
+
+	item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:        itemID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+
+	// Permanent delete is allowed for Admins or the item's original creator
+	isAdmin := role == authz.RoleAdmin || role == authz.RoleOwner
+	isOwner := item.CreatedBy.Valid && item.CreatedBy == user.ID
+	if !isAdmin && !isOwner {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only Admins and the original uploader can permanently delete items"})
+		return
+	}
+
+	// Find all versions to delete from S3
+	versions, err := h.queries.ListFileVersions(ctx, itemID)
+	if err == nil && len(versions) > 0 {
+		var keysToDelete []string
+		var bytesToFree int64
+		for _, v := range versions {
+			if v.StorageKey != "" {
+				keysToDelete = append(keysToDelete, v.StorageKey)
+			}
+			bytesToFree += v.SizeBytes
+		}
+
+		if h.storage != nil && len(keysToDelete) > 0 {
+			_ = h.storage.DeleteObjects(ctx, keysToDelete)
+		}
+
+		// Decrement storage_used_bytes
+		_ = h.queries.DecrementCompanyStorage(ctx, db.DecrementCompanyStorageParams{
+			ID:    companyID,
+			Bytes: bytesToFree,
+		})
+	}
+
+	if err := h.queries.PermanentDeleteItem(ctx, db.PermanentDeleteItemParams{
+		ID:        itemID,
+		CompanyID: companyID,
+	}); err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_permanently_delete_item"})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{"deleted": true})
+}
+
+type checkConflictReq struct {
+	ProjectID string  `json:"project_id"`
+	ParentID  *string `json:"parent_id"`
+	Name      string  `json:"name"`
+}
+
+// CheckNameConflict checks if a file with the given name already exists in target folder (Requirement 5)
+func (h *ItemsHandler) CheckNameConflict(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var req checkConflictReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
+		return
+	}
+
+	var projID pgtype.UUID
+	if err := projID.Scan(req.ProjectID); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_project_id"})
+		return
+	}
+
+	var parentUUID pgtype.UUID
+	if req.ParentID != nil && *req.ParentID != "" && *req.ParentID != "null" {
+		_ = parentUUID.Scan(*req.ParentID)
+	}
+
+	existing, err := h.queries.FindItemInParentByName(ctx, db.FindItemInParentByNameParams{
+		CompanyID: companyID,
+		ProjectID: projID,
+		ParentID:  parentUUID,
+		Name:      req.Name,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			respondJSON(w, http.StatusOK, map[string]interface{}{"conflict": false})
+			return
+		}
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_check_conflict"})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"conflict":      true,
+		"existing_id":   existing.ID,
+		"existing_kind": existing.Kind,
+		"existing_name": existing.Name,
+	})
+}

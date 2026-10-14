@@ -85,4 +85,20 @@ func TestMaxFileSize(t *testing.T) {
 	if MaxFileSize(PlanCompany) != 250*GB {
 		t.Errorf("expected company max file size 250GB")
 	}
+	if MaxFileSize(PlanInternal) != 100*GB {
+		t.Errorf("expected internal max file size 100GB")
+	}
 }
+
+func TestPlanInternal(t *testing.T) {
+	if !IsUnlimitedStorage(PlanInternal) {
+		t.Errorf("expected internal plan to have unlimited storage")
+	}
+	if CalculateStorageLimit(PlanInternal, 10, 0) != 0 {
+		t.Errorf("expected internal plan storage limit to be 0 (unlimited)")
+	}
+	if MaxSeats(PlanInternal) != 0 {
+		t.Errorf("expected internal plan to have unlimited seats (0)")
+	}
+}
+

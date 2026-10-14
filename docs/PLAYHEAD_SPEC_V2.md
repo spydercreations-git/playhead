@@ -319,7 +319,37 @@ Opened from the avatars in the project header. Lists team Editors and client peo
 ### 6.15 Search and notifications
 
 - Search names of clients, projects, folders, files, plus document text, sheet cells and comment text, only within what the person can open. Results grouped by type, with filters.
-- Notification bell and email for: shared with you, assigned to a project, mention, reply, new comment on your upload, new version uploaded, approved, changes requested, files uploaded through your share link. Per event settings.
+- Notification bell and email for: shared with you, assigned to a project, mention, reply, new comment on your upload, new version uploaded, approved, changes requested, files uploaded through your share link, storage alerts for Admins.
+
+#### Notification Settings (Built in P3, used by all later milestones)
+1. **Settings > Notifications page**:
+   - A row per event:
+     - Shared with me
+     - Added to a project
+     - Mentioned
+     - New comment on my upload
+     - Reply to my comment
+     - New version uploaded
+     - Approved or changes requested
+     - Client uploaded through a link
+     - Storage alerts (Admins only)
+   - Each row has two toggles: **In app** and **Email**.
+   - Defaults: all ON, except Email for "new version uploaded" is OFF.
+   - Email frequency choice: **Send right away** (default) or **One daily summary**.
+2. **Project Bell (Project header)**:
+   - A bell icon button in every project header, next to **Share**.
+   - Dropdown with three options:
+     - **All activity**: notifies on all comments, uploads, and changes in this project.
+     - **Only mentions and my files** (default): notifies only on mentions, replies, and activity on items created/uploaded by the person.
+     - **Off**: silences project updates (direct mentions still notify).
+   - Saved per person per project.
+3. **Enforcement & Links**:
+   - Every notification checks both user event preferences and project bell level before sending.
+   - Every notification email includes a clickable **Notification settings** link at the bottom.
+4. **Data model**:
+   - `notification_prefs(user_id, event_type, in_app bool, email bool, unique(user_id, event_type))`
+   - `project_notification_prefs(user_id, project_id, level [all, mentions_and_mine, off], unique(user_id, project_id))`
+   - `user_settings.email_frequency [instant, daily_summary]`
 
 ---
 

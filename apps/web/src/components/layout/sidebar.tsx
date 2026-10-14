@@ -14,6 +14,7 @@ import {
   SearchIcon,
 } from "@/components/icons";
 import { useAuth } from "@/lib/use-auth";
+import { Star } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
@@ -57,7 +58,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       icon: OverviewIcon,
       show: true,
     },
-    { name: "Starred", href: "/starred", icon: OverviewIcon, show: true },
+    { name: "Starred", href: "/starred", icon: Star, show: true },
     { name: "Trash", href: "/trash", icon: TrashIcon, show: true },
   ];
 
@@ -198,9 +199,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <span>Team</span>
               </Link>
               <Link
+                href="/settings/storage"
+                className={`flex h-[42px] items-center gap-3 rounded-lg px-3 text-xs font-medium transition-colors ${
+                  pathname.startsWith("/settings/storage")
+                    ? "bg-[#2E2F34] text-white font-semibold"
+                    : "text-[#9A9DA0] hover:bg-[#2E2F34]/60 hover:text-white"
+                }`}
+              >
+                <span className="text-sm">⚡</span>
+                <span>Storage</span>
+              </Link>
+              <Link
                 href="/settings"
                 className={`flex h-[42px] items-center gap-3 rounded-lg px-3 text-xs font-medium transition-colors ${
-                  pathname.startsWith("/settings")
+                  pathname === "/settings"
                     ? "bg-[#2E2F34] text-white font-semibold"
                     : "text-[#9A9DA0] hover:bg-[#2E2F34]/60 hover:text-white"
                 }`}

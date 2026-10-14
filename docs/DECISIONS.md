@@ -70,3 +70,16 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
 - **Decision**: Client `notes` is modeled as a text field in `clients` table and client detail page.
 - **Reason**: Per user clarification, Notes is a plain text field in Milestone P1, and will be evolved into a full collaborative document in Milestone P5.
 
+## 17. Pay-As-You-Go Internal Storage Plan & Quota Reservation Lifecycle
+- **Decision**: Added an `internal` plan in `plans.go` with no storage limit, no seat limit, and no trial expiration, moving Idyll Productions to it in migration `00004`. Implemented integer byte storage tracking across all versions and Trash until permanently deleted. Added upload bytes reservation (`storage_reserved_bytes` on `companies`) on initiate, committing to `storage_used_bytes` on complete and releasing on abort. Configured an hourly background cleanup job aborting expired pending uploads (> 24 hours). Added Admin storage dashboard tracking client/project breakdowns and estimated cost based on `STORAGE_PRICE_PER_GB` (default 0.015 USD), plus automated admin threshold alerts via `STORAGE_ALERT_GB` (default 1000 GB, alerting every further 500 GB).
+- **Reason**: Guarantees zero out-of-quota lockouts for the internal studio workspace while maintaining strict byte-for-byte cost visibility, storage reservation isolation, and automated leak prevention.
+
+## 18. Notification Settings & Preference Hierarchy (Built in P3)
+- **Decision**: Added specification for user notification preferences and per-project notification bells to Section 6.15 of `docs/PLAYHEAD_SPEC_V2.md`. Implementation is scheduled for Milestone P3 (when sharing and event notifications start). Features:
+  - Settings > Notifications page with per-event rows and dual toggles (**In app** and **Email**), defaulting to all ON except Email for "new version uploaded" (OFF), with email choice between instant and daily summary.
+  - Project header bell with three levels: "All activity", "Only mentions and my files" (default), and "Off" (preserving direct mentions).
+  - Strict two-layer preference check before dispatching any notification, with mandatory footer link to settings on all email dispatches.
+  - Backed by `notification_prefs(user_id, event_type, in_app, email)` and `project_notification_prefs(user_id, project_id, level)`.
+- **Reason**: Ensures notifications respect both global user desire and granular project focus without alert fatigue.
+
+

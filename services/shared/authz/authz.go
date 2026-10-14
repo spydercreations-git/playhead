@@ -123,6 +123,34 @@ func (a AccessResult) CanManage() bool {
 	return a.Level == LevelFull
 }
 
+// CanModifyItem returns true if the person can rename, move, or delete an item.
+// Full access can modify any item. Uploader can only modify items they created themselves.
+// Viewers and Commenters can never modify items.
+func (a AccessResult) CanModifyItem(person Person, itemCreatedBy uuid.UUID) bool {
+	if a.Level == LevelFull {
+		return true
+	}
+	if a.Level == LevelUploader && person.UserID != uuid.Nil && itemCreatedBy != uuid.Nil && person.UserID == itemCreatedBy {
+		return true
+	}
+	return false
+}
+
+// ItemTarget represents an item resource being accessed.
+type ItemTarget struct {
+	ID        uuid.UUID
+	ProjectID uuid.UUID
+	CompanyID uuid.UUID
+	CreatedBy uuid.UUID
+}
+
+// AccessItem evaluates a person's permissions on an item.
+// In P2, permissions are inherited directly from the project level.
+// (P3 will extend this with folder and file level grant checks).
+func AccessItem(ctx context.Context, q *db.Queries, person Person, project ProjectTarget, item ItemTarget) (AccessResult, error) {
+	return Access(ctx, q, person, project)
+}
+
 // CanManagePeople checks if a person is allowed to add, edit, or remove members on a project.
 // Allowed for: Admins, Managers, and people with Full access on that project.
 func CanManagePeople(person Person, access AccessResult) bool {

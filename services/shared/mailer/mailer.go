@@ -202,3 +202,45 @@ func (m *Mailer) SendLoginCode(toEmail, code string) error {
 
 	return m.send(toEmail, subject, html)
 }
+
+// SendStorageAlertEmail notifies admins when company storage crosses a threshold.
+func (m *Mailer) SendStorageAlertEmail(toEmail, toName, companyName string, usedGB, alertGB int) error {
+	subject := fmt.Sprintf("Storage Alert: %s has used %d GB of storage", companyName, usedGB)
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+  <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
+    <h2 style="color: #FFFFFF; margin-top: 0;">Storage Threshold Alert</h2>
+    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">Hi %s,</p>
+    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">Your workspace <strong>%s</strong> has passed the storage alert threshold of <strong>%d GB</strong>. Current usage is <strong>%d GB</strong>.</p>
+    <div style="margin: 28px 0;">
+      <a href="%s/settings/storage" style="background-color: #4876F3; color: #FFFFFF; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">Review Storage & Costs</a>
+    </div>
+    <p style="color: #747678; font-size: 12px;">You will receive another reminder if usage increases by another 500 GB.</p>
+  </div>
+</body>
+</html>`, toName, companyName, alertGB, usedGB, strings.TrimRight(m.FrontendURL, "/"))
+
+	return m.send(toEmail, subject, html)
+}
+
+// SendZipReadyEmail notifies a user that their background zip download is prepared.
+func (m *Mailer) SendZipReadyEmail(toEmail, toName, downloadURL string) error {
+	subject := "Your Playhead download archive is ready"
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+  <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
+    <h2 style="color: #FFFFFF; margin-top: 0;">Your Download is Ready</h2>
+    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">Hi %s,</p>
+    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">The zip archive you requested has finished processing and is ready for download.</p>
+    <div style="margin: 28px 0;">
+      <a href="%s" style="background-color: #4876F3; color: #FFFFFF; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">Download Zip Archive</a>
+    </div>
+    <p style="color: #747678; font-size: 12px;">This link is valid for 24 hours.</p>
+  </div>
+</body>
+</html>`, toName, downloadURL)
+
+	return m.send(toEmail, subject, html)
+}

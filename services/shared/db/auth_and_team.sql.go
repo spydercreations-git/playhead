@@ -30,7 +30,7 @@ INSERT INTO companies (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7
 )
-RETURNING id, name, slug, logo_key, brand_color, plan, status, trial_ends_at, seats, storage_blocks, storage_limit_bytes, storage_used_bytes, storage_reserved_bytes, verified, paddle_customer_id, paddle_subscription_id, created_at, updated_at
+RETURNING id, name, slug, logo_key, brand_color, plan, status, trial_ends_at, seats, storage_blocks, storage_limit_bytes, storage_used_bytes, storage_reserved_bytes, verified, paddle_customer_id, paddle_subscription_id, created_at, updated_at, storage_last_alert_gb
 `
 
 type CreateCompanyParams struct {
@@ -73,6 +73,7 @@ func (q *Queries) CreateCompany(ctx context.Context, arg CreateCompanyParams) (C
 		&i.PaddleSubscriptionID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.StorageLastAlertGb,
 	)
 	return i, err
 }
@@ -304,7 +305,7 @@ func (q *Queries) DeleteVerificationToken(ctx context.Context, tokenHash string)
 }
 
 const getCompaniesForUser = `-- name: GetCompaniesForUser :many
-SELECT c.id, c.name, c.slug, c.logo_key, c.brand_color, c.plan, c.status, c.trial_ends_at, c.seats, c.storage_blocks, c.storage_limit_bytes, c.storage_used_bytes, c.storage_reserved_bytes, c.verified, c.paddle_customer_id, c.paddle_subscription_id, c.created_at, c.updated_at, m.role as user_role
+SELECT c.id, c.name, c.slug, c.logo_key, c.brand_color, c.plan, c.status, c.trial_ends_at, c.seats, c.storage_blocks, c.storage_limit_bytes, c.storage_used_bytes, c.storage_reserved_bytes, c.verified, c.paddle_customer_id, c.paddle_subscription_id, c.created_at, c.updated_at, c.storage_last_alert_gb, m.role as user_role
 FROM companies c
 JOIN memberships m ON c.id = m.company_id
 WHERE m.user_id = $1
@@ -330,6 +331,7 @@ type GetCompaniesForUserRow struct {
 	PaddleSubscriptionID pgtype.Text        `json:"paddle_subscription_id"`
 	CreatedAt            pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	StorageLastAlertGb   int32              `json:"storage_last_alert_gb"`
 	UserRole             string             `json:"user_role"`
 }
 
@@ -361,6 +363,7 @@ func (q *Queries) GetCompaniesForUser(ctx context.Context, userID pgtype.UUID) (
 			&i.PaddleSubscriptionID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.StorageLastAlertGb,
 			&i.UserRole,
 		); err != nil {
 			return nil, err
@@ -374,7 +377,7 @@ func (q *Queries) GetCompaniesForUser(ctx context.Context, userID pgtype.UUID) (
 }
 
 const getCompanyBySlug = `-- name: GetCompanyBySlug :one
-SELECT id, name, slug, logo_key, brand_color, plan, status, trial_ends_at, seats, storage_blocks, storage_limit_bytes, storage_used_bytes, storage_reserved_bytes, verified, paddle_customer_id, paddle_subscription_id, created_at, updated_at FROM companies
+SELECT id, name, slug, logo_key, brand_color, plan, status, trial_ends_at, seats, storage_blocks, storage_limit_bytes, storage_used_bytes, storage_reserved_bytes, verified, paddle_customer_id, paddle_subscription_id, created_at, updated_at, storage_last_alert_gb FROM companies
 WHERE slug = $1 LIMIT 1
 `
 
@@ -400,6 +403,7 @@ func (q *Queries) GetCompanyBySlug(ctx context.Context, slug string) (Company, e
 		&i.PaddleSubscriptionID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.StorageLastAlertGb,
 	)
 	return i, err
 }

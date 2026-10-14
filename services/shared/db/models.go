@@ -8,6 +8,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Activity struct {
+	ID        pgtype.UUID        `json:"id"`
+	CompanyID pgtype.UUID        `json:"company_id"`
+	ProjectID pgtype.UUID        `json:"project_id"`
+	ItemID    pgtype.UUID        `json:"item_id"`
+	ActorID   pgtype.UUID        `json:"actor_id"`
+	Action    string             `json:"action"`
+	Details   []byte             `json:"details"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type Client struct {
 	ID          pgtype.UUID        `json:"id"`
 	CompanyID   pgtype.UUID        `json:"company_id"`
@@ -55,6 +66,25 @@ type Company struct {
 	PaddleSubscriptionID pgtype.Text        `json:"paddle_subscription_id"`
 	CreatedAt            pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	StorageLastAlertGb   int32              `json:"storage_last_alert_gb"`
+}
+
+type FileVersion struct {
+	ID            pgtype.UUID        `json:"id"`
+	CompanyID     pgtype.UUID        `json:"company_id"`
+	ItemID        pgtype.UUID        `json:"item_id"`
+	Number        int32              `json:"number"`
+	StorageKey    string             `json:"storage_key"`
+	SizeBytes     int64              `json:"size_bytes"`
+	Mime          string             `json:"mime"`
+	DurationMs    pgtype.Int4        `json:"duration_ms"`
+	Width         pgtype.Int4        `json:"width"`
+	Height        pgtype.Int4        `json:"height"`
+	Fps           pgtype.Numeric     `json:"fps"`
+	PreviewStatus string             `json:"preview_status"`
+	PreviewKeys   []byte             `json:"preview_keys"`
+	UploadedBy    pgtype.UUID        `json:"uploaded_by"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 type Grant struct {
@@ -103,6 +133,7 @@ type Item struct {
 	OriginalParentID pgtype.UUID        `json:"original_parent_id"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	VideoCount       int32              `json:"video_count"`
 }
 
 type LoginCode struct {
@@ -158,6 +189,34 @@ type Session struct {
 	Ip        pgtype.Text        `json:"ip"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Star struct {
+	CompanyID pgtype.UUID        `json:"company_id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	ItemID    pgtype.UUID        `json:"item_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type Upload struct {
+	ID             pgtype.UUID        `json:"id"`
+	CompanyID      pgtype.UUID        `json:"company_id"`
+	UserID         pgtype.UUID        `json:"user_id"`
+	ProjectID      pgtype.UUID        `json:"project_id"`
+	ParentID       pgtype.UUID        `json:"parent_id"`
+	TargetItemID   pgtype.UUID        `json:"target_item_id"`
+	Filename       string             `json:"filename"`
+	SizeBytes      int64              `json:"size_bytes"`
+	Mime           string             `json:"mime"`
+	StorageKey     string             `json:"storage_key"`
+	UploadID       string             `json:"upload_id"`
+	PartSizeBytes  int64              `json:"part_size_bytes"`
+	TotalParts     int32              `json:"total_parts"`
+	CompletedParts []byte             `json:"completed_parts"`
+	Status         string             `json:"status"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
 type User struct {

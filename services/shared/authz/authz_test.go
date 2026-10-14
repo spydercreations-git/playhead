@@ -2,6 +2,8 @@ package authz
 
 import (
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestRoleHierarchy(t *testing.T) {
@@ -118,3 +120,43 @@ func TestCanManagePeople(t *testing.T) {
 		t.Errorf("Client with Full access must be able to manage people")
 	}
 }
+
+func TestCanModifyItem(t *testing.T) {
+	aliceID := uuid.New()
+	bobID := uuid.New()
+
+	alice := Person{UserID: aliceID}
+	bob := Person{UserID: bobID}
+
+	fullAccess := AccessResult{Level: LevelFull}
+	uploaderAccess := AccessResult{Level: LevelUploader}
+	commenterAccess := AccessResult{Level: LevelCommenter}
+	viewerAccess := AccessResult{Level: LevelViewer}
+
+	// Full access can modify any item
+	if !fullAccess.CanModifyItem(alice, bobID) {
+		t.Errorf("Full access should be able to modify anyone's item")
+	}
+
+	// Uploader can modify own item
+	if !uploaderAccess.CanModifyItem(alice, aliceID) {
+		t.Errorf("Uploader should be able to modify own item")
+	}
+	if !uploaderAccess.CanModifyItem(bob, bobID) {
+		t.Errorf("Uploader bob should be able to modify own item")
+	}
+
+	// Uploader CANNOT modify someone else's item
+	if uploaderAccess.CanModifyItem(alice, bobID) {
+		t.Errorf("Uploader must NOT be able to modify someone else's item")
+	}
+
+	// Viewer and Commenter can NEVER modify items
+	if viewerAccess.CanModifyItem(alice, aliceID) {
+		t.Errorf("Viewer must NOT be able to modify item")
+	}
+	if commenterAccess.CanModifyItem(alice, aliceID) {
+		t.Errorf("Commenter must NOT be able to modify item")
+	}
+}
+

@@ -87,8 +87,21 @@ func main() {
 	inviteHandler := handler.NewInviteHandler(queries, mailClient)
 	clientHandler := handler.NewClientHandler(queries, mailClient)
 	projectHandler := handler.NewProjectHandler(queries)
+	itemsHandler := handler.NewItemsHandler(queries, storageClient)
+	storageUploadsHandler := handler.NewStorageUploadsHandler(queries, storageClient, mailClient, cfg)
 	rateLimiter := middleware.NewRateLimiter(rdb, 5, 15*time.Minute) // 5 attempts per 15 min per IP/email
 	authMw := middleware.NewAuthMiddleware(queries)
+
+	// Hourly abandoned upload cleanup (Requirement 2)
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			if count, err := storageUploadsHandler.CleanupAbandonedUploads(context.Background()); err == nil && count > 0 {
+				slog.Info("hourly cleanup aborted abandoned uploads", "count", count)
+			}
+		}
+	}()
 
 	// Initialize router
 	r := chi.NewRouter()
@@ -164,6 +177,34 @@ func main() {
 			protected.Post("/projects/{id}/people", projectHandler.AddPerson)
 			protected.Patch("/projects/{id}/people/{person_id}", projectHandler.UpdatePerson)
 			protected.Delete("/projects/{id}/people/{person_id}", projectHandler.RemovePerson)
+
+			// Items and Workspace (P2)
+			protected.Get("/projects/{id}/items", itemsHandler.ListItems)
+			protected.Get("/projects/{id}/folders/tree", itemsHandler.ListFoldersTree)
+			protected.Post("/items/folder", itemsHandler.CreateFolder)
+			protected.Patch("/items/{id}", itemsHandler.RenameItem)
+			protected.Post("/items/{id}/move", itemsHandler.MoveItem)
+			protected.Post("/items/{id}/copy", itemsHandler.CopyItem)
+			protected.Delete("/items/{id}", itemsHandler.DeleteItem)
+			protected.Post("/items/batch", itemsHandler.BatchAction)
+			protected.Post("/items/check-conflict", itemsHandler.CheckNameConflict)
+			protected.Post("/items/{id}/star", itemsHandler.StarItem)
+			protected.Delete("/items/{id}/star", itemsHandler.UnstarItem)
+			protected.Get("/starred", itemsHandler.ListStarred)
+			protected.Get("/trash", itemsHandler.ListTrash)
+			protected.Post("/trash/{id}/restore", itemsHandler.RestoreTrashItem)
+			protected.Delete("/trash/{id}", itemsHandler.PermanentDeleteTrashItem)
+
+			// Uploads & Downloads (P2)
+			protected.Post("/uploads/initiate", storageUploadsHandler.InitiateUpload)
+			protected.Get("/uploads/{id}/parts", storageUploadsHandler.GetUploadParts)
+			protected.Post("/uploads/{id}/complete", storageUploadsHandler.CompleteUpload)
+			protected.Delete("/uploads/{id}", storageUploadsHandler.AbortUpload)
+			protected.Get("/items/{id}/download", storageUploadsHandler.DownloadItem)
+			protected.Post("/downloads/zip", storageUploadsHandler.ZipDownload)
+
+			// Admin Storage Dashboard (P2 Requirement 1)
+			protected.With(middleware.RequireRole("admin")).Get("/admin/storage", storageUploadsHandler.GetStorageAdminStats)
 		})
 	})
 

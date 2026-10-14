@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 )
 
 type Config struct {
@@ -21,9 +22,23 @@ type Config struct {
 	SMTPHost          string
 	SMTPPort          int
 	Environment       string
+	StoragePricePerGB float64
+	StorageAlertGB    int
 }
 
 func Load() *Config {
+	storagePriceStr := getEnv("STORAGE_PRICE_PER_GB", "0.015")
+	var storagePrice float64 = 0.015
+	if p, err := strconv.ParseFloat(storagePriceStr, 64); err == nil && p > 0 {
+		storagePrice = p
+	}
+
+	storageAlertStr := getEnv("STORAGE_ALERT_GB", "1000")
+	var storageAlert int = 1000
+	if a, err := strconv.Atoi(storageAlertStr); err == nil && a > 0 {
+		storageAlert = a
+	}
+
 	return &Config{
 		Port:              getEnv("PORT", "8080"),
 		AppURL:            getEnv("APP_URL", "http://localhost:3000"),
@@ -41,6 +56,8 @@ func Load() *Config {
 		SMTPHost:          getEnv("SMTP_HOST", "localhost"),
 		SMTPPort:          1025,
 		Environment:       getEnv("ENV", "development"),
+		StoragePricePerGB: storagePrice,
+		StorageAlertGB:    storageAlert,
 	}
 }
 

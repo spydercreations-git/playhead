@@ -172,7 +172,7 @@ func (q *Queries) CreateGrant(ctx context.Context, arg CreateGrantParams) (Grant
 const createItem = `-- name: CreateItem :one
 INSERT INTO items (company_id, project_id, parent_id, kind, name, position, created_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count
 `
 
 type CreateItemParams struct {
@@ -216,6 +216,7 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (Item, e
 		&i.OriginalParentID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.VideoCount,
 	)
 	return i, err
 }
@@ -878,7 +879,7 @@ func (q *Queries) ListGrantsByTarget(ctx context.Context, arg ListGrantsByTarget
 }
 
 const listItemsByProjectAndParent = `-- name: ListItemsByProjectAndParent :many
-SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at FROM items
+SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count FROM items
 WHERE company_id = $1
   AND project_id = $2
   AND ($3::uuid IS NULL AND parent_id IS NULL OR parent_id = $3)
@@ -920,6 +921,7 @@ func (q *Queries) ListItemsByProjectAndParent(ctx context.Context, arg ListItems
 			&i.OriginalParentID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.VideoCount,
 		); err != nil {
 			return nil, err
 		}

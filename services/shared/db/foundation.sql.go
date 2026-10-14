@@ -61,7 +61,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const getCompanyByID = `-- name: GetCompanyByID :one
-SELECT id, name, slug, logo_key, brand_color, plan, status, trial_ends_at, seats, storage_blocks, storage_limit_bytes, storage_used_bytes, storage_reserved_bytes, verified, paddle_customer_id, paddle_subscription_id, created_at, updated_at FROM companies
+SELECT id, name, slug, logo_key, brand_color, plan, status, trial_ends_at, seats, storage_blocks, storage_limit_bytes, storage_used_bytes, storage_reserved_bytes, verified, paddle_customer_id, paddle_subscription_id, created_at, updated_at, storage_last_alert_gb FROM companies
 WHERE id = $1 LIMIT 1
 `
 
@@ -87,6 +87,7 @@ func (q *Queries) GetCompanyByID(ctx context.Context, id pgtype.UUID) (Company, 
 		&i.PaddleSubscriptionID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.StorageLastAlertGb,
 	)
 	return i, err
 }

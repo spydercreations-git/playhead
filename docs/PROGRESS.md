@@ -117,17 +117,71 @@ Google Login is built into the backend and UI, but hidden until configured. When
 
 ---
 
-## Upcoming Milestones (Version 2: P2 – P7)
+## Milestone P2: Files, Folders, Fast Upload and Download
 
-Per `docs/PLAYHEAD_SPEC_V2.md` Section 13:
+### Status: Completed ✅ (Verified end-to-end in browser and tests)
 
-- **Milestone P2: Files, folders, fast upload and download**
-  - Items table and hierarchical counts (`Section 3.1`).
-  - Project page per `PROJECT_WORKSPACE.md`, folder tree, unlimited nesting.
-  - Item operations: create, rename, move, copy, star, delete, Trash, multiple select.
-  - Fast parallel resumable uploads of any type and whole folders directly to R2/MinIO.
-  - Downloads and zips.
-  - File viewer for non-video files.
+### What was built:
+1. **Pay-as-you-go Storage & "Internal" Plan**:
+   - Added `internal` plan in `services/shared/plans/plans.go` with unlimited storage, no trial expiry, no seat limit, and up to 100 GB max file size.
+   - Database migration `00004_p2_items_uploads_storage.sql` automatically moved company "Idyll Productions" to the `internal` plan.
+   - Byte-accurate tracking of all versions and soft-deleted Trash items in integer bytes.
+   - Admin Storage Dashboard (`/settings/storage`): Displays total storage used, reserved bytes, estimated monthly cost (calculated from `STORAGE_PRICE_PER_GB`, default $0.015 USD), and breakdown per client and project.
+   - Storage alerts (`STORAGE_ALERT_GB`, default 1000 GB): Emails workspace administrators via `mailer.SendStorageAlertEmail` when storage threshold is crossed and every further 500 GB.
+
+2. **Reserved Bytes & Quota Lifecycle**:
+   - `storage_reserved_bytes` reserved atomically in a transaction on upload initiate (`/api/v1/uploads/initiate`).
+   - Committed to `storage_used_bytes` upon upload completion (`/api/v1/uploads/{id}/complete`).
+   - Released immediately if aborted (`DELETE /api/v1/uploads/{id}`).
+   - Background hourly cleanup ticker in the API server (`CleanupAbandonedUploads`) automatically aborts uploads abandoned for > 24 hours, cleans up uploaded parts in S3, and releases reserved bytes.
+
+3. **Fast Parallel Resumable Multipart Uploads**:
+   - Storage keys use IDs only: `companies/{cid}/items/{item_id}/v{n}`, never user-supplied file names.
+   - S3/MinIO bucket configured with CORS exposing `ETag` and ranges to the web browser.
+   - Direct-to-storage parallel chunk upload engine in the browser (5 MB - 50 MB chunk size, dynamically scaling to keep parts <= 10,000 for up to 100 GB files).
+   - Zero file bytes flow through the API server during upload.
+   - Browser Upload Tray: shows upload speed (MB/s), remaining time, chunk-level progress bar, pause/resume, and cancel buttons.
+   - Reload resilience: active uploads persist in `localStorage`; browser queries `/uploads/{id}/parts` to resume only missing parts without re-uploading completed chunks.
+   - Conflict detection: duplicate file names prompt the user to "Keep both" (appends ` (1)`) or "Upload as new version". Folder uploads merge transparently into existing folders.
+
+4. **File & Folder Operations**:
+   - Recursive folder tree sidebar and folder navigation (`/projects/[id]?folder=...`).
+   - Full CRUD: Create folder, rename item, move item (with ancestor circular-reference prevention), server-side storage copy (`CopyObject`), soft-delete to Trash, and batch actions.
+   - Starred items: star/unstar files and folders, with dedicated Starred page (`/starred`).
+   - Trash & Permanent Delete: soft-delete to Trash (`/trash`) where items still count towards storage until permanently deleted; permanent delete removes all S3 version objects and previews.
+   - Grid and table view toggle with persistent preference, multi-select floating action bar, desktop drag-and-drop file and folder uploads.
+   - Hidden document/spreadsheet/tracker creations until Milestones P5 and P6.
+
+5. **Downloads & Streaming Zip Engine**:
+   - Direct presigned download URLs for files (`/api/v1/items/{id}/download`), enforcing `CanDownload` permissions.
+   - Streaming zip downloads (`/api/v1/downloads/zip`) in store mode (no compression for maximum speed) streamed directly through the API for archives <= 2 GB.
+   - Strict security check: zip archive is rejected with 403 if ANY item has `can_download == false`.
+
+6. **File Viewer & Video Player**:
+   - Full modal viewer (`FileViewer`): non-video media viewer for Audio (waveform preview), Images (fit/100% zoom), PDF (in-browser embed), and Code/Text with metadata details drawer.
+   - Video player: double-clicking a video in P2 plays the original file in a sleek, dark HTML5 player (until HLS transcoded previews arrive in Milestone P4).
+
+7. **Automated Testing Suite**:
+   - `services/api/internal/handler/p2_files_folders_test.go` verifying:
+     - Viewer and Commenter are rejected (403) from uploading.
+     - Uploader cannot rename or delete someone else's file.
+     - Storage bytes stay byte-exact after upload, abort, delete, and restore.
+     - Abandoned upload hourly cleanup releases reserved bytes.
+     - Zip download is refused if any item has Can download off.
+     - Plans limits and internal unlimited storage logic tested in `services/shared/plans/plans_test.go`.
+
+### How to test locally:
+1. Run `make test` to verify all backend unit/integration tests and web TypeScript checks pass.
+2. Run `make dev` and visit `http://localhost:3000/projects/[project_id]`:
+   - Drag and drop files or folders or click **Upload** -> **Upload files**.
+   - Watch the floating Upload Tray upload directly to MinIO with parallel chunks, speed, and time estimation.
+   - Test Pause / Resume or refresh the page to resume uploads.
+   - Click **Settings** -> **Storage** (`/settings/storage`) to see the byte-accurate storage usage, reserved bytes, and monthly cost estimate.
+3. Check Mailpit at `http://localhost:8025` for storage alert emails.
+
+---
+
+## Upcoming Milestones (Version 2: P3 – P7)
 
 - **Milestone P3: Permissions and sharing**
   - Central `authz.Access(person, item)` engine with access levels (Viewer, Commenter, Uploader, Full access) and `Can download`.

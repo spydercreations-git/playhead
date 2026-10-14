@@ -496,12 +496,13 @@ func (h *ReviewHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 
 	isTeam := h.isTeamMember(ctx, companyID)
 	vis := strings.ToLower(req.Visibility)
-	if vis == "team" {
+	if vis == "team" || vis == "team_only" {
 		// Requirement 7: Client contacts cannot create team only comments
 		if !isTeam {
 			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only team members can create Team only comments"})
 			return
 		}
+		vis = "team"
 	} else {
 		vis = "everyone"
 	}
@@ -1666,7 +1667,7 @@ func (h *ReviewHandler) PublicCreateComment(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Visitors cannot create team only comments
-	if strings.ToLower(req.Visibility) == "team" {
+	if strings.ToLower(req.Visibility) == "team" || strings.ToLower(req.Visibility) == "team_only" {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Visitors cannot create Team only comments"})
 		return
 	}

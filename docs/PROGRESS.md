@@ -342,7 +342,15 @@ Google Login is built into the backend and UI, but hidden until configured. When
 10. **Validation on Comments**: `CreateComment` and `PublicCreateComment` verify `version_id` and `parent_id` belong to the target item.
 11. **isTeamMember Verification**: Decided via company membership check in database (`queries.GetMembership`), never by role name string matching.
 12. **Rate Limiter Memory Management**: Prunes stale keys across `rateLimits` map in `ReviewHandler`.
-13. **Comprehensive HTTP Test Suite**: Added `TestP4_AdvisorReviewFixes` in `p4_video_review_test.go` verifying password link protection, client CSV export & folder grant review feed scoping, mentionable privacy, visitor approval identification, upload task enqueueing to Asynq, and video rotation scaling.
+14. **Asynq Worker Grouped Comment Notifications**: Moved email dispatch out of the HTTP API into `email:grouped_comment_notification` worker task (`services/worker/notifier.go`). Comments created within a 5-minute window are aggregated into a single email per recipient via `asynq.Unique(5*time.Minute)` and `asynq.ProcessIn(5*time.Minute)`. Team-only visibility rules and notification preferences are strictly respected. Tested and verified in `services/worker/notifier_test.go` (5 comments in 5 min -> 1 email per recipient in Mailpit).
+15. **Mention Authorization Filtering**: Only mentioned users who have view access to the item (`authz.AccessItem` `CanView() == true`) receive notifications/emails. Mentions of anyone outside the item scope are silently ignored.
+16. **Docker Worker Infrastructure (`infra/Dockerfile.worker`)**: Added `playhead-worker` Alpine container to `infra/docker-compose.yml` pre-installed with real `ffmpeg 6.1.1` and `ffprobe`. Runs natively in `make dev` alongside Postgres, Redis, MinIO, and Mailpit.
+17. **Real End-to-End Browser Video Review Verification**:
+    - Uploaded real horizontal 16:9 MP4 (1280x720, 30fps), vertical 9:16 MP4 (1920x1080 with rotation metadata), and MP3 audio file.
+    - All reached `preview_status = 'ready'`; worker transcoded multi-rendition HLS (`master.m3u8`, `720p.m3u8`, `1080p.m3u8`), poster images, thumbnail sprite sheets (`sprite.jpg` + `sprite.json`), and audio waveform (`waveform.json`).
+    - Verified in browser: HLS playback, poster display, timeline scrubber with comment markers, and audio waveform.
+    - Created point comment, range comment with SVG drawing overlay, team-only comment, and submitted review approval.
+    - Verified password-protected share link in browser: password prompt required, unlocks with `SharePassword123!`, team-only comments strictly hidden from visitor, visitor identity prompt recorded, and visitor comment posted and displayed.
 
 ---
 

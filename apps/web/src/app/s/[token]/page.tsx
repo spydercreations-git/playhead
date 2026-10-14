@@ -64,7 +64,7 @@ export default function PublicSharePage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`/api/v1/s/${token}`);
+      const res = await fetch(`/api/v1/s/${token}`, { credentials: "include" });
       if (res.status === 404) {
         setError("This share link does not exist or has been disabled.");
         setLoading(false);
@@ -109,6 +109,7 @@ export default function PublicSharePage() {
       const res = await fetch(`/api/v1/s/${token}/unlock`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ password: passwordInput }),
       });
       if (!res.ok) {
@@ -129,6 +130,7 @@ export default function PublicSharePage() {
       await fetch(`/api/v1/s/${token}/identify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ name: visitorName, email: visitorEmail }),
       });
       localStorage.setItem(`ph_identified_${token}`, "true");

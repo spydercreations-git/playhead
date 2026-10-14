@@ -181,3 +181,10 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
   - **Comment Target Integrity**: `CreateComment` and `PublicCreateComment` validate that `version_id` and `parent_id` belong directly to the target item.
   - **Membership Resolution for Team Access**: Replaced role name string checks with company membership verification in database (`queries.GetMembership`).
 
+## 32. Grouped Notifications Worker Engine & Mention Access Scoping (P4 Final)
+- **Decision**:
+  - **Asynq Unique Grouped Notification Engine**: Extracted comment notification dispatch out of the HTTP API into background Asynq worker handler `email:grouped_comment_notification` in `services/worker/notifier.go`. When comments are created, the comment ID is pushed to Redis set `playhead:pending_comments:<item_id>` and a single debounced task is scheduled with `asynq.Unique(5*time.Minute)` and `asynq.ProcessIn(5*time.Minute)`. When the worker fires, it drains all pending comments for that item, loads users with view access, filters out team-only comments for non-team recipients, verifies user/project notification toggles, and sends exactly ONE email per recipient summarizing all comments. Immediate reviews (Approve / Request changes) dispatch immediately.
+  - **Strict Mention Access Scoping**: During comment creation and grouped email aggregation, parsed `@mentions` are cross-referenced with `authz.AccessItem(person, item)`. Only users with `CanView() == true` are notified. Mentions of users without access to the item are discarded and send zero emails.
+  - **Worker Dockerization with Alpine and FFmpeg**: Integrated `playhead-worker` into `infra/docker-compose.yml` based on `infra/Dockerfile.worker`, including `ffmpeg 6.1.1` and `ffprobe`. Runs automatically in `make dev` with access to MinIO (`http://minio:9000`), Postgres, and Redis.
+
+

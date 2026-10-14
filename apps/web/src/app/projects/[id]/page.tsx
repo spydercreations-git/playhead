@@ -559,7 +559,9 @@ export default function ProjectWorkspacePage() {
     );
   }
 
-  const { project, items = [], breadcrumbs = [], user_access = "viewer" } = workspaceData;
+  const { project, user_access = "viewer" } = workspaceData;
+  const items = Array.isArray(workspaceData.items) ? workspaceData.items : [];
+  const breadcrumbs = Array.isArray(workspaceData.breadcrumbs) ? workspaceData.breadcrumbs : [];
   const access = workspaceData.access || {};
   const userAccessLevel = access.level || user_access;
   const canDownload = access.can_download !== undefined ? Boolean(access.can_download) : true;

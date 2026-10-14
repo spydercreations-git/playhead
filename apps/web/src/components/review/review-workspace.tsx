@@ -47,6 +47,27 @@ interface ReviewWorkspaceProps {
   onOpenShare?: () => void;
   publicShareToken?: string; // set when opened via public share link
 }
+function getCsrfToken(): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/(?:^|;\s*)playhead_csrf=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+function authFetch(url: string, init?: RequestInit): Promise<Response> {
+  const headers = new Headers(init?.headers || {});
+  const method = (init?.method || "GET").toUpperCase();
+  if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
+    const csrf = getCsrfToken();
+    if (csrf && !headers.has("X-CSRF-Token")) {
+      headers.set("X-CSRF-Token", csrf);
+    }
+  }
+  return fetch(url, {
+    ...init,
+    headers,
+    credentials: "include",
+  });
+}
 
 export function ReviewWorkspace({
   item,
@@ -91,7 +112,7 @@ export function ReviewWorkspace({
   const fetchVersions = useCallback(async () => {
     if (isPublic) return; // public share links use single version or current
     try {
-      const res = await fetch(`/api/v1/items/${item.id}/versions`);
+      const res = await authFetch(`/api/v1/items/${item.id}/versions`);
       if (res.ok) {
         const data = await res.json();
         if (data.versions) {
@@ -109,7 +130,7 @@ export function ReviewWorkspace({
       const url = isPublic
         ? `/api/v1/s/${publicShareToken}/items/${item.id}/comments`
         : `/api/v1/items/${item.id}/comments`;
-      const res = await fetch(url);
+      const res = await authFetch(url);
       if (res.ok) {
         const data = await res.json();
         if (data.comments) {
@@ -125,7 +146,7 @@ export function ReviewWorkspace({
   const fetchReviews = useCallback(async () => {
     if (isPublic) return;
     try {
-      const res = await fetch(`/api/v1/items/${item.id}/reviews`);
+      const res = await authFetch(`/api/v1/items/${item.id}/reviews`);
       if (res.ok) {
         const data = await res.json();
         if (data.reviews) {
@@ -141,7 +162,7 @@ export function ReviewWorkspace({
   const fetchMentionable = useCallback(async () => {
     if (isPublic) return;
     try {
-      const res = await fetch(`/api/v1/items/${item.id}/mentionable`);
+      const res = await authFetch(`/api/v1/items/${item.id}/mentionable`);
       if (res.ok) {
         const data = await res.json();
         if (data.mentionable) {
@@ -201,7 +222,7 @@ export function ReviewWorkspace({
       payload.visitor_email = visitorEmail || "guest@review.com";
     }
 
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -235,7 +256,7 @@ export function ReviewWorkspace({
       payload.visitor_email = visitorEmail || "guest@review.com";
     }
 
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -249,7 +270,7 @@ export function ReviewWorkspace({
   // Resolve comment
   const handleResolveComment = async (commentId: string, resolved: boolean) => {
     const endpoint = resolved ? `/api/v1/comments/${commentId}/resolve` : `/api/v1/comments/${commentId}/reopen`;
-    const res = await fetch(endpoint, { method: "POST" });
+    const res = await authFetch(endpoint, { method: "POST" });
     if (res.ok) {
       await fetchComments();
     }
@@ -257,7 +278,7 @@ export function ReviewWorkspace({
 
   // Delete comment
   const handleDeleteComment = async (commentId: string) => {
-    const res = await fetch(`/api/v1/comments/${commentId}`, { method: "DELETE" });
+    const res = await authFetch(`/api/v1/comments/${commentId}`, { method: "DELETE" });
     if (res.ok) {
       await fetchComments();
     }
@@ -265,7 +286,7 @@ export function ReviewWorkspace({
 
   // Edit comment
   const handleEditComment = async (commentId: string, newBody: string) => {
-    const res = await fetch(`/api/v1/comments/${commentId}`, {
+    const res = await authFetch(`/api/v1/comments/${commentId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ body: newBody }),
@@ -300,7 +321,7 @@ export function ReviewWorkspace({
       payload.visitor_email = visitorEmail;
     }
 
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

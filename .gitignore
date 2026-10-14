@@ -28,3 +28,4 @@ infra/data/
 *.swp
 *.tsbuildinfo
 
+/services/worker/worker

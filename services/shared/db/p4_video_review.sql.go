@@ -193,6 +193,53 @@ func (q *Queries) GetCommentByID(ctx context.Context, arg GetCommentByIDParams) 
 	return i, err
 }
 
+const getFileVersionByID = `-- name: GetFileVersionByID :one
+SELECT id, company_id, item_id, number, storage_key, size_bytes, mime, duration_ms, width, height, fps, preview_status, preview_keys, uploaded_by, created_at FROM file_versions
+WHERE id = $1
+`
+
+func (q *Queries) GetFileVersionByID(ctx context.Context, id pgtype.UUID) (FileVersion, error) {
+	row := q.db.QueryRow(ctx, getFileVersionByID, id)
+	var i FileVersion
+	err := row.Scan(
+		&i.ID,
+		&i.CompanyID,
+		&i.ItemID,
+		&i.Number,
+		&i.StorageKey,
+		&i.SizeBytes,
+		&i.Mime,
+		&i.DurationMs,
+		&i.Width,
+		&i.Height,
+		&i.Fps,
+		&i.PreviewStatus,
+		&i.PreviewKeys,
+		&i.UploadedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getShareVisitorByID = `-- name: GetShareVisitorByID :one
+SELECT id, share_link_id, name, email, first_seen_at, last_seen_at FROM share_visitors
+WHERE id = $1
+`
+
+func (q *Queries) GetShareVisitorByID(ctx context.Context, id pgtype.UUID) (ShareVisitor, error) {
+	row := q.db.QueryRow(ctx, getShareVisitorByID, id)
+	var i ShareVisitor
+	err := row.Scan(
+		&i.ID,
+		&i.ShareLinkID,
+		&i.Name,
+		&i.Email,
+		&i.FirstSeenAt,
+		&i.LastSeenAt,
+	)
+	return i, err
+}
+
 const listCommentReplies = `-- name: ListCommentReplies :many
 SELECT c.id, c.company_id, c.item_id, c.version_id, c.parent_id,
        c.author_user_id, c.author_visitor_id, c.author_name, c.author_email,
@@ -377,6 +424,49 @@ func (q *Queries) ListCommentsByItemVersion(ctx context.Context, arg ListComment
 			&i.UserEmail,
 			&i.ResolvedByName,
 			&i.ReplyCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPendingVideoVersions = `-- name: ListPendingVideoVersions :many
+SELECT id, company_id, item_id, storage_key, mime, preview_status
+FROM file_versions
+WHERE preview_status = 'pending'
+ORDER BY created_at ASC
+`
+
+type ListPendingVideoVersionsRow struct {
+	ID            pgtype.UUID `json:"id"`
+	CompanyID     pgtype.UUID `json:"company_id"`
+	ItemID        pgtype.UUID `json:"item_id"`
+	StorageKey    string      `json:"storage_key"`
+	Mime          string      `json:"mime"`
+	PreviewStatus string      `json:"preview_status"`
+}
+
+func (q *Queries) ListPendingVideoVersions(ctx context.Context) ([]ListPendingVideoVersionsRow, error) {
+	rows, err := q.db.Query(ctx, listPendingVideoVersions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPendingVideoVersionsRow{}
+	for rows.Next() {
+		var i ListPendingVideoVersionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CompanyID,
+			&i.ItemID,
+			&i.StorageKey,
+			&i.Mime,
+			&i.PreviewStatus,
 		); err != nil {
 			return nil, err
 		}

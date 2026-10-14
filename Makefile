@@ -26,7 +26,12 @@ dev:
 	@echo "Web will run on http://localhost:3000"
 	@echo "MinIO Console on http://localhost:9001"
 	@echo "Mailpit Web on http://localhost:8025"
-	@(trap 'kill 0' SIGINT; cd services/api && $(GO) run cmd/server/main.go & cd apps/web && npm run dev & wait)
+	@(trap 'kill 0' SIGINT; cd services/api && $(GO) run cmd/server/main.go & cd services/worker && $(GO) run cmd/worker/main.go & cd apps/web && npm run dev & wait)
+
+# Re-queue all pending video versions
+requeue:
+	@echo "==> Re-queueing all pending video versions..."
+	@cd services/worker && $(GO) run cmd/worker/main.go -requeue
 
 # Run test suites across the stack
 test:
@@ -48,4 +53,6 @@ stop:
 	@echo "==> Terminating any leftover local server processes..."
 	@-pkill -f "next-dev" 2>/dev/null || true
 	@-pkill -f "cmd/server/main.go" 2>/dev/null || true
+	@-pkill -f "cmd/worker/main.go" 2>/dev/null || true
 	@echo "==> All stopped cleanly."
+

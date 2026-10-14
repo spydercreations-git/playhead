@@ -307,3 +307,80 @@ func (m *Mailer) SendItemSharedEmail(toEmail, toName, itemName, itemKind, itemUR
 
 	return m.send(toEmail, subject, html)
 }
+
+// SendCommentNotificationEmail sends comment notification or digest
+func (m *Mailer) SendCommentNotificationEmail(toEmail, toName, commenterName, itemName, itemURL, commentBody string) error {
+	subject := fmt.Sprintf("New comment on '%s' from %s", itemName, commenterName)
+	if toName == "" {
+		toName = "there"
+	}
+	settingsURL := fmt.Sprintf("%s/settings/notifications", strings.TrimRight(m.FrontendURL, "/"))
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+  <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
+    <div style="margin-bottom: 24px;">
+      <span style="font-size: 20px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">playhead</span>
+    </div>
+    <h2 style="color: #FFFFFF; margin-top: 0; font-size: 18px;">New Comment</h2>
+    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">Hi %s,</p>
+    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;"><strong>%s</strong> commented on <strong>%s</strong>:</p>
+    <div style="background-color: #181818; border-left: 3px solid #4876F3; padding: 12px 16px; margin: 20px 0; border-radius: 4px; color: #E0E0E0; font-size: 14px; line-height: 1.5;">
+      %s
+    </div>
+    <div style="margin: 28px 0;">
+      <a href="%s" style="background-color: #4876F3; color: #FFFFFF; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">Reply to Comment</a>
+    </div>
+    <hr style="border: none; border-top: 1px solid #333333; margin: 24px 0;" />
+    <p style="color: #747678; font-size: 12px; margin: 0;">
+      Manage your email preferences in <a href="%s" style="color: #4876F3; text-decoration: none;">Notification settings</a>.
+    </p>
+  </div>
+</body>
+</html>`, toName, commenterName, itemName, commentBody, itemURL, settingsURL)
+
+	return m.send(toEmail, subject, html)
+}
+
+// SendReviewNotificationEmail sends approval or change request review notification
+func (m *Mailer) SendReviewNotificationEmail(toEmail, toName, reviewerName, itemName, itemURL, decision, note string) error {
+	statusTitle := "Approved"
+	accentColor := "#30A46C"
+	if decision == "changes_requested" {
+		statusTitle = "Changes Requested"
+		accentColor = "#E54D2E"
+	}
+	subject := fmt.Sprintf("%s: '%s' by %s", statusTitle, itemName, reviewerName)
+	if toName == "" {
+		toName = "there"
+	}
+	settingsURL := fmt.Sprintf("%s/settings/notifications", strings.TrimRight(m.FrontendURL, "/"))
+	noteSection := ""
+	if strings.TrimSpace(note) != "" {
+		noteSection = fmt.Sprintf(`<div style="background-color: #181818; border-left: 3px solid %s; padding: 12px 16px; margin: 20px 0; border-radius: 4px; color: #E0E0E0; font-size: 14px; line-height: 1.5;">%s</div>`, accentColor, note)
+	}
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+  <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
+    <div style="margin-bottom: 24px;">
+      <span style="font-size: 20px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">playhead</span>
+    </div>
+    <h2 style="color: #FFFFFF; margin-top: 0; font-size: 18px;">Review Decision: <span style="color: %s;">%s</span></h2>
+    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">Hi %s,</p>
+    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;"><strong>%s</strong> marked <strong>%s</strong> as <strong>%s</strong>.</p>
+    %s
+    <div style="margin: 28px 0;">
+      <a href="%s" style="background-color: #4876F3; color: #FFFFFF; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">View in Playhead</a>
+    </div>
+    <hr style="border: none; border-top: 1px solid #333333; margin: 24px 0;" />
+    <p style="color: #747678; font-size: 12px; margin: 0;">
+      Manage your email preferences in <a href="%s" style="color: #4876F3; text-decoration: none;">Notification settings</a>.
+    </p>
+  </div>
+</body>
+</html>`, accentColor, statusTitle, toName, reviewerName, itemName, statusTitle, noteSection, itemURL, settingsURL)
+
+	return m.send(toEmail, subject, html)
+}
+

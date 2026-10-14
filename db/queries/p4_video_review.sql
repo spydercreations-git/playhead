@@ -136,3 +136,18 @@ WHERE i.company_id = $1
   AND (i.video_count > 0 OR i.name ILIKE '%.mp4' OR i.name ILIKE '%.mov' OR i.name ILIKE '%.m4v' OR i.name ILIKE '%.webm' OR i.name ILIKE '%.avi' OR i.name ILIKE '%.mp3' OR i.name ILIKE '%.wav')
   AND ($2::uuid[] IS NULL OR i.project_id = ANY($2::uuid[]))
 ORDER BY i.updated_at DESC;
+
+-- name: GetFileVersionByID :one
+SELECT * FROM file_versions
+WHERE id = $1;
+
+-- name: ListPendingVideoVersions :many
+SELECT id, company_id, item_id, storage_key, mime, preview_status
+FROM file_versions
+WHERE preview_status = 'pending'
+ORDER BY created_at ASC;
+
+-- name: GetShareVisitorByID :one
+SELECT * FROM share_visitors
+WHERE id = $1;
+

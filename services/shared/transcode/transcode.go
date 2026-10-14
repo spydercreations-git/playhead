@@ -17,6 +17,7 @@ type MediaInfo struct {
 	Width      int     `json:"width"`
 	Height     int     `json:"height"`
 	FPS        float64 `json:"fps"`
+	Rotation   int     `json:"rotation"`
 	HasVideo   bool    `json:"has_video"`
 	HasAudio   bool    `json:"has_audio"`
 }
@@ -103,11 +104,36 @@ func (t *Transcoder) IsAvailable() bool {
 	return t.FFmpegPath != "" && t.FFprobePath != ""
 }
 
+// ResolveDisplayDimensions swaps width and height if rotation is 90 or 270 degrees
+func ResolveDisplayDimensions(rawW, rawH, rotation int) (int, int) {
+	rot := rotation % 360
+	if rot < 0 {
+		rot += 360
+	}
+	if rot == 90 || rot == 270 {
+		return rawH, rawW
+	}
+	return rawW, rawH
+}
+
+// CalculateRotatedDimensions factors in display rotation before scaling short side
+func CalculateRotatedDimensions(rawW, rawH, rotation, targetShortSide int) (int, int) {
+	dispW, dispH := ResolveDisplayDimensions(rawW, rawH, rotation)
+	return CalculateDimensions(dispW, dispH, targetShortSide)
+}
+
+type ffprobeSideData struct {
+	SideDataType string  `json:"side_data_type"`
+	Rotation     float64 `json:"rotation"`
+}
+
 type ffprobeStream struct {
-	CodecType  string `json:"codec_type"`
-	Width      int    `json:"width"`
-	Height     int    `json:"height"`
-	RFrameRate string `json:"r_frame_rate"`
+	CodecType    string            `json:"codec_type"`
+	Width        int               `json:"width"`
+	Height       int               `json:"height"`
+	RFrameRate   string            `json:"r_frame_rate"`
+	Tags         map[string]string `json:"tags"`
+	SideDataList []ffprobeSideData `json:"side_data_list"`
 }
 
 type ffprobeFormat struct {
@@ -117,6 +143,22 @@ type ffprobeFormat struct {
 type ffprobeOutput struct {
 	Streams []ffprobeStream `json:"streams"`
 	Format  ffprobeFormat   `json:"format"`
+}
+
+func parseRotation(s ffprobeStream) int {
+	if s.Tags != nil {
+		if rotStr, ok := s.Tags["rotate"]; ok {
+			if r, err := strconv.Atoi(rotStr); err == nil {
+				return r
+			}
+		}
+	}
+	for _, sd := range s.SideDataList {
+		if strings.EqualFold(sd.SideDataType, "Display Matrix") || strings.EqualFold(sd.SideDataType, "displaymatrix") {
+			return int(math.Round(sd.Rotation))
+		}
+	}
+	return 0
 }
 
 func parseFPS(rFrameRate string) float64 {
@@ -172,8 +214,11 @@ func (t *Transcoder) Probe(ctx context.Context, inputPath string) (MediaInfo, er
 	for _, s := range data.Streams {
 		if s.CodecType == "video" && !info.HasVideo {
 			info.HasVideo = true
-			info.Width = s.Width
-			info.Height = s.Height
+			rotation := parseRotation(s)
+			dispW, dispH := ResolveDisplayDimensions(s.Width, s.Height, rotation)
+			info.Width = dispW
+			info.Height = dispH
+			info.Rotation = rotation
 			if s.RFrameRate != "" {
 				info.FPS = parseFPS(s.RFrameRate)
 			}

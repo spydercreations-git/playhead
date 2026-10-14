@@ -18,7 +18,9 @@ import (
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
+	"github.com/playhead/playhead/services/shared/jobs"
 	"github.com/playhead/playhead/services/shared/storage"
+	"github.com/hibiken/asynq"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -27,6 +29,11 @@ type ShareLinksHandler struct {
 	storage       *storage.Client
 	sessionSecret string
 	environment   string
+	asynqClient   *asynq.Client
+}
+
+func (h *ShareLinksHandler) SetAsynqClient(c *asynq.Client) {
+	h.asynqClient = c
 }
 
 func NewShareLinksHandler(queries *db.Queries, st *storage.Client, sessionSecret, environment string) *ShareLinksHandler {
@@ -713,6 +720,20 @@ func (h *ShareLinksHandler) PublicIdentify(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	linkIDStr := pgUUIDToString(link.ID)
+	expiry := time.Now().Add(30 * 24 * time.Hour).Unix()
+	cookieVal := signVisitorCookie(pgUUIDToString(visitor.ID), linkIDStr, expiry, h.sessionSecret)
+	cookieName := fmt.Sprintf("ph_share_visitor_%s", linkIDStr)
+	http.SetCookie(w, &http.Cookie{
+		Name:     cookieName,
+		Value:    cookieVal,
+		Path:     "/",
+		MaxAge:   3600 * 24 * 30, // 30 days
+		HttpOnly: true,
+		Secure:   h.isProduction(),
+		SameSite: http.SameSiteLaxMode,
+	})
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"visitor_id": pgUUIDToString(visitor.ID),
 		"name":       visitor.Name,
@@ -1030,11 +1051,17 @@ func (h *ShareLinksHandler) PublicUploadComplete(w http.ResponseWriter, r *http.
 			previewStatus = "pending"
 		}
 
+		versionNumber := 1
+		latestVer, err := h.queries.GetLatestFileVersion(r.Context(), upload.TargetItemID)
+		if err == nil {
+			versionNumber = int(latestVer.Number) + 1
+		}
+
 		// Create file version
-		_, _ = h.queries.CreateFileVersion(r.Context(), db.CreateFileVersionParams{
+		fileVer, err := h.queries.CreateFileVersion(r.Context(), db.CreateFileVersionParams{
 			CompanyID:     link.CompanyID,
 			ItemID:        upload.TargetItemID,
-			Number:        1,
+			Number:        int32(versionNumber),
 			StorageKey:    upload.StorageKey,
 			SizeBytes:     upload.SizeBytes,
 			Mime:          upload.Mime,
@@ -1042,6 +1069,19 @@ func (h *ShareLinksHandler) PublicUploadComplete(w http.ResponseWriter, r *http.
 			PreviewKeys:   []byte("{}"),
 			UploadedBy:    pgtype.UUID{Valid: false},
 		})
+
+		if err == nil && isVideoOrAudio && h.asynqClient != nil {
+			task, tErr := jobs.NewProcessVideoTask(jobs.ProcessVideoPayload{
+				CompanyID:  pgUUIDToString(link.CompanyID),
+				ItemID:     pgUUIDToString(upload.TargetItemID),
+				VersionID:  pgUUIDToString(fileVer.ID),
+				StorageKey: upload.StorageKey,
+				Mime:       upload.Mime,
+			})
+			if tErr == nil {
+				_, _ = h.asynqClient.Enqueue(task)
+			}
+		}
 
 		_, _ = h.queries.UpdateItemReviewStatus(r.Context(), db.UpdateItemReviewStatusParams{
 			ID:           upload.TargetItemID,

@@ -321,9 +321,28 @@ Google Login is built into the backend and UI, but hidden until configured. When
 
 ### How to test locally:
 1. Run all backend tests: `go test -v ./services/api/... ./services/shared/... ./services/worker/...`
-2. Run P4 review tests: `go test -v -run TestP4VideoReviewAndPermissions ./services/api/internal/handler`
+2. Run P4 review tests: `go test -v -run "TestP4VideoReviewAndPermissions|TestP4_AdvisorReviewFixes" ./services/api/internal/handler`
 3. Run transcode unit tests: `go test -v ./services/shared/transcode`
 4. Run web typecheck: `cd apps/web && npm run typecheck`
+5. Test Asynq worker & requeue: `go run ./services/worker/cmd/worker/main.go -requeue` or `make requeue`
+6. Run full dev stack: `make dev` (boots postgres, redis, minio, mailpit, api, web, and background worker).
+
+---
+
+### P4 Advisor Review Security & Infrastructure Hardening:
+1. **Asynq Worker Wiring**: `services/worker/cmd/worker/main.go` fully wired with Asynq server (concurrency 2, 3 retries) processing `media:process_video_version` and `email:grouped_comment_notification` jobs. `CompleteUpload` and `PublicUploadComplete` enqueue jobs on upload completion. Added `-requeue` CLI flag and `make requeue` to re-queue stuck pending versions.
+2. **Unified Public Share Route Resolution**: `ResolvePublicShareLinkAndItem` shared helper validates token, password unlock status, link expiration/disabled state, and item scope. Trashed/deleted items return 404. All public routes (`PublicPlaylistProxy`, `PublicListComments`, `PublicCreateComment`, `PublicSubmitReview`, `PublicExportCommentsCSV`) call this helper.
+3. **Protected & Public CSV Export**: `ExportCommentsCSV` enforces `authz.AccessItem` + `CanView()`. Added `PublicExportCommentsCSV` for public share links, strictly filtering out team-only comments.
+4. **Scoped Reviews Feed**: `ListReviewsFeed` filters by caller viewable projects and folder/file grants (`authz.AccessItem`). Client contacts only see projects belonging to their client.
+5. **Mention Privacy**: `ListMentionable` verifies caller item access, returns only people with view access to the item, and strips emails (`email: ""`) for client contacts and non-team members.
+6. **Visitor Identity via Signed Cookies**: Share link visitors must identify through `POST /s/{token}/identify` which sets HMAC-signed `ph_share_visitor_<linkID>`. Typed `visitor_name` / `visitor_email` in requests are not trusted. Approvals require an identified visitor (HTTP 401 without cookie) and save `visitor_id`.
+7. **Activity & Grouped Notifications**: Comment, reply, mention, and review decisions create `activity` records, check user notification preferences, and enqueue debounced 5-minute group notification jobs in Asynq. Team-only comments never notify or email clients.
+8. **Rotation Handling**: FFprobe rotation metadata in side data/displaymatrix is detected; width and height are swapped before choosing the short side, correctly scaling 1920x1080 rotate 90 source to 720x1280.
+9. **Raw Storage Key Protection**: Dropped raw `attachment_key` from client request payloads in comment creation.
+10. **Validation on Comments**: `CreateComment` and `PublicCreateComment` verify `version_id` and `parent_id` belong to the target item.
+11. **isTeamMember Verification**: Decided via company membership check in database (`queries.GetMembership`), never by role name string matching.
+12. **Rate Limiter Memory Management**: Prunes stale keys across `rateLimits` map in `ReviewHandler`.
+13. **Comprehensive HTTP Test Suite**: Added `TestP4_AdvisorReviewFixes` in `p4_video_review_test.go` verifying password link protection, client CSV export & folder grant review feed scoping, mentionable privacy, visitor approval identification, upload task enqueueing to Asynq, and video rotation scaling.
 
 ---
 

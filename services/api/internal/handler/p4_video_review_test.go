@@ -15,6 +15,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/hibiken/asynq"
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/playhead/playhead/services/api/internal/config"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
@@ -638,6 +641,629 @@ func TestP4VideoReviewAndPermissions(t *testing.T) {
 		firstRev := reviewsList[0].(map[string]interface{})
 		if firstRev["decision"] != "changes_requested" || firstRev["note"] != "Fix color grading at 01:23" {
 			t.Fatalf("unexpected review record: %v", firstRev)
+		}
+	})
+}
+
+func TestP4_AdvisorReviewFixes(t *testing.T) {
+	queries, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	cfg := config.Load()
+	mailClient := mailer.New(mailer.Config{})
+	stClient, _ := storage.NewClient(ctx, storage.Config{
+		Endpoint:        cfg.R2Endpoint,
+		AccessKeyID:     cfg.R2AccessKeyID,
+		SecretAccessKey: cfg.R2SecretAccessKey,
+		Bucket:          cfg.R2Bucket,
+		UsePathStyle:    true,
+	})
+
+	redisOpt, err := asynq.ParseRedisURI(cfg.RedisURL)
+	if err != nil {
+		t.Fatalf("failed to parse redis URL: %v", err)
+	}
+	asynqClient := asynq.NewClient(redisOpt)
+	defer asynqClient.Close()
+	inspector := asynq.NewInspector(redisOpt)
+	defer inspector.Close()
+
+	reviewH := NewReviewHandler(queries, stClient, cfg)
+	reviewH.SetAsynqClient(asynqClient)
+	reviewH.SetMailer(mailClient)
+
+	storageH := NewStorageUploadsHandler(queries, stClient, mailClient, cfg)
+	storageH.SetAsynqClient(asynqClient)
+
+	shareLinksH := NewShareLinksHandler(queries, stClient, cfg.SessionSecret, cfg.Environment)
+	shareLinksH.SetAsynqClient(asynqClient)
+
+	// Setup Base Company & Owner
+	compOwner, err := queries.CreateUser(ctx, db.CreateUserParams{
+		Email: fmt.Sprintf("p4fix-owner-%d@test.com", time.Now().UnixNano()),
+		Name:  "Fix Owner",
+	})
+	if err != nil {
+		t.Fatalf("create owner: %v", err)
+	}
+	company, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
+		Name:   fmt.Sprintf("Fix Studio %d", time.Now().UnixNano()),
+		Slug:   fmt.Sprintf("fix-%d", time.Now().UnixNano()),
+		Plan:   plans.PlanPro,
+		Status: "active",
+	})
+	if err != nil {
+		t.Fatalf("create company: %v", err)
+	}
+	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+		CompanyID: company.ID,
+		UserID:    compOwner.ID,
+		Role:      authz.RoleAdmin,
+	})
+	ownerPerson := authz.Person{
+		UserID:    uuid.UUID(compOwner.ID.Bytes),
+		Email:     compOwner.Email,
+		Role:      authz.RoleAdmin,
+		CompanyID: uuid.UUID(company.ID.Bytes),
+	}
+
+	// Clients A and B
+	clientA, _ := queries.CreateClient(ctx, db.CreateClientParams{
+		CompanyID: company.ID,
+		Name:      "Client A",
+	})
+	clientB, _ := queries.CreateClient(ctx, db.CreateClientParams{
+		CompanyID: company.ID,
+		Name:      "Client B",
+	})
+
+	// Projects A and B
+	projA, _ := queries.CreateProject(ctx, db.CreateProjectParams{
+		CompanyID: company.ID,
+		ClientID:  clientA.ID,
+		Name:      "Project A",
+	})
+	projB, _ := queries.CreateProject(ctx, db.CreateProjectParams{
+		CompanyID: company.ID,
+		ClientID:  clientB.ID,
+		Name:      "Project B",
+	})
+
+	// Client Contact User A
+	clientUserA, _ := queries.CreateUser(ctx, db.CreateUserParams{
+		Email: fmt.Sprintf("clientA-%d@test.com", time.Now().UnixNano()),
+		Name:  "Contact A",
+	})
+	_, _ = queries.CreateClientContact(ctx, db.CreateClientContactParams{
+		CompanyID:    company.ID,
+		ClientID:     clientA.ID,
+		Name:         "Contact A",
+		Email:        clientUserA.Email,
+		DefaultLevel: "commenter",
+		CanDownload:  true,
+	})
+	clientPersonA := authz.Person{
+		UserID:    uuid.UUID(clientUserA.ID.Bytes),
+		Email:     clientUserA.Email,
+		Role:      "client",
+		CompanyID: uuid.UUID(company.ID.Bytes),
+	}
+
+	// Client Contact User B
+	clientUserB, _ := queries.CreateUser(ctx, db.CreateUserParams{
+		Email: fmt.Sprintf("clientB-%d@test.com", time.Now().UnixNano()),
+		Name:  "Contact B",
+	})
+	_, _ = queries.CreateClientContact(ctx, db.CreateClientContactParams{
+		CompanyID:    company.ID,
+		ClientID:     clientB.ID,
+		Name:         "Contact B",
+		Email:        clientUserB.Email,
+		DefaultLevel: "commenter",
+		CanDownload:  true,
+	})
+	clientPersonB := authz.Person{
+		UserID:    uuid.UUID(clientUserB.ID.Bytes),
+		Email:     clientUserB.Email,
+		Role:      "client",
+		CompanyID: uuid.UUID(company.ID.Bytes),
+	}
+	_ = clientPersonB
+
+	// Video Items in Proj A and Proj B
+	videoA, _ := queries.CreateItem(ctx, db.CreateItemParams{
+		CompanyID: company.ID,
+		ProjectID: projA.ID,
+		Kind:      "file",
+		Name:      "video-a.mp4",
+		CreatedBy: compOwner.ID,
+		Position:  pgtype.Numeric{Int: big.NewInt(10), Valid: true},
+	})
+	videoB, _ := queries.CreateItem(ctx, db.CreateItemParams{
+		CompanyID: company.ID,
+		ProjectID: projB.ID,
+		Kind:      "file",
+		Name:      "video-b.mp4",
+		CreatedBy: compOwner.ID,
+		Position:  pgtype.Numeric{Int: big.NewInt(20), Valid: true},
+	})
+	vA1, _ := queries.CreateFileVersion(ctx, db.CreateFileVersionParams{
+		CompanyID:     company.ID,
+		ItemID:        videoA.ID,
+		Number:        1,
+		StorageKey:    "test/video-a.mp4",
+		SizeBytes:     1024,
+		Mime:          "video/mp4",
+		PreviewStatus: "ready",
+		PreviewKeys:   []byte(`{"master_playlist_key":"test/master.m3u8"}`),
+		UploadedBy:    compOwner.ID,
+	})
+	_ = vA1
+
+	// Setup Routers
+	rPublic := chi.NewRouter()
+	rPublic.Get("/s/{token}/items/{id}/playlist.m3u8", reviewH.PublicPlaylistProxy)
+	rPublic.Get("/s/{token}/items/{id}/comments", reviewH.PublicListComments)
+	rPublic.Post("/s/{token}/items/{id}/comments", reviewH.PublicCreateComment)
+	rPublic.Post("/s/{token}/items/{id}/review", reviewH.PublicSubmitReview)
+	rPublic.Get("/s/{token}/items/{id}/comments/export", reviewH.PublicExportCommentsCSV)
+	rPublic.Post("/s/{token}/unlock", shareLinksH.PublicUnlock)
+	rPublic.Post("/s/{token}/identify", shareLinksH.PublicIdentify)
+
+	rProtected := chi.NewRouter()
+	rProtected.Get("/api/v1/items/{id}/comments/export", reviewH.ExportCommentsCSV)
+	rProtected.Get("/api/v1/items/{id}/mentionable", reviewH.ListMentionable)
+	rProtected.Get("/api/v1/reviews/feed", reviewH.ListReviewsFeed)
+
+	// -------------------------------------------------------------
+	// 1. Password link: no unlock cookie means 401 on playlist, comments, create comment, approve
+	// -------------------------------------------------------------
+	t.Run("Password link: no unlock cookie means 401 on playlist, comments, create comment, approve", func(t *testing.T) {
+		pwHash, err := bcrypt.GenerateFromPassword([]byte("secret123"), bcrypt.DefaultCost)
+		if err != nil {
+			t.Fatalf("bcrypt hash: %v", err)
+		}
+		pwToken := fmt.Sprintf("pwlink-%d", time.Now().UnixNano())
+		pwLink, err := queries.CreateShareLink(ctx, db.CreateShareLinkParams{
+			CompanyID:        company.ID,
+			ProjectID:        projA.ID,
+			Name:             "Password Link",
+			TokenHash:        authz.HashToken(pwToken),
+			Access:           "commenter",
+			AllowDownload:    true,
+			LatestOnly:       false,
+			PasswordHash:     pgtype.Text{String: string(pwHash), Valid: true},
+			ExpiresAt:        pgtype.Timestamptz{Valid: false},
+			AskIdentity:      false,
+			UploadLimitBytes: pgtype.Int8{Valid: false},
+			CreatedBy:        compOwner.ID,
+		})
+		if err != nil {
+			t.Fatalf("create share link: %v", err)
+		}
+		_ = queries.AttachShareLinkItem(ctx, db.AttachShareLinkItemParams{
+			ShareLinkID: pwLink.ID,
+			ItemID:      videoA.ID,
+		})
+
+		vAStr := uuid.UUID(videoA.ID.Bytes).String()
+
+		// Test 1a: Playlist without unlock cookie -> 401
+		req := httptest.NewRequest("GET", "/s/"+pwToken+"/items/"+vAStr+"/playlist.m3u8", nil)
+		rec := httptest.NewRecorder()
+		rPublic.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 on playlist without password unlock, got %d: %s", rec.Code, rec.Body.String())
+		}
+
+		// Test 1b: List comments without unlock cookie -> 401
+		req = httptest.NewRequest("GET", "/s/"+pwToken+"/items/"+vAStr+"/comments", nil)
+		rec = httptest.NewRecorder()
+		rPublic.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 on list comments without password unlock, got %d: %s", rec.Code, rec.Body.String())
+		}
+
+		// Test 1c: Create comment without unlock cookie -> 401
+		bodyBytes, _ := json.Marshal(map[string]interface{}{"body": "Should fail"})
+		req = httptest.NewRequest("POST", "/s/"+pwToken+"/items/"+vAStr+"/comments", bytes.NewReader(bodyBytes))
+		rec = httptest.NewRecorder()
+		rPublic.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 on create comment without password unlock, got %d: %s", rec.Code, rec.Body.String())
+		}
+
+		// Test 1d: Approve/submit review without unlock cookie -> 401
+		revBytes, _ := json.Marshal(map[string]interface{}{"status": "approved"})
+		req = httptest.NewRequest("POST", "/s/"+pwToken+"/items/"+vAStr+"/review", bytes.NewReader(revBytes))
+		rec = httptest.NewRecorder()
+		rPublic.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 on submit review without password unlock, got %d: %s", rec.Code, rec.Body.String())
+		}
+
+		// Now unlock with correct password
+		unlockBytes, _ := json.Marshal(map[string]interface{}{"password": "secret123"})
+		reqUnlock := httptest.NewRequest("POST", "/s/"+pwToken+"/unlock", bytes.NewReader(unlockBytes))
+		recUnlock := httptest.NewRecorder()
+		rPublic.ServeHTTP(recUnlock, reqUnlock)
+		if recUnlock.Code != http.StatusOK {
+			t.Fatalf("failed to unlock link: %d: %s", recUnlock.Code, recUnlock.Body.String())
+		}
+		cookie := recUnlock.Result().Cookies()
+		if len(cookie) == 0 {
+			t.Fatalf("expected unlock cookie to be set")
+		}
+
+		// With unlock cookie, list comments succeeds (200)
+		reqUnlocked := httptest.NewRequest("GET", "/s/"+pwToken+"/items/"+vAStr+"/comments", nil)
+		for _, c := range cookie {
+			reqUnlocked.AddCookie(c)
+		}
+		recUnlocked := httptest.NewRecorder()
+		rPublic.ServeHTTP(recUnlocked, reqUnlocked)
+		if recUnlocked.Code != http.StatusOK {
+			t.Fatalf("expected 200 on list comments with unlock cookie, got %d: %s", recUnlocked.Code, recUnlocked.Body.String())
+		}
+	})
+
+	// -------------------------------------------------------------
+	// 2. Client cannot export CSV of another client's video; folder grant user only sees their folder's videos in reviews feed
+	// -------------------------------------------------------------
+	t.Run("Client cannot export CSV of another client's video; folder grant user only sees their folder's videos in the reviews feed", func(t *testing.T) {
+		vAStr := uuid.UUID(videoA.ID.Bytes).String()
+		vBStr := uuid.UUID(videoB.ID.Bytes).String()
+
+		// Client A attempts to export CSV of Client B's video -> Refused 404
+		reqB := httptest.NewRequest("GET", "/api/v1/items/"+vBStr+"/comments/export", nil)
+		reqB = reqB.WithContext(contextWithPerson(reqB.Context(), clientUserA, company.ID, clientPersonA))
+		recB := httptest.NewRecorder()
+		rProtected.ServeHTTP(recB, reqB)
+		if recB.Code != http.StatusNotFound && recB.Code != http.StatusForbidden {
+			t.Fatalf("expected 404/403 when Client A exports Client B's CSV, got %d: %s", recB.Code, recB.Body.String())
+		}
+
+		// Client A exports CSV of Client A's video -> 200 OK text/csv
+		reqA := httptest.NewRequest("GET", "/api/v1/items/"+vAStr+"/comments/export", nil)
+		reqA = reqA.WithContext(contextWithPerson(reqA.Context(), clientUserA, company.ID, clientPersonA))
+		recA := httptest.NewRecorder()
+		rProtected.ServeHTTP(recA, reqA)
+		if recA.Code != http.StatusOK {
+			t.Fatalf("expected 200 when Client A exports Client A's CSV, got %d: %s", recA.Code, recA.Body.String())
+		}
+
+		// Setup Folders and Videos for Folder-Grant user
+		folder1, _ := queries.CreateItem(ctx, db.CreateItemParams{
+			CompanyID: company.ID,
+			ProjectID: projA.ID,
+			Kind:      "folder",
+			Name:      "Folder 1",
+			CreatedBy: compOwner.ID,
+			Position:  pgtype.Numeric{Int: big.NewInt(30), Valid: true},
+		})
+		folder2, _ := queries.CreateItem(ctx, db.CreateItemParams{
+			CompanyID: company.ID,
+			ProjectID: projA.ID,
+			Kind:      "folder",
+			Name:      "Folder 2",
+			CreatedBy: compOwner.ID,
+			Position:  pgtype.Numeric{Int: big.NewInt(40), Valid: true},
+		})
+
+		vid1, _ := queries.CreateItem(ctx, db.CreateItemParams{
+			CompanyID: company.ID,
+			ProjectID: projA.ID,
+			ParentID:  folder1.ID,
+			Kind:      "file",
+			Name:      "reel-in-folder1.mp4",
+			CreatedBy: compOwner.ID,
+			Position:  pgtype.Numeric{Int: big.NewInt(50), Valid: true},
+		})
+		_, _ = queries.UpdateItemReviewStatus(ctx, db.UpdateItemReviewStatusParams{
+			ID:           vid1.ID,
+			CompanyID:    company.ID,
+			ReviewStatus: "needs_review",
+		})
+
+		vid2, _ := queries.CreateItem(ctx, db.CreateItemParams{
+			CompanyID: company.ID,
+			ProjectID: projA.ID,
+			ParentID:  folder2.ID,
+			Kind:      "file",
+			Name:      "reel-in-folder2.mp4",
+			CreatedBy: compOwner.ID,
+			Position:  pgtype.Numeric{Int: big.NewInt(60), Valid: true},
+		})
+		_, _ = queries.UpdateItemReviewStatus(ctx, db.UpdateItemReviewStatusParams{
+			ID:           vid2.ID,
+			CompanyID:    company.ID,
+			ReviewStatus: "needs_review",
+		})
+
+		// Create user with ONLY a viewer grant on Folder 1
+		fgUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("foldergrant-%d@test.com", time.Now().UnixNano()),
+			Name:  "Folder Grant User",
+		})
+		_, _ = queries.CreateGrant(ctx, db.CreateGrantParams{
+			CompanyID:   company.ID,
+			TargetType:  "folder",
+			TargetID:    folder1.ID,
+			Email:       fgUser.Email,
+			UserID:      fgUser.ID,
+			Level:       "viewer",
+			CanDownload: false,
+		})
+		fgPerson := authz.Person{
+			UserID:    uuid.UUID(fgUser.ID.Bytes),
+			Email:     fgUser.Email,
+			Role:      "",
+			CompanyID: uuid.UUID(company.ID.Bytes),
+		}
+
+		// Folder grant user calls GET /api/v1/reviews/feed
+		reqFeed := httptest.NewRequest("GET", "/api/v1/reviews/feed", nil)
+		reqFeed = reqFeed.WithContext(contextWithPerson(reqFeed.Context(), fgUser, company.ID, fgPerson))
+		recFeed := httptest.NewRecorder()
+		rProtected.ServeHTTP(recFeed, reqFeed)
+
+		if recFeed.Code != http.StatusOK {
+			t.Fatalf("expected 200 on reviews feed, got %d: %s", recFeed.Code, recFeed.Body.String())
+		}
+		var feedResp map[string]interface{}
+		_ = json.Unmarshal(recFeed.Body.Bytes(), &feedResp)
+		itemsList := feedResp["items"].([]interface{})
+
+		// Must contain vid1 and MUST NOT contain vid2
+		vid1Str := uuid.UUID(vid1.ID.Bytes).String()
+		vid2Str := uuid.UUID(vid2.ID.Bytes).String()
+		found1 := false
+		found2 := false
+		for _, raw := range itemsList {
+			itm := raw.(map[string]interface{})
+			if itm["id"] == vid1Str {
+				found1 = true
+			}
+			if itm["id"] == vid2Str {
+				found2 = true
+			}
+		}
+		if !found1 {
+			t.Fatalf("expected folder grant user to see vid1 in folder1, but it was missing from feed")
+		}
+		if found2 {
+			t.Fatalf("expected folder grant user NOT to see vid2 in folder2, but it was present in feed")
+		}
+	})
+
+	// -------------------------------------------------------------
+	// 3. Mention list for a client returns no emails and only people with access
+	// -------------------------------------------------------------
+	t.Run("Mention list for a client returns no emails and only people with access", func(t *testing.T) {
+		vAStr := uuid.UUID(videoA.ID.Bytes).String()
+
+		// Client A calls /mentionable on videoA
+		reqMent := httptest.NewRequest("GET", "/api/v1/items/"+vAStr+"/mentionable", nil)
+		reqMent = reqMent.WithContext(contextWithPerson(reqMent.Context(), clientUserA, company.ID, clientPersonA))
+		recMent := httptest.NewRecorder()
+		rProtected.ServeHTTP(recMent, reqMent)
+
+		if recMent.Code != http.StatusOK {
+			t.Fatalf("expected 200 on mentionable for client contact, got %d: %s", recMent.Code, recMent.Body.String())
+		}
+		var mentResp map[string]interface{}
+		_ = json.Unmarshal(recMent.Body.Bytes(), &mentResp)
+		usersList := mentResp["mentionable"].([]interface{})
+		if len(usersList) == 0 {
+			t.Fatalf("expected at least 1 mentionable person")
+		}
+		for _, uRaw := range usersList {
+			u := uRaw.(map[string]interface{})
+			if emailVal, ok := u["email"].(string); ok && emailVal != "" {
+				t.Fatalf("leaked email %q to client contact in mentionable list! email must be empty", emailVal)
+			}
+		}
+
+		// Outsider user without access calls mentionable -> 404
+		outsiderUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("outsider-%d@test.com", time.Now().UnixNano()),
+			Name:  "Outsider",
+		})
+		outsiderPerson := authz.Person{
+			UserID:    uuid.UUID(outsiderUser.ID.Bytes),
+			Email:     outsiderUser.Email,
+			Role:      "",
+			CompanyID: uuid.UUID(company.ID.Bytes),
+		}
+		reqOut := httptest.NewRequest("GET", "/api/v1/items/"+vAStr+"/mentionable", nil)
+		reqOut = reqOut.WithContext(contextWithPerson(reqOut.Context(), outsiderUser, company.ID, outsiderPerson))
+		recOut := httptest.NewRecorder()
+		rProtected.ServeHTTP(recOut, reqOut)
+		if recOut.Code != http.StatusNotFound && recOut.Code != http.StatusForbidden {
+			t.Fatalf("expected 404/403 for outsider calling mentionable, got %d: %s", recOut.Code, recOut.Body.String())
+		}
+	})
+
+	// -------------------------------------------------------------
+	// 4. Visitor cannot approve without identifying; approval saves visitor_id
+	// -------------------------------------------------------------
+	t.Run("Visitor cannot approve without identifying; approval saves visitor_id", func(t *testing.T) {
+		token := fmt.Sprintf("review-vis-%d", time.Now().UnixNano())
+		visLink, err := queries.CreateShareLink(ctx, db.CreateShareLinkParams{
+			CompanyID:        company.ID,
+			ProjectID:        projA.ID,
+			Name:             "Visitor Review Link",
+			TokenHash:        authz.HashToken(token),
+			Access:           "commenter",
+			AllowDownload:    true,
+			LatestOnly:       false,
+			PasswordHash:     pgtype.Text{Valid: false},
+			ExpiresAt:        pgtype.Timestamptz{Valid: false},
+			AskIdentity:      false,
+			UploadLimitBytes: pgtype.Int8{Valid: false},
+			CreatedBy:        compOwner.ID,
+		})
+		if err != nil {
+			t.Fatalf("create share link: %v", err)
+		}
+		_ = queries.AttachShareLinkItem(ctx, db.AttachShareLinkItemParams{
+			ShareLinkID: visLink.ID,
+			ItemID:      videoA.ID,
+		})
+
+		vAStr := uuid.UUID(videoA.ID.Bytes).String()
+
+		// 4a. Approve without identifying -> Expect 401 identity_required
+		apprPayload := map[string]interface{}{
+			"status": "approved",
+			"notes":  "LGTM without identify",
+		}
+		apprBytes, _ := json.Marshal(apprPayload)
+		reqAnon := httptest.NewRequest("POST", "/s/"+token+"/items/"+vAStr+"/review", bytes.NewReader(apprBytes))
+		recAnon := httptest.NewRecorder()
+		rPublic.ServeHTTP(recAnon, reqAnon)
+		if recAnon.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 identity_required when approving without identify, got %d: %s", recAnon.Code, recAnon.Body.String())
+		}
+
+		// 4b. Visitor identifies via /identify
+		idPayload := map[string]interface{}{
+			"name":  "Sarah Visitor",
+			"email": "sarah@visitoragency.com",
+		}
+		idBytes, _ := json.Marshal(idPayload)
+		reqId := httptest.NewRequest("POST", "/s/"+token+"/identify", bytes.NewReader(idBytes))
+		recId := httptest.NewRecorder()
+		rPublic.ServeHTTP(recId, reqId)
+		if recId.Code != http.StatusOK {
+			t.Fatalf("identify failed: %d: %s", recId.Code, recId.Body.String())
+		}
+		cookies := recId.Result().Cookies()
+		if len(cookies) == 0 {
+			t.Fatalf("expected visitor identify cookie to be set")
+		}
+
+		// 4c. Approve with identify cookie -> 200 OK
+		reqAppr := httptest.NewRequest("POST", "/s/"+token+"/items/"+vAStr+"/review", bytes.NewReader(apprBytes))
+		for _, c := range cookies {
+			reqAppr.AddCookie(c)
+		}
+		recAppr := httptest.NewRecorder()
+		rPublic.ServeHTTP(recAppr, reqAppr)
+		if recAppr.Code != http.StatusOK {
+			t.Fatalf("expected 200 on review approval with identify cookie, got %d: %s", recAppr.Code, recAppr.Body.String())
+		}
+
+		// 4d. Verify review row in database has visitor_id populated
+		revRows, err := queries.ListReviewsByItem(ctx, db.ListReviewsByItemParams{
+			ItemID:    videoA.ID,
+			CompanyID: company.ID,
+		})
+		if err != nil || len(revRows) == 0 {
+			t.Fatalf("failed to query reviews: %v", err)
+		}
+		latestRev := revRows[0]
+		if !latestRev.VisitorID.Valid {
+			t.Fatalf("expected review to save visitor_id, got invalid")
+		}
+		if latestRev.AuthorName != "Sarah Visitor" {
+			t.Fatalf("expected AuthorName 'Sarah Visitor', got %q", latestRev.AuthorName)
+		}
+		if latestRev.Decision != "approved" {
+			t.Fatalf("expected decision 'approved', got %q", latestRev.Decision)
+		}
+	})
+
+	// -------------------------------------------------------------
+	// 5. Enqueue test: completing a video upload creates a process_video_version task
+	// -------------------------------------------------------------
+	t.Run("Enqueue test: completing a video upload creates a process_video_version task", func(t *testing.T) {
+		mockStorageH := NewStorageUploadsHandler(queries, nil, mailClient, cfg)
+		mockStorageH.SetAsynqClient(asynqClient)
+		rStorage := chi.NewRouter()
+		rStorage.Post("/api/v1/uploads/{id}/complete", mockStorageH.CompleteUpload)
+
+		newVid, _ := queries.CreateItem(ctx, db.CreateItemParams{
+			CompanyID: company.ID,
+			ProjectID: projA.ID,
+			Kind:      "file",
+			Name:      "asynq-enqueue-test.mp4",
+			CreatedBy: compOwner.ID,
+			Position:  pgtype.Numeric{Int: big.NewInt(70), Valid: true},
+		})
+
+		upload, err := queries.CreateUpload(ctx, db.CreateUploadParams{
+			CompanyID:     company.ID,
+			ProjectID:     projA.ID,
+			ParentID:      pgtype.UUID{Valid: false},
+			TargetItemID:  newVid.ID,
+			Filename:      "asynq-enqueue-test.mp4",
+			SizeBytes:     1048576,
+			Mime:          "video/mp4",
+			StorageKey:    "test/asynq-enqueue-test.mp4",
+			UploadID:      "upload-asynq-mock",
+			UserID:        compOwner.ID,
+			TotalParts:    1,
+			PartSizeBytes: 1048576,
+			ExpiresAt:     pgtype.Timestamptz{Time: time.Now().Add(24 * time.Hour), Valid: true},
+		})
+		if err != nil {
+			t.Fatalf("create upload: %v", err)
+		}
+
+		uUUIDStr := uuid.UUID(upload.ID.Bytes).String()
+		reqComplete := httptest.NewRequest("POST", "/api/v1/uploads/"+uUUIDStr+"/complete", bytes.NewReader([]byte(`{"parts":[]}`)))
+		reqComplete = reqComplete.WithContext(contextWithPerson(reqComplete.Context(), compOwner, company.ID, ownerPerson))
+		recComplete := httptest.NewRecorder()
+		rStorage.ServeHTTP(recComplete, reqComplete)
+
+		if recComplete.Code != http.StatusOK {
+			t.Fatalf("complete upload failed: %d: %s", recComplete.Code, recComplete.Body.String())
+		}
+
+		// Inspect tasks in asynq default queue
+		tasks, err := inspector.ListPendingTasks("default", asynq.Page(1), asynq.PageSize(50))
+		if err != nil {
+			t.Fatalf("failed to inspect pending tasks: %v", err)
+		}
+		foundTask := false
+		for _, task := range tasks {
+			if task.Type == "media:process_video_version" {
+				foundTask = true
+				break
+			}
+		}
+		if !foundTask {
+			t.Fatalf("expected media:process_video_version task in asynq queue, but none was found")
+		}
+	})
+
+	// -------------------------------------------------------------
+	// 6. Rotation: a 1920x1080 rotate 90 source produces 720x1280
+	// -------------------------------------------------------------
+	t.Run("Rotation: a 1920x1080 rotate 90 source produces 720x1280", func(t *testing.T) {
+		w, h := transcode.CalculateRotatedDimensions(1920, 1080, 90, 720)
+		if w != 720 || h != 1280 {
+			t.Fatalf("expected 1920x1080 rotate 90 to produce 720x1280, got %dx%d", w, h)
+		}
+
+		// 270 degrees
+		w270, h270 := transcode.CalculateRotatedDimensions(1920, 1080, 270, 720)
+		if w270 != 720 || h270 != 1280 {
+			t.Fatalf("expected 1920x1080 rotate 270 to produce 720x1280, got %dx%d", w270, h270)
+		}
+
+		// 0 degrees landscape: 1920x1080 rotate 0 -> 1280x720
+		w0, h0 := transcode.CalculateRotatedDimensions(1920, 1080, 0, 720)
+		if w0 != 1280 || h0 != 720 {
+			t.Fatalf("expected 1920x1080 rotate 0 to produce 1280x720, got %dx%d", w0, h0)
+		}
+
+		// 1080p target on 90 degree rotated: 1920x1080 -> 1080x1920
+		w1080, h1080 := transcode.CalculateRotatedDimensions(1920, 1080, 90, 1080)
+		if w1080 != 1080 || h1080 != 1920 {
+			t.Fatalf("expected 1920x1080 rotate 90 at 1080p to produce 1080x1920, got %dx%d", w1080, h1080)
 		}
 	})
 }

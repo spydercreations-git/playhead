@@ -12,11 +12,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
+	"github.com/hibiken/asynq"
 	"github.com/playhead/playhead/services/api/internal/config"
 	"github.com/playhead/playhead/services/api/internal/handler"
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
+	"github.com/playhead/playhead/services/shared/jobs"
 	"github.com/playhead/playhead/services/shared/mailer"
 	"github.com/playhead/playhead/services/shared/storage"
 	"github.com/redis/go-redis/v9"
@@ -103,6 +105,17 @@ func main() {
 	grantsHandler := handler.NewGrantsHandler(queries, mailClient)
 	reviewHandler := handler.NewReviewHandler(queries, storageClient, cfg)
 
+	// Background job queue via Redis asynq
+	var asynqClient *asynq.Client
+	if cfg.RedisURL != "" {
+		asynqClient = asynq.NewClient(jobs.ParseRedisOpt(cfg.RedisURL))
+		defer asynqClient.Close()
+	}
+	storageUploadsHandler.SetAsynqClient(asynqClient)
+	shareLinksHandler.SetAsynqClient(asynqClient)
+	reviewHandler.SetAsynqClient(asynqClient)
+	reviewHandler.SetMailer(mailClient)
+
 	// Hourly abandoned upload cleanup (Requirement 2)
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)
@@ -163,7 +176,7 @@ func main() {
 			share.Get("/items/{id}/comments", reviewHandler.PublicListComments)
 			share.Post("/items/{id}/comments", reviewHandler.PublicCreateComment)
 			share.Post("/items/{id}/review", reviewHandler.PublicSubmitReview)
-			share.Get("/items/{id}/comments/export", reviewHandler.ExportCommentsCSV)
+			share.Get("/items/{id}/comments/export", reviewHandler.PublicExportCommentsCSV)
 		})
 
 		// Protected endpoints (Requires authentication and CSRF token validation)

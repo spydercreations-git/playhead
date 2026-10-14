@@ -15,18 +15,23 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/playhead/playhead/services/api/internal/config"
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
+	"github.com/playhead/playhead/services/shared/jobs"
+	"github.com/playhead/playhead/services/shared/mailer"
 	"github.com/playhead/playhead/services/shared/storage"
 )
 
 type ReviewHandler struct {
 	queries     *db.Queries
 	storage     *storage.Client
+	mailer      *mailer.Mailer
 	cfg         *config.Config
+	asynqClient *asynq.Client
 	rateLimits  map[string][]time.Time
 	rateLimitMu sync.Mutex
 }
@@ -40,7 +45,15 @@ func NewReviewHandler(queries *db.Queries, storageClient *storage.Client, cfg *c
 	}
 }
 
-// rateLimit checks if key exceeds limit within window
+func (h *ReviewHandler) SetAsynqClient(c *asynq.Client) {
+	h.asynqClient = c
+}
+
+func (h *ReviewHandler) SetMailer(m *mailer.Mailer) {
+	h.mailer = m
+}
+
+// rateLimit checks if key exceeds limit within window and cleans up stale keys
 func (h *ReviewHandler) checkRateLimit(key string, maxRequests int, window time.Duration) bool {
 	h.rateLimitMu.Lock()
 	defer h.rateLimitMu.Unlock()
@@ -48,31 +61,43 @@ func (h *ReviewHandler) checkRateLimit(key string, maxRequests int, window time.
 	now := time.Now()
 	cutoff := now.Add(-window)
 
-	timestamps := h.rateLimits[key]
-	var valid []time.Time
-	for _, t := range timestamps {
-		if t.After(cutoff) {
-			valid = append(valid, t)
+	// Clean up old keys across the rate limit map
+	for k, ts := range h.rateLimits {
+		var active []time.Time
+		for _, t := range ts {
+			if t.After(cutoff) {
+				active = append(active, t)
+			}
+		}
+		if len(active) == 0 {
+			delete(h.rateLimits, k)
+		} else {
+			h.rateLimits[k] = active
 		}
 	}
 
-	if len(valid) >= maxRequests {
-		h.rateLimits[key] = valid
+	timestamps := h.rateLimits[key]
+	if len(timestamps) >= maxRequests {
 		return false
 	}
 
-	h.rateLimits[key] = append(valid, now)
+	h.rateLimits[key] = append(timestamps, now)
 	return true
 }
 
 func (h *ReviewHandler) isTeamMember(ctx context.Context, companyID pgtype.UUID) bool {
-	person := middleware.GetPerson(ctx)
 	if !companyID.Valid {
 		return false
 	}
-	compUUID := uuid.UUID(companyID.Bytes)
-	role := strings.ToLower(person.Role)
-	return person.CompanyID == compUUID && role != "" && role != "client"
+	user, ok := middleware.GetAuthenticatedUser(ctx)
+	if !ok || !user.ID.Valid {
+		return false
+	}
+	_, err := h.queries.GetMembership(ctx, db.GetMembershipParams{
+		CompanyID: companyID,
+		UserID:    user.ID,
+	})
+	return err == nil
 }
 
 // GetVersions returns all versions of a file item with metadata and preview status
@@ -295,7 +320,6 @@ type createCommentReq struct {
 	TimecodeStartMs *int32          `json:"timecode_start_ms"`
 	TimecodeEndMs   *int32          `json:"timecode_end_ms"`
 	Drawing         json.RawMessage `json:"drawing"`
-	AttachmentKey   *string         `json:"attachment_key"`
 }
 
 // ListComments returns threaded comments for an item/version, filtering Team-only comments on the server
@@ -476,8 +500,8 @@ func (h *ReviewHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 				ID:        parentUUID,
 				CompanyID: companyID,
 			})
-			if err != nil {
-				respondJSON(w, http.StatusNotFound, map[string]string{"error": "parent_comment_not_found"})
+			if err != nil || parent.ItemID != itemID {
+				respondJSON(w, http.StatusBadRequest, map[string]string{"error": "parent_comment_not_found", "message": "Parent comment does not belong to this item"})
 				return
 			}
 			if parent.Visibility == "team" && !isTeam {
@@ -490,7 +514,13 @@ func (h *ReviewHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 
 	var vUUID pgtype.UUID
 	if req.VersionID != nil && *req.VersionID != "" {
-		_ = vUUID.Scan(*req.VersionID)
+		if err := vUUID.Scan(*req.VersionID); err == nil {
+			ver, err := h.queries.GetFileVersionByID(ctx, vUUID)
+			if err != nil || ver.ItemID != itemID {
+				respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_version_id", "message": "Version does not belong to this item"})
+				return
+			}
+		}
 	} else {
 		latest, err := h.queries.GetLatestFileVersion(ctx, itemID)
 		if err == nil {
@@ -505,11 +535,6 @@ func (h *ReviewHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	var tcEnd pgtype.Int4
 	if req.TimecodeEndMs != nil {
 		tcEnd = pgtype.Int4{Int32: *req.TimecodeEndMs, Valid: true}
-	}
-
-	var attKey pgtype.Text
-	if req.AttachmentKey != nil && *req.AttachmentKey != "" {
-		attKey = pgtype.Text{String: *req.AttachmentKey, Valid: true}
 	}
 
 	var drawingBytes []byte
@@ -539,12 +564,28 @@ func (h *ReviewHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		TimecodeStartMs:  tcStart,
 		TimecodeEndMs:    tcEnd,
 		Drawing:          drawingBytes,
-		AttachmentKey:    attKey,
+		AttachmentKey:    pgtype.Text{Valid: false},
 	})
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_comment"})
 		return
 	}
+
+	// Activity log
+	actAction := "commented"
+	if parentUUID.Valid {
+		actAction = "replied"
+	}
+	_, _ = h.queries.CreateActivity(ctx, db.CreateActivityParams{
+		CompanyID: companyID,
+		ProjectID: item.ProjectID,
+		ItemID:    item.ID,
+		ActorID:   authorUID,
+		Action:    actAction,
+		Details:   []byte(fmt.Sprintf(`{"body":%q,"visibility":%q,"author_name":%q}`, comment.Body, comment.Visibility, authorName)),
+	})
+
+	go h.dispatchCommentNotification(companyID, item, proj, comment, authorName, authorEmail, isTeam)
 
 	respondJSON(w, http.StatusCreated, comment)
 }
@@ -791,35 +832,13 @@ func (h *ReviewHandler) ReopenComment(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, reopened)
 }
 
-// ExportCommentsCSV exports comments as CSV, filtering Team-only comments for client contacts
-func (h *ReviewHandler) ExportCommentsCSV(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	companyID, ok := middleware.GetActiveCompanyID(ctx)
-	if !ok || !companyID.Valid {
-		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
-		return
-	}
-
-	var itemID pgtype.UUID
-	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
-		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
-		return
-	}
-
-	item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
-		ID:        itemID,
-		CompanyID: companyID,
-	})
-	if err != nil {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
-		return
-	}
-
-	isTeam := h.isTeamMember(ctx, companyID)
+// renderCommentsCSV formats comments to CSV stream
+func (h *ReviewHandler) renderCommentsCSV(w http.ResponseWriter, companyID, itemID pgtype.UUID, itemName string, includeTeam bool) {
+	ctx := context.Background()
 	comments, err := h.queries.ListCommentsByItemVersion(ctx, db.ListCommentsByItemVersionParams{
 		CompanyID: companyID,
 		ItemID:    itemID,
-		Column4:   isTeam,
+		Column4:   includeTeam,
 	})
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_export_comments"})
@@ -874,8 +893,68 @@ func (h *ReviewHandler) ExportCommentsCSV(w http.ResponseWriter, r *http.Request
 	writer.Flush()
 
 	w.Header().Set("Content-Type", "text/csv")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", item.Name+"-comments.csv"))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", itemName+"-comments.csv"))
 	_, _ = w.Write(buf.Bytes())
+}
+
+// ExportCommentsCSV exports comments as CSV, filtering Team-only comments for client contacts
+func (h *ReviewHandler) ExportCommentsCSV(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var itemID pgtype.UUID
+	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
+		return
+	}
+
+	item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:        itemID,
+		CompanyID: companyID,
+	})
+	if err != nil || item.DeletedAt.Valid {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+
+	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+		ID:        item.ProjectID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	person := middleware.GetPerson(ctx)
+	access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
+		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	}, authz.ItemTarget{
+		ID:        uuid.UUID(item.ID.Bytes),
+		ProjectID: uuid.UUID(item.ProjectID.Bytes),
+		CompanyID: uuid.UUID(item.CompanyID.Bytes),
+		CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
+	})
+	if err != nil || !access.CanView() {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+
+	isTeam := h.isTeamMember(ctx, companyID)
+	h.renderCommentsCSV(w, companyID, itemID, item.Name, isTeam)
+}
+
+// PublicExportCommentsCSV exports comments for share link visitors (strictly excludes team-only comments)
+func (h *ReviewHandler) PublicExportCommentsCSV(w http.ResponseWriter, r *http.Request) {
+	link, item, ok := ResolvePublicShareLinkAndItem(w, r, h.queries, h.cfg.SessionSecret, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
+	h.renderCommentsCSV(w, link.CompanyID, item.ID, item.Name, false)
 }
 
 type submitReviewReq struct {
@@ -968,7 +1047,13 @@ func (h *ReviewHandler) SubmitReview(w http.ResponseWriter, r *http.Request) {
 
 	var vUUID pgtype.UUID
 	if req.VersionID != "" {
-		_ = vUUID.Scan(req.VersionID)
+		if err := vUUID.Scan(req.VersionID); err == nil {
+			ver, err := h.queries.GetFileVersionByID(ctx, vUUID)
+			if err != nil || ver.ItemID != itemID {
+				respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_version_id", "message": "Version does not belong to this item"})
+				return
+			}
+		}
 	} else {
 		latest, err := h.queries.GetLatestFileVersion(ctx, itemID)
 		if err == nil {
@@ -1004,6 +1089,18 @@ func (h *ReviewHandler) SubmitReview(w http.ResponseWriter, r *http.Request) {
 		CompanyID:    companyID,
 		ReviewStatus: decision,
 	})
+
+	// Activity log
+	_, _ = h.queries.CreateActivity(ctx, db.CreateActivityParams{
+		CompanyID: companyID,
+		ProjectID: item.ProjectID,
+		ItemID:    item.ID,
+		ActorID:   uID,
+		Action:    decision,
+		Details:   []byte(fmt.Sprintf(`{"decision":%q,"note":%q,"author_name":%q}`, decision, note, authorName)),
+	})
+
+	go h.dispatchReviewNotification(companyID, item, authorName, decision, note)
 
 	respondJSON(w, http.StatusOK, rev)
 }
@@ -1109,21 +1206,40 @@ func (h *ReviewHandler) ListMentionable(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	_, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+	item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
 		ID:        itemID,
 		CompanyID: companyID,
 	})
-	if err != nil {
+	if err != nil || item.DeletedAt.Valid {
 		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
 		return
 	}
 
-	// Fetch team members with access
-	members, err := h.queries.GetMembershipsForCompany(ctx, companyID)
+	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+		ID:        item.ProjectID,
+		CompanyID: companyID,
+	})
 	if err != nil {
-		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_list_members"})
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
 		return
 	}
+
+	// 1. Caller MUST be able to view this item first
+	person := middleware.GetPerson(ctx)
+	callerAccess, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
+		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	}, authz.ItemTarget{
+		ID:        uuid.UUID(item.ID.Bytes),
+		ProjectID: uuid.UUID(item.ProjectID.Bytes),
+		CompanyID: uuid.UUID(item.CompanyID.Bytes),
+		CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
+	})
+	if err != nil || !callerAccess.CanView() {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+
+	isCallerTeam := h.isTeamMember(ctx, companyID)
 
 	type mentionPerson struct {
 		ID    string `json:"id"`
@@ -1133,13 +1249,84 @@ func (h *ReviewHandler) ListMentionable(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var mentionable []mentionPerson
-	for _, m := range members {
-		mentionable = append(mentionable, mentionPerson{
-			ID:    pgUUIDToString(m.UserID),
-			Name:  m.UserName,
-			Email: m.UserEmail,
-			Role:  m.Role,
-		})
+	seen := make(map[string]bool)
+
+	// Fetch team members who can view this item
+	members, err := h.queries.GetMembershipsForCompany(ctx, companyID)
+	if err == nil {
+		for _, m := range members {
+			memPerson := authz.Person{
+				UserID:    uuid.UUID(m.UserID.Bytes),
+				Email:     m.UserEmail,
+				Role:      m.Role,
+				CompanyID: uuid.UUID(companyID.Bytes),
+			}
+			memAccess, mErr := authz.AccessItem(ctx, h.queries, memPerson, authz.ProjectTarget{
+				ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+			}, authz.ItemTarget{
+				ID:        uuid.UUID(item.ID.Bytes),
+				ProjectID: uuid.UUID(item.ProjectID.Bytes),
+				CompanyID: uuid.UUID(item.CompanyID.Bytes),
+			})
+			if mErr == nil && memAccess.CanView() {
+				email := m.UserEmail
+				if !isCallerTeam {
+					email = "" // Never return emails to client contacts or visitors
+				}
+				uidStr := pgUUIDToString(m.UserID)
+				if !seen[uidStr] {
+					seen[uidStr] = true
+					mentionable = append(mentionable, mentionPerson{
+						ID:    uidStr,
+						Name:  m.UserName,
+						Email: email,
+						Role:  m.Role,
+					})
+				}
+			}
+		}
+	}
+
+	// Also include client contacts for this project's client if they have view access
+	if proj.ClientID.Valid {
+		contacts, cErr := h.queries.ListClientContacts(ctx, proj.ClientID)
+		if cErr == nil {
+			for _, c := range contacts {
+				cPerson := authz.Person{
+					UserID:    uuid.UUID(c.UserID.Bytes),
+					Email:     c.Email,
+					Role:      "client",
+					CompanyID: uuid.UUID(companyID.Bytes),
+				}
+				cAccess, acErr := authz.AccessItem(ctx, h.queries, cPerson, authz.ProjectTarget{
+					ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+				}, authz.ItemTarget{
+					ID:        uuid.UUID(item.ID.Bytes),
+					ProjectID: uuid.UUID(item.ProjectID.Bytes),
+					CompanyID: uuid.UUID(item.CompanyID.Bytes),
+				})
+				if acErr == nil && cAccess.CanView() {
+					email := c.Email
+					if !isCallerTeam {
+						email = "" // Never return emails to client contacts
+					}
+					cidStr := pgUUIDToString(c.ID)
+					if !seen[cidStr] {
+						seen[cidStr] = true
+						mentionable = append(mentionable, mentionPerson{
+							ID:    cidStr,
+							Name:  c.Name,
+							Email: email,
+							Role:  "client",
+						})
+					}
+				}
+			}
+		}
+	}
+
+	if mentionable == nil {
+		mentionable = []mentionPerson{}
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
@@ -1156,10 +1343,74 @@ func (h *ReviewHandler) ListReviewsFeed(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	person := middleware.GetPerson(ctx)
 	isTeam := h.isTeamMember(ctx, companyID)
+
+	var userClientID pgtype.UUID
+	if !isTeam {
+		contacts, _ := h.queries.GetClientContactsByEmail(ctx, person.Email)
+		if len(contacts) > 0 {
+			userClientID = contacts[0].ClientID
+		}
+	}
+
+	// Fetch accessible projects for the caller
+	var projectUUIDs []pgtype.UUID
+	if isTeam && (person.Role == authz.RoleAdmin || person.Role == authz.RoleManager || person.Role == authz.RoleOwner) {
+		// Admins/Managers: all company projects (Column2: nil in sqlc means all)
+		projectUUIDs = nil
+	} else {
+		// Non-admins (Editors, clients, external users):
+		projs, err := h.queries.ListProjectsForUserWithAccess(ctx, db.ListProjectsForUserWithAccessParams{
+			CompanyID: companyID,
+			Email:     person.Email,
+			ClientID:  userClientID,
+			Status:    pgtype.Text{Valid: false},
+		})
+		if err == nil {
+			for _, p := range projs {
+				projectUUIDs = append(projectUUIDs, p.ID)
+			}
+		}
+
+		// Also check any folder/file grants where the user was granted access
+		grants, gErr := h.queries.ListGrantsByEmail(ctx, authz.NormalizeEmail(person.Email))
+		if gErr == nil {
+			for _, g := range grants {
+				if g.TargetType == "project" {
+					projectUUIDs = append(projectUUIDs, g.TargetID)
+				} else if g.TargetType == "folder" || g.TargetType == "file" {
+					if it, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+						ID:        g.TargetID,
+						CompanyID: companyID,
+					}); err == nil {
+						projectUUIDs = append(projectUUIDs, it.ProjectID)
+					}
+				}
+			}
+		}
+
+		// Deduplicate project IDs
+		seen := make(map[string]bool)
+		var dedup []pgtype.UUID
+		for _, pid := range projectUUIDs {
+			idStr := pgUUIDToString(pid)
+			if !seen[idStr] {
+				seen[idStr] = true
+				dedup = append(dedup, pid)
+			}
+		}
+		projectUUIDs = dedup
+
+		if len(projectUUIDs) == 0 {
+			respondJSON(w, http.StatusOK, map[string]interface{}{"items": []interface{}{}})
+			return
+		}
+	}
+
 	feed, err := h.queries.ListReviewsFeed(ctx, db.ListReviewsFeedParams{
 		CompanyID: companyID,
-		Column2:   nil, // all accessible projects
+		Column2:   projectUUIDs,
 		Column3:   isTeam,
 	})
 	if err != nil {
@@ -1167,8 +1418,41 @@ func (h *ReviewHandler) ListReviewsFeed(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Filter each item through authz.AccessItem so that users with only folder/file grants
+	// only see items they can view, and clients only see their own client's projects
+	var accessibleFeed []db.ListReviewsFeedRow
+	for _, item := range feed {
+		if userClientID.Valid {
+			proj, pErr := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+				ID:        item.ProjectID,
+				CompanyID: companyID,
+			})
+			if pErr != nil || proj.ClientID != userClientID {
+				continue
+			}
+		}
+
+		projTarget := authz.ProjectTarget{
+			ID:        uuid.UUID(item.ProjectID.Bytes),
+			CompanyID: uuid.UUID(companyID.Bytes),
+		}
+		itemTarget := authz.ItemTarget{
+			ID:        uuid.UUID(item.ID.Bytes),
+			ProjectID: uuid.UUID(item.ProjectID.Bytes),
+			CompanyID: uuid.UUID(companyID.Bytes),
+		}
+		access, err := authz.AccessItem(ctx, h.queries, person, projTarget, itemTarget)
+		if err == nil && access.CanView() {
+			accessibleFeed = append(accessibleFeed, item)
+		}
+	}
+
+	if accessibleFeed == nil {
+		accessibleFeed = []db.ListReviewsFeedRow{}
+	}
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"items": feed,
+		"items": accessibleFeed,
 	})
 }
 
@@ -1176,79 +1460,15 @@ func (h *ReviewHandler) ListReviewsFeed(w http.ResponseWriter, r *http.Request) 
 // Public Share Link Review Handlers (Rate Limited & Scoped)
 // -------------------------------------------------------------
 
-func (h *ReviewHandler) resolveShareLink(w http.ResponseWriter, r *http.Request) (*db.GetShareLinkByTokenHashRow, bool) {
-	token := chi.URLParam(r, "token")
-	if token == "" {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "link_not_found"})
-		return nil, false
-	}
-	tokenHash := authz.HashToken(token)
-
-	link, err := h.queries.GetShareLinkByTokenHash(r.Context(), tokenHash)
-	if err != nil {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "link_not_found"})
-		return nil, false
-	}
-
-	if link.DisabledAt.Valid {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "link_disabled"})
-		return nil, false
-	}
-
-	if link.ExpiresAt.Valid && link.ExpiresAt.Time.Before(time.Now()) {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "link_expired"})
-		return nil, false
-	}
-
-	return &link, true
-}
-
-func (h *ReviewHandler) verifyItemUnderShareLink(ctx context.Context, link *db.GetShareLinkByTokenHashRow, itemID pgtype.UUID) bool {
-	attachedItems, err := h.queries.ListShareLinkItems(ctx, link.ID)
-	if err != nil || len(attachedItems) == 0 {
-		return false
-	}
-
-	for _, att := range attachedItems {
-		if att.ID == itemID {
-			return true
-		}
-	}
-
-	ancestors, err := h.queries.GetItemAncestors(ctx, db.GetItemAncestorsParams{
-		ItemID:    itemID,
-		CompanyID: link.CompanyID,
-	})
-	if err == nil {
-		for _, a := range ancestors {
-			for _, att := range attachedItems {
-				if a.ID == att.ID {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
 // PublicPlaylistProxy proxies HLS playlists for share link visitors
 func (h *ReviewHandler) PublicPlaylistProxy(w http.ResponseWriter, r *http.Request) {
-	link, ok := h.resolveShareLink(w, r)
+	link, item, ok := ResolvePublicShareLinkAndItem(w, r, h.queries, h.cfg.SessionSecret, chi.URLParam(r, "id"))
 	if !ok {
 		return
 	}
 
 	ctx := r.Context()
-	var itemID pgtype.UUID
-	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
-		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
-		return
-	}
-
-	if !h.verifyItemUnderShareLink(ctx, link, itemID) {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
-		return
-	}
+	itemID := item.ID
 
 	ver, err := h.queries.GetLatestFileVersion(ctx, itemID)
 	if err != nil {
@@ -1256,7 +1476,7 @@ func (h *ReviewHandler) PublicPlaylistProxy(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Requirement 3: If processing and link doesn't allow download -> 425 "Processing, ready in a few minutes"
+	// If processing and link doesn't allow download -> 425 "Processing, ready in a few minutes"
 	if ver.PreviewStatus != "ready" {
 		if !link.AllowDownload {
 			respondJSON(w, http.StatusTooEarly, map[string]string{
@@ -1331,29 +1551,20 @@ func (h *ReviewHandler) PublicPlaylistProxy(w http.ResponseWriter, r *http.Reque
 
 // PublicListComments lists comments for share visitors, strictly hiding Team-only comments
 func (h *ReviewHandler) PublicListComments(w http.ResponseWriter, r *http.Request) {
-	link, ok := h.resolveShareLink(w, r)
+	link, item, ok := ResolvePublicShareLinkAndItem(w, r, h.queries, h.cfg.SessionSecret, chi.URLParam(r, "id"))
 	if !ok {
 		return
 	}
 
 	ctx := r.Context()
-	var itemID pgtype.UUID
-	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
-		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
-		return
-	}
-
-	if !h.verifyItemUnderShareLink(ctx, link, itemID) {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
-		return
-	}
+	itemID := item.ID
 
 	var vUUID pgtype.UUID
 	if vParam := r.URL.Query().Get("version_id"); vParam != "" {
 		_ = vUUID.Scan(vParam)
 	}
 
-	// Requirement 7: Team only comments strictly hidden on share link page
+	// Team only comments strictly hidden on share link page
 	comments, err := h.queries.ListCommentsByItemVersion(ctx, db.ListCommentsByItemVersionParams{
 		CompanyID: link.CompanyID,
 		ItemID:    itemID,
@@ -1394,12 +1605,11 @@ func (h *ReviewHandler) PublicListComments(w http.ResponseWriter, r *http.Reques
 
 // PublicCreateComment creates a comment from a share visitor (Rate limited)
 func (h *ReviewHandler) PublicCreateComment(w http.ResponseWriter, r *http.Request) {
-	link, ok := h.resolveShareLink(w, r)
+	link, item, ok := ResolvePublicShareLinkAndItem(w, r, h.queries, h.cfg.SessionSecret, chi.URLParam(r, "id"))
 	if !ok {
 		return
 	}
 
-	// Requirement 11: Rate limited
 	ip := r.RemoteAddr
 	rateKey := fmt.Sprintf("pub_comment:%s:%s", pgUUIDToString(link.ID), ip)
 	if !h.checkRateLimit(rateKey, 30, 5*time.Minute) {
@@ -1407,23 +1617,13 @@ func (h *ReviewHandler) PublicCreateComment(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Check if link allows comments
-	if link.Access != "comment" && link.Access != "comment_upload" {
+	if link.Access != "comment" && link.Access != "comment_upload" && link.Access != "commenter" {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Comments are disabled for this link"})
 		return
 	}
 
 	ctx := r.Context()
-	var itemID pgtype.UUID
-	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
-		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
-		return
-	}
-
-	if !h.verifyItemUnderShareLink(ctx, link, itemID) {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
-		return
-	}
+	itemID := item.ID
 
 	var req struct {
 		createCommentReq
@@ -1435,25 +1635,54 @@ func (h *ReviewHandler) PublicCreateComment(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if link.AskIdentity && (strings.TrimSpace(req.VisitorName) == "" || strings.TrimSpace(req.VisitorEmail) == "") {
-		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "identity_required", "message": "Name and email are required to comment"})
+	// Requirement 6: Do not trust visitor_name and visitor_email typed in each request.
+	// Use the identified visitor from PublicIdentify (share_visitors, cookie) and save author_visitor_id.
+	vis, isIdentified := GetIdentifiedShareVisitor(r, h.queries, link.ID, h.cfg.SessionSecret)
+	if link.AskIdentity && !isIdentified {
+		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "identity_required", "message": "Identification required before commenting"})
 		return
 	}
 
-	// Requirement 7: Share link visitors cannot create team only comments
+	authorName := "Guest"
+	authorEmail := ""
+	var authorVisitorID pgtype.UUID
+	if isIdentified {
+		authorName = vis.Name
+		authorEmail = vis.Email
+		authorVisitorID = vis.ID
+	}
+
+	// Visitors cannot create team only comments
 	if strings.ToLower(req.Visibility) == "team" {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Visitors cannot create Team only comments"})
 		return
 	}
 
+	// Validate parent comment belongs to this item
 	var parentUUID pgtype.UUID
 	if req.ParentID != nil && *req.ParentID != "" {
-		_ = parentUUID.Scan(*req.ParentID)
+		if err := parentUUID.Scan(*req.ParentID); err == nil {
+			parent, err := h.queries.GetCommentByID(ctx, db.GetCommentByIDParams{
+				ID:        parentUUID,
+				CompanyID: link.CompanyID,
+			})
+			if err != nil || parent.ItemID != itemID {
+				respondJSON(w, http.StatusBadRequest, map[string]string{"error": "parent_comment_not_found", "message": "Parent comment does not belong to this item"})
+				return
+			}
+		}
 	}
 
+	// Validate version belongs to this item
 	var vUUID pgtype.UUID
 	if req.VersionID != nil && *req.VersionID != "" {
-		_ = vUUID.Scan(*req.VersionID)
+		if err := vUUID.Scan(*req.VersionID); err == nil {
+			ver, err := h.queries.GetFileVersionByID(ctx, vUUID)
+			if err != nil || ver.ItemID != itemID {
+				respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_version_id", "message": "Version does not belong to this item"})
+				return
+			}
+		}
 	} else {
 		latest, err := h.queries.GetLatestFileVersion(ctx, itemID)
 		if err == nil {
@@ -1481,11 +1710,11 @@ func (h *ReviewHandler) PublicCreateComment(w http.ResponseWriter, r *http.Reque
 		VersionID:        vUUID,
 		ParentID:         parentUUID,
 		AuthorUserID:     pgtype.UUID{Valid: false},
-		AuthorVisitorID:  pgtype.UUID{Valid: false},
-		AuthorName:       req.VisitorName,
-		AuthorEmail:      req.VisitorEmail,
+		AuthorVisitorID:  authorVisitorID,
+		AuthorName:       authorName,
+		AuthorEmail:      authorEmail,
 		Body:             req.Body,
-		Visibility:       "everyone", // always everyone
+		Visibility:       "everyone",
 		TimecodeStartMs:  tcStart,
 		TimecodeEndMs:    tcEnd,
 		Drawing:          drawingBytes,
@@ -1496,17 +1725,32 @@ func (h *ReviewHandler) PublicCreateComment(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	actAction := "commented"
+	if parentUUID.Valid {
+		actAction = "replied"
+	}
+	_, _ = h.queries.CreateActivity(ctx, db.CreateActivityParams{
+		CompanyID: link.CompanyID,
+		ProjectID: item.ProjectID,
+		ItemID:    item.ID,
+		ActorID:   pgtype.UUID{Valid: false},
+		Action:    actAction,
+		Details:   []byte(fmt.Sprintf(`{"body":%q,"visibility":"everyone","author_name":%q,"visitor":true}`, comment.Body, authorName)),
+	})
+
+	proj, _ := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{ID: item.ProjectID, CompanyID: link.CompanyID})
+	go h.dispatchCommentNotification(link.CompanyID, *item, proj, comment, authorName, authorEmail, false)
+
 	respondJSON(w, http.StatusCreated, comment)
 }
 
 // PublicSubmitReview handles approval or changes requested from a share visitor (Rate limited)
 func (h *ReviewHandler) PublicSubmitReview(w http.ResponseWriter, r *http.Request) {
-	link, ok := h.resolveShareLink(w, r)
+	link, item, ok := ResolvePublicShareLinkAndItem(w, r, h.queries, h.cfg.SessionSecret, chi.URLParam(r, "id"))
 	if !ok {
 		return
 	}
 
-	// Requirement 11: Rate limited
 	ip := r.RemoteAddr
 	rateKey := fmt.Sprintf("pub_review:%s:%s", pgUUIDToString(link.ID), ip)
 	if !h.checkRateLimit(rateKey, 10, 5*time.Minute) {
@@ -1514,36 +1758,24 @@ func (h *ReviewHandler) PublicSubmitReview(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Requirement 6: Share link visitors can approve only if link allows comments and they entered name and email
-	if link.Access != "comment" && link.Access != "comment_upload" {
+	if link.Access != "comment" && link.Access != "comment_upload" && link.Access != "commenter" {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Approvals require commenting to be enabled"})
 		return
 	}
 
-	ctx := r.Context()
-	var itemID pgtype.UUID
-	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
-		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
+	// Requirement 6: Approve requires an identified visitor! Do not trust typed visitor name/email.
+	vis, isIdentified := GetIdentifiedShareVisitor(r, h.queries, link.ID, h.cfg.SessionSecret)
+	if !isIdentified {
+		respondJSON(w, http.StatusUnauthorized, map[string]string{
+			"error":   "identity_required",
+			"message": "Identification required before submitting an approval decision",
+		})
 		return
 	}
 
-	if !h.verifyItemUnderShareLink(ctx, link, itemID) {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
-		return
-	}
-
-	var req struct {
-		submitReviewReq
-		VisitorName  string `json:"visitor_name"`
-		VisitorEmail string `json:"visitor_email"`
-	}
+	var req submitReviewReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
-		return
-	}
-
-	if strings.TrimSpace(req.VisitorName) == "" || strings.TrimSpace(req.VisitorEmail) == "" {
-		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "identity_required", "message": "Name and email are required to submit an approval decision"})
 		return
 	}
 
@@ -1560,9 +1792,18 @@ func (h *ReviewHandler) PublicSubmitReview(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	ctx := r.Context()
+	itemID := item.ID
+
 	var vUUID pgtype.UUID
 	if req.VersionID != "" {
-		_ = vUUID.Scan(req.VersionID)
+		if err := vUUID.Scan(req.VersionID); err == nil {
+			ver, err := h.queries.GetFileVersionByID(ctx, vUUID)
+			if err != nil || ver.ItemID != itemID {
+				respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_version_id", "message": "Version does not belong to this item"})
+				return
+			}
+		}
 	} else {
 		latest, err := h.queries.GetLatestFileVersion(ctx, itemID)
 		if err == nil {
@@ -1575,8 +1816,8 @@ func (h *ReviewHandler) PublicSubmitReview(w http.ResponseWriter, r *http.Reques
 		ItemID:     itemID,
 		VersionID:  vUUID,
 		UserID:     pgtype.UUID{Valid: false},
-		VisitorID:  pgtype.UUID{Valid: false},
-		AuthorName: req.VisitorName,
+		VisitorID:  vis.ID,
+		AuthorName: vis.Name,
 		Decision:   decision,
 		Note:       note,
 	})
@@ -1592,5 +1833,152 @@ func (h *ReviewHandler) PublicSubmitReview(w http.ResponseWriter, r *http.Reques
 		ReviewStatus: decision,
 	})
 
+	// Activity log
+	_, _ = h.queries.CreateActivity(ctx, db.CreateActivityParams{
+		CompanyID: link.CompanyID,
+		ProjectID: item.ProjectID,
+		ItemID:    item.ID,
+		ActorID:   pgtype.UUID{Valid: false},
+		Action:    decision,
+		Details:   []byte(fmt.Sprintf(`{"decision":%q,"note":%q,"author_name":%q,"visitor":true}`, decision, note, vis.Name)),
+	})
+
+	go h.dispatchReviewNotification(link.CompanyID, *item, vis.Name, decision, note)
+
 	respondJSON(w, http.StatusOK, rev)
 }
+
+// -------------------------------------------------------------
+// Notification Helpers (Requirement 9 & 5-minute debouncing)
+// -------------------------------------------------------------
+
+func (h *ReviewHandler) parseMentions(ctx context.Context, companyID pgtype.UUID, body string) []uuid.UUID {
+	var mentioned []uuid.UUID
+	words := strings.Fields(body)
+	for _, w := range words {
+		if strings.HasPrefix(w, "@") {
+			nameOrEmail := strings.Trim(strings.TrimPrefix(w, "@"), ",.!?")
+			if nameOrEmail == "" {
+				continue
+			}
+			if u, err := h.queries.GetUserByEmail(ctx, nameOrEmail); err == nil {
+				mentioned = append(mentioned, uuid.UUID(u.ID.Bytes))
+			}
+		}
+	}
+	return mentioned
+}
+
+func (h *ReviewHandler) dispatchCommentNotification(
+	companyID pgtype.UUID,
+	item db.GetItemByIDRow,
+	proj db.GetProjectByIDRow,
+	comment db.Comment,
+	authorName, authorEmail string,
+	isAuthorTeam bool,
+) {
+	ctx := context.Background()
+
+	// 1. Enqueue asynq task for grouped comment email digest
+	if h.asynqClient != nil {
+		task, err := jobs.NewGroupedCommentNotificationTask(jobs.GroupedCommentNotificationPayload{
+			CompanyID: pgUUIDToString(companyID),
+			ItemID:    pgUUIDToString(item.ID),
+			VersionID: pgUUIDToString(comment.VersionID),
+			CommentID: pgUUIDToString(comment.ID),
+		})
+		if err == nil {
+			_, _ = h.asynqClient.Enqueue(task, asynq.ProcessIn(2*time.Minute))
+		}
+	}
+
+	if h.mailer == nil {
+		return
+	}
+
+	// 2. Identify candidate recipients
+	recipientIDs := make(map[uuid.UUID]bool)
+	if item.CreatedBy.Valid && item.CreatedBy != comment.AuthorUserID {
+		recipientIDs[uuid.UUID(item.CreatedBy.Bytes)] = true
+	}
+	if comment.ParentID.Valid {
+		parent, err := h.queries.GetCommentByID(ctx, db.GetCommentByIDParams{
+			ID:        comment.ParentID,
+			CompanyID: companyID,
+		})
+		if err == nil && parent.AuthorUserID.Valid && parent.AuthorUserID != comment.AuthorUserID {
+			recipientIDs[uuid.UUID(parent.AuthorUserID.Bytes)] = true
+		}
+	}
+	for _, mUID := range h.parseMentions(ctx, companyID, comment.Body) {
+		if mUID != uuid.UUID(comment.AuthorUserID.Bytes) {
+			recipientIDs[mUID] = true
+		}
+	}
+
+	for rUID := range recipientIDs {
+		// Team only comments: never notify clients!
+		if comment.Visibility == "team" {
+			isTeam := false
+			if _, err := h.queries.GetMembership(ctx, db.GetMembershipParams{
+				CompanyID: companyID,
+				UserID:    pgtype.UUID{Bytes: rUID, Valid: true},
+			}); err == nil {
+				isTeam = true
+			}
+			if !isTeam {
+				continue
+			}
+		}
+
+		// Check project bell notification preference
+		pref, err := h.queries.GetProjectNotificationPref(ctx, db.GetProjectNotificationPrefParams{
+			UserID:    pgtype.UUID{Bytes: rUID, Valid: true},
+			ProjectID: item.ProjectID,
+		})
+		if err == nil && pref.Level == "off" {
+			continue
+		}
+
+		// Check user notification preference
+		uPrefs, _ := h.queries.ListUserNotificationPrefs(ctx, pgtype.UUID{Bytes: rUID, Valid: true})
+		emailEnabled := true
+		for _, up := range uPrefs {
+			if up.EventType == "comment" && !up.Email {
+				emailEnabled = false
+			}
+		}
+
+		if !emailEnabled {
+			continue
+		}
+
+		u, err := h.queries.GetUserByID(ctx, pgtype.UUID{Bytes: rUID, Valid: true})
+		if err == nil && u.Email != "" && u.Email != authorEmail {
+			itemURL := fmt.Sprintf("%s/projects/%s/review/%s", strings.TrimRight(h.mailer.FrontendURL, "/"), pgUUIDToString(item.ProjectID), pgUUIDToString(item.ID))
+			_ = h.mailer.SendCommentNotificationEmail(u.Email, u.Name, authorName, item.Name, itemURL, comment.Body)
+		}
+	}
+}
+
+func (h *ReviewHandler) dispatchReviewNotification(
+	companyID pgtype.UUID,
+	item db.GetItemByIDRow,
+	reviewerName string,
+	decision string,
+	note string,
+) {
+	ctx := context.Background()
+	if h.mailer == nil {
+		return
+	}
+
+	if item.CreatedBy.Valid {
+		u, err := h.queries.GetUserByID(ctx, item.CreatedBy)
+		if err == nil && u.Email != "" {
+			itemURL := fmt.Sprintf("%s/projects/%s/review/%s", strings.TrimRight(h.mailer.FrontendURL, "/"), pgUUIDToString(item.ProjectID), pgUUIDToString(item.ID))
+			_ = h.mailer.SendReviewNotificationEmail(u.Email, u.Name, reviewerName, item.Name, itemURL, decision, note)
+		}
+	}
+}
+

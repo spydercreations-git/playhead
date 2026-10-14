@@ -19,17 +19,24 @@ import (
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
+	"github.com/playhead/playhead/services/shared/jobs"
 	"github.com/playhead/playhead/services/shared/mailer"
 	"github.com/playhead/playhead/services/shared/plans"
 	"github.com/playhead/playhead/services/shared/storage"
+	"github.com/hibiken/asynq"
 )
 
 // StorageUploadsHandler manages fast direct-to-S3 uploads, downloads, and storage quotas
 type StorageUploadsHandler struct {
-	queries *db.Queries
-	storage *storage.Client
-	mailer  *mailer.Mailer
-	cfg     *config.Config
+	queries     *db.Queries
+	storage     *storage.Client
+	mailer      *mailer.Mailer
+	cfg         *config.Config
+	asynqClient *asynq.Client
+}
+
+func (h *StorageUploadsHandler) SetAsynqClient(c *asynq.Client) {
+	h.asynqClient = c
 }
 
 func NewStorageUploadsHandler(queries *db.Queries, storage *storage.Client, mailer *mailer.Mailer, cfg *config.Config) *StorageUploadsHandler {
@@ -485,6 +492,20 @@ func (h *StorageUploadsHandler) CompleteUpload(w http.ResponseWriter, r *http.Re
 
 	// 7. Check Storage Alert Threshold (Requirement 1)
 	go h.checkStorageAlerts(companyID)
+
+	// 8. Enqueue video and audio processing task to asynq
+	if isVideoOrAudio && h.asynqClient != nil {
+		task, tErr := jobs.NewProcessVideoTask(jobs.ProcessVideoPayload{
+			CompanyID:  pgUUIDToString(companyID),
+			ItemID:     pgUUIDToString(item.ID),
+			VersionID:  pgUUIDToString(fileVer.ID),
+			StorageKey: upload.StorageKey,
+			Mime:       upload.Mime,
+		})
+		if tErr == nil {
+			_, _ = h.asynqClient.Enqueue(task)
+		}
+	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"item":    item,

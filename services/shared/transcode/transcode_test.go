@@ -151,3 +151,21 @@ func TestTranscoder_StubTranscode(t *testing.T) {
 	assert.NotEmpty(t, res.SpritePath)
 	assert.NotEmpty(t, res.WaveformJSON)
 }
+
+func TestCalculateRotatedDimensions(t *testing.T) {
+	// A 1920x1080 rotate 90 source (iPhone vertical) produces 720x1280
+	w720, h720 := transcode.CalculateRotatedDimensions(1920, 1080, 90, 720)
+	assert.Equal(t, 720, w720)
+	assert.Equal(t, 1280, h720)
+
+	// Rotate 270 produces 720x1280
+	w270, h270 := transcode.CalculateRotatedDimensions(1920, 1080, 270, 720)
+	assert.Equal(t, 720, w270)
+	assert.Equal(t, 1280, h270)
+
+	// Rotate 0 remains 1280x720
+	w0, h0 := transcode.CalculateRotatedDimensions(1920, 1080, 0, 720)
+	assert.Equal(t, 1280, w0)
+	assert.Equal(t, 720, h0)
+}
+

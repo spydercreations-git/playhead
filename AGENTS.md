@@ -10,6 +10,7 @@ Project and player layout follows `docs/PROJECT_WORKSPACE.md`.
 3. After each milestone, update `docs/PROGRESS.md`: what was built, what is left, how to run it.
 4. Record every decision the spec does not cover in `docs/DECISIONS.md`.
 5. Keep changes small and focused. One feature per commit.
+6. After every task or fix, always run all tests, commit, and push to GitHub (git push origin main). Never finish a task without pushing. Put the commit ID at the end of every report.
 
 ## Stack (do not change without asking)
 

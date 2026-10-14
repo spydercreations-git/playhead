@@ -62,12 +62,13 @@ func TestTrialMaxFiveSeatsEnforcement(t *testing.T) {
 		Name:  ownerUser.Name,
 	}
 	userCtx := context.WithValue(ctx, middleware.UserContextKey, authOwner)
+	userCtx = context.WithValue(userCtx, middleware.CompanyContextKey, testCompany.ID)
 
 	// Function to send invite
 	sendInvite := func(email string) int {
 		body, _ := json.Marshal(CreateInviteRequest{
 			Email: email,
-			Role:  authz.RoleMember,
+			Role:  authz.RoleEditor,
 		})
 		req := httptest.NewRequest("POST", "/api/v1/companies/test/invites", bytes.NewReader(body)).WithContext(userCtx)
 		rctx := chi.NewRouteContext()

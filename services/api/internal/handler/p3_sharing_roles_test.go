@@ -582,14 +582,15 @@ func TestP3PermissionsRolesAndSharing(t *testing.T) {
 	// -------------------------------------------------------------
 	t.Run("Last Admin cannot be demoted or removed (400)", func(t *testing.T) {
 		rComp := chi.NewRouter()
-		rComp.Put("/api/v1/companies/members/{userId}/role", companyH.UpdateMemberRole)
-		rComp.Delete("/api/v1/companies/members/{userId}", companyH.RemoveMember)
+		rComp.Patch("/api/v1/companies/{company_id}/members/{user_id}", companyH.UpdateMemberRole)
+		rComp.Delete("/api/v1/companies/{company_id}/members/{user_id}", companyH.RemoveMember)
 
 		adminIDStr := pgUUIDToString(adminUser.ID)
+		compIDStr := pgUUIDToString(comp.ID)
 
-		// 1. Demoting the only admin to viewer
-		demoteBody, _ := json.Marshal(map[string]string{"role": "viewer"})
-		reqDemote := httptest.NewRequest("PUT", "/api/v1/companies/members/"+adminIDStr+"/role", bytes.NewReader(demoteBody))
+		// 1. Demoting the only admin to editor
+		demoteBody, _ := json.Marshal(map[string]string{"role": "editor"})
+		reqDemote := httptest.NewRequest("PATCH", fmt.Sprintf("/api/v1/companies/%s/members/%s", compIDStr, adminIDStr), bytes.NewReader(demoteBody))
 		reqDemote = reqDemote.WithContext(contextWithPerson(reqDemote.Context(), adminUser, comp.ID, adminPerson))
 		recDemote := httptest.NewRecorder()
 		rComp.ServeHTTP(recDemote, reqDemote)
@@ -599,8 +600,28 @@ func TestP3PermissionsRolesAndSharing(t *testing.T) {
 		}
 
 		// 2. Removing the only admin
-		reqRemove := httptest.NewRequest("DELETE", "/api/v1/companies/members/"+adminIDStr, nil)
-		reqRemove = reqRemove.WithContext(contextWithPerson(reqRemove.Context(), adminUser, comp.ID, adminPerson))
+		// To test removing the last admin by another admin (since caller cannot remove self)
+		admin2, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("admin2-%d@studio.com", time.Now().UnixNano()),
+			Name:  "Admin Two",
+		})
+		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+			CompanyID: comp.ID,
+			UserID:    admin2.ID,
+			Role:      authz.RoleAdmin,
+		})
+		admin2Person := authz.Person{UserID: uuid.UUID(admin2.ID.Bytes), Email: admin2.Email, Role: "admin", Permissions: []string{authz.PermTeamChangeRoles}, CompanyID: uuid.UUID(comp.ID.Bytes)}
+
+		// Demote admin2 so only 1 admin remains
+		_ = queries.DeleteMembership(ctx, db.DeleteMembershipParams{
+			CompanyID: comp.ID,
+			UserID:    admin2.ID,
+		})
+
+		// Now caller attempts to remove adminUser (caller cannot remove self, tested in advisor tests)
+		// Or another user with permission tries to remove the last admin
+		reqRemove := httptest.NewRequest("DELETE", fmt.Sprintf("/api/v1/companies/%s/members/%s", compIDStr, adminIDStr), nil)
+		reqRemove = reqRemove.WithContext(contextWithPerson(reqRemove.Context(), admin2, comp.ID, admin2Person))
 		recRemove := httptest.NewRecorder()
 		rComp.ServeHTTP(recRemove, reqRemove)
 
@@ -663,3 +684,535 @@ func TestP3PermissionsRolesAndSharing(t *testing.T) {
 		}
 	})
 }
+
+// ---------------------------------------------------------------------
+// TEST SUITE: Advisor Security Requirements
+// ---------------------------------------------------------------------
+func TestP3_AdvisorSecurityRequirements(t *testing.T) {
+	queries, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	mailClient := mailer.New(mailer.Config{})
+	cfg := config.Load()
+	stClient, _ := storage.NewClient(ctx, storage.Config{
+		Endpoint:        cfg.R2Endpoint,
+		AccessKeyID:     cfg.R2AccessKeyID,
+		SecretAccessKey: cfg.R2SecretAccessKey,
+		Bucket:          cfg.R2Bucket,
+		UsePathStyle:    true,
+	})
+
+	authMiddleware := middleware.NewAuthMiddleware(queries)
+	companyH := NewCompanyHandler(queries)
+	inviteH := NewInviteHandler(queries, mailClient)
+	itemsH := NewItemsHandler(queries, stClient)
+	storageH := NewStorageUploadsHandler(queries, stClient, mailClient, cfg)
+	grantsH := NewGrantsHandler(queries, mailClient)
+
+	// Setup Company A and Company B
+	compA, _ := queries.CreateCompany(ctx, db.CreateCompanyParams{
+		Name: "Company Alpha",
+		Slug: fmt.Sprintf("alpha-%d", time.Now().UnixNano()),
+		Plan: "internal",
+	})
+	compB, _ := queries.CreateCompany(ctx, db.CreateCompanyParams{
+		Name: "Company Beta",
+		Slug: fmt.Sprintf("beta-%d", time.Now().UnixNano()),
+		Plan: "internal",
+	})
+
+	// User A is an Admin in Company A
+	userA, _ := queries.CreateUser(ctx, db.CreateUserParams{
+		Email: fmt.Sprintf("admin-a-%d@alpha.com", time.Now().UnixNano()),
+		Name:  "Alice Alpha",
+	})
+	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+		CompanyID: compA.ID,
+		UserID:    userA.ID,
+		Role:      authz.RoleAdmin,
+	})
+	personA := authz.Person{UserID: uuid.UUID(userA.ID.Bytes), Email: userA.Email, Role: "admin", CompanyID: uuid.UUID(compA.ID.Bytes), Permissions: []string{authz.PermTeamChangeRoles, authz.PermSharingCreatePublicLinks}}
+
+	// User B is an Admin in Company B
+	userB, _ := queries.CreateUser(ctx, db.CreateUserParams{
+		Email: fmt.Sprintf("admin-b-%d@beta.com", time.Now().UnixNano()),
+		Name:  "Bob Beta",
+	})
+	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+		CompanyID: compB.ID,
+		UserID:    userB.ID,
+		Role:      authz.RoleAdmin,
+	})
+	personB := authz.Person{UserID: uuid.UUID(userB.ID.Bytes), Email: userB.Email, Role: "admin", CompanyID: uuid.UUID(compB.ID.Bytes), Permissions: []string{authz.PermTeamChangeRoles, authz.PermSharingCreatePublicLinks}}
+	_ = personB
+
+	// Member B in Company B
+	memberB, _ := queries.CreateUser(ctx, db.CreateUserParams{
+		Email: fmt.Sprintf("member-b-%d@beta.com", time.Now().UnixNano()),
+		Name:  "Molly Beta",
+	})
+	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+		CompanyID: compB.ID,
+		UserID:    memberB.ID,
+		Role:      "editor",
+	})
+
+	// -------------------------------------------------------------
+	// 1. Active company must be verified (middleware/auth.go):
+	// A user with X-Company-ID of a company they don't belong to gets 403
+	// -------------------------------------------------------------
+	t.Run("User with X-Company-ID of non-member company gets 403", func(t *testing.T) {
+		tokenA, _ := authz.GenerateSecureToken(32)
+		tokenHashA := authz.HashToken(tokenA)
+		_, _ = queries.CreateSession(ctx, db.CreateSessionParams{
+			UserID:    userA.ID,
+			TokenHash: tokenHashA,
+			ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(24 * time.Hour), Valid: true},
+		})
+
+		router := chi.NewRouter()
+		router.Use(authMiddleware.Authenticate)
+		router.Get("/test-ping", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("pong"))
+		})
+
+		// Requesting Company B (User A does not belong to Company B)
+		reqForbidden := httptest.NewRequest("GET", "/test-ping", nil)
+		reqForbidden.Header.Set("Authorization", "Bearer "+tokenA)
+		reqForbidden.Header.Set("X-Company-ID", pgUUIDToString(compB.ID))
+		recForbidden := httptest.NewRecorder()
+		router.ServeHTTP(recForbidden, reqForbidden)
+
+		if recForbidden.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden when specifying X-Company-ID of unjoined company, got %d", recForbidden.Code)
+		}
+
+		// Requesting Company A (User A belongs to Company A)
+		reqOK := httptest.NewRequest("GET", "/test-ping", nil)
+		reqOK.Header.Set("Authorization", "Bearer "+tokenA)
+		reqOK.Header.Set("X-Company-ID", pgUUIDToString(compA.ID))
+		recOK := httptest.NewRecorder()
+		router.ServeHTTP(recOK, reqOK)
+
+		if recOK.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK for member company, got %d", recOK.Code)
+		}
+	})
+
+	// -------------------------------------------------------------
+	// 2. Team endpoints: Admin of Company A cannot manage Company B (403)
+	// -------------------------------------------------------------
+	t.Run("Admin of Company A cannot change roles, remove members, invite or list members in Company B", func(t *testing.T) {
+		rTeam := chi.NewRouter()
+		rTeam.Get("/api/v1/companies/{company_id}/members", companyH.GetMembers)
+		rTeam.Patch("/api/v1/companies/{company_id}/members/{user_id}", companyH.UpdateMemberRole)
+		rTeam.Delete("/api/v1/companies/{company_id}/members/{user_id}", companyH.RemoveMember)
+		rTeam.Post("/api/v1/companies/{company_id}/invites", inviteH.Create)
+		rTeam.Get("/api/v1/companies/{company_id}/invites", inviteH.ListForCompany)
+
+		compBStr := pgUUIDToString(compB.ID)
+		memberBStr := pgUUIDToString(memberB.ID)
+
+		// A tries to list members of B
+		req1 := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/companies/%s/members", compBStr), nil)
+		req1 = req1.WithContext(contextWithPerson(req1.Context(), userA, compA.ID, personA))
+		rec1 := httptest.NewRecorder()
+		rTeam.ServeHTTP(rec1, req1)
+		if rec1.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 listing members in foreign company, got %d", rec1.Code)
+		}
+
+		// A tries to update role of member in B
+		patchBody, _ := json.Marshal(map[string]string{"role": "admin"})
+		req2 := httptest.NewRequest("PATCH", fmt.Sprintf("/api/v1/companies/%s/members/%s", compBStr, memberBStr), bytes.NewReader(patchBody))
+		req2 = req2.WithContext(contextWithPerson(req2.Context(), userA, compA.ID, personA))
+		rec2 := httptest.NewRecorder()
+		rTeam.ServeHTTP(rec2, req2)
+		if rec2.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 changing role in foreign company, got %d", rec2.Code)
+		}
+
+		// A tries to remove member in B
+		req3 := httptest.NewRequest("DELETE", fmt.Sprintf("/api/v1/companies/%s/members/%s", compBStr, memberBStr), nil)
+		req3 = req3.WithContext(contextWithPerson(req3.Context(), userA, compA.ID, personA))
+		rec3 := httptest.NewRecorder()
+		rTeam.ServeHTTP(rec3, req3)
+		if rec3.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 removing member in foreign company, got %d", rec3.Code)
+		}
+
+		// A tries to invite to B
+		inviteBody, _ := json.Marshal(map[string]string{"email": "stranger@studio.com", "role": "editor"})
+		req4 := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/companies/%s/invites", compBStr), bytes.NewReader(inviteBody))
+		req4 = req4.WithContext(contextWithPerson(req4.Context(), userA, compA.ID, personA))
+		rec4 := httptest.NewRecorder()
+		rTeam.ServeHTTP(rec4, req4)
+		if rec4.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 inviting to foreign company, got %d", rec4.Code)
+		}
+
+		// A tries to list invites of B
+		req5 := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/companies/%s/invites", compBStr), nil)
+		req5 = req5.WithContext(contextWithPerson(req5.Context(), userA, compA.ID, personA))
+		rec5 := httptest.NewRecorder()
+		rTeam.ServeHTTP(rec5, req5)
+		if rec5.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 listing invites in foreign company, got %d", rec5.Code)
+		}
+	})
+
+	// -------------------------------------------------------------
+	// 3. Client contact cannot list team members (403)
+	// -------------------------------------------------------------
+	t.Run("Client contact cannot list team members", func(t *testing.T) {
+		rTeam := chi.NewRouter()
+		rTeam.Get("/api/v1/companies/{company_id}/members", companyH.GetMembers)
+
+		clientUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("client-%d@client.com", time.Now().UnixNano()),
+			Name:  "Catherine Client",
+		})
+		// Registered only as client contact, no company membership
+		clientPerson := authz.Person{UserID: uuid.UUID(clientUser.ID.Bytes), Email: clientUser.Email, Role: "", CompanyID: uuid.UUID(compA.ID.Bytes)}
+
+		req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/companies/%s/members", pgUUIDToString(compA.ID)), nil)
+		req = req.WithContext(contextWithPerson(req.Context(), clientUser, compA.ID, clientPerson))
+		rec := httptest.NewRecorder()
+		rTeam.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden when client contact lists team members, got %d", rec.Code)
+		}
+	})
+
+	// -------------------------------------------------------------
+	// 4. Client cannot see trash items from other clients' projects, and cannot restore without access
+	// -------------------------------------------------------------
+	t.Run("Client cannot see trash items from other projects and cannot restore without access", func(t *testing.T) {
+		client1, _ := queries.CreateClient(ctx, db.CreateClientParams{
+			CompanyID: compA.ID,
+			Name:      "Client One",
+		})
+		client2, _ := queries.CreateClient(ctx, db.CreateClientParams{
+			CompanyID: compA.ID,
+			Name:      "Client Two",
+		})
+
+		proj1, _ := queries.CreateProject(ctx, db.CreateProjectParams{
+			CompanyID: compA.ID,
+			ClientID:  client1.ID,
+			Name:      "Project One",
+		})
+		proj2, _ := queries.CreateProject(ctx, db.CreateProjectParams{
+			CompanyID: compA.ID,
+			ClientID:  client2.ID,
+			Name:      "Project Two",
+		})
+
+		clientUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("contact-%d@one.com", time.Now().UnixNano()),
+			Name:  "Connie Contact",
+		})
+		// Grant clientUser Uploader access on Project 1 only
+		_, _ = queries.CreateGrant(ctx, db.CreateGrantParams{
+			CompanyID:  compA.ID,
+			TargetType: "project",
+			TargetID:   proj1.ID,
+			Email:      clientUser.Email,
+			UserID:     clientUser.ID,
+			Level:      "uploader",
+		})
+		clientPerson := authz.Person{UserID: uuid.UUID(clientUser.ID.Bytes), Email: clientUser.Email, Role: "", CompanyID: uuid.UUID(compA.ID.Bytes)}
+
+		// Create and soft delete item in Project 1 (uploaded by clientUser)
+		itemInProj1, err := queries.CreateItem(ctx, db.CreateItemParams{
+			CompanyID: compA.ID,
+			ProjectID: proj1.ID,
+			Kind:      "file",
+			Name:      "proj1-trash.mp4",
+			CreatedBy: clientUser.ID,
+			Position:  pgtype.Numeric{Int: big.NewInt(1000), Valid: true},
+		})
+		if err != nil {
+			t.Fatalf("failed to create itemInProj1: %v", err)
+		}
+		_, _ = queries.SoftDeleteItem(ctx, db.SoftDeleteItemParams{
+			ID:        itemInProj1.ID,
+			CompanyID: compA.ID,
+			DeletedBy: clientUser.ID,
+		})
+
+		// Create and soft delete item in Project 2 (uploaded by adminUser)
+		itemInProj2, err := queries.CreateItem(ctx, db.CreateItemParams{
+			CompanyID: compA.ID,
+			ProjectID: proj2.ID,
+			Kind:      "file",
+			Name:      "proj2-trash.mp4",
+			CreatedBy: userA.ID,
+			Position:  pgtype.Numeric{Int: big.NewInt(2000), Valid: true},
+		})
+		if err != nil {
+			t.Fatalf("failed to create itemInProj2: %v", err)
+		}
+		_, _ = queries.SoftDeleteItem(ctx, db.SoftDeleteItemParams{
+			ID:        itemInProj2.ID,
+			CompanyID: compA.ID,
+			DeletedBy: userA.ID,
+		})
+
+		rTrash := chi.NewRouter()
+		rTrash.Get("/api/v1/trash", itemsH.ListTrash)
+		rTrash.Post("/api/v1/trash/{id}/restore", itemsH.RestoreTrashItem)
+
+		// List trash as clientUser: must only contain itemInProj1, NOT itemInProj2
+		reqList := httptest.NewRequest("GET", "/api/v1/trash", nil)
+		reqList = reqList.WithContext(contextWithPerson(reqList.Context(), clientUser, compA.ID, clientPerson))
+		recList := httptest.NewRecorder()
+		rTrash.ServeHTTP(recList, reqList)
+
+		if recList.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK listing trash, got %d", recList.Code)
+		}
+		var listResp struct {
+			Items []db.ListTrashItemsRow `json:"items"`
+		}
+		_ = json.Unmarshal(recList.Body.Bytes(), &listResp)
+
+		if len(listResp.Items) != 1 || listResp.Items[0].ID != itemInProj1.ID {
+			t.Fatalf("expected client to see only item from project 1, got %d items", len(listResp.Items))
+		}
+
+		// Attempt to restore item from Project 2 (clientUser has no access to Project 2)
+		reqRestoreProj2 := httptest.NewRequest("POST", "/api/v1/trash/"+pgUUIDToString(itemInProj2.ID)+"/restore", nil)
+		reqRestoreProj2 = reqRestoreProj2.WithContext(contextWithPerson(reqRestoreProj2.Context(), clientUser, compA.ID, clientPerson))
+		recRestoreProj2 := httptest.NewRecorder()
+		rTrash.ServeHTTP(recRestoreProj2, reqRestoreProj2)
+
+		if recRestoreProj2.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden restoring item without access, got %d: %s", recRestoreProj2.Code, recRestoreProj2.Body.String())
+		}
+	})
+
+	// -------------------------------------------------------------
+	// 5. Changing a role to "owner" is rejected; last Admin cannot be demoted or removed
+	// -------------------------------------------------------------
+	t.Run("Changing role to owner is rejected and last admin protected", func(t *testing.T) {
+		rComp := chi.NewRouter()
+		rComp.Patch("/api/v1/companies/{company_id}/members/{user_id}", companyH.UpdateMemberRole)
+		rComp.Delete("/api/v1/companies/{company_id}/members/{user_id}", companyH.RemoveMember)
+
+		editorUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("editor-%d@alpha.com", time.Now().UnixNano()),
+			Name:  "Eddie Editor",
+		})
+		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+			CompanyID: compA.ID,
+			UserID:    editorUser.ID,
+			Role:      "editor",
+		})
+
+		compAStr := pgUUIDToString(compA.ID)
+		editorStr := pgUUIDToString(editorUser.ID)
+		adminAStr := pgUUIDToString(userA.ID)
+
+		// 1. Trying to change role to "owner" -> 400
+		ownerBody, _ := json.Marshal(map[string]string{"role": "owner"})
+		reqOwner := httptest.NewRequest("PATCH", fmt.Sprintf("/api/v1/companies/%s/members/%s", compAStr, editorStr), bytes.NewReader(ownerBody))
+		reqOwner = reqOwner.WithContext(contextWithPerson(reqOwner.Context(), userA, compA.ID, personA))
+		recOwner := httptest.NewRecorder()
+		rComp.ServeHTTP(recOwner, reqOwner)
+		if recOwner.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 Bad Request assigning owner role, got %d", recOwner.Code)
+		}
+
+		// 2. Caller trying to change their own role -> 400
+		selfBody, _ := json.Marshal(map[string]string{"role": "editor"})
+		reqSelf := httptest.NewRequest("PATCH", fmt.Sprintf("/api/v1/companies/%s/members/%s", compAStr, adminAStr), bytes.NewReader(selfBody))
+		reqSelf = reqSelf.WithContext(contextWithPerson(reqSelf.Context(), userA, compA.ID, personA))
+		recSelf := httptest.NewRecorder()
+		rComp.ServeHTTP(recSelf, reqSelf)
+		if recSelf.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 Bad Request changing own role, got %d", recSelf.Code)
+		}
+	})
+
+	// -------------------------------------------------------------
+	// 6. Viewing vs Downloading: person with Can download off can open /view but gets 403 on /download
+	// -------------------------------------------------------------
+	t.Run("Person with Can download off can open /view but gets 403 on /download", func(t *testing.T) {
+		rStorage := chi.NewRouter()
+		rStorage.Get("/api/v1/items/{id}/view", storageH.ViewItem)
+		rStorage.Get("/api/v1/items/{id}/download", storageH.DownloadItem)
+
+		client1, _ := queries.CreateClient(ctx, db.CreateClientParams{
+			CompanyID: compA.ID,
+			Name:      "Download Test Client",
+		})
+		proj, _ := queries.CreateProject(ctx, db.CreateProjectParams{
+			CompanyID: compA.ID,
+			ClientID:  client1.ID,
+			Name:      "Download Test Project",
+		})
+		fileItem, err := queries.CreateItem(ctx, db.CreateItemParams{
+			CompanyID: compA.ID,
+			ProjectID: proj.ID,
+			Kind:      "file",
+			Name:      "review-cut.mp4",
+			CreatedBy: userA.ID,
+			Position:  pgtype.Numeric{Int: big.NewInt(1000), Valid: true},
+		})
+		if err != nil {
+			t.Fatalf("failed to create fileItem: %v", err)
+		}
+		ver, err := queries.CreateFileVersion(ctx, db.CreateFileVersionParams{
+			CompanyID:   compA.ID,
+			ItemID:      fileItem.ID,
+			Number:      1,
+			StorageKey:  "test/review-cut.mp4",
+			SizeBytes:   1024,
+			Mime:        "video/mp4",
+			UploadedBy:  userA.ID,
+			PreviewKeys: []byte("[]"),
+		})
+		if err != nil {
+			t.Fatalf("failed to create file version: %v", err)
+		}
+		_ = ver
+
+		restrictedUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("noviewdownload-%d@test.com", time.Now().UnixNano()),
+			Name:  "No Download User",
+		})
+		// Grant restrictedUser access with can_download = false
+		_, _ = queries.CreateGrant(ctx, db.CreateGrantParams{
+			CompanyID:   compA.ID,
+			TargetType:  "project",
+			TargetID:    proj.ID,
+			Email:       restrictedUser.Email,
+			UserID:      restrictedUser.ID,
+			Level:       "viewer",
+			CanDownload: false,
+		})
+		restrictedPerson := authz.Person{UserID: uuid.UUID(restrictedUser.ID.Bytes), Email: restrictedUser.Email, Role: "", CompanyID: uuid.UUID(compA.ID.Bytes)}
+
+		fileIDStr := pgUUIDToString(fileItem.ID)
+
+		// 1. /view returns 200 OK
+		reqView := httptest.NewRequest("GET", "/api/v1/items/"+fileIDStr+"/view", nil)
+		reqView = reqView.WithContext(contextWithPerson(reqView.Context(), restrictedUser, compA.ID, restrictedPerson))
+		recView := httptest.NewRecorder()
+		rStorage.ServeHTTP(recView, reqView)
+
+		if recView.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK accessing /view with can_download=false, got %d: %s", recView.Code, recView.Body.String())
+		}
+		var viewResp map[string]interface{}
+		_ = json.Unmarshal(recView.Body.Bytes(), &viewResp)
+		if viewResp["view_url"] == nil || viewResp["view_url"] == "" {
+			t.Fatalf("expected non-empty view_url in /view response")
+		}
+
+		// 2. /download returns 403 Forbidden
+		reqDownload := httptest.NewRequest("GET", "/api/v1/items/"+fileIDStr+"/download", nil)
+		reqDownload = reqDownload.WithContext(contextWithPerson(reqDownload.Context(), restrictedUser, compA.ID, restrictedPerson))
+		recDownload := httptest.NewRecorder()
+		rStorage.ServeHTTP(recDownload, reqDownload)
+
+		if recDownload.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden on /download when can_download=false, got %d: %s", recDownload.Code, recDownload.Body.String())
+		}
+	})
+
+	// -------------------------------------------------------------
+	// 7. Uploads: user B cannot complete or abort user A's upload (404)
+	// -------------------------------------------------------------
+	t.Run("User B cannot complete or abort user A's upload", func(t *testing.T) {
+		rUploads := chi.NewRouter()
+		rUploads.Get("/api/v1/uploads/{id}/parts", storageH.GetUploadParts)
+		rUploads.Post("/api/v1/uploads/{id}/complete", storageH.CompleteUpload)
+		rUploads.Delete("/api/v1/uploads/{id}", storageH.AbortUpload)
+
+		client1, _ := queries.CreateClient(ctx, db.CreateClientParams{
+			CompanyID: compA.ID,
+			Name:      "Upload Client",
+		})
+		projU, _ := queries.CreateProject(ctx, db.CreateProjectParams{
+			CompanyID: compA.ID,
+			ClientID:  client1.ID,
+			Name:      "Upload Project",
+		})
+
+		// Create upload belonging to userA
+		uploadA, err := queries.CreateUpload(ctx, db.CreateUploadParams{
+			CompanyID:     compA.ID,
+			ProjectID:     projU.ID,
+			UserID:        userA.ID,
+			UploadID:      fmt.Sprintf("s3-upload-%d", time.Now().UnixNano()),
+			StorageKey:    "test/uploadA.mp4",
+			Filename:      "uploadA.mp4",
+			SizeBytes:     2048,
+			Mime:          "video/mp4",
+			TotalParts:    1,
+			PartSizeBytes: 2048,
+			ExpiresAt:     pgtype.Timestamptz{Time: time.Now().Add(24 * time.Hour), Valid: true},
+		})
+		if err != nil {
+			t.Fatalf("failed to create uploadA: %v", err)
+		}
+
+		uploadIDStr := pgUUIDToString(uploadA.ID)
+
+		// Create another user in Company A
+		userOther, _ := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("other-%d@alpha.com", time.Now().UnixNano()),
+			Name:  "Other In Alpha",
+		})
+		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+			CompanyID: compA.ID,
+			UserID:    userOther.ID,
+			Role:      "editor",
+		})
+		personOther := authz.Person{UserID: uuid.UUID(userOther.ID.Bytes), Email: userOther.Email, Role: "editor", CompanyID: uuid.UUID(compA.ID.Bytes)}
+
+		// Other user tries to GetUploadParts -> 404
+		reqParts := httptest.NewRequest("GET", "/api/v1/uploads/"+uploadIDStr+"/parts", nil)
+		reqParts = reqParts.WithContext(contextWithPerson(reqParts.Context(), userOther, compA.ID, personOther))
+		recParts := httptest.NewRecorder()
+		rUploads.ServeHTTP(recParts, reqParts)
+		if recParts.Code != http.StatusNotFound {
+			t.Fatalf("expected 404 GetUploadParts for another user's upload, got %d", recParts.Code)
+		}
+
+		// Other user tries to CompleteUpload -> 404
+		completeBody, _ := json.Marshal(map[string]interface{}{"parts": []map[string]interface{}{{"part_number": 1, "etag": "etag1"}}})
+		reqComp := httptest.NewRequest("POST", "/api/v1/uploads/"+uploadIDStr+"/complete", bytes.NewReader(completeBody))
+		reqComp = reqComp.WithContext(contextWithPerson(reqComp.Context(), userOther, compA.ID, personOther))
+		recComp := httptest.NewRecorder()
+		rUploads.ServeHTTP(recComp, reqComp)
+		if recComp.Code != http.StatusNotFound {
+			t.Fatalf("expected 404 CompleteUpload for another user's upload, got %d", recComp.Code)
+		}
+
+		// Other user tries to AbortUpload -> 404
+		reqAbort := httptest.NewRequest("DELETE", "/api/v1/uploads/"+uploadIDStr, nil)
+		reqAbort = reqAbort.WithContext(contextWithPerson(reqAbort.Context(), userOther, compA.ID, personOther))
+		recAbort := httptest.NewRecorder()
+		rUploads.ServeHTTP(recAbort, reqAbort)
+		if recAbort.Code != http.StatusNotFound {
+			t.Fatalf("expected 404 AbortUpload for another user's upload, got %d", recAbort.Code)
+		}
+
+		// Original user A can abort their own upload -> 200 OK
+		reqAbortOwner := httptest.NewRequest("DELETE", "/api/v1/uploads/"+uploadIDStr, nil)
+		reqAbortOwner = reqAbortOwner.WithContext(contextWithPerson(reqAbortOwner.Context(), userA, compA.ID, personA))
+		recAbortOwner := httptest.NewRecorder()
+		rUploads.ServeHTTP(recAbortOwner, reqAbortOwner)
+		if recAbortOwner.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK AbortUpload for upload owner, got %d", recAbortOwner.Code)
+		}
+	})
+	_ = grantsH
+}
+

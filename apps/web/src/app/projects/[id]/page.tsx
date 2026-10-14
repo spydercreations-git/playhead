@@ -560,9 +560,12 @@ export default function ProjectWorkspacePage() {
   }
 
   const { project, items = [], breadcrumbs = [], user_access = "viewer" } = workspaceData;
+  const access = workspaceData.access || {};
+  const userAccessLevel = access.level || user_access;
+  const canDownload = access.can_download !== undefined ? Boolean(access.can_download) : true;
   const isReadOnlyOrCommenter =
-    user_access === "viewer" || user_access === "commenter" || user_access === "uploader";
-  const canUpload = user_access === "full" || user_access === "uploader";
+    userAccessLevel === "viewer" || userAccessLevel === "commenter" || userAccessLevel === "uploader";
+  const canUpload = userAccessLevel === "full" || userAccessLevel === "uploader";
 
   // Filter items
   const foldersList = items.filter((i: any) => i.kind === "folder");
@@ -1136,15 +1139,17 @@ export default function ProjectWorkspacePage() {
             </button>
 
             {/* Download */}
-            <div className="relative">
-              <button
-                onClick={() => handleStartDownload("zip")}
-                className="flex items-center gap-1.5 text-[#9A9DA0] hover:text-white transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download</span>
-              </button>
-            </div>
+            {canDownload && (
+              <div className="relative">
+                <button
+                  onClick={() => handleStartDownload("zip")}
+                  className="flex items-center gap-1.5 text-[#9A9DA0] hover:text-white transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download</span>
+                </button>
+              </div>
+            )}
 
             {/* Move to */}
             <button
@@ -1229,7 +1234,7 @@ export default function ProjectWorkspacePage() {
             storage_key: f.latest_storage_key,
             is_video: f.name.endsWith(".mp4") || f.name.endsWith(".mov"),
           }))}
-          canDownload={!isReadOnlyOrCommenter}
+          canDownload={canDownload}
           onClose={() => setActiveViewerItem(null)}
           onSelectNext={() => {}}
           onSelectPrev={() => {}}

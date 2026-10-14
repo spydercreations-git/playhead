@@ -11,6 +11,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const checkUserBelongsToCompany = `-- name: CheckUserBelongsToCompany :one
+SELECT EXISTS (
+    SELECT 1 FROM memberships m
+    WHERE m.company_id = $1 AND m.user_id = $2
+    UNION
+    SELECT 1 FROM client_contacts cc
+    WHERE cc.company_id = $1 AND LOWER(cc.email) = LOWER($3)
+    UNION
+    SELECT 1 FROM grants g
+    WHERE g.company_id = $1 AND (LOWER(g.email) = LOWER($3) OR g.user_id = $2)
+) AS belongs
+`
+
+type CheckUserBelongsToCompanyParams struct {
+	CompanyID pgtype.UUID `json:"company_id"`
+	UserID    pgtype.UUID `json:"user_id"`
+	Email     string      `json:"email"`
+}
+
+func (q *Queries) CheckUserBelongsToCompany(ctx context.Context, arg CheckUserBelongsToCompanyParams) (bool, error) {
+	row := q.db.QueryRow(ctx, checkUserBelongsToCompany, arg.CompanyID, arg.UserID, arg.Email)
+	var belongs bool
+	err := row.Scan(&belongs)
+	return belongs, err
+}
+
 const countCompanyMembers = `-- name: CountCompanyMembers :one
 SELECT COUNT(*) as count
 FROM memberships

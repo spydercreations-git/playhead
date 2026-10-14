@@ -43,6 +43,15 @@ func (h *InviteHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	activeCompID, ok := middleware.GetActiveCompanyID(r.Context())
+	if !ok || !activeCompID.Valid || activeCompID != companyID {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Cannot manage invitations of another company",
+		})
+		return
+	}
+
 	var req CreateInviteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
@@ -57,11 +66,24 @@ func (h *InviteHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	role := strings.ToLower(strings.TrimSpace(req.Role))
 	if role == "" {
-		role = authz.RoleMember
+		role = "editor"
 	}
-	if role != authz.RoleAdmin && role != authz.RoleMember && role != authz.RoleGuest {
-		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_role", "message": "Role must be admin, member, or guest"})
+	if role == "owner" || role == "member" || role == "guest" {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "invalid_role",
+			"message": "Invite role cannot be owner, member, or guest",
+		})
 		return
+	}
+	if role != "admin" && role != "manager" && role != "editor" {
+		_, err := h.queries.GetRoleByName(r.Context(), db.GetRoleByNameParams{
+			CompanyID: companyID,
+			Name:      role,
+		})
+		if err != nil {
+			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_role", "message": "Role must be admin, manager, or editor"})
+			return
+		}
 	}
 
 	company, err := h.queries.GetCompanyByID(r.Context(), companyID)
@@ -195,6 +217,15 @@ func (h *InviteHandler) ListForCompany(w http.ResponseWriter, r *http.Request) {
 	var companyID pgtype.UUID
 	if err := companyID.Scan(companyIDStr); err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_company_id"})
+		return
+	}
+
+	activeCompID, ok := middleware.GetActiveCompanyID(r.Context())
+	if !ok || !activeCompID.Valid || activeCompID != companyID {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Cannot list invitations of another company",
+		})
 		return
 	}
 

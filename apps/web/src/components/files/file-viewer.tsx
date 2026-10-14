@@ -41,6 +41,7 @@ export function FileViewer({
   onSelectNext,
   onSelectPrev,
 }: FileViewerProps) {
+  const [viewUrl, setViewUrl] = useState<string>("");
   const [downloadUrl, setDownloadUrl] = useState<string>("");
   const [loadingUrl, setLoadingUrl] = useState<boolean>(false);
   const [showDetails, setShowDetails] = useState<boolean>(true);
@@ -49,17 +50,28 @@ export function FileViewer({
   useEffect(() => {
     if (!item) return;
 
-    // Fetch signed download URL
+    // Fetch signed view URL for inline preview (allowed for anyone who can view)
+    setLoadingUrl(true);
+    fetch(`/api/v1/items/${item.id}/view`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.view_url) {
+          setViewUrl(data.view_url);
+        }
+      })
+      .finally(() => setLoadingUrl(false));
+
+    // Fetch signed download URL only if Can Download is granted
     if (canDownload) {
-      setLoadingUrl(true);
       fetch(`/api/v1/items/${item.id}/download`)
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data && data.download_url) {
             setDownloadUrl(data.download_url);
           }
-        })
-        .finally(() => setLoadingUrl(false));
+        });
+    } else {
+      setDownloadUrl("");
     }
   }, [item, canDownload]);
 
@@ -194,9 +206,9 @@ export function FileViewer({
         <div className="flex-1 flex items-center justify-center p-8 overflow-auto bg-[#181818]/50">
           {isVideo && (
             <div className="max-w-4xl w-full flex flex-col items-center">
-              {downloadUrl ? (
+              {viewUrl ? (
                 <video
-                  src={downloadUrl}
+                  src={viewUrl}
                   controls
                   autoPlay
                   className="w-full max-h-[75vh] rounded-xl shadow-2xl bg-black border border-[#424344]"
@@ -211,9 +223,9 @@ export function FileViewer({
 
           {isImage && (
             <div className="max-w-5xl max-h-[80vh] flex items-center justify-center overflow-hidden">
-              {downloadUrl ? (
+              {viewUrl ? (
                 <img
-                  src={downloadUrl}
+                  src={viewUrl}
                   alt={item.name}
                   className="max-h-[75vh] max-w-full object-contain rounded-lg shadow-2xl border border-[#424344]"
                 />
@@ -232,8 +244,8 @@ export function FileViewer({
                 <h3 className="font-semibold text-white text-base truncate">{item.name}</h3>
                 <p className="text-xs text-[#9A9DA0] mt-1">{formatBytes(item.size_bytes)}</p>
               </div>
-              {downloadUrl ? (
-                <audio src={downloadUrl} controls className="w-full" autoPlay />
+              {viewUrl ? (
+                <audio src={viewUrl} controls className="w-full" autoPlay />
               ) : (
                 <p className="text-xs text-[#9A9DA0]">Loading audio...</p>
               )}
@@ -242,9 +254,9 @@ export function FileViewer({
 
           {isPDF && (
             <div className="w-full h-full max-w-5xl bg-[#212121] border border-[#424344] rounded-xl overflow-hidden shadow-2xl">
-              {downloadUrl ? (
+              {viewUrl ? (
                 <iframe
-                  src={downloadUrl}
+                  src={viewUrl}
                   className="w-full h-full min-h-[75vh]"
                   title={item.name}
                 />

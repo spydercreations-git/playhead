@@ -269,6 +269,12 @@ func (h *StorageUploadsHandler) GetUploadParts(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	user, okU := middleware.GetAuthenticatedUser(ctx)
+	if !okU || !upload.UserID.Valid || upload.UserID != user.ID {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "upload_not_found"})
+		return
+	}
+
 	var completedParts []map[string]interface{}
 	if h.storage != nil {
 		parts, err := h.storage.ListParts(ctx, upload.StorageKey, upload.UploadID)
@@ -326,6 +332,11 @@ func (h *StorageUploadsHandler) CompleteUpload(w http.ResponseWriter, r *http.Re
 		CompanyID: companyID,
 	})
 	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "upload_not_found"})
+		return
+	}
+
+	if !upload.UserID.Valid || upload.UserID != user.ID {
 		respondJSON(w, http.StatusNotFound, map[string]string{"error": "upload_not_found"})
 		return
 	}
@@ -472,6 +483,12 @@ func (h *StorageUploadsHandler) AbortUpload(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	user, okU := middleware.GetAuthenticatedUser(ctx)
+	if !okU || !upload.UserID.Valid || upload.UserID != user.ID {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "upload_not_found"})
+		return
+	}
+
 	if h.storage != nil && upload.Status == "pending" {
 		_ = h.storage.AbortMultipartUpload(ctx, upload.StorageKey, upload.UploadID)
 	}
@@ -485,6 +502,75 @@ func (h *StorageUploadsHandler) AbortUpload(w http.ResponseWriter, r *http.Reque
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{"aborted": true})
+}
+
+// ViewItem returns a short-lived (15 min) presigned URL with Content-Disposition inline for in-browser viewing
+func (h *StorageUploadsHandler) ViewItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := middleware.GetAuthenticatedUser(ctx)
+	role, _ := middleware.GetUserRole(ctx)
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var itemID pgtype.UUID
+	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
+		return
+	}
+
+	item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:        itemID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+
+	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+		ID:        item.ProjectID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	person := authz.Person{UserID: uuid.UUID(user.ID.Bytes), Email: user.Email, Role: role, CompanyID: uuid.UUID(companyID.Bytes)}
+	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	})
+	if err != nil || !access.CanView() {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+
+	ver, err := h.queries.GetLatestFileVersion(ctx, itemID)
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "file_version_not_found"})
+		return
+	}
+
+	var viewURL string
+	if h.storage != nil {
+		url, err := h.storage.PresignGetObjectInline(ctx, ver.StorageKey, ver.Mime, 15*time.Minute)
+		if err == nil {
+			viewURL = url
+		}
+	}
+	if viewURL == "" {
+		viewURL = fmt.Sprintf("http://localhost:9000/playhead-dev/%s", ver.StorageKey)
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"view_url":   viewURL,
+		"filename":   item.Name,
+		"size_bytes": ver.SizeBytes,
+		"mime":       ver.Mime,
+	})
 }
 
 // DownloadItem issues direct presigned S3 download URL respecting CanDownload (Requirement 3)

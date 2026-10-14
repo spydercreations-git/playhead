@@ -173,6 +173,24 @@ func (c *Client) PresignGetObject(ctx context.Context, key, downloadName string,
 	return req.URL, nil
 }
 
+// PresignGetObjectInline generates a presigned GET URL with Content-Disposition inline for in-browser viewing
+func (c *Client) PresignGetObjectInline(ctx context.Context, key, mimeType string, expire time.Duration) (string, error) {
+	input := &s3.GetObjectInput{
+		Bucket:                     aws.String(c.Bucket),
+		Key:                        aws.String(key),
+		ResponseContentDisposition: aws.String("inline"),
+	}
+	if mimeType != "" {
+		input.ResponseContentType = aws.String(mimeType)
+	}
+
+	req, err := c.Presign.PresignGetObject(ctx, input, s3.WithPresignExpires(expire))
+	if err != nil {
+		return "", fmt.Errorf("presign get object inline %q: %w", key, err)
+	}
+	return req.URL, nil
+}
+
 // ListParts lists completed parts for an ongoing multipart upload (useful for resume)
 func (c *Client) ListParts(ctx context.Context, key, uploadID string) ([]types.Part, error) {
 	var parts []types.Part

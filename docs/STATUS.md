@@ -58,6 +58,15 @@ Current milestone: **P3 (Permissions, Roles & Sharing)** completed.
    - Strictly **NO EMOJIS** anywhere in the interface; SVG Lucide icons used exclusively.
    - Folder cards feature real top tabs with 1 large and 2 small thumbnail previews.
    - Video cards show version tags (`v3`), duration pills, Lucide comment icon counter (`MessageSquare`), and status tags (`Approved`, `Needs review`, `Changes requested`).
+   - Bottom selection pill with multi-item batch actions.
+
+7. **Advisor Security Review & Hardening**:
+   - **Active Company Verification**: `middleware/auth.go` verifies user membership, client contact, or item/project grant in the requested company (`X-Company-ID` / `?company_id=`) before accepting; returns 403 otherwise.
+   - **Team Endpoint Isolation**: `companies.go` and `invites.go` reject requests where URL `{company_id}` differs from the verified active company context. Client contacts are refused from listing team members (403).
+   - **Role Boundaries & Self-Protection**: `UpdateMemberRole` rejects assignment of `owner`, `member`, or `guest`. Users cannot change their own role. Last Admin in a company cannot be demoted or deleted.
+   - **Trash Security & Scoping**: `ListTrash` scopes items so Admins/Managers see company trash while others only see items in projects where they hold Uploader or Full access. `RestoreTrashItem` requires Full access, or being the item uploader or deleter. Permanent delete remains restricted to Admins and the item uploader.
+   - **Viewing vs Downloading Separation**: Added `GET /api/v1/items/{id}/view` returning a 15-minute presigned URL with `Content-Disposition: inline` for in-browser media previews. The `/download` endpoint enforces `CanDownload` (403 if off). Download buttons in file viewer and project workspace are hidden when `CanDownload` is off.
+   - **Upload Ownership Enforcement**: `GetUploadParts`, `CompleteUpload`, and `AbortUpload` verify `uploads.user_id == current_user.id`, returning 404 for uploads belonging to other users.
    - Document cards feature folded paper corners and blue `DOC` / red `PDF` badges.
    - Spreadsheet cards display dark grid previews with green headers and sheet tabs.
    - Floating selection pill matching the design specification.

@@ -182,3 +182,15 @@ WHERE id = $1;
 -- name: DeleteInvite :exec
 DELETE FROM invites
 WHERE id = $1 AND company_id = $2;
+
+-- name: CheckUserBelongsToCompany :one
+SELECT EXISTS (
+    SELECT 1 FROM memberships m
+    WHERE m.company_id = @company_id AND m.user_id = @user_id
+    UNION
+    SELECT 1 FROM client_contacts cc
+    WHERE cc.company_id = @company_id AND LOWER(cc.email) = LOWER(@email)
+    UNION
+    SELECT 1 FROM grants g
+    WHERE g.company_id = @company_id AND (LOWER(g.email) = LOWER(@email) OR g.user_id = @user_id)
+) AS belongs;

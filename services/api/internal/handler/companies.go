@@ -110,6 +110,24 @@ func (h *CompanyHandler) GetMembers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	activeCompID, ok := middleware.GetActiveCompanyID(r.Context())
+	if !ok || !activeCompID.Valid || activeCompID != companyID {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Access to different company is forbidden",
+		})
+		return
+	}
+
+	userRole, okRole := middleware.GetUserRole(r.Context())
+	if !okRole || userRole == "" {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Team membership required to view members",
+		})
+		return
+	}
+
 	members, err := h.queries.GetMembershipsForCompany(r.Context(), companyID)
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to load members"})
@@ -145,6 +163,30 @@ func (h *CompanyHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	activeCompID, ok := middleware.GetActiveCompanyID(r.Context())
+	if !ok || !activeCompID.Valid || activeCompID != companyID {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Cannot manage members of another company",
+		})
+		return
+	}
+
+	user, okUser := middleware.GetAuthenticatedUser(r.Context())
+	if !okUser {
+		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	// Nobody can change their own role
+	if targetUserID == user.ID {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "cannot_change_own_role",
+			"message": "You cannot change your own role",
+		})
+		return
+	}
+
 	targetMembership, err := h.queries.GetMembership(r.Context(), db.GetMembershipParams{
 		CompanyID: companyID,
 		UserID:    targetUserID,
@@ -157,6 +199,15 @@ func (h *CompanyHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request
 	var req UpdateMemberRoleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
+		return
+	}
+
+	rawRole := strings.ToLower(strings.TrimSpace(req.Role))
+	if rawRole == "owner" || rawRole == "member" || rawRole == "guest" {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "invalid_role",
+			"message": "Role cannot be owner, member, or guest",
+		})
 		return
 	}
 
@@ -188,8 +239,9 @@ func (h *CompanyHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	if newRoleName == "" {
-		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_role", "message": "Unknown role"})
+	lowerNewName := strings.ToLower(newRoleName)
+	if lowerNewName == "" || lowerNewName == "owner" || lowerNewName == "member" || lowerNewName == "guest" {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_role", "message": "Role must be admin, manager, or editor"})
 		return
 	}
 
@@ -238,6 +290,30 @@ func (h *CompanyHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 	var companyID, targetUserID pgtype.UUID
 	if err := companyID.Scan(companyIDStr); err != nil || targetUserID.Scan(targetUserIDStr) != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_id"})
+		return
+	}
+
+	activeCompID, ok := middleware.GetActiveCompanyID(r.Context())
+	if !ok || !activeCompID.Valid || activeCompID != companyID {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Cannot manage members of another company",
+		})
+		return
+	}
+
+	user, okUser := middleware.GetAuthenticatedUser(r.Context())
+	if !okUser {
+		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	// Nobody can remove themselves
+	if targetUserID == user.ID {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "cannot_remove_self",
+			"message": "You cannot remove yourself from the company",
+		})
 		return
 	}
 

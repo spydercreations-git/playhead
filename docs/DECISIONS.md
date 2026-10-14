@@ -130,8 +130,13 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
   - **Email Service**: All outbound emails routed through `services/shared/email` (Mailpit locally, Resend in prod) with Playhead branding, single CTA button, and notification settings footer links. Implemented 5-minute comment debouncing/aggregation per file in the background worker. Documented all emails in `docs/EMAILS.md`.
   - **Notification Settings (P3)**: Settings > Notifications dual toggles (In app / Email) across all events, plus project header bell buttons (`All activity`, `Only mentions and my files`, `Off`).
   - **Custom Roles RBAC Engine (P3)**: Added `roles(id, company_id, name, color, permissions jsonb, is_system)` table. System role `Admin` is immutable and company must retain at least one Admin. `Manager` and `Editor` become editable starter roles. Added 17 granular permissions (`clients.*`, `projects.*`, `files.*`, `sharing.*`, `team.*`, `admin.*`). Refactored `authz` to evaluate permissions rather than raw role names. Team page gets a dedicated Roles management tab.
-- **Reason**: Empowers studios to define custom roles matching their agency structure while guaranteeing strict permission enforcement and preventing notification fatigue.
 
-
-
-
+## 27. Advisor Security Hardening & Strict Tenant Boundary Enforcement (P3)
+- **Decision**:
+  - **Company Context Verification**: `middleware/auth.go` resolves active company by verifying that the authenticated user is an active member, client contact, or explicit grant recipient in the company before accepting `X-Company-ID` or `?company_id=`. Unverified companies return 403 Forbidden.
+  - **URL vs Context Alignment**: Team management endpoints (`companies.go`, `invites.go`) reject requests with 403 if the `{company_id}` in the URL does not match the caller's verified active company context. Client contacts without company memberships cannot list team members.
+  - **Role Safety & Self-Modification**: `UpdateMemberRole` restricts assignable roles to `admin`, `manager`, or `editor` (or custom roles from `roles`), explicitly rejecting `owner`, `member`, or `guest`. Users cannot modify their own role. The last Admin in a workspace cannot be demoted or deleted.
+  - **Scoped Trash Access**: Non-admin/manager users can only view trash items in projects where they hold `Uploader` or `Full` access. Restoring requires `Full` access, or being the item uploader or deleter. Permanent deletion remains restricted to Admins and the original uploader.
+  - **Viewing vs Downloading Separation**: Split media access into `/view` (short-lived 15m presigned URL with `Content-Disposition: inline`) and `/download` (attachment gated strictly by `CanDownload`). File viewers use `/view`, and download buttons are completely hidden when `CanDownload` is false.
+  - **Upload Ownership Guard**: Resumable multipart upload endpoints (`GetUploadParts`, `CompleteUpload`, `AbortUpload`) verify `uploads.user_id == current_user.id`, returning 404 for unowned uploads.
+- **Reason**: Closes all potential cross-tenant leakage, escalation of privilege, download restriction bypasses, and unauthorized upload manipulation.

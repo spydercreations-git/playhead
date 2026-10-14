@@ -127,7 +127,19 @@ func (am *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 		}
 
 		if requestedCompany != "" {
-			companyID.Scan(requestedCompany)
+			if err := companyID.Scan(requestedCompany); err != nil || !companyID.Valid {
+				rejectForbidden(w, "Invalid company ID")
+				return
+			}
+			belongs, err := am.queries.CheckUserBelongsToCompany(ctx, db.CheckUserBelongsToCompanyParams{
+				CompanyID: companyID,
+				UserID:    authUser.ID,
+				Email:     authUser.Email,
+			})
+			if err != nil || !belongs {
+				rejectForbidden(w, "Access to requested company denied")
+				return
+			}
 		} else {
 			// 1. Try company memberships
 			companies, err := am.queries.GetCompaniesForUser(ctx, authUser.ID)

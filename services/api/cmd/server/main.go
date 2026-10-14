@@ -241,6 +241,7 @@ func main() {
 			protected.Get("/uploads/{id}/parts", storageUploadsHandler.GetUploadParts)
 			protected.Post("/uploads/{id}/complete", storageUploadsHandler.CompleteUpload)
 			protected.Delete("/uploads/{id}", storageUploadsHandler.AbortUpload)
+			protected.Get("/items/{id}/view", storageUploadsHandler.ViewItem)
 			protected.Get("/items/{id}/download", storageUploadsHandler.DownloadItem)
 			protected.Post("/downloads/prepare", storageUploadsHandler.PrepareDownload)
 			protected.Post("/downloads/zip", storageUploadsHandler.ZipDownload)

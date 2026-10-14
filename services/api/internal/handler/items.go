@@ -889,20 +889,72 @@ func (h *ItemsHandler) ListTrash(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	person := middleware.GetPerson(ctx)
+
 	items, err := h.queries.ListTrashItems(ctx, companyID)
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_list_trash_items"})
 		return
 	}
 
+	// Admins and Managers see all trash items in the company
+	lowerRole := strings.ToLower(person.Role)
+	if lowerRole == authz.RoleAdmin || lowerRole == authz.RoleOwner || lowerRole == authz.RoleManager {
+		respondJSON(w, http.StatusOK, map[string]interface{}{
+			"items": items,
+		})
+		return
+	}
+
+	// Others: only items in projects where they have Uploader or Full access
+	projectAccessCache := make(map[uuid.UUID]bool)
+	var visibleItems []db.ListTrashItemsRow
+	for _, it := range items {
+		pID := uuid.UUID(it.ProjectID.Bytes)
+		hasAccess, found := projectAccessCache[pID]
+		if !found {
+			proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+				ID:        it.ProjectID,
+				CompanyID: companyID,
+			})
+			if err != nil {
+				projectAccessCache[pID] = false
+				continue
+			}
+			acc, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+				ID:        uuid.UUID(proj.ID.Bytes),
+				CompanyID: uuid.UUID(proj.CompanyID.Bytes),
+				ClientID:  uuid.UUID(proj.ClientID.Bytes),
+			})
+			if err == nil && (acc.Level == authz.LevelFull || acc.Level == authz.LevelUploader) {
+				hasAccess = true
+			} else {
+				hasAccess = false
+			}
+			projectAccessCache[pID] = hasAccess
+		}
+		if hasAccess {
+			visibleItems = append(visibleItems, it)
+		}
+	}
+
+	if visibleItems == nil {
+		visibleItems = []db.ListTrashItemsRow{}
+	}
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"items": items,
+		"items": visibleItems,
 	})
 }
 
 // RestoreTrashItem restores an item from Trash
 func (h *ItemsHandler) RestoreTrashItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	user, okU := middleware.GetAuthenticatedUser(ctx)
+	if !okU {
+		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -912,6 +964,54 @@ func (h *ItemsHandler) RestoreTrashItem(w http.ResponseWriter, r *http.Request) 
 	var itemID pgtype.UUID
 	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
+		return
+	}
+
+	item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:        itemID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+	if !item.DeletedAt.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "item_not_in_trash"})
+		return
+	}
+
+	person := middleware.GetPerson(ctx)
+
+	// Check access: Full access, or the person who deleted or uploaded the item
+	isUploader := item.CreatedBy.Valid && item.CreatedBy == user.ID
+	isDeleter := item.DeletedBy.Valid && item.DeletedBy == user.ID
+
+	hasFullAccess := false
+	lowerRole := strings.ToLower(person.Role)
+	if lowerRole == authz.RoleAdmin || lowerRole == authz.RoleOwner || lowerRole == authz.RoleManager {
+		hasFullAccess = true
+	} else {
+		proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+			ID:        item.ProjectID,
+			CompanyID: companyID,
+		})
+		if err == nil {
+			acc, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
+				ID:        uuid.UUID(proj.ID.Bytes),
+				CompanyID: uuid.UUID(proj.CompanyID.Bytes),
+				ClientID:  uuid.UUID(proj.ClientID.Bytes),
+			})
+			if err == nil && acc.Level == authz.LevelFull {
+				hasFullAccess = true
+			}
+		}
+	}
+
+	if !hasFullAccess && !isUploader && !isDeleter {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Only people with Full access, or the person who uploaded or deleted the item, can restore it",
+		})
 		return
 	}
 

@@ -101,6 +101,7 @@ func main() {
 	notifHandler := handler.NewNotificationSettingsHandler(queries)
 	shareLinksHandler := handler.NewShareLinksHandler(queries, storageClient, cfg.SessionSecret, cfg.Environment)
 	grantsHandler := handler.NewGrantsHandler(queries, mailClient)
+	reviewHandler := handler.NewReviewHandler(queries, storageClient, cfg)
 
 	// Hourly abandoned upload cleanup (Requirement 2)
 	go func() {
@@ -155,6 +156,14 @@ func main() {
 			share.Post("/upload", shareLinksHandler.PublicUpload)
 			share.Post("/upload/complete", shareLinksHandler.PublicUploadComplete)
 			share.Post("/upload/abort", shareLinksHandler.PublicUploadAbort)
+
+			// Video review & comments on share links (P4)
+			share.Get("/items/{id}/playlist.m3u8", reviewHandler.PublicPlaylistProxy)
+			share.Get("/items/{id}/{playlist}", reviewHandler.PublicPlaylistProxy)
+			share.Get("/items/{id}/comments", reviewHandler.PublicListComments)
+			share.Post("/items/{id}/comments", reviewHandler.PublicCreateComment)
+			share.Post("/items/{id}/review", reviewHandler.PublicSubmitReview)
+			share.Get("/items/{id}/comments/export", reviewHandler.ExportCommentsCSV)
 		})
 
 		// Protected endpoints (Requires authentication and CSRF token validation)
@@ -252,6 +261,23 @@ func main() {
 			protected.Get("/items/{id}/download", storageUploadsHandler.DownloadItem)
 			protected.Post("/downloads/prepare", storageUploadsHandler.PrepareDownload)
 			protected.Post("/downloads/zip", storageUploadsHandler.ZipDownload)
+
+			// Video Review & Comments (P4)
+			protected.Get("/items/{id}/versions", reviewHandler.GetVersions)
+			protected.Get("/items/{id}/versions/{v}/playlist.m3u8", reviewHandler.PlaylistProxy)
+			protected.Get("/items/{id}/versions/{v}/{playlist}", reviewHandler.PlaylistProxy)
+			protected.Get("/items/{id}/comments", reviewHandler.ListComments)
+			protected.Post("/items/{id}/comments", reviewHandler.CreateComment)
+			protected.Patch("/comments/{id}", reviewHandler.UpdateComment)
+			protected.Delete("/comments/{id}", reviewHandler.DeleteComment)
+			protected.Post("/comments/{id}/resolve", reviewHandler.ResolveComment)
+			protected.Post("/comments/{id}/reopen", reviewHandler.ReopenComment)
+			protected.Get("/items/{id}/comments/export", reviewHandler.ExportCommentsCSV)
+			protected.Post("/items/{id}/review", reviewHandler.SubmitReview)
+			protected.Post("/items/{id}/reopen", reviewHandler.ReopenReview)
+			protected.Get("/items/{id}/reviews", reviewHandler.ListReviews)
+			protected.Get("/items/{id}/mentionable", reviewHandler.ListMentionable)
+			protected.Get("/reviews", reviewHandler.ListReviewsFeed)
 
 			// Admin Storage Dashboard (P2 Requirement 1)
 			protected.With(middleware.RequirePermission(authz.PermAdminStorage)).Get("/admin/storage", storageUploadsHandler.GetStorageAdminStats)

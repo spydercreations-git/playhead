@@ -420,6 +420,19 @@ func (h *StorageUploadsHandler) CompleteUpload(w http.ResponseWriter, r *http.Re
 		item = created
 	}
 
+	previewStatus := "none"
+	isVideoOrAudio := strings.HasPrefix(upload.Mime, "video/") ||
+		strings.HasPrefix(upload.Mime, "audio/") ||
+		strings.HasSuffix(strings.ToLower(upload.Filename), ".mp4") ||
+		strings.HasSuffix(strings.ToLower(upload.Filename), ".mov") ||
+		strings.HasSuffix(strings.ToLower(upload.Filename), ".m4v") ||
+		strings.HasSuffix(strings.ToLower(upload.Filename), ".webm") ||
+		strings.HasSuffix(strings.ToLower(upload.Filename), ".mp3") ||
+		strings.HasSuffix(strings.ToLower(upload.Filename), ".wav")
+	if isVideoOrAudio {
+		previewStatus = "pending"
+	}
+
 	// 3. Create file version
 	fileVer, err := h.queries.CreateFileVersion(ctx, db.CreateFileVersionParams{
 		CompanyID:     companyID,
@@ -428,7 +441,7 @@ func (h *StorageUploadsHandler) CompleteUpload(w http.ResponseWriter, r *http.Re
 		StorageKey:    upload.StorageKey,
 		SizeBytes:     upload.SizeBytes,
 		Mime:          upload.Mime,
-		PreviewStatus: "none",
+		PreviewStatus: previewStatus,
 		PreviewKeys:   []byte("{}"),
 		UploadedBy:    upload.UserID,
 	})
@@ -436,6 +449,13 @@ func (h *StorageUploadsHandler) CompleteUpload(w http.ResponseWriter, r *http.Re
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_version"})
 		return
 	}
+
+	// Requirement 6: Uploading a new version sets status back to Needs review
+	_, _ = h.queries.UpdateItemReviewStatus(ctx, db.UpdateItemReviewStatusParams{
+		ID:           item.ID,
+		CompanyID:    companyID,
+		ReviewStatus: "needs_review",
+	})
 
 	// 4. Mark upload completed
 	_, _ = h.queries.CompleteUpload(ctx, upload.ID)
@@ -573,6 +593,21 @@ func (h *StorageUploadsHandler) ViewItem(w http.ResponseWriter, r *http.Request)
 	ver, err := h.queries.GetLatestFileVersion(ctx, itemID)
 	if err != nil {
 		respondJSON(w, http.StatusNotFound, map[string]string{"error": "file_version_not_found"})
+		return
+	}
+
+	// Requirement 3: The "play the original while processing" fallback is only for people who can download.
+	// Others see "Processing, ready in a few minutes". HLS playback is fine for view-only people.
+	isVideo := strings.HasPrefix(ver.Mime, "video/") || item.VideoCount > 0 ||
+		strings.HasSuffix(strings.ToLower(item.Name), ".mp4") ||
+		strings.HasSuffix(strings.ToLower(item.Name), ".mov") ||
+		strings.HasSuffix(strings.ToLower(item.Name), ".m4v") ||
+		strings.HasSuffix(strings.ToLower(item.Name), ".webm")
+	if isVideo && ver.PreviewStatus != "ready" && !access.CanDownload {
+		respondJSON(w, http.StatusTooEarly, map[string]string{
+			"error":   "processing",
+			"message": "Processing, ready in a few minutes",
+		})
 		return
 	}
 

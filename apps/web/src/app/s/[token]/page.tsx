@@ -15,6 +15,7 @@ import {
   ArrowRight,
   Folder,
 } from "lucide-react";
+import { ReviewWorkspace } from "@/components/review/review-workspace";
 
 interface PublicShareItem {
   id: string;
@@ -52,6 +53,8 @@ export default function PublicSharePage() {
     upload_limit_bytes: number | null;
     items: PublicShareItem[];
   } | null>(null);
+
+  const [activeReviewItem, setActiveReviewItem] = useState<PublicShareItem | null>(null);
 
   // Uploading state
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
@@ -399,13 +402,20 @@ export default function PublicSharePage() {
               return (
                 <div
                   key={item.id}
-                  className="bg-[#18181A] border border-[#27272A] hover:border-[#3F3F46] rounded-2xl p-4 transition-all flex flex-col justify-between group"
+                  onClick={() => {
+                    if (isVideo) {
+                      setActiveReviewItem(item);
+                    }
+                  }}
+                  className={`bg-[#18181A] border border-[#27272A] hover:border-[#3F3F46] rounded-2xl p-4 transition-all flex flex-col justify-between group ${
+                    isVideo ? "cursor-pointer" : ""
+                  }`}
                 >
                   <div className="h-32 rounded-xl bg-[#121214] border border-[#27272A] flex items-center justify-center mb-3 text-[#71717A]">
                     {item.kind === "folder" ? (
                       <Folder className="w-10 h-10 text-[#3366FF]" />
                     ) : isVideo ? (
-                      <Film className="w-10 h-10 text-violet-400" />
+                      <Film className="w-10 h-10 text-violet-400 group-hover:scale-110 transition-transform" />
                     ) : isAudio ? (
                       <Music className="w-10 h-10 text-emerald-400" />
                     ) : (
@@ -426,7 +436,10 @@ export default function PublicSharePage() {
 
                   {linkData?.allow_download && item.kind !== "folder" && (
                     <button
-                      onClick={() => downloadItem(item.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        downloadItem(item.id);
+                      }}
                       className="mt-3 w-full py-1.5 bg-[#27272A] hover:bg-[#323236] text-white text-xs font-medium rounded-xl flex items-center justify-center gap-1.5 transition-all"
                     >
                       <Download className="w-3.5 h-3.5" />
@@ -439,6 +452,40 @@ export default function PublicSharePage() {
           </div>
         )}
       </main>
+
+      {/* Review Workspace Modal for Shared Videos */}
+      {activeReviewItem && (
+        <ReviewWorkspace
+          item={{
+            id: activeReviewItem.id,
+            project_id: "",
+            name: activeReviewItem.name,
+            kind: activeReviewItem.kind,
+            mime: "video/mp4",
+            size_bytes: activeReviewItem.total_bytes,
+            review_status: activeReviewItem.review_status,
+            latest_version_number: 1,
+            created_at: activeReviewItem.created_at,
+          }}
+          itemsList={items.map((i) => ({
+            id: i.id,
+            project_id: "",
+            name: i.name,
+            kind: i.kind,
+            mime: "video/mp4",
+            size_bytes: i.total_bytes,
+            review_status: i.review_status,
+            latest_version_number: 1,
+            created_at: i.created_at,
+          }))}
+          canDownload={linkData?.allow_download ?? false}
+          canApprove={linkData?.access === "comment" || linkData?.access === "comment_upload"}
+          canComment={linkData?.access === "comment" || linkData?.access === "comment_upload"}
+          isTeamMember={false}
+          onClose={() => setActiveReviewItem(null)}
+          publicShareToken={token}
+        />
+      )}
     </div>
   );
 }

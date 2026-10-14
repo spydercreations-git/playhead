@@ -1017,6 +1017,19 @@ func (h *ShareLinksHandler) PublicUploadComplete(w http.ResponseWriter, r *http.
 			Bytes: upload.SizeBytes,
 		})
 
+		previewStatus := "none"
+		isVideoOrAudio := strings.HasPrefix(upload.Mime, "video/") ||
+			strings.HasPrefix(upload.Mime, "audio/") ||
+			strings.HasSuffix(strings.ToLower(upload.Filename), ".mp4") ||
+			strings.HasSuffix(strings.ToLower(upload.Filename), ".mov") ||
+			strings.HasSuffix(strings.ToLower(upload.Filename), ".m4v") ||
+			strings.HasSuffix(strings.ToLower(upload.Filename), ".webm") ||
+			strings.HasSuffix(strings.ToLower(upload.Filename), ".mp3") ||
+			strings.HasSuffix(strings.ToLower(upload.Filename), ".wav")
+		if isVideoOrAudio {
+			previewStatus = "pending"
+		}
+
 		// Create file version
 		_, _ = h.queries.CreateFileVersion(r.Context(), db.CreateFileVersionParams{
 			CompanyID:     link.CompanyID,
@@ -1025,9 +1038,15 @@ func (h *ShareLinksHandler) PublicUploadComplete(w http.ResponseWriter, r *http.
 			StorageKey:    upload.StorageKey,
 			SizeBytes:     upload.SizeBytes,
 			Mime:          upload.Mime,
-			PreviewStatus: "none",
+			PreviewStatus: previewStatus,
 			PreviewKeys:   []byte("{}"),
 			UploadedBy:    pgtype.UUID{Valid: false},
+		})
+
+		_, _ = h.queries.UpdateItemReviewStatus(r.Context(), db.UpdateItemReviewStatusParams{
+			ID:           upload.TargetItemID,
+			CompanyID:    link.CompanyID,
+			ReviewStatus: "needs_review",
 		})
 
 		_, _ = h.queries.CompleteUpload(r.Context(), upload.ID)

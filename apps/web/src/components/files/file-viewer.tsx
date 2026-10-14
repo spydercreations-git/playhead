@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Link as LinkIcon, Download, Music, FileText, X } from "lucide-react";
+import { ReviewWorkspace } from "@/components/review/review-workspace";
 
 export interface ViewerItem {
   id: string;
@@ -96,6 +97,40 @@ export function FileViewer({
     name.endsWith(".mov") ||
     name.endsWith(".webm") ||
     item.is_video;
+
+  if (isVideo) {
+    return (
+      <ReviewWorkspace
+        item={{
+          id: item.id,
+          project_id: "",
+          name: item.name,
+          kind: item.kind,
+          mime: item.mime,
+          size_bytes: item.size_bytes,
+          review_status: "needs_review",
+          latest_version_number: item.version_number,
+          created_at: item.created_at,
+          created_by_name: item.created_by_name,
+        }}
+        itemsList={itemsList.map((i) => ({
+          id: i.id,
+          project_id: "",
+          name: i.name,
+          kind: i.kind,
+          mime: i.mime,
+          size_bytes: i.size_bytes,
+          review_status: "needs_review",
+          latest_version_number: i.version_number,
+          created_at: i.created_at,
+        }))}
+        canDownload={canDownload}
+        onClose={onClose}
+        onSelectNext={onSelectNext}
+        onSelectPrev={onSelectPrev}
+      />
+    );
+  }
   const isAudio =
     mime.startsWith("audio/") ||
     name.endsWith(".mp3") ||

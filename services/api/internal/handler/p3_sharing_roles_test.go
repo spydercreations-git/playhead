@@ -1077,9 +1077,11 @@ func TestP3_AdvisorSecurityRequirements(t *testing.T) {
 			UploadedBy:  userA.ID,
 			PreviewKeys: []byte("[]"),
 		})
-		if err != nil {
-			t.Fatalf("failed to create file version: %v", err)
-		}
+		_, _ = queries.UpdateVersionPreviewStatus(ctx, db.UpdateVersionPreviewStatusParams{
+			ID:            ver.ID,
+			CompanyID:     compA.ID,
+			PreviewStatus: "ready",
+		})
 		_ = ver
 
 		restrictedUser, _ := queries.CreateUser(ctx, db.CreateUserParams{

@@ -259,14 +259,75 @@ Google Login is built into the backend and UI, but hidden until configured. When
 
 ---
 
-## Upcoming Milestones (Version 2: P4 – P7)
+## Milestone P4: Video Review Screen & Media Processing Worker
 
-- **Milestone P4: Video review**
-  - Asynchronous processing worker for HLS previews (720p/1080p).
-  - Video review player with frame-accurate comments, drawings, and "Team only" visibility.
-  - Versions and side-by-side compare.
-  - Approval flow (Approve, Request changes) and Reviews page.
-  - Comment export (PDF/CSV). Audio and image comments.
+### Status: Completed ✅ (Verified end-to-end in browser and tests)
+
+### What was built:
+1. **Aspect-Ratio Preserving Media Transcoding Pipeline**:
+   - `services/shared/transcode`: HLS segmenting (4s segments, keyframe alignment), poster generation at 10% duration, hover thumbnail sprite sheet (up to 100 frames) with JSON coordinate map, and 100-point normalized audio waveform generator.
+   - Dynamic dimension scaling (`CalculateDimensions`): short side is scaled to 720 or 1080 without forcing 16:9 boxes. Fully tested for 9:16 vertical video (1080x1920 -> 720x1280), 1:1 square (1080x1080 -> 720x720), 4:5 social (1080x1350 -> 720x900), and sub-1080 sources.
+   - 1080p variant only generated when source short side is $\ge 1080$ (`ShouldGenerate1080p`).
+   - Resilient handling of silent videos (without audio track failures) and audio-only files (waveform visualization + player).
+
+2. **Concurrency-Limited Background Processing Worker**:
+   - `services/worker`: Concurrent video jobs limited to at most 2 video processes at once via channel semaphore.
+   - Streams source media from S3/R2 storage to temporary local disk, transcodes previews, uploads artifacts under `previews/{company_id}/{version_id}/...`, updates `file_versions.preview_status = 'ready'`, and guarantees temp file cleanup in `defer`.
+
+3. **Secure View vs Download Fallback Enforcement**:
+   - `services/api/internal/handler/storage_uploads.go`: When `preview_status != 'ready'`, inline playback of the original file is allowed ONLY for users with `CanDownload = true`.
+   - View-only users without download permission receive HTTP 425 Too Early (`"Processing, ready in a few minutes"`) and cannot extract the raw original file bytes.
+
+4. **HLS Playlist Proxy & Silent 403 Reload**:
+   - `ReviewHandler.PlaylistProxy`: Proxies both master (`playlist.m3u8`) and variant playlists (`720p.m3u8`, `1080p.m3u8`). Rewrites `.ts` segment lines with 2-hour presigned R2 URLs.
+   - `hls.js` integration in `video-player.tsx`: Catches HTTP 403 on expired segment requests and quietly triggers `hls.loadSource(playlistUrl)` so long-paused videos resume without error.
+
+5. **Role-Agnostic Comment Permissions**:
+   - Commenting, replying, and resolving are permitted for `Commenter`, `Uploader`, and `Full` access (no role name hardcoding).
+   - Comment editing is restricted to author only.
+   - Comment deletion is permitted for author or anyone holding Full access.
+
+6. **Review Approvals & Automatic Version Reset**:
+   - Team members with Full access and Client contacts with Commenter+ can submit review decisions (`approved` or `changes_requested`).
+   - Share link visitors can approve only if the link allows commenting and they submit their name and email.
+   - Every decision is stored in `reviews` table with author name, email, version ID, decision, and note, displayed in the Details history tab.
+   - Uploading a new version automatically resets the item's `review_status` to `needs_review`.
+
+7. **Strict Team-Only Comments Scrubbing**:
+   - Server-side filtering everywhere: comments list, replies under team-only parents, comment counters, timeline markers, CSV export, activity feed, and public share links.
+   - Client contacts and share link visitors never receive or see team-only comments, replies, or counts, and the Team-Only toggle option is completely hidden from them.
+
+8. **Frame.io-Style Frontend Video Review Workspace (`apps/web`)**:
+   - `components/review/video-player.tsx`: Canvas matte black player rendering native aspect ratio, SMPTE timecode/frames/seconds display, J/K/L keyboard jumps, frame stepping via arrow keys, speed (0.5x–2x), loop, quality selector, and metadata strip.
+   - `components/review/drawing-overlay.tsx`: Normalized SVG drawing canvas on paused frames (pen, arrow, rectangle, colors).
+   - `components/review/timeline-scrubber.tsx`: Waveform audio track, range comment colored bands, author avatar markers, team-only lock icon, hover thumbnail preview tooltip.
+   - `components/review/comment-composer.tsx`: Active playhead orange timecode chip, draw toggle, `@mention` list filtered to people with file access, Everyone/Team-only audience dropdown, send button.
+   - `components/review/comments-panel.tsx`: Comments tab (All/Unresolved/Resolved filter, timecode sort, threaded comments, inline replies, drawings on frame, team-only yellow styling, resolve checkboxes) and Details tab (decision history, version switcher).
+   - `components/review/version-compare.tsx`: Side-by-side synchronized scrubbing mode.
+   - Embedded into `file-viewer.tsx` and public share link page `s/[token]/page.tsx`.
+
+9. **Live Polling & Rate Limiting**:
+   - 8-second polling ensures comments, resolves, and approval status update across all concurrent viewers without page refresh.
+   - Rate limiting protects public comment and review endpoints on share links.
+
+10. **Automated Test Suite**:
+    - `services/api/internal/handler/p4_video_review_test.go`:
+      1. `Vertical 9:16 video aspect ratio preservation without distortion or black bars` (720x1280, 1080x1920, 1:1, 4:5, sub-1080).
+      2. `View-only person without download cannot get original file while processing (HTTP 425)`.
+      3. `Client and share link visitor cannot see or create team only comments or replies or counts`.
+      4. `New version resets approval to Needs review`.
+      5. `Uploader can comment, Viewer cannot comment`.
+      6. `Approve and Request changes saved in reviews and returned in history`.
+
+### How to test locally:
+1. Run all backend tests: `go test -v ./services/api/... ./services/shared/... ./services/worker/...`
+2. Run P4 review tests: `go test -v -run TestP4VideoReviewAndPermissions ./services/api/internal/handler`
+3. Run transcode unit tests: `go test -v ./services/shared/transcode`
+4. Run web typecheck: `cd apps/web && npm run typecheck`
+
+---
+
+## Upcoming Milestones (Version 2: P5 – P7)
 
 - **Milestone P5: Documents**
   - Node.js collaboration service (`/services/collab`) with Hocuspocus and Yjs.
@@ -282,3 +343,4 @@ Google Login is built into the backend and UI, but hidden until configured. When
   - In-app notification bell and email notifications.
   - Client Notes. Performance validation against Section 7 benchmarks. Security audit.
   - **Internal launch for the Idyll team and clients after P7.**
+

@@ -47,6 +47,29 @@ type ClientContact struct {
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
+type Comment struct {
+	ID              pgtype.UUID        `json:"id"`
+	CompanyID       pgtype.UUID        `json:"company_id"`
+	ItemID          pgtype.UUID        `json:"item_id"`
+	VersionID       pgtype.UUID        `json:"version_id"`
+	ParentID        pgtype.UUID        `json:"parent_id"`
+	AuthorUserID    pgtype.UUID        `json:"author_user_id"`
+	AuthorVisitorID pgtype.UUID        `json:"author_visitor_id"`
+	AuthorName      string             `json:"author_name"`
+	AuthorEmail     string             `json:"author_email"`
+	Body            string             `json:"body"`
+	Visibility      string             `json:"visibility"`
+	TimecodeStartMs pgtype.Int4        `json:"timecode_start_ms"`
+	TimecodeEndMs   pgtype.Int4        `json:"timecode_end_ms"`
+	Drawing         []byte             `json:"drawing"`
+	AttachmentKey   pgtype.Text        `json:"attachment_key"`
+	ResolvedAt      pgtype.Timestamptz `json:"resolved_at"`
+	ResolvedBy      pgtype.UUID        `json:"resolved_by"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+}
+
 type Company struct {
 	ID                   pgtype.UUID        `json:"id"`
 	Name                 string             `json:"name"`
@@ -198,6 +221,19 @@ type ProjectNotificationPref struct {
 	Level     string             `json:"level"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Review struct {
+	ID         pgtype.UUID        `json:"id"`
+	CompanyID  pgtype.UUID        `json:"company_id"`
+	ItemID     pgtype.UUID        `json:"item_id"`
+	VersionID  pgtype.UUID        `json:"version_id"`
+	UserID     pgtype.UUID        `json:"user_id"`
+	VisitorID  pgtype.UUID        `json:"visitor_id"`
+	AuthorName string             `json:"author_name"`
+	Decision   string             `json:"decision"`
+	Note       string             `json:"note"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 }
 
 type Role struct {

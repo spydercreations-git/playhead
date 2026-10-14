@@ -301,3 +301,18 @@ func (c *Client) GetObject(ctx context.Context, key string) (io.ReadCloser, int6
 	}
 	return out.Body, aws.ToInt64(out.ContentLength), nil
 }
+
+// PutObject uploads an object directly to S3 (used for preview files)
+func (c *Client) PutObject(ctx context.Context, key string, body io.Reader, size int64, contentType string) error {
+	_, err := c.S3.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:        aws.String(c.Bucket),
+		Key:           aws.String(key),
+		Body:          body,
+		ContentLength: aws.Int64(size),
+		ContentType:   aws.String(contentType),
+	})
+	if err != nil {
+		return fmt.Errorf("put object %q: %w", key, err)
+	}
+	return nil
+}

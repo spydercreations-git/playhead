@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
@@ -17,6 +18,7 @@ const (
 	UserContextKey    contextKey = "auth_user"
 	CompanyContextKey contextKey = "auth_company_id"
 	RoleContextKey    contextKey = "auth_role"
+	PersonContextKey  contextKey = "auth_person"
 )
 
 // AuthenticatedUser contains the authenticated session user details.
@@ -44,6 +46,25 @@ func GetActiveCompanyID(ctx context.Context) (pgtype.UUID, bool) {
 func GetUserRole(ctx context.Context) (string, bool) {
 	r, ok := ctx.Value(RoleContextKey).(string)
 	return r, ok
+}
+
+// GetPerson retrieves the authz.Person from context.
+func GetPerson(ctx context.Context) authz.Person {
+	if p, ok := ctx.Value(PersonContextKey).(authz.Person); ok {
+		return p
+	}
+	user, okU := GetAuthenticatedUser(ctx)
+	compID, okC := GetActiveCompanyID(ctx)
+	role, _ := GetUserRole(ctx)
+	if !okU || !okC {
+		return authz.Person{}
+	}
+	return authz.Person{
+		UserID:    uuid.UUID(user.ID.Bytes),
+		Email:     user.Email,
+		Role:      role,
+		CompanyID: uuid.UUID(compID.Bytes),
+	}
 }
 
 // AuthMiddleware handles session authentication and company context injection.
@@ -133,14 +154,56 @@ func (am *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 			})
 			if err == nil {
 				ctx = context.WithValue(ctx, RoleContextKey, membership.Role)
+				var perms []string
+				if len(membership.RolePermissions) > 0 {
+					_ = json.Unmarshal(membership.RolePermissions, &perms)
+				}
+				roleName := membership.Role
+				if membership.RoleName.Valid && membership.RoleName.String != "" {
+					roleName = membership.RoleName.String
+				}
+				var roleID uuid.UUID
+				if membership.RoleID.Valid {
+					roleID = uuid.UUID(membership.RoleID.Bytes)
+				}
+				person := authz.Person{
+					UserID:      uuid.UUID(authUser.ID.Bytes),
+					Email:       authUser.Email,
+					Role:        roleName,
+					RoleID:      roleID,
+					Permissions: perms,
+					CompanyID:   uuid.UUID(companyID.Bytes),
+				}
+				ctx = context.WithValue(ctx, PersonContextKey, person)
 			} else {
 				// External client / outside person (no company membership role)
 				ctx = context.WithValue(ctx, RoleContextKey, "")
+				person := authz.Person{
+					UserID:    uuid.UUID(authUser.ID.Bytes),
+					Email:     authUser.Email,
+					Role:      "",
+					CompanyID: uuid.UUID(companyID.Bytes),
+				}
+				ctx = context.WithValue(ctx, PersonContextKey, person)
 			}
 		}
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// RequirePermission ensures the person has the specified granular permission.
+func RequirePermission(permission string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			person := GetPerson(r.Context())
+			if !person.HasPermission(permission) {
+				rejectForbidden(w, "Insufficient permissions for this action")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // RequireVerifiedEmail ensures the user has confirmed their email address.

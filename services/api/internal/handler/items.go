@@ -36,7 +36,6 @@ func NewItemsHandler(queries *db.Queries, storage *storage.Client) *ItemsHandler
 func (h *ItemsHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, _ := middleware.GetAuthenticatedUser(ctx)
-	role, _ := middleware.GetUserRole(ctx)
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -58,28 +57,26 @@ func (h *ItemsHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	person := authz.Person{
-		UserID:    uuid.UUID(user.ID.Bytes),
-		Email:     user.Email,
-		Role:      role,
-		CompanyID: uuid.UUID(companyID.Bytes),
-	}
-	access, err := authz.Access(ctx, h.queries, person, authz.ProjectTarget{
-		ID:        uuid.UUID(proj.ID.Bytes),
-		CompanyID: uuid.UUID(proj.CompanyID.Bytes),
-		ClientID:  uuid.UUID(proj.ClientID.Bytes),
-	})
-	if err != nil || !access.CanView() {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
-		return
-	}
+	person := middleware.GetPerson(r.Context())
 
 	var parentUUID pgtype.UUID
+	var folderUUID uuid.UUID
 	parentIDStr := r.URL.Query().Get("parent_id")
 	if parentIDStr != "" && parentIDStr != "null" && parentIDStr != "undefined" {
 		if pid, err := uuid.Parse(parentIDStr); err == nil {
 			parentUUID = pgtype.UUID{Bytes: pid, Valid: true}
+			folderUUID = pid
 		}
+	}
+
+	folderAccess, err := authz.AccessFolder(ctx, h.queries, person, authz.ProjectTarget{
+		ID:        uuid.UUID(proj.ID.Bytes),
+		CompanyID: uuid.UUID(proj.CompanyID.Bytes),
+		ClientID:  uuid.UUID(proj.ClientID.Bytes),
+	}, folderUUID)
+	if err != nil || !folderAccess.CanView() {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
 	}
 
 	items, err := h.queries.ListItemsWithVersions(ctx, db.ListItemsWithVersionsParams{
@@ -178,10 +175,12 @@ func (h *ItemsHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 			"total_bytes":  proj.TotalBytes,
 		},
 		"access": map[string]interface{}{
-			"level":        access.Level,
-			"can_download": access.CanDownload,
-			"can_upload":   access.CanUpload(),
-			"can_manage":   access.CanManage(),
+			"level":                   folderAccess.Level,
+			"can_download":            folderAccess.CanDownload,
+			"can_upload":              folderAccess.CanUpload(),
+			"can_manage":              folderAccess.CanManage(),
+			"can_share":               authz.CanShareItem(person, folderAccess),
+			"can_create_public_links": authz.CanCreatePublicShareLink(person, folderAccess),
 		},
 		"breadcrumbs": breadcrumbs,
 		"items":       filtered,

@@ -86,12 +86,63 @@ func Authorize(userRole, requiredRole string) error {
 	return nil
 }
 
+// Permissions (17 total across 6 categories)
+const (
+	PermClientsViewAll   = "clients.view_all"
+	PermClientsCreate    = "clients.create"
+	PermClientsEdit      = "clients.edit"
+	PermClientsDelete    = "clients.delete"
+
+	PermProjectsViewAll      = "projects.view_all"
+	PermProjectsCreate       = "projects.create"
+	PermProjectsArchive      = "projects.archive"
+	PermProjectsDelete       = "projects.delete"
+	PermProjectsManagePeople = "projects.manage_people"
+
+	PermFilesDeleteForever = "files.delete_forever"
+	PermFilesEmptyTrash    = "files.empty_trash"
+	PermFilesDownloadAll   = "files.download_all"
+
+	PermSharingCreatePublicLinks = "sharing.create_public_links"
+
+	PermTeamInvite      = "team.invite"
+	PermTeamChangeRoles = "team.change_roles"
+	PermTeamManageRoles = "team.manage_roles"
+
+	PermAdminStorage  = "admin.storage"
+	PermAdminSettings = "admin.settings"
+)
+
+var AllPermissions = []string{
+	PermClientsViewAll, PermClientsCreate, PermClientsEdit, PermClientsDelete,
+	PermProjectsViewAll, PermProjectsCreate, PermProjectsArchive, PermProjectsDelete, PermProjectsManagePeople,
+	PermFilesDeleteForever, PermFilesEmptyTrash, PermFilesDownloadAll,
+	PermSharingCreatePublicLinks,
+	PermTeamInvite, PermTeamChangeRoles, PermTeamManageRoles,
+	PermAdminStorage, PermAdminSettings,
+}
+
 // Person represents an identity acting upon resources.
 type Person struct {
-	UserID    uuid.UUID
-	Email     string
-	Role      string // company membership role (admin, manager, editor) or empty for outside clients
-	CompanyID uuid.UUID
+	UserID      uuid.UUID
+	Email       string
+	Role        string // Role name (e.g. "Admin", "Manager", "Editor")
+	RoleID      uuid.UUID
+	Permissions []string
+	CompanyID   uuid.UUID
+}
+
+// HasPermission checks if the person possesses the requested permission.
+func (p Person) HasPermission(permission string) bool {
+	if strings.ToLower(p.Role) == "admin" || strings.ToLower(p.Role) == "owner" {
+		return true
+	}
+	for _, perm := range p.Permissions {
+		if perm == permission {
+			return true
+		}
+	}
+	return false
 }
 
 // ProjectTarget represents the project resource being accessed.
@@ -136,6 +187,25 @@ func (a AccessResult) CanModifyItem(person Person, itemCreatedBy uuid.UUID) bool
 	return false
 }
 
+// CanManagePeople checks if a person is allowed to add, edit, or remove members on a project.
+func CanManagePeople(person Person, access AccessResult) bool {
+	r := strings.ToLower(person.Role)
+	if r == RoleAdmin || r == RoleManager || r == RoleOwner || person.HasPermission(PermProjectsManagePeople) {
+		return true
+	}
+	return access.Level == LevelFull
+}
+
+// CanShareItem checks if a person is allowed to add or change people (grants) on an item.
+func CanShareItem(person Person, access AccessResult) bool {
+	return access.Level == LevelFull
+}
+
+// CanCreatePublicShareLink checks if a person can create a public share link for an item.
+func CanCreatePublicShareLink(person Person, access AccessResult) bool {
+	return access.Level == LevelFull && person.HasPermission(PermSharingCreatePublicLinks)
+}
+
 // ItemTarget represents an item resource being accessed.
 type ItemTarget struct {
 	ID        uuid.UUID
@@ -144,35 +214,23 @@ type ItemTarget struct {
 	CreatedBy uuid.UUID
 }
 
-// AccessItem evaluates a person's permissions on an item.
-// In P2, permissions are inherited directly from the project level.
-// (P3 will extend this with folder and file level grant checks).
-func AccessItem(ctx context.Context, q *db.Queries, person Person, project ProjectTarget, item ItemTarget) (AccessResult, error) {
-	return Access(ctx, q, person, project)
-}
-
-// CanManagePeople checks if a person is allowed to add, edit, or remove members on a project.
-// Allowed for: Admins, Managers, and people with Full access on that project.
-func CanManagePeople(person Person, access AccessResult) bool {
-	if person.Role == RoleAdmin || person.Role == RoleManager || person.Role == RoleOwner {
-		return true
-	}
-	return access.Level == LevelFull
-}
-
 // Access evaluates a person's permissions on a project by combining:
-// 1. Team role (Admin/Manager have Full access + CanDownload=true)
+// 1. Team role permissions (projects.view_all gives Full access + CanDownload=true)
 // 2. Project grants
 // 3. Client contact default access
 // Returning the highest level and appropriate CanDownload flag.
 func Access(ctx context.Context, q *db.Queries, person Person, project ProjectTarget) (AccessResult, error) {
 	normEmail := NormalizeEmail(person.Email)
 
-	// 1. Team role: Admins and Managers have Full access to everything in the company
-	if person.Role == RoleAdmin || person.Role == RoleManager || person.Role == RoleOwner {
+	// 1. Team role / permissions: users with projects.view_all (Admins, Managers) get Full access
+	if person.HasPermission(PermProjectsViewAll) {
+		canDL := true
+		if !person.HasPermission(PermFilesDownloadAll) && strings.ToLower(person.Role) != "admin" {
+			canDL = false
+		}
 		return AccessResult{
 			Level:       LevelFull,
-			CanDownload: true,
+			CanDownload: canDL,
 		}, nil
 	}
 
@@ -243,6 +301,84 @@ func Access(ctx context.Context, q *db.Queries, person Person, project ProjectTa
 		Level:       grantLevel,
 		CanDownload: grantCanDownload && contactCanDownload,
 	}, nil
+}
+
+// AccessFolder evaluates permissions on a folder using ancestor chain in a single pass.
+// Fast rule: never check file by file. Resolve once for folder and apply to all children.
+func AccessFolder(ctx context.Context, q *db.Queries, person Person, project ProjectTarget, folderID uuid.UUID) (AccessResult, error) {
+	// Base project access
+	projAccess, err := Access(ctx, q, person, project)
+	if err != nil {
+		return AccessResult{Level: LevelNone, CanDownload: false}, err
+	}
+
+	// If root of project or user already has Full access, return immediately
+	if folderID == uuid.Nil || projAccess.Level == LevelFull {
+		return projAccess, nil
+	}
+
+	// Fetch ancestor hierarchy for folder in 1 query
+	ancestors, err := q.GetItemAncestors(ctx, db.GetItemAncestorsParams{
+		ItemID:    pgtype.UUID{Bytes: folderID, Valid: true},
+		CompanyID: pgtype.UUID{Bytes: project.CompanyID, Valid: true},
+	})
+	if err != nil {
+		return projAccess, nil
+	}
+
+	currentAccess := projAccess
+	normEmail := NormalizeEmail(person.Email)
+
+	// Step down ancestor chain to elevate access if grants exist
+	for _, anc := range ancestors {
+		grant, gErr := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
+			TargetType: "item",
+			TargetID:   anc.ID,
+			Email:      normEmail,
+		})
+		if gErr == nil {
+			if accessHierarchy[grant.Level] > accessHierarchy[currentAccess.Level] {
+				currentAccess.Level = grant.Level
+			}
+			if !grant.CanDownload {
+				currentAccess.CanDownload = false
+			}
+		}
+	}
+
+	return currentAccess, nil
+}
+
+// AccessItem evaluates permissions on an item by resolving its parent folder access.
+func AccessItem(ctx context.Context, q *db.Queries, person Person, project ProjectTarget, item ItemTarget) (AccessResult, error) {
+	// If project access is Full, return immediately
+	projAccess, err := Access(ctx, q, person, project)
+	if err != nil {
+		return AccessResult{Level: LevelNone, CanDownload: false}, err
+	}
+	if projAccess.Level == LevelFull {
+		return projAccess, nil
+	}
+
+	// Check if this specific item has a direct grant
+	normEmail := NormalizeEmail(person.Email)
+	grant, gErr := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
+		TargetType: "item",
+		TargetID:   pgtype.UUID{Bytes: item.ID, Valid: true},
+		Email:      normEmail,
+	})
+	if gErr == nil {
+		canDL := grant.CanDownload
+		if !projAccess.CanDownload && projAccess.Level != LevelNone {
+			canDL = false
+		}
+		if accessHierarchy[grant.Level] >= accessHierarchy[projAccess.Level] {
+			return AccessResult{Level: grant.Level, CanDownload: canDL}, nil
+		}
+	}
+
+	// Otherwise, inherit from folder chain
+	return AccessFolder(ctx, q, person, project, item.ID)
 }
 
 // HashToken produces a SHA-256 hex digest of a token string.

@@ -125,7 +125,7 @@ INSERT INTO memberships (
 ) VALUES (
     $1, $2, $3
 )
-RETURNING id, company_id, user_id, role, created_at, updated_at
+RETURNING id, company_id, user_id, role, created_at, updated_at, role_id
 `
 
 type CreateMembershipParams struct {
@@ -144,6 +144,7 @@ func (q *Queries) CreateMembership(ctx context.Context, arg CreateMembershipPara
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.RoleID,
 	)
 	return i, err
 }
@@ -487,8 +488,11 @@ func (q *Queries) GetInvitesForCompany(ctx context.Context, companyID pgtype.UUI
 }
 
 const getMembership = `-- name: GetMembership :one
-SELECT id, company_id, user_id, role, created_at, updated_at FROM memberships
-WHERE company_id = $1 AND user_id = $2
+SELECT m.id, m.company_id, m.user_id, m.role, m.role_id, m.created_at, m.updated_at,
+       r.name as role_name, r.color as role_color, r.permissions as role_permissions, r.is_system as role_is_system
+FROM memberships m
+LEFT JOIN roles r ON r.id = m.role_id
+WHERE m.company_id = $1 AND m.user_id = $2
 LIMIT 1
 `
 
@@ -497,16 +501,35 @@ type GetMembershipParams struct {
 	UserID    pgtype.UUID `json:"user_id"`
 }
 
-func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (Membership, error) {
+type GetMembershipRow struct {
+	ID              pgtype.UUID        `json:"id"`
+	CompanyID       pgtype.UUID        `json:"company_id"`
+	UserID          pgtype.UUID        `json:"user_id"`
+	Role            string             `json:"role"`
+	RoleID          pgtype.UUID        `json:"role_id"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	RoleName        pgtype.Text        `json:"role_name"`
+	RoleColor       pgtype.Text        `json:"role_color"`
+	RolePermissions []byte             `json:"role_permissions"`
+	RoleIsSystem    pgtype.Bool        `json:"role_is_system"`
+}
+
+func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (GetMembershipRow, error) {
 	row := q.db.QueryRow(ctx, getMembership, arg.CompanyID, arg.UserID)
-	var i Membership
+	var i GetMembershipRow
 	err := row.Scan(
 		&i.ID,
 		&i.CompanyID,
 		&i.UserID,
 		&i.Role,
+		&i.RoleID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.RoleName,
+		&i.RoleColor,
+		&i.RolePermissions,
+		&i.RoleIsSystem,
 	)
 	return i, err
 }
@@ -517,25 +540,36 @@ SELECT
     m.company_id,
     m.user_id,
     m.role,
+    m.role_id,
     m.created_at,
     u.name as user_name,
     u.email as user_email,
-    u.avatar_url as user_avatar_url
+    u.avatar_url as user_avatar_url,
+    r.name as role_name,
+    r.color as role_color,
+    r.is_system as role_is_system,
+    r.permissions as role_permissions
 FROM memberships m
 JOIN users u ON m.user_id = u.id
+LEFT JOIN roles r ON r.id = m.role_id
 WHERE m.company_id = $1
 ORDER BY m.created_at ASC
 `
 
 type GetMembershipsForCompanyRow struct {
-	ID            pgtype.UUID        `json:"id"`
-	CompanyID     pgtype.UUID        `json:"company_id"`
-	UserID        pgtype.UUID        `json:"user_id"`
-	Role          string             `json:"role"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UserName      string             `json:"user_name"`
-	UserEmail     string             `json:"user_email"`
-	UserAvatarUrl pgtype.Text        `json:"user_avatar_url"`
+	ID              pgtype.UUID        `json:"id"`
+	CompanyID       pgtype.UUID        `json:"company_id"`
+	UserID          pgtype.UUID        `json:"user_id"`
+	Role            string             `json:"role"`
+	RoleID          pgtype.UUID        `json:"role_id"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UserName        string             `json:"user_name"`
+	UserEmail       string             `json:"user_email"`
+	UserAvatarUrl   pgtype.Text        `json:"user_avatar_url"`
+	RoleName        pgtype.Text        `json:"role_name"`
+	RoleColor       pgtype.Text        `json:"role_color"`
+	RoleIsSystem    pgtype.Bool        `json:"role_is_system"`
+	RolePermissions []byte             `json:"role_permissions"`
 }
 
 func (q *Queries) GetMembershipsForCompany(ctx context.Context, companyID pgtype.UUID) ([]GetMembershipsForCompanyRow, error) {
@@ -552,10 +586,15 @@ func (q *Queries) GetMembershipsForCompany(ctx context.Context, companyID pgtype
 			&i.CompanyID,
 			&i.UserID,
 			&i.Role,
+			&i.RoleID,
 			&i.CreatedAt,
 			&i.UserName,
 			&i.UserEmail,
 			&i.UserAvatarUrl,
+			&i.RoleName,
+			&i.RoleColor,
+			&i.RoleIsSystem,
+			&i.RolePermissions,
 		); err != nil {
 			return nil, err
 		}
@@ -717,7 +756,7 @@ func (q *Queries) SetUserGoogleID(ctx context.Context, arg SetUserGoogleIDParams
 
 const updateMembershipRole = `-- name: UpdateMembershipRole :exec
 UPDATE memberships
-SET role = $3, updated_at = NOW()
+SET role = $3, role_id = $4, updated_at = NOW()
 WHERE company_id = $1 AND user_id = $2
 `
 
@@ -725,10 +764,16 @@ type UpdateMembershipRoleParams struct {
 	CompanyID pgtype.UUID `json:"company_id"`
 	UserID    pgtype.UUID `json:"user_id"`
 	Role      string      `json:"role"`
+	RoleID    pgtype.UUID `json:"role_id"`
 }
 
 func (q *Queries) UpdateMembershipRole(ctx context.Context, arg UpdateMembershipRoleParams) error {
-	_, err := q.db.Exec(ctx, updateMembershipRole, arg.CompanyID, arg.UserID, arg.Role)
+	_, err := q.db.Exec(ctx, updateMembershipRole,
+		arg.CompanyID,
+		arg.UserID,
+		arg.Role,
+		arg.RoleID,
+	)
 	return err
 }
 

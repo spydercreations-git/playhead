@@ -92,6 +92,11 @@ func main() {
 	rateLimiter := middleware.NewRateLimiter(rdb, 5, 15*time.Minute) // 5 attempts per 15 min per IP/email
 	authMw := middleware.NewAuthMiddleware(queries)
 
+	rolesHandler := handler.NewRolesHandler(queries)
+	notifHandler := handler.NewNotificationSettingsHandler(queries)
+	shareLinksHandler := handler.NewShareLinksHandler(queries, storageClient)
+	grantsHandler := handler.NewGrantsHandler(queries, mailClient)
+
 	// Hourly abandoned upload cleanup (Requirement 2)
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)
@@ -136,6 +141,15 @@ func main() {
 		// Public invite preview
 		api.Get("/invites/{token}", inviteHandler.GetInvite)
 
+		// Public Share Link Visitor Endpoints (P3)
+		api.Route("/s/{token}", func(share chi.Router) {
+			share.Get("/", shareLinksHandler.PublicGet)
+			share.Post("/unlock", shareLinksHandler.PublicUnlock)
+			share.Post("/identify", shareLinksHandler.PublicIdentify)
+			share.Get("/items/{itemId}/download", shareLinksHandler.PublicDownload)
+			share.Post("/upload", shareLinksHandler.PublicUpload)
+		})
+
 		// Protected endpoints (Requires authentication and CSRF token validation)
 		api.Group(func(protected chi.Router) {
 			protected.Use(authMw.Authenticate)
@@ -148,6 +162,18 @@ func main() {
 			protected.Get("/companies/{company_id}/members", companyHandler.GetMembers)
 			protected.With(middleware.RequireRole("admin")).Patch("/companies/{company_id}/members/{user_id}", companyHandler.UpdateMemberRole)
 			protected.With(middleware.RequireRole("admin")).Delete("/companies/{company_id}/members/{user_id}", companyHandler.RemoveMember)
+
+			// Custom Roles RBAC (P3)
+			protected.Get("/roles", rolesHandler.List)
+			protected.Post("/roles", rolesHandler.Create)
+			protected.Patch("/roles/{id}", rolesHandler.Update)
+			protected.Delete("/roles/{id}", rolesHandler.Delete)
+
+			// Notification Preferences & Project Bell (P3)
+			protected.Get("/settings/notifications", notifHandler.GetSettings)
+			protected.Put("/settings/notifications", notifHandler.UpdateSettings)
+			protected.Get("/projects/{id}/notifications", notifHandler.GetProjectBell)
+			protected.Put("/projects/{id}/notifications", notifHandler.UpdateProjectBell)
 
 			// Invites
 			protected.With(middleware.RequireRole("admin")).Post("/companies/{company_id}/invites", inviteHandler.Create)
@@ -165,7 +191,7 @@ func main() {
 			protected.Patch("/contacts/{id}", clientHandler.UpdateContact)
 			protected.Delete("/contacts/{id}", clientHandler.DeleteContact)
 
-			// Projects and People (P1)
+			// Projects and People (P1 & P3)
 			protected.Get("/projects", projectHandler.List)
 			protected.Post("/projects", projectHandler.Create)
 			protected.Get("/projects/{id}", projectHandler.Get)
@@ -177,6 +203,21 @@ func main() {
 			protected.Post("/projects/{id}/people", projectHandler.AddPerson)
 			protected.Patch("/projects/{id}/people/{person_id}", projectHandler.UpdatePerson)
 			protected.Delete("/projects/{id}/people/{person_id}", projectHandler.RemovePerson)
+
+			// Grants & Sharing (P3)
+			protected.Get("/projects/{id}/access", grantsHandler.ListProjectGrants)
+			protected.Post("/projects/{id}/access", grantsHandler.AddProjectGrant)
+			protected.Get("/items/{id}/access", grantsHandler.ListItemGrants)
+			protected.Post("/items/{id}/access", grantsHandler.AddItemGrant)
+			protected.Delete("/grants/{id}", grantsHandler.DeleteGrant)
+			protected.Post("/items/{id}/check-move", grantsHandler.CheckMove)
+			protected.Get("/shared-with-me", grantsHandler.ListSharedWithMe)
+
+			// Project Share Links (P3)
+			protected.Get("/projects/{id}/share-links", shareLinksHandler.ListProjectLinks)
+			protected.Post("/projects/{id}/share-links", shareLinksHandler.Create)
+			protected.Patch("/share-links/{id}", shareLinksHandler.Update)
+			protected.Delete("/share-links/{id}", shareLinksHandler.Delete)
 
 			// Items and Workspace (P2)
 			protected.Get("/projects/{id}/items", itemsHandler.ListItems)

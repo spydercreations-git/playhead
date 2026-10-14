@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
@@ -121,10 +122,20 @@ func (h *CompanyHandler) GetMembers(w http.ResponseWriter, r *http.Request) {
 }
 
 type UpdateMemberRoleRequest struct {
-	Role string `json:"role"`
+	Role   string `json:"role"`
+	RoleID string `json:"role_id"`
 }
 
 func (h *CompanyHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request) {
+	person := middleware.GetPerson(r.Context())
+	if !person.HasPermission(authz.PermTeamChangeRoles) {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Only members with team.change_roles can change roles",
+		})
+		return
+	}
+
 	companyIDStr := chi.URLParam(r, "company_id")
 	targetUserIDStr := chi.URLParam(r, "user_id")
 
@@ -134,22 +145,74 @@ func (h *CompanyHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	targetMembership, err := h.queries.GetMembership(r.Context(), db.GetMembershipParams{
+		CompanyID: companyID,
+		UserID:    targetUserID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "member_not_found"})
+		return
+	}
+
 	var req UpdateMemberRoleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
 		return
 	}
 
-	role := strings.ToLower(strings.TrimSpace(req.Role))
-	if role != authz.RoleAdmin && role != authz.RoleMember && role != authz.RoleGuest && role != authz.RoleOwner {
+	// Resolve new role
+	var newRoleID pgtype.UUID
+	var newRoleName string
+	if req.RoleID != "" {
+		if rUUID, pErr := uuid.Parse(req.RoleID); pErr == nil {
+			roleObj, rErr := h.queries.GetRoleByID(r.Context(), db.GetRoleByIDParams{
+				ID:        pgtype.UUID{Bytes: rUUID, Valid: true},
+				CompanyID: companyID,
+			})
+			if rErr == nil {
+				newRoleID = roleObj.ID
+				newRoleName = roleObj.Name
+			}
+		}
+	}
+	if !newRoleID.Valid && req.Role != "" {
+		roleObj, rErr := h.queries.GetRoleByName(r.Context(), db.GetRoleByNameParams{
+			CompanyID: companyID,
+			Name:      req.Role,
+		})
+		if rErr == nil {
+			newRoleID = roleObj.ID
+			newRoleName = roleObj.Name
+		} else {
+			newRoleName = strings.ToLower(req.Role)
+		}
+	}
+
+	if newRoleName == "" {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_role", "message": "Unknown role"})
 		return
 	}
 
-	err := h.queries.UpdateMembershipRole(r.Context(), db.UpdateMembershipRoleParams{
+	// Last Admin guard: if demoting an Admin, company must have >1 Admin
+	isTargetAdmin := strings.ToLower(targetMembership.Role) == "admin" || (targetMembership.RoleName.Valid && strings.ToLower(targetMembership.RoleName.String) == "admin")
+	isNewAdmin := strings.ToLower(newRoleName) == "admin"
+
+	if isTargetAdmin && !isNewAdmin {
+		adminCount, _ := h.queries.CountCompanyAdmins(r.Context(), companyID)
+		if adminCount <= 1 {
+			respondJSON(w, http.StatusBadRequest, map[string]string{
+				"error":   "last_admin_protected",
+				"message": "Cannot demote or change the last Admin in the company",
+			})
+			return
+		}
+	}
+
+	err = h.queries.UpdateMembershipRole(r.Context(), db.UpdateMembershipRoleParams{
 		CompanyID: companyID,
 		UserID:    targetUserID,
-		Role:      role,
+		Role:      strings.ToLower(newRoleName),
+		RoleID:    newRoleID,
 	})
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
@@ -160,6 +223,15 @@ func (h *CompanyHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request
 }
 
 func (h *CompanyHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
+	person := middleware.GetPerson(r.Context())
+	if !person.HasPermission(authz.PermTeamChangeRoles) {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Only members with team.change_roles can remove members",
+		})
+		return
+	}
+
 	companyIDStr := chi.URLParam(r, "company_id")
 	targetUserIDStr := chi.URLParam(r, "user_id")
 
@@ -169,7 +241,29 @@ func (h *CompanyHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.queries.DeleteMembership(r.Context(), db.DeleteMembershipParams{
+	targetMembership, err := h.queries.GetMembership(r.Context(), db.GetMembershipParams{
+		CompanyID: companyID,
+		UserID:    targetUserID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "member_not_found"})
+		return
+	}
+
+	// Last Admin guard: if removing an Admin, company must have >1 Admin
+	isTargetAdmin := strings.ToLower(targetMembership.Role) == "admin" || (targetMembership.RoleName.Valid && strings.ToLower(targetMembership.RoleName.String) == "admin")
+	if isTargetAdmin {
+		adminCount, _ := h.queries.CountCompanyAdmins(r.Context(), companyID)
+		if adminCount <= 1 {
+			respondJSON(w, http.StatusBadRequest, map[string]string{
+				"error":   "last_admin_protected",
+				"message": "Cannot remove the last Admin in the company",
+			})
+			return
+		}
+	}
+
+	err = h.queries.DeleteMembership(r.Context(), db.DeleteMembershipParams{
 		CompanyID: companyID,
 		UserID:    targetUserID,
 	})

@@ -14,7 +14,7 @@ import {
   SearchIcon,
 } from "@/components/icons";
 import { useAuth } from "@/lib/use-auth";
-import { Star } from "lucide-react";
+import { Star, Building2, Folder, Zap } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
@@ -117,7 +117,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     }}
                     className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2E2F34]"
                   >
-                    <span>🏢</span>
+                    <Building2 className="w-4 h-4 text-emerald-400" />
                     <span>New Client</span>
                   </button>
                   <button
@@ -127,7 +127,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     }}
                     className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2E2F34]"
                   >
-                    <span>📁</span>
+                    <Folder className="w-4 h-4 text-[#4876F3]" />
                     <span>New Project</span>
                   </button>
                 </div>
@@ -206,7 +206,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     : "text-[#9A9DA0] hover:bg-[#2E2F34]/60 hover:text-white"
                 }`}
               >
-                <span className="text-sm">⚡</span>
+                <Zap className="w-4 h-4 text-amber-400" />
                 <span>Storage</span>
               </Link>
               <Link

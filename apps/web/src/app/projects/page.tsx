@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
+import { Folder } from "lucide-react";
 
 interface ProjectItem {
   id: string;
@@ -171,7 +172,7 @@ export default function ProjectsPage() {
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#424344] bg-[#212121]/50 py-16 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#2E2F34] text-[#4876F3] mb-3">
-            📁
+            <Folder className="w-6 h-6 text-[#4876F3]" />
           </div>
           <h3 className="text-base font-semibold text-white">No projects found</h3>
           <p className="mt-1 text-xs text-[#9A9DA0] max-w-sm">

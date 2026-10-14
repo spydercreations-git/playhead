@@ -152,6 +152,17 @@ type Membership struct {
 	Role      string             `json:"role"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	RoleID    pgtype.UUID        `json:"role_id"`
+}
+
+type NotificationPref struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	EventType string             `json:"event_type"`
+	InApp     bool               `json:"in_app"`
+	Email     bool               `json:"email"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type PasswordResetToken struct {
@@ -180,6 +191,26 @@ type Project struct {
 	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type ProjectNotificationPref struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	ProjectID pgtype.UUID        `json:"project_id"`
+	Level     string             `json:"level"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Role struct {
+	ID          pgtype.UUID        `json:"id"`
+	CompanyID   pgtype.UUID        `json:"company_id"`
+	Name        string             `json:"name"`
+	Color       string             `json:"color"`
+	Permissions []byte             `json:"permissions"`
+	IsSystem    bool               `json:"is_system"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Session struct {
 	ID        pgtype.UUID        `json:"id"`
 	UserID    pgtype.UUID        `json:"user_id"`
@@ -189,6 +220,42 @@ type Session struct {
 	Ip        pgtype.Text        `json:"ip"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type ShareLink struct {
+	ID               pgtype.UUID        `json:"id"`
+	CompanyID        pgtype.UUID        `json:"company_id"`
+	ProjectID        pgtype.UUID        `json:"project_id"`
+	Name             string             `json:"name"`
+	TokenHash        string             `json:"token_hash"`
+	Access           string             `json:"access"`
+	AllowDownload    bool               `json:"allow_download"`
+	LatestOnly       bool               `json:"latest_only"`
+	PasswordHash     pgtype.Text        `json:"password_hash"`
+	ExpiresAt        pgtype.Timestamptz `json:"expires_at"`
+	AskIdentity      bool               `json:"ask_identity"`
+	UploadLimitBytes pgtype.Int8        `json:"upload_limit_bytes"`
+	UploadedBytes    int64              `json:"uploaded_bytes"`
+	ViewCount        int32              `json:"view_count"`
+	LastOpenedAt     pgtype.Timestamptz `json:"last_opened_at"`
+	DisabledAt       pgtype.Timestamptz `json:"disabled_at"`
+	CreatedBy        pgtype.UUID        `json:"created_by"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+type ShareLinkItem struct {
+	ShareLinkID pgtype.UUID `json:"share_link_id"`
+	ItemID      pgtype.UUID `json:"item_id"`
+}
+
+type ShareVisitor struct {
+	ID          pgtype.UUID        `json:"id"`
+	ShareLinkID pgtype.UUID        `json:"share_link_id"`
+	Name        string             `json:"name"`
+	Email       string             `json:"email"`
+	FirstSeenAt pgtype.Timestamptz `json:"first_seen_at"`
+	LastSeenAt  pgtype.Timestamptz `json:"last_seen_at"`
 }
 
 type Star struct {
@@ -229,6 +296,14 @@ type User struct {
 	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type UserSetting struct {
+	ID             pgtype.UUID        `json:"id"`
+	UserID         pgtype.UUID        `json:"user_id"`
+	EmailFrequency string             `json:"email_frequency"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
 type VerificationToken struct {

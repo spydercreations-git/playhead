@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { Link as LinkIcon, Download, Music, FileText, X } from "lucide-react";
 
 export interface ViewerItem {
   id: string;
@@ -158,7 +159,7 @@ export function FileViewer({
             onClick={handleCopyLink}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2E2F34] text-xs font-medium text-[#9A9DA0] hover:text-white transition-colors"
           >
-            <span>🔗</span>
+            <LinkIcon className="w-3.5 h-3.5" />
             <span>{copiedLink ? "Copied!" : "Copy link"}</span>
           </button>
 
@@ -168,7 +169,7 @@ export function FileViewer({
               download={item.name}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#4876F3] text-xs font-semibold text-white hover:bg-[#3b66df] transition-colors"
             >
-              <span>↓</span>
+              <Download className="w-3.5 h-3.5" />
               <span>Download</span>
             </a>
           )}
@@ -224,8 +225,8 @@ export function FileViewer({
 
           {isAudio && (
             <div className="max-w-md w-full bg-[#212121] border border-[#424344] rounded-2xl p-8 shadow-2xl text-center space-y-6">
-              <div className="w-20 h-20 mx-auto rounded-full bg-[#2E2F34] flex items-center justify-center text-3xl">
-                🎵
+              <div className="w-20 h-20 mx-auto rounded-full bg-[#2E2F34] flex items-center justify-center">
+                <Music className="w-10 h-10 text-emerald-400" />
               </div>
               <div>
                 <h3 className="font-semibold text-white text-base truncate">{item.name}</h3>
@@ -255,8 +256,8 @@ export function FileViewer({
 
           {!isVideo && !isImage && !isAudio && !isPDF && (
             <div className="max-w-sm w-full bg-[#212121] border border-[#424344] rounded-2xl p-8 text-center space-y-6 shadow-2xl">
-              <div className="w-20 h-20 mx-auto rounded-2xl bg-[#2E2F34] flex items-center justify-center text-4xl">
-                📄
+              <div className="w-20 h-20 mx-auto rounded-2xl bg-[#2E2F34] flex items-center justify-center">
+                <FileText className="w-10 h-10 text-blue-400" />
               </div>
               <div>
                 <h3 className="font-semibold text-white text-base truncate">{item.name}</h3>

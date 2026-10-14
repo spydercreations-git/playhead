@@ -43,16 +43,16 @@ type CreateClientRequest struct {
 
 func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
 	user, _ := middleware.GetAuthenticatedUser(r.Context())
-	role, _ := middleware.GetUserRole(r.Context())
+	person := middleware.GetPerson(r.Context())
 	companyID, ok := middleware.GetActiveCompanyID(r.Context())
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
 		return
 	}
 
-	// Only Admin and Manager can create clients
-	if role != authz.RoleAdmin && role != authz.RoleManager && role != authz.RoleOwner {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only admins and managers can create clients"})
+	// Check permission clients.create
+	if !person.HasPermission(authz.PermClientsCreate) {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only members with clients.create can create clients"})
 		return
 	}
 
@@ -187,15 +187,15 @@ type UpdateClientRequest struct {
 }
 
 func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) {
-	role, _ := middleware.GetUserRole(r.Context())
+	person := middleware.GetPerson(r.Context())
 	companyID, ok := middleware.GetActiveCompanyID(r.Context())
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
 		return
 	}
 
-	if role != authz.RoleAdmin && role != authz.RoleManager && role != authz.RoleOwner {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+	if !person.HasPermission(authz.PermClientsEdit) {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only members with clients.edit can update clients"})
 		return
 	}
 
@@ -245,16 +245,16 @@ func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClientHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	role, _ := middleware.GetUserRole(r.Context())
+	person := middleware.GetPerson(r.Context())
 	companyID, ok := middleware.GetActiveCompanyID(r.Context())
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
 		return
 	}
 
-	// Deleting client requires Admin role (spec Section 6.3)
-	if role != authz.RoleAdmin && role != authz.RoleOwner {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only admins can delete a client"})
+	// Deleting client requires clients.delete permission
+	if !person.HasPermission(authz.PermClientsDelete) {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only members with clients.delete can delete a client"})
 		return
 	}
 

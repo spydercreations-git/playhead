@@ -2,6 +2,7 @@
 
 import React from "react";
 import { SearchIcon } from "@/components/icons";
+import { Menu } from "lucide-react";
 
 interface HeaderProps {
   onOpenSidebar: () => void;
@@ -16,7 +17,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
           className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#424344] text-[#9A9DA0] hover:text-white md:hidden"
           title="Open menu"
         >
-          ☰
+          <Menu className="w-4 h-4" />
         </button>
         <div>
           <span className="text-xs font-medium text-[#9A9DA0]">

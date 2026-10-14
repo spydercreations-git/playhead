@@ -112,8 +112,11 @@ INSERT INTO memberships (
 RETURNING *;
 
 -- name: GetMembership :one
-SELECT * FROM memberships
-WHERE company_id = $1 AND user_id = $2
+SELECT m.id, m.company_id, m.user_id, m.role, m.role_id, m.created_at, m.updated_at,
+       r.name as role_name, r.color as role_color, r.permissions as role_permissions, r.is_system as role_is_system
+FROM memberships m
+LEFT JOIN roles r ON r.id = m.role_id
+WHERE m.company_id = $1 AND m.user_id = $2
 LIMIT 1;
 
 -- name: GetMembershipsForCompany :many
@@ -122,12 +125,18 @@ SELECT
     m.company_id,
     m.user_id,
     m.role,
+    m.role_id,
     m.created_at,
     u.name as user_name,
     u.email as user_email,
-    u.avatar_url as user_avatar_url
+    u.avatar_url as user_avatar_url,
+    r.name as role_name,
+    r.color as role_color,
+    r.is_system as role_is_system,
+    r.permissions as role_permissions
 FROM memberships m
 JOIN users u ON m.user_id = u.id
+LEFT JOIN roles r ON r.id = m.role_id
 WHERE m.company_id = $1
 ORDER BY m.created_at ASC;
 
@@ -138,7 +147,7 @@ WHERE company_id = $1;
 
 -- name: UpdateMembershipRole :exec
 UPDATE memberships
-SET role = $3, updated_at = NOW()
+SET role = $3, role_id = $4, updated_at = NOW()
 WHERE company_id = $1 AND user_id = $2;
 
 -- name: DeleteMembership :exec

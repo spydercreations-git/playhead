@@ -244,3 +244,66 @@ func (m *Mailer) SendZipReadyEmail(toEmail, toName, downloadURL string) error {
 
 	return m.send(toEmail, subject, html)
 }
+
+// SendProjectAccessEmail notifies a user that they were added to a project.
+func (m *Mailer) SendProjectAccessEmail(toEmail, toName, projectName, projectURL, granterName string) error {
+	subject := fmt.Sprintf("You were added to project '%s' on Playhead", projectName)
+	if toName == "" {
+		toName = "there"
+	}
+	settingsURL := fmt.Sprintf("%s/settings/notifications", strings.TrimRight(m.FrontendURL, "/"))
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+  <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
+    <div style="margin-bottom: 24px;">
+      <span style="font-size: 20px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">playhead</span>
+    </div>
+    <h2 style="color: #FFFFFF; margin-top: 0; font-size: 18px;">Project Access Granted</h2>
+    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">Hi %s,</p>
+    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;"><strong>%s</strong> added you to the project <strong>%s</strong>.</p>
+    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">If you don't have a password yet, you can sign in directly using a 6-digit email verification code with this email address.</p>
+    <div style="margin: 28px 0;">
+      <a href="%s" style="background-color: #4876F3; color: #FFFFFF; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">Open Project</a>
+    </div>
+    <hr style="border: none; border-top: 1px solid #333333; margin: 24px 0;" />
+    <p style="color: #747678; font-size: 12px; margin: 0;">
+      Manage your email preferences in <a href="%s" style="color: #4876F3; text-decoration: none;">Notification settings</a>.
+    </p>
+  </div>
+</body>
+</html>`, toName, granterName, projectName, projectURL, settingsURL)
+
+	return m.send(toEmail, subject, html)
+}
+
+// SendItemSharedEmail notifies a user that a folder or file was shared with them.
+func (m *Mailer) SendItemSharedEmail(toEmail, toName, itemName, itemKind, itemURL, granterName string) error {
+	subject := fmt.Sprintf("%s shared a %s with you: '%s'", granterName, itemKind, itemName)
+	if toName == "" {
+		toName = "there"
+	}
+	settingsURL := fmt.Sprintf("%s/settings/notifications", strings.TrimRight(m.FrontendURL, "/"))
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+  <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
+    <div style="margin-bottom: 24px;">
+      <span style="font-size: 20px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">playhead</span>
+    </div>
+    <h2 style="color: #FFFFFF; margin-top: 0; font-size: 18px;">Item Shared with You</h2>
+    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">Hi %s,</p>
+    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;"><strong>%s</strong> shared the %s <strong>%s</strong> with you on Playhead.</p>
+    <div style="margin: 28px 0;">
+      <a href="%s" style="background-color: #4876F3; color: #FFFFFF; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">View Shared %s</a>
+    </div>
+    <hr style="border: none; border-top: 1px solid #333333; margin: 24px 0;" />
+    <p style="color: #747678; font-size: 12px; margin: 0;">
+      Manage your email preferences in <a href="%s" style="color: #4876F3; text-decoration: none;">Notification settings</a>.
+    </p>
+  </div>
+</body>
+</html>`, toName, granterName, itemKind, itemName, itemURL, strings.Title(itemKind), settingsURL)
+
+	return m.send(toEmail, subject, html)
+}

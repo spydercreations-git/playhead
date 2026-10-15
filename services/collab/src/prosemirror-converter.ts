@@ -30,16 +30,35 @@ if (typeof (global as any).navigator === "undefined") {
 
 // Custom nodes matching apps/web
 const TeamNotes = Node.create({
-  name: "teamNotes",
+  name: "team_notes",
   group: "block",
   content: "block+",
   defining: true,
+  isolating: true,
   parseHTML() {
     return [
+      { tag: "div[data-type=\"team_notes\"]" },
       { tag: "div[data-type=\"team-notes\"]" },
       { tag: "div.team-notes" },
       { tag: "team-notes" },
       { tag: "teamnotes" },
+    ];
+  },
+  renderHTML() {
+    return ["div", { "data-type": "team_notes" }, 0];
+  },
+});
+
+const TeamNotesCamel = Node.create({
+  name: "teamNotes",
+  group: "block",
+  content: "block+",
+  defining: true,
+  isolating: true,
+  parseHTML() {
+    return [
+      { tag: "div[data-type=\"team-notes\"]" },
+      { tag: "div[data-type=\"team_notes\"]" },
     ];
   },
   renderHTML() {
@@ -103,6 +122,7 @@ export const serverSchema: Schema = getSchema([
   TableHeader,
   TableCell,
   TeamNotes,
+  TeamNotesCamel,
   PlayheadVideoCard,
   ResizableImage,
 ]);

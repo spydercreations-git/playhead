@@ -42,6 +42,7 @@ if (isProd) {
   if (
     !process.env.COLLAB_INTERNAL_SECRET ||
     collabSecret === defaultDevSecret ||
+    collabSecret === "playhead-collab-internal-secret-dev-only" ||
     collabSecret.length < 32
   ) {
     console.error(
@@ -175,6 +176,7 @@ export const server = new Server({
   },
 });
 
+
 // 3. Express App for Internal Collab Endpoints
 const app = express();
 app.use(express.json({ limit: "50mb" }));
@@ -255,11 +257,15 @@ app.post("/internal/replace-content", authCollabInternal, async (req: Request, r
 
   try {
     // Check if the document is active in memory
-    let ydoc = (server as any).hocuspocus?.documents?.get(document_id);
+    const activeDoc = (server as any).documents?.get(document_id) || (server as any).hocuspocus?.documents?.get(document_id);
+    let ydoc = activeDoc;
     let wasActive = true;
 
     if (!ydoc) {
       wasActive = false;
+      console.warn(
+        `[replace-content WARNING]: live document '${document_id}' not found in active server.hocuspocus.documents!`
+      );
       ydoc = new Y.Doc();
       const existingState = await loadDocumentState(document_id);
       if (existingState && existingState.length > 0) {
@@ -302,6 +308,7 @@ app.post("/internal/replace-content", authCollabInternal, async (req: Request, r
       ok: true,
       document_id,
       version_id: versionId,
+      was_live: wasActive,
       word_count: extracted.wordCount,
       character_count: extracted.characterCount,
       reading_time_seconds: extracted.readingTimeSeconds,
@@ -336,8 +343,15 @@ app.post("/internal/import-docx", authCollabInternal, async (req: Request, res: 
     const contentJson = await convertDocxToProseMirror(docxBuffer);
 
     // Replace in live doc
-    let ydoc = (server as any).hocuspocus?.documents?.get(document_id);
+    const activeDoc = (server as any).documents?.get(document_id) || (server as any).hocuspocus?.documents?.get(document_id);
+    let ydoc = activeDoc;
+    let wasActive = true;
+
     if (!ydoc) {
+      wasActive = false;
+      console.warn(
+        `[import-docx WARNING]: live document '${document_id}' not found in active server.hocuspocus.documents!`
+      );
       ydoc = new Y.Doc();
       const existingState = await loadDocumentState(document_id);
       if (existingState && existingState.length > 0) {
@@ -375,6 +389,7 @@ app.post("/internal/import-docx", authCollabInternal, async (req: Request, res: 
       ok: true,
       document_id,
       version_id: versionId,
+      was_live: wasActive,
       word_count: extracted.wordCount,
       character_count: extracted.characterCount,
       reading_time_seconds: extracted.readingTimeSeconds,

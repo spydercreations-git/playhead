@@ -95,8 +95,10 @@ services:
       PORT: "8082"
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/playhead_dev?sslmode=disable
       REDIS_URL: redis://redis:6379
-      API_URL: http://api:8080
+      API_URL: http://host.docker.internal:8080
       COLLAB_INTERNAL_SECRET: default-dev-collab-secret-at-least-32-chars-long
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   postgres_data:

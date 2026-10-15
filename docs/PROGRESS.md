@@ -408,13 +408,17 @@ Google Login is built into the backend and UI, but hidden until configured. When
    - **Instant Access Revocation**: Publishing to Redis channel `playhead:collab:revocations` on grants, roles, company memberships, and project collaborator changes.
 
 ### Testing Breakdown (Browser vs Automated):
-- **Browser Tests (Verified End-to-End)**:
-  - *Templates Verification*: Opened "+ New document" dialog in `/documents`, verified exact 5 templates displayed (`Blank`, `Brief`, `Script`, `Shot list`, `Creator notes`).
-  - *Template Document Creation*: Selected "Brief" template, assigned to project, created document, verified seamless navigation to `/d/[id]`.
-  - *Editor Loading & Non-Duplication*: Verified editor content renders template structure without duplicating blocks.
-  - *Version History & Previewing*: Opened Version History drawer, selected initial version snapshot, verified read-only preview banner displays ("Previewing version ... Live editing is paused. Your changes are safe.") with Restore and Exit Preview buttons. Confirmed live editor is not overwritten.
-  - *Exit Preview & Live Editing*: Exited preview mode, typed into live editor, verified green "Saved" status indicator updates cleanly.
+- **Two-Window Multi-User Browser Tests (Verified End-to-End with Playwright in Chrome)**:
+  - `Test 1a (Brief Template Multi-Window Load)`: Created document from Brief template, opened simultaneously in Window A (`admin@idyll.productions`) and Window B (`editor1@idyll.productions`). Verified content appeared exactly ONCE in both windows without duplication (count: 1).
+  - `Test 1b (Concurrent Paragraph Editing)`: Window A and Window B typed simultaneously in different paragraphs. Verified both changes merged seamlessly in real time and both persisted.
+  - `Test 1c (Live Version Restore)`: Window A had document open. Window B restored a past version. Collab service confirmed in-memory active document was found (`was_live: true`), Window A reflected the restored content live without reloading, and content remained stable after 10 full seconds without reverting.
+  - `Test 1d (Live Word .docx Import)`: Window A had document open. Window B imported a .docx document. Collab service confirmed `was_live: true`, and Window A updated live with the imported content without page refresh.
+  - `Test 1e (Offline Editing & Reconnect Convergence)`: Window A went offline (DevTools network offline), typed offline changes, Window B restored a clean version, Window A reconnected: no crashes occurred, and the document converged into a sensible, clean restored state.
+- **Production Safety Verification**:
+  - `docs/DEPLOY_NOTES.md`: Documented reverse proxy rule ensuring public internet only reaches WebSocket path (`wss://collab.playhead.com/*`), strictly blocking `/internal/*` (403 Forbidden). Go API accesses `/internal/*` only over private VPC/network with constant-time secret header.
+  - `Collab Production Startup Gate`: Verified collab service immediately refuses to start (`process.exit(1)` and fatal error logged) if `NODE_ENV=production` and `COLLAB_INTERNAL_SECRET` is missing, dev default, or shorter than 32 characters.
 - **Automated Tests (`make test`)**:
+  - `services/collab/src/__tests__/multi-client-browser.test.ts`: Automated two-window Chrome browser collaboration test verifying 1a through 1e end-to-end.
   - `services/collab/src/__tests__/automatic-versions.test.ts`: Verifies automatic version creation when edits occurred and last version >= 10m old, and suppression when < 10m old.
   - `services/collab/src/__tests__/converter-replace.test.ts`: Verifies Y.Doc binary state generation from ProseMirror JSON, and transactional replace content with node deletion preventing offline client resurrecting old content.
   - `services/collab/src/__tests__/text-extractor.test.ts`: Verifies extraction of plain text and public plain text with `team_notes` stripped.
@@ -430,7 +434,7 @@ Google Login is built into the backend and UI, but hidden until configured. When
 1. Run all tests: `make test`
    - Go backend tests: `go test -v ./services/api/... ./services/shared/... ./services/worker/...`
    - P5 Documents unit & integration tests: `go test -v -run "TestCollab|TestStripTeamNotes|TestAdvisor" ./services/api/internal/handler`
-   - Collab service tests: `cd services/collab && npm test && npm run build`
+   - Collab service tests & multi-user browser suite: `cd services/collab && npm test && npm run build`
    - Frontend type check: `cd apps/web && npm run typecheck`
 2. Run development stack: `make dev` (starts postgres, redis, minio, mailpit, worker, api on :8080, collab on :8082, web on :3000).
 

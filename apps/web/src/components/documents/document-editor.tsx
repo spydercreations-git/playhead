@@ -609,19 +609,10 @@ export function DocumentEditor({
       const formData = new FormData();
       formData.append("file", file);
 
-      const token = localStorage.getItem("playhead_session");
-      const res = await fetch(`/api/documents/${documentId}/import-docx`, {
+      await apiRequest(`/documents/${documentId}/import-docx`, {
         method: "POST",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
         body: formData,
       });
-
-      if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || "Failed to import Word document");
-      }
 
       // Re-fetch versions
       apiRequest<{ versions: DocumentVersionItem[] }>(

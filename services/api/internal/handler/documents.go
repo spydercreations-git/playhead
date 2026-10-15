@@ -591,7 +591,9 @@ func (h *DocumentsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 1. Initial content: Build real Yjs state on server via collab service
-	_ = h.callCollabInitDocument(ctx, uuid.UUID(doc.ID.Bytes), caller.CompanyID, templateContent)
+	if initErr := h.callCollabInitDocument(ctx, uuid.UUID(doc.ID.Bytes), caller.CompanyID, templateContent); initErr != nil {
+		fmt.Printf("[callCollabInitDocument ERROR]: %v\n", initErr)
+	}
 
 	renderJSON(w, http.StatusCreated, map[string]interface{}{
 		"id":         uuid.UUID(doc.ID.Bytes).String(),

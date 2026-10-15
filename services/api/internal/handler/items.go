@@ -70,9 +70,10 @@ func (h *ItemsHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 	}
 
 	folderAccess, err := authz.AccessFolder(ctx, h.queries, person, authz.ProjectTarget{
-		ID:        uuid.UUID(proj.ID.Bytes),
-		CompanyID: uuid.UUID(proj.CompanyID.Bytes),
-		ClientID:  uuid.UUID(proj.ClientID.Bytes),
+		ID:           uuid.UUID(proj.ID.Bytes),
+		CompanyID:    uuid.UUID(proj.CompanyID.Bytes),
+		ClientID:     uuid.UUID(proj.ClientID.Bytes),
+		IsRestricted: proj.IsRestricted,
 	}, folderUUID)
 	if err != nil || !folderAccess.CanView() {
 		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
@@ -95,6 +96,18 @@ func (h *ItemsHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 	filtered := make([]map[string]interface{}, 0, len(items))
 
 	for _, item := range items {
+		// Enforce restricted rule: non-admins without an explicit grant cannot see restricted items
+		if item.IsRestricted && !person.IsAdmin() {
+			grant, gErr := h.queries.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
+				TargetType: item.Kind,
+				TargetID:   item.ID,
+				Email:      authz.NormalizeEmail(person.Email),
+			})
+			if gErr != nil || grant.Level == authz.LevelNone || grant.Level == "" {
+				continue
+			}
+		}
+
 		if typeFilter != "" && typeFilter != "all" && item.Kind == "file" {
 			mime := strings.ToLower(item.LatestMime)
 			name := strings.ToLower(item.Name)
@@ -139,6 +152,7 @@ func (h *ItemsHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 			"created_by":      item.CreatedBy,
 			"created_by_name": item.CreatedByName,
 			"is_starred":      item.IsStarred,
+			"is_restricted":   item.IsRestricted,
 			"created_at":      item.CreatedAt,
 			"updated_at":      item.UpdatedAt,
 		}
@@ -155,10 +169,11 @@ func (h *ItemsHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			for _, a := range ancestors {
 				breadcrumbs = append(breadcrumbs, map[string]interface{}{
-					"id":        a.ID,
-					"parent_id": a.ParentID,
-					"name":      a.Name,
-					"kind":      a.Kind,
+					"id":            a.ID,
+					"parent_id":     a.ParentID,
+					"name":          a.Name,
+					"kind":          a.Kind,
+					"is_restricted": a.IsRestricted,
 				})
 			}
 		}
@@ -175,6 +190,7 @@ func (h *ItemsHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 			"folder_count":    proj.FolderCount,
 			"video_count":     proj.VideoCount,
 			"total_bytes":     proj.TotalBytes,
+			"is_restricted":   proj.IsRestricted,
 		},
 		"access": map[string]interface{}{
 			"level":                   folderAccess.Level,
@@ -215,9 +231,10 @@ func (h *ItemsHandler) ListFoldersTree(w http.ResponseWriter, r *http.Request) {
 
 	person := middleware.GetPerson(ctx)
 	projTarget := authz.ProjectTarget{
-		ID:        uuid.UUID(proj.ID.Bytes),
-		CompanyID: uuid.UUID(proj.CompanyID.Bytes),
-		ClientID:  uuid.UUID(proj.ClientID.Bytes),
+		ID:           uuid.UUID(proj.ID.Bytes),
+		CompanyID:    uuid.UUID(proj.CompanyID.Bytes),
+		ClientID:     uuid.UUID(proj.ClientID.Bytes),
+		IsRestricted: proj.IsRestricted,
 	}
 
 	folders, err := h.queries.ListAllProjectFolders(ctx, db.ListAllProjectFoldersParams{
@@ -307,7 +324,10 @@ func (h *ItemsHandler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	access, err := authz.AccessFolder(ctx, h.queries, person, authz.ProjectTarget{
-		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+		ID:           uuid.UUID(proj.ID.Bytes),
+		CompanyID:    uuid.UUID(proj.CompanyID.Bytes),
+		ClientID:     uuid.UUID(proj.ClientID.Bytes),
+		IsRestricted: proj.IsRestricted,
 	}, parentFolderUUID)
 	if err != nil || !access.CanUpload() {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to create folders here"})
@@ -350,11 +370,12 @@ func (h *ItemsHandler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusCreated, item)
 }
 
-type renameItemReq struct {
-	Name string `json:"name"`
+type updateItemReq struct {
+	Name         *string `json:"name"`
+	IsRestricted *bool   `json:"is_restricted"`
 }
 
-// RenameItem renames a folder or file
+// RenameItem renames a folder or file, or updates its restricted status
 func (h *ItemsHandler) RenameItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
@@ -369,15 +390,14 @@ func (h *ItemsHandler) RenameItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req renameItemReq
+	var req updateItemReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
 		return
 	}
 
-	req.Name = strings.TrimSpace(req.Name)
-	if req.Name == "" {
-		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "name_required"})
+	if req.Name == nil && req.IsRestricted == nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_fields_to_update"})
 		return
 	}
 
@@ -401,12 +421,16 @@ func (h *ItemsHandler) RenameItem(w http.ResponseWriter, r *http.Request) {
 
 	person := middleware.GetPerson(ctx)
 	access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
-		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+		ID:           uuid.UUID(proj.ID.Bytes),
+		CompanyID:    uuid.UUID(proj.CompanyID.Bytes),
+		ClientID:     uuid.UUID(proj.ClientID.Bytes),
+		IsRestricted: proj.IsRestricted,
 	}, authz.ItemTarget{
-		ID:        uuid.UUID(item.ID.Bytes),
-		ProjectID: uuid.UUID(item.ProjectID.Bytes),
-		CompanyID: uuid.UUID(item.CompanyID.Bytes),
-		CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
+		ID:           uuid.UUID(item.ID.Bytes),
+		ProjectID:    uuid.UUID(item.ProjectID.Bytes),
+		CompanyID:    uuid.UUID(item.CompanyID.Bytes),
+		CreatedBy:    uuid.UUID(item.CreatedBy.Bytes),
+		IsRestricted: item.IsRestricted,
 	})
 	if err != nil || !access.CanView() {
 		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
@@ -418,23 +442,48 @@ func (h *ItemsHandler) RenameItem(w http.ResponseWriter, r *http.Request) {
 		createdByUUID = uuid.UUID(item.CreatedBy.Bytes)
 	}
 
-	// Enforce Requirement 4: Uploader cannot rename someone else's file; Viewer/Commenter cannot rename
-	if !access.CanModifyItem(person, createdByUUID) {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to rename this item"})
-		return
+	var resultItem interface{} = item
+	if req.IsRestricted != nil {
+		if !person.IsAdmin() && access.Level != authz.LevelFull {
+			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only admins can change restriction status"})
+			return
+		}
+		updated, err := h.queries.SetItemRestricted(ctx, db.SetItemRestrictedParams{
+			ID:           itemID,
+			CompanyID:    companyID,
+			IsRestricted: *req.IsRestricted,
+		})
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_update_restriction"})
+			return
+		}
+		resultItem = updated
 	}
 
-	updated, err := h.queries.RenameItem(ctx, db.RenameItemParams{
-		ID:        itemID,
-		CompanyID: companyID,
-		Name:      req.Name,
-	})
-	if err != nil {
-		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_rename_item"})
-		return
+	if req.Name != nil {
+		trimmedName := strings.TrimSpace(*req.Name)
+		if trimmedName == "" {
+			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "name_required"})
+			return
+		}
+		// Enforce Requirement 4: Uploader cannot rename someone else's file; Viewer/Commenter cannot rename
+		if !access.CanModifyItem(person, createdByUUID) {
+			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to rename this item"})
+			return
+		}
+		updated, err := h.queries.RenameItem(ctx, db.RenameItemParams{
+			ID:        itemID,
+			CompanyID: companyID,
+			Name:      trimmedName,
+		})
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_rename_item"})
+			return
+		}
+		resultItem = updated
 	}
 
-	respondJSON(w, http.StatusOK, updated)
+	respondJSON(w, http.StatusOK, resultItem)
 }
 
 type moveItemReq struct {

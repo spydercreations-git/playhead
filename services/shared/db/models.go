@@ -199,6 +199,7 @@ type Item struct {
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	VideoCount       int32              `json:"video_count"`
+	IsRestricted     bool               `json:"is_restricted"`
 }
 
 type LoginCode struct {
@@ -254,6 +255,7 @@ type Project struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
+	IsRestricted  bool               `json:"is_restricted"`
 }
 
 type ProjectNotificationPref struct {

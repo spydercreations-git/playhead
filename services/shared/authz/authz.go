@@ -145,11 +145,18 @@ func (p Person) HasPermission(permission string) bool {
 	return false
 }
 
+// IsAdmin returns true if the person is an Admin or Owner.
+func (p Person) IsAdmin() bool {
+	r := strings.ToLower(p.Role)
+	return r == RoleAdmin || r == RoleOwner
+}
+
 // ProjectTarget represents the project resource being accessed.
 type ProjectTarget struct {
-	ID        uuid.UUID
-	CompanyID uuid.UUID
-	ClientID  uuid.UUID
+	ID           uuid.UUID
+	CompanyID    uuid.UUID
+	ClientID     uuid.UUID
+	IsRestricted bool
 }
 
 // AccessResult describes the evaluated access level and download rights.
@@ -208,10 +215,11 @@ func CanCreatePublicShareLink(person Person, access AccessResult) bool {
 
 // ItemTarget represents an item resource being accessed.
 type ItemTarget struct {
-	ID        uuid.UUID
-	ProjectID uuid.UUID
-	CompanyID uuid.UUID
-	CreatedBy uuid.UUID
+	ID           uuid.UUID
+	ProjectID    uuid.UUID
+	CompanyID    uuid.UUID
+	CreatedBy    uuid.UUID
+	IsRestricted bool
 }
 
 // Access evaluates a person's permissions on a project by combining:
@@ -221,6 +229,36 @@ type ItemTarget struct {
 // Returning the highest level and appropriate CanDownload flag.
 func Access(ctx context.Context, q *db.Queries, person Person, project ProjectTarget) (AccessResult, error) {
 	normEmail := NormalizeEmail(person.Email)
+	isAdminOrOwner := strings.ToLower(person.Role) == RoleAdmin || strings.ToLower(person.Role) == RoleOwner
+
+	// Restricted project enforcement:
+	// When a project is marked restricted:
+	// - Inherited access from company role (Member) or client membership STOPS.
+	// - Only Admins/Owners and people with an explicit grant on that project can see it.
+	// - For everyone else it does not exist (returns LevelNone -> 404).
+	if project.IsRestricted {
+		if isAdminOrOwner {
+			return AccessResult{
+				Level:       LevelFull,
+				CanDownload: true,
+			}, nil
+		}
+		// Non-admins must have an explicit project grant
+		if q != nil && project.ID != uuid.Nil && normEmail != "" {
+			grant, err := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
+				TargetType: "project",
+				TargetID:   pgtype.UUID{Bytes: project.ID, Valid: true},
+				Email:      normEmail,
+			})
+			if err == nil && grant.Level != LevelNone && grant.Level != "" {
+				return AccessResult{
+					Level:       grant.Level,
+					CanDownload: grant.CanDownload,
+				}, nil
+			}
+		}
+		return AccessResult{Level: LevelNone, CanDownload: false}, nil
+	}
 
 	// 1. Team role / permissions: users with projects.view_all (Admins, Managers) get Full access
 	if person.HasPermission(PermProjectsViewAll) {
@@ -345,14 +383,16 @@ func resolveSources(sources []accessSource) AccessResult {
 // AccessFolder evaluates permissions on a folder using ancestor chain in a single pass.
 // Fast rule: never check file by file. Resolve once for folder and apply to all children.
 func AccessFolder(ctx context.Context, q *db.Queries, person Person, project ProjectTarget, folderID uuid.UUID) (AccessResult, error) {
+	isAdminOrOwner := strings.ToLower(person.Role) == RoleAdmin || strings.ToLower(person.Role) == RoleOwner
+
 	// Base project access
 	projAccess, err := Access(ctx, q, person, project)
 	if err != nil {
 		return AccessResult{Level: LevelNone, CanDownload: false}, err
 	}
 
-	// If root of project or user already has Full access, return immediately
-	if folderID == uuid.Nil || projAccess.Level == LevelFull {
+	// If root of project, return base project access immediately
+	if folderID == uuid.Nil {
 		return projAccess, nil
 	}
 
@@ -364,6 +404,9 @@ func AccessFolder(ctx context.Context, q *db.Queries, person Person, project Pro
 		})
 	}
 
+	isFolderRestricted := false
+	var folderExplicitGrant *db.Grant
+
 	if q != nil {
 		ancestors, err := q.GetItemAncestors(ctx, db.GetItemAncestorsParams{
 			ItemID:    pgtype.UUID{Bytes: folderID, Valid: true},
@@ -372,6 +415,9 @@ func AccessFolder(ctx context.Context, q *db.Queries, person Person, project Pro
 		if err == nil {
 			normEmail := NormalizeEmail(person.Email)
 			for _, anc := range ancestors {
+				if anc.IsRestricted {
+					isFolderRestricted = true
+				}
 				grant, gErr := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
 					TargetType: "item",
 					TargetID:   anc.ID,
@@ -385,6 +431,7 @@ func AccessFolder(ctx context.Context, q *db.Queries, person Person, project Pro
 					})
 				}
 				if gErr == nil && grant.Level != LevelNone && grant.Level != "" {
+					folderExplicitGrant = &grant
 					sources = append(sources, accessSource{
 						Level:       grant.Level,
 						CanDownload: grant.CanDownload,
@@ -394,19 +441,28 @@ func AccessFolder(ctx context.Context, q *db.Queries, person Person, project Pro
 		}
 	}
 
+	// If folder or any ancestor is restricted:
+	// Inherited access from company role (Member) or client membership STOPS.
+	// Only Admins and people with an explicit grant on that project/folder can see it.
+	if isFolderRestricted {
+		if isAdminOrOwner {
+			return AccessResult{Level: LevelFull, CanDownload: true}, nil
+		}
+		if folderExplicitGrant != nil {
+			return AccessResult{
+				Level:       folderExplicitGrant.Level,
+				CanDownload: folderExplicitGrant.CanDownload,
+			}, nil
+		}
+		return AccessResult{Level: LevelNone, CanDownload: false}, nil
+	}
+
 	return resolveSources(sources), nil
 }
 
 // AccessItem evaluates permissions on an item by resolving its parent folder access.
 func AccessItem(ctx context.Context, q *db.Queries, person Person, project ProjectTarget, item ItemTarget) (AccessResult, error) {
-	// If project access is Full, return immediately
-	projAccess, err := Access(ctx, q, person, project)
-	if err != nil {
-		return AccessResult{Level: LevelNone, CanDownload: false}, err
-	}
-	if projAccess.Level == LevelFull {
-		return projAccess, nil
-	}
+	isAdminOrOwner := strings.ToLower(person.Role) == RoleAdmin || strings.ToLower(person.Role) == RoleOwner
 
 	folderAccess, err := AccessFolder(ctx, q, person, project, item.ID)
 	if err != nil {
@@ -421,6 +477,7 @@ func AccessItem(ctx context.Context, q *db.Queries, person Person, project Proje
 		})
 	}
 
+	var itemExplicitGrant *db.Grant
 	if q != nil {
 		normEmail := NormalizeEmail(person.Email)
 		grant, gErr := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
@@ -436,11 +493,25 @@ func AccessItem(ctx context.Context, q *db.Queries, person Person, project Proje
 			})
 		}
 		if gErr == nil && grant.Level != LevelNone && grant.Level != "" {
+			itemExplicitGrant = &grant
 			sources = append(sources, accessSource{
 				Level:       grant.Level,
 				CanDownload: grant.CanDownload,
 			})
 		}
+	}
+
+	if item.IsRestricted {
+		if isAdminOrOwner {
+			return AccessResult{Level: LevelFull, CanDownload: true}, nil
+		}
+		if itemExplicitGrant != nil {
+			return AccessResult{
+				Level:       itemExplicitGrant.Level,
+				CanDownload: itemExplicitGrant.CanDownload,
+			}, nil
+		}
+		return AccessResult{Level: LevelNone, CanDownload: false}, nil
 	}
 
 	return resolveSources(sources), nil

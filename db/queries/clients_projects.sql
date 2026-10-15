@@ -173,12 +173,17 @@ WHERE p.company_id = @company_id
   AND p.deleted_at IS NULL
   AND (sqlc.narg('client_id')::uuid IS NULL OR p.client_id = sqlc.narg('client_id'))
   AND (sqlc.narg('status')::text IS NULL OR p.status = sqlc.narg('status'))
-  AND (g.id IS NOT NULL OR cc.id IS NOT NULL)
+  AND (
+    (p.is_restricted = FALSE AND (g.id IS NOT NULL OR cc.id IS NOT NULL))
+    OR
+    (p.is_restricted = TRUE AND g.id IS NOT NULL)
+  )
 ORDER BY p.updated_at DESC;
 
 -- name: UpdateProject :one
 UPDATE projects
 SET name = COALESCE(sqlc.narg('name'), name),
+    is_restricted = COALESCE(sqlc.narg('is_restricted'), is_restricted),
     updated_at = NOW()
 WHERE company_id = @company_id AND id = @id AND deleted_at IS NULL
 RETURNING *;

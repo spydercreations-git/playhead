@@ -265,9 +265,10 @@ func (h *ProjectHandler) Get(w http.ResponseWriter, r *http.Request) {
 		CompanyID: uuid.UUID(companyID.Bytes),
 	}
 	target := authz.ProjectTarget{
-		ID:        uuid.UUID(project.ID.Bytes),
-		CompanyID: uuid.UUID(companyID.Bytes),
-		ClientID:  uuid.UUID(project.ClientID.Bytes),
+		ID:           uuid.UUID(project.ID.Bytes),
+		CompanyID:    uuid.UUID(companyID.Bytes),
+		ClientID:     uuid.UUID(project.ClientID.Bytes),
+		IsRestricted: project.IsRestricted,
 	}
 
 	access, err := authz.Access(r.Context(), h.queries, person, target)
@@ -298,8 +299,9 @@ func (h *ProjectHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 type UpdateProjectRequest struct {
-	Name     *string `json:"name"`
-	ClientID *string `json:"client_id"`
+	Name         *string `json:"name"`
+	ClientID     *string `json:"client_id"`
+	IsRestricted *bool   `json:"is_restricted"`
 }
 
 func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -333,9 +335,10 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 		CompanyID: uuid.UUID(companyID.Bytes),
 	}
 	target := authz.ProjectTarget{
-		ID:        uuid.UUID(project.ID.Bytes),
-		CompanyID: uuid.UUID(companyID.Bytes),
-		ClientID:  uuid.UUID(project.ClientID.Bytes),
+		ID:           uuid.UUID(project.ID.Bytes),
+		CompanyID:    uuid.UUID(companyID.Bytes),
+		ClientID:     uuid.UUID(project.ClientID.Bytes),
+		IsRestricted: project.IsRestricted,
 	}
 
 	access, err := authz.Access(r.Context(), h.queries, person, target)
@@ -350,7 +353,7 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if (req.Name == nil || strings.TrimSpace(*req.Name) == "") && req.ClientID == nil {
+	if (req.Name == nil || strings.TrimSpace(*req.Name) == "") && req.ClientID == nil && req.IsRestricted == nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_changes_provided"})
 		return
 	}
@@ -382,6 +385,17 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if req.IsRestricted != nil {
+		if _, err := h.queries.UpdateProject(r.Context(), db.UpdateProjectParams{
+			CompanyID:    companyID,
+			ID:           projectID,
+			IsRestricted: pgtype.Bool{Bool: *req.IsRestricted, Valid: true},
+		}); err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to update project restriction"})
+			return
+		}
+	}
+
 	if req.Name != nil && strings.TrimSpace(*req.Name) != "" {
 		if _, err := h.queries.UpdateProject(r.Context(), db.UpdateProjectParams{
 			CompanyID: companyID,
@@ -392,6 +406,7 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
 
 	updated, err := h.queries.GetProjectByID(r.Context(), db.GetProjectByIDParams{
 		CompanyID: companyID,
@@ -437,9 +452,10 @@ func (h *ProjectHandler) Archive(w http.ResponseWriter, r *http.Request) {
 		CompanyID: uuid.UUID(companyID.Bytes),
 	}
 	target := authz.ProjectTarget{
-		ID:        uuid.UUID(project.ID.Bytes),
-		CompanyID: uuid.UUID(companyID.Bytes),
-		ClientID:  uuid.UUID(project.ClientID.Bytes),
+		ID:           uuid.UUID(project.ID.Bytes),
+		CompanyID:    uuid.UUID(companyID.Bytes),
+		ClientID:     uuid.UUID(project.ClientID.Bytes),
+		IsRestricted: project.IsRestricted,
 	}
 
 	access, err := authz.Access(r.Context(), h.queries, person, target)
@@ -529,9 +545,10 @@ func (h *ProjectHandler) GetPeople(w http.ResponseWriter, r *http.Request) {
 		CompanyID: uuid.UUID(companyID.Bytes),
 	}
 	target := authz.ProjectTarget{
-		ID:        uuid.UUID(project.ID.Bytes),
-		CompanyID: uuid.UUID(companyID.Bytes),
-		ClientID:  uuid.UUID(project.ClientID.Bytes),
+		ID:           uuid.UUID(project.ID.Bytes),
+		CompanyID:    uuid.UUID(companyID.Bytes),
+		ClientID:     uuid.UUID(project.ClientID.Bytes),
+		IsRestricted: project.IsRestricted,
 	}
 
 	access, err := authz.Access(r.Context(), h.queries, person, target)
@@ -582,9 +599,10 @@ func (h *ProjectHandler) AddPerson(w http.ResponseWriter, r *http.Request) {
 		CompanyID: uuid.UUID(companyID.Bytes),
 	}
 	target := authz.ProjectTarget{
-		ID:        uuid.UUID(project.ID.Bytes),
-		CompanyID: uuid.UUID(companyID.Bytes),
-		ClientID:  uuid.UUID(project.ClientID.Bytes),
+		ID:           uuid.UUID(project.ID.Bytes),
+		CompanyID:    uuid.UUID(companyID.Bytes),
+		ClientID:     uuid.UUID(project.ClientID.Bytes),
+		IsRestricted: project.IsRestricted,
 	}
 
 	access, err := authz.Access(r.Context(), h.queries, person, target)
@@ -674,9 +692,10 @@ func (h *ProjectHandler) UpdatePerson(w http.ResponseWriter, r *http.Request) {
 		CompanyID: uuid.UUID(companyID.Bytes),
 	}
 	target := authz.ProjectTarget{
-		ID:        uuid.UUID(project.ID.Bytes),
-		CompanyID: uuid.UUID(companyID.Bytes),
-		ClientID:  uuid.UUID(project.ClientID.Bytes),
+		ID:           uuid.UUID(project.ID.Bytes),
+		CompanyID:    uuid.UUID(companyID.Bytes),
+		ClientID:     uuid.UUID(project.ClientID.Bytes),
+		IsRestricted: project.IsRestricted,
 	}
 
 	access, err := authz.Access(r.Context(), h.queries, person, target)
@@ -750,9 +769,10 @@ func (h *ProjectHandler) RemovePerson(w http.ResponseWriter, r *http.Request) {
 		CompanyID: uuid.UUID(companyID.Bytes),
 	}
 	target := authz.ProjectTarget{
-		ID:        uuid.UUID(project.ID.Bytes),
-		CompanyID: uuid.UUID(companyID.Bytes),
-		ClientID:  uuid.UUID(project.ClientID.Bytes),
+		ID:           uuid.UUID(project.ID.Bytes),
+		CompanyID:    uuid.UUID(companyID.Bytes),
+		ClientID:     uuid.UUID(project.ClientID.Bytes),
+		IsRestricted: project.IsRestricted,
 	}
 
 	access, err := authz.Access(r.Context(), h.queries, person, target)

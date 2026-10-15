@@ -1442,6 +1442,9 @@ export default function ProjectWorkspacePage() {
                         <div className="flex items-center gap-2 truncate">
                           <Folder className={`w-3.5 h-3.5 ${isActive || isOver ? "text-[#4876F3]" : "text-[#7C7F87]"}`} />
                           <span className="truncate">{f.name}</span>
+                          {f.is_restricted && (
+                            <Lock className="w-3 h-3 text-amber-400 shrink-0" />
+                          )}
                         </div>
                         <span className="text-[10px] text-[#7C7F87] tabular-nums font-mono">
                           {isOver ? "Move here" : (f.file_count || 0)}
@@ -1963,6 +1966,7 @@ export default function ProjectWorkspacePage() {
                                   name={folder.name}
                                   itemCount={(folder.file_count || 0) + (folder.folder_count || 0)}
                                   totalBytes={folder.total_bytes || 0}
+                                  isRestricted={Boolean(folder.is_restricted)}
                                   thumbnails={folder.thumbnails || []}
                                   isSelected={isSelected}
                                   isDropTarget={

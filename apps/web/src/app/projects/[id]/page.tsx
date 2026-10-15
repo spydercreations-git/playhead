@@ -28,6 +28,24 @@ import { MoveCopyPanel } from "@/components/panels/move-copy-panel";
 import { ManageAccessDialog } from "@/components/access/manage-access-dialog";
 import { buildUnifiedItemMenuGroups } from "@/components/items/unified-item-menu";
 import {
+  DndContext,
+  DragOverlay,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  TouchSensor,
+  DragStartEvent,
+  DragEndEvent,
+  DragOverEvent,
+} from "@dnd-kit/core";
+import {
+  DraggableItem,
+  DroppableTarget,
+  WorkspaceDragGhost,
+  WorkspaceDragData,
+  WorkspaceDropData,
+} from "@/components/dnd/workspace-dnd";
+import {
   Download,
   FolderDown,
   ChevronDown,
@@ -172,6 +190,27 @@ export default function ProjectWorkspacePage() {
 
   // Touch long-press ref
   const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Phase 5: Drag and Drop States & Sensors
+  const [activeDragItem, setActiveDragItem] = useState<WorkspaceDragData | null>(null);
+  const [overDropTargetId, setOverDropTargetId] = useState<string | null>(null);
+  const [isDraggingFilesFromComputer, setIsDraggingFilesFromComputer] = useState(false);
+  const [computerHoverFolderId, setComputerHoverFolderId] = useState<string | null>(null);
+  const computerDragCounter = useRef(0);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 6,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 6,
+      },
+    })
+  );
 
   // 1. Fetch Items for current folder / project root
   const { data: workspaceData, isLoading, error } = useQuery({
@@ -337,8 +376,14 @@ export default function ProjectWorkspacePage() {
   });
 
   // Fast Parallel Resumable Upload Engine
-  const startFileUpload = async (file: File, targetItemId?: string, customName?: string) => {
+  const startFileUpload = async (
+    file: File,
+    targetItemId?: string,
+    customName?: string,
+    customParentId?: string
+  ) => {
     const filename = customName || file.name;
+    const targetParent = customParentId !== undefined ? customParentId : currentFolderId;
     const tempId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
 
     try {
@@ -346,7 +391,7 @@ export default function ProjectWorkspacePage() {
         method: "POST",
         body: JSON.stringify({
           project_id: projectId,
-          parent_id: currentFolderId,
+          parent_id: targetParent,
           target_item_id: targetItemId || null,
           filename: filename,
           size_bytes: file.size,
@@ -359,7 +404,7 @@ export default function ProjectWorkspacePage() {
         uploadId: initRes.upload_id,
         itemId: initRes.item_id,
         projectId,
-        parentId: currentFolderId,
+        parentId: targetParent,
         filename,
         sizeBytes: file.size,
         mime: file.type || "application/octet-stream",
@@ -978,11 +1023,138 @@ export default function ProjectWorkspacePage() {
     (u) => (u.parentId || null) === currentFolderId && u.status === "uploading"
   );
 
+  // Active drag descendants (folders that cannot be dropped into)
+  const activeDragDescendants = (() => {
+    if (!activeDragItem || activeDragItem.type !== "folder") return [];
+    const descendants: string[] = [];
+    const queue = [activeDragItem.id];
+    const allFolders = treeData?.folders || [];
+    while (queue.length > 0) {
+      const parentId = queue.shift()!;
+      for (const f of allFolders) {
+        if (f.parent_id === parentId) {
+          descendants.push(f.id);
+          queue.push(f.id);
+        }
+      }
+    }
+    return descendants;
+  })();
+
+  // Current folder name for dropzone
+  const currentFolderName = (() => {
+    if (!currentFolderId) return project.name || "project";
+    const found = (treeData?.folders || []).find((f: any) => f.id === currentFolderId);
+    return found?.name || "folder";
+  })();
+
+  // dnd-kit handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    const itemData = event.active.data.current as WorkspaceDragData;
+    setActiveDragItem(itemData);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    setOverDropTargetId(event.over ? (event.over.id as string) : null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragItem(null);
+    setOverDropTargetId(null);
+
+    const { active, over } = event;
+    if (!over || !over.data.current) return;
+
+    const target = over.data.current as WorkspaceDropData;
+    const activeId = active.id as string;
+
+    // Do not drop on itself
+    if (target.id === activeId) return;
+
+    // Do not drop on descendant
+    if (target.id && activeDragDescendants.includes(target.id)) {
+      toast.error("Cannot move a folder into itself or its subfolder");
+      return;
+    }
+
+    const idsToMove = selectedItemIds.includes(activeId)
+      ? selectedItemIds
+      : [activeId];
+
+    if (idsToMove.length === 1) {
+      moveMutation.mutate({
+        id: idsToMove[0],
+        targetParentId: target.id,
+      });
+    } else {
+      batchActionMutation.mutate({
+        action: "move",
+        ids: idsToMove,
+        targetParentId: target.id,
+      });
+    }
+
+    toast.success(`Moved ${idsToMove.length} item${idsToMove.length > 1 ? "s" : ""} to ${target.name}`);
+    setSelectedItemIds([]);
+  };
+
+  const handleDragCancel = () => {
+    setActiveDragItem(null);
+    setOverDropTargetId(null);
+  };
+
+  // Computer File Drag Handlers
+  const handleWindowDragEnter = (e: React.DragEvent) => {
+    if (e.dataTransfer?.types?.includes("Files")) {
+      computerDragCounter.current++;
+      setIsDraggingFilesFromComputer(true);
+    }
+  };
+
+  const handleWindowDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer?.types?.includes("Files")) {
+      e.preventDefault();
+    }
+  };
+
+  const handleWindowDragLeave = (e: React.DragEvent) => {
+    if (e.dataTransfer?.types?.includes("Files")) {
+      computerDragCounter.current--;
+      if (computerDragCounter.current <= 0) {
+        setIsDraggingFilesFromComputer(false);
+        computerDragCounter.current = 0;
+      }
+    }
+  };
+
+  const handleWindowDrop = (e: React.DragEvent) => {
+    if (e.dataTransfer?.types?.includes("Files")) {
+      e.preventDefault();
+      computerDragCounter.current = 0;
+      setIsDraggingFilesFromComputer(false);
+      setComputerHoverFolderId(null);
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        Array.from(e.dataTransfer.files).forEach((f) => startFileUpload(f));
+      }
+    }
+  };
+
   return (
-    <div
-      onContextMenu={handleEmptyWorkspaceContextMenu}
-      className="flex flex-col h-screen w-full bg-[#181818] text-[#E1E1E3] font-sans antialiased overflow-hidden select-none"
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
+      <div
+        onContextMenu={handleEmptyWorkspaceContextMenu}
+        onDragEnter={handleWindowDragEnter}
+        onDragOver={handleWindowDragOver}
+        onDragLeave={handleWindowDragLeave}
+        onDrop={handleWindowDrop}
+        className="flex flex-col h-screen w-full bg-[#181818] text-[#E1E1E3] font-sans antialiased overflow-hidden select-none relative"
+      >
       {/* Hidden File & Folder Inputs */}
       <input
         type="file"
@@ -1045,29 +1217,48 @@ export default function ProjectWorkspacePage() {
               </span>
             )}
             <span className="text-[#7C7F87] shrink-0">/</span>
-            <Link
-              href={`/projects/${projectId}`}
-              className={`transition-colors truncate max-w-[160px] ${
-                !currentFolderId && breadcrumbs.length === 0
-                  ? "text-white font-semibold"
-                  : "text-[#9A9DA0] hover:text-white"
-              }`}
+            <DroppableTarget
+              id="crumb-root"
+              data={{ type: "root", id: null, name: project.name || "Files" }}
+              activeDragId={activeDragItem?.id || null}
             >
-              {project.name}
-            </Link>
+              <Link
+                href={`/projects/${projectId}`}
+                className={`transition-colors truncate max-w-[160px] px-1.5 py-0.5 rounded-[6px] ${
+                  overDropTargetId === "crumb-root"
+                    ? "bg-[#4876F3]/20 ring-1 ring-[#4876F3] text-white"
+                    : !currentFolderId && breadcrumbs.length === 0
+                    ? "text-white font-semibold"
+                    : "text-[#9A9DA0] hover:text-white"
+                }`}
+              >
+                {project.name}
+              </Link>
+            </DroppableTarget>
             {breadcrumbs.map((b: any, idx: number) => {
               const isLast = idx === breadcrumbs.length - 1;
               return (
                 <React.Fragment key={b.id}>
                   <span className="text-[#7C7F87] shrink-0">/</span>
-                  <Link
-                    href={`/projects/${projectId}?folder=${b.id}`}
-                    className={`truncate max-w-[140px] transition-colors ${
-                      isLast ? "text-white font-semibold" : "text-[#9A9DA0] hover:text-white"
-                    }`}
+                  <DroppableTarget
+                    id={`crumb-${b.id}`}
+                    data={{ type: "folder", id: b.id, name: b.name }}
+                    activeDragId={activeDragItem?.id || null}
+                    draggedDescendants={activeDragDescendants}
                   >
-                    {b.name}
-                  </Link>
+                    <Link
+                      href={`/projects/${projectId}?folder=${b.id}`}
+                      className={`truncate max-w-[140px] px-1.5 py-0.5 rounded-[6px] transition-colors ${
+                        overDropTargetId === `crumb-${b.id}`
+                          ? "bg-[#4876F3]/20 ring-1 ring-[#4876F3] text-white"
+                          : isLast
+                          ? "text-white font-semibold"
+                          : "text-[#9A9DA0] hover:text-white"
+                      }`}
+                    >
+                      {b.name}
+                    </Link>
+                  </DroppableTarget>
                 </React.Fragment>
               );
             })}
@@ -1199,44 +1390,64 @@ export default function ProjectWorkspacePage() {
                 </div>
 
                 {/* Project Root (Files) */}
-                <button
-                  onClick={() => router.push(`/projects/${projectId}`)}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs transition-colors ${
-                    !currentFolderId
-                      ? "bg-[#2A2B30] text-white font-semibold border border-[#2E2F34]"
-                      : "text-[#9A9DA0] hover:text-white hover:bg-[#2A2B30]/60"
-                  }`}
+                <DroppableTarget
+                  id="tree-root"
+                  data={{ type: "root", id: null, name: "Files" }}
+                  activeDragId={activeDragItem?.id || null}
+                  className="w-full"
                 >
-                  <div className="flex items-center gap-2 truncate">
-                    <Folder className="w-4 h-4 text-[#4876F3]" />
-                    <span className="truncate">Files</span>
-                  </div>
-                  <span className="text-[10px] text-[#7C7F87] tabular-nums font-mono">
-                    {project.file_count || 0}
-                  </span>
-                </button>
+                  <button
+                    onClick={() => router.push(`/projects/${projectId}`)}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs transition-colors ${
+                      overDropTargetId === "tree-root"
+                        ? "bg-[#4876F3]/20 ring-1 ring-[#4876F3] text-white font-semibold"
+                        : !currentFolderId
+                        ? "bg-[#2A2B30] text-white font-semibold border border-[#2E2F34]"
+                        : "text-[#9A9DA0] hover:text-white hover:bg-[#2A2B30]/60"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <Folder className="w-4 h-4 text-[#4876F3]" />
+                      <span className="truncate">Files</span>
+                    </div>
+                    <span className="text-[10px] text-[#7C7F87] tabular-nums font-mono">
+                      {overDropTargetId === "tree-root" ? "Move here" : (project.file_count || 0)}
+                    </span>
+                  </button>
+                </DroppableTarget>
 
                 {/* Folder tree */}
                 {treeData?.folders?.map((f: any) => {
                   const isActive = currentFolderId === f.id;
+                  const isOver = overDropTargetId === `tree-folder-${f.id}`;
                   return (
-                    <button
+                    <DroppableTarget
                       key={f.id}
-                      onClick={() => router.push(`/projects/${projectId}?folder=${f.id}`)}
-                      className={`w-full flex items-center justify-between pl-6 pr-2.5 py-1.5 rounded-[10px] text-xs transition-colors ${
-                        isActive
-                          ? "bg-[#2A2B30] text-white font-semibold border border-[#2E2F34]"
-                          : "text-[#9A9DA0] hover:text-white hover:bg-[#2A2B30]/60"
-                      }`}
+                      id={`tree-folder-${f.id}`}
+                      data={{ type: "folder", id: f.id, name: f.name }}
+                      activeDragId={activeDragItem?.id || null}
+                      draggedDescendants={activeDragDescendants}
+                      className="w-full"
                     >
-                      <div className="flex items-center gap-2 truncate">
-                        <Folder className={`w-3.5 h-3.5 ${isActive ? "text-[#4876F3]" : "text-[#7C7F87]"}`} />
-                        <span className="truncate">{f.name}</span>
-                      </div>
-                      <span className="text-[10px] text-[#7C7F87] tabular-nums font-mono">
-                        {f.file_count || 0}
-                      </span>
-                    </button>
+                      <button
+                        onClick={() => router.push(`/projects/${projectId}?folder=${f.id}`)}
+                        className={`w-full flex items-center justify-between pl-6 pr-2.5 py-1.5 rounded-[10px] text-xs transition-colors ${
+                          isOver
+                            ? "bg-[#4876F3]/20 ring-1 ring-[#4876F3] text-white font-semibold"
+                            : isActive
+                            ? "bg-[#2A2B30] text-white font-semibold border border-[#2E2F34]"
+                            : "text-[#9A9DA0] hover:text-white hover:bg-[#2A2B30]/60"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Folder className={`w-3.5 h-3.5 ${isActive || isOver ? "text-[#4876F3]" : "text-[#7C7F87]"}`} />
+                          <span className="truncate">{f.name}</span>
+                        </div>
+                        <span className="text-[10px] text-[#7C7F87] tabular-nums font-mono">
+                          {isOver ? "Move here" : (f.file_count || 0)}
+                        </span>
+                      </button>
+                    </DroppableTarget>
                   );
                 })}
               </div>
@@ -1707,34 +1918,86 @@ export default function ProjectWorkspacePage() {
                             transition: { duration: 0.12, ease: [0.4, 0, 1, 1] },
                           }}
                         >
-                          <FolderCard
-                            id={folder.id}
-                            name={folder.name}
-                            itemCount={(folder.file_count || 0) + (folder.folder_count || 0)}
-                            totalBytes={folder.total_bytes || 0}
-                            thumbnails={folder.thumbnails || []}
-                            isSelected={isSelected}
-                            onToggleSelect={() => {
-                              if (isSelected) {
-                                setSelectedItemIds(selectedItemIds.filter((id) => id !== folder.id));
-                              } else {
-                                setSelectedItemIds([...selectedItemIds, folder.id]);
-                              }
-                            }}
-                            onOpen={() => router.push(`/projects/${projectId}?folder=${folder.id}`)}
-                            onContextMenu={(e) => handleItemContextMenu(e, folder)}
-                            isRenaming={isRenaming}
-                            renameValue={inlineRenameName}
-                            onRenameChange={(val) => setInlineRenameName(val)}
-                            onRenameSubmit={() => {
-                              if (inlineRenameName.trim()) {
-                                renameMutation.mutate({ id: folder.id, name: inlineRenameName.trim() });
-                              } else {
-                                setRenamingItemId(null);
-                              }
-                            }}
-                            onRenameCancel={() => setRenamingItemId(null)}
-                          />
+                          <DroppableTarget
+                            id={`canvas-folder-${folder.id}`}
+                            data={{ type: "folder", id: folder.id, name: folder.name }}
+                            activeDragId={activeDragItem?.id || null}
+                            draggedDescendants={activeDragDescendants}
+                          >
+                            <div
+                              onDragOver={(e) => {
+                                if (e.dataTransfer?.types?.includes("Files")) {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setComputerHoverFolderId(folder.id);
+                                }
+                              }}
+                              onDragLeave={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setComputerHoverFolderId(null);
+                              }}
+                              onDrop={(e) => {
+                                if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setComputerHoverFolderId(null);
+                                  Array.from(e.dataTransfer.files).forEach((f) =>
+                                    startFileUpload(f, undefined, undefined, folder.id)
+                                  );
+                                }
+                              }}
+                            >
+                              <DraggableItem
+                                id={folder.id}
+                                data={{
+                                  type: "folder",
+                                  id: folder.id,
+                                  name: folder.name,
+                                  itemCount: (folder.file_count || 0) + (folder.folder_count || 0),
+                                  totalBytes: folder.total_bytes || 0,
+                                }}
+                              >
+                                <FolderCard
+                                  id={folder.id}
+                                  name={folder.name}
+                                  itemCount={(folder.file_count || 0) + (folder.folder_count || 0)}
+                                  totalBytes={folder.total_bytes || 0}
+                                  thumbnails={folder.thumbnails || []}
+                                  isSelected={isSelected}
+                                  isDropTarget={
+                                    overDropTargetId === `canvas-folder-${folder.id}` ||
+                                    computerHoverFolderId === folder.id
+                                  }
+                                  dropLabel={
+                                    computerHoverFolderId === folder.id
+                                      ? "Upload to folder"
+                                      : "Move to folder"
+                                  }
+                                  onToggleSelect={() => {
+                                    if (isSelected) {
+                                      setSelectedItemIds(selectedItemIds.filter((id) => id !== folder.id));
+                                    } else {
+                                      setSelectedItemIds([...selectedItemIds, folder.id]);
+                                    }
+                                  }}
+                                  onOpen={() => router.push(`/projects/${projectId}?folder=${folder.id}`)}
+                                  onContextMenu={(e) => handleItemContextMenu(e, folder)}
+                                  isRenaming={isRenaming}
+                                  renameValue={inlineRenameName}
+                                  onRenameChange={(val) => setInlineRenameName(val)}
+                                  onRenameSubmit={() => {
+                                    if (inlineRenameName.trim()) {
+                                      renameMutation.mutate({ id: folder.id, name: inlineRenameName.trim() });
+                                    } else {
+                                      setRenamingItemId(null);
+                                    }
+                                  }}
+                                  onRenameCancel={() => setRenamingItemId(null)}
+                                />
+                              </DraggableItem>
+                            </div>
+                          </DroppableTarget>
                         </motion.div>
                       );
                     })}
@@ -1805,11 +2068,21 @@ export default function ProjectWorkspacePage() {
                       const isSheet = file.name.endsWith(".xlsx") || file.name.endsWith(".csv");
 
                       return (
-                        <motion.div
-                          layout
+                        <DraggableItem
                           key={file.id}
-                          initial={{ opacity: 0, scale: 0.98, y: 6 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          id={file.id}
+                          data={{
+                            type: "file",
+                            id: file.id,
+                            name: file.name,
+                            totalBytes: file.size_bytes || file.latest_size_bytes || 0,
+                          }}
+                        >
+                          <motion.div
+                            layout
+                            key={file.id}
+                            initial={{ opacity: 0, scale: 0.98, y: 6 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{
                             opacity: 0,
                             scale: 0.95,
@@ -1948,6 +2221,7 @@ export default function ProjectWorkspacePage() {
                             </div>
                           </div>
                         </motion.div>
+                        </DraggableItem>
                       );
                     })}
                   </AnimatePresence>
@@ -2167,6 +2441,55 @@ export default function ProjectWorkspacePage() {
           toast.success("Member removed");
         }}
       />
+
+      {/* Floating Drag Overlay Ghost (Folder tab / thumbnail / stack badge) */}
+      <DragOverlay dropAnimation={null}>
+        {activeDragItem ? (
+          <WorkspaceDragGhost
+            activeItem={activeDragItem}
+            selectedCount={
+              selectedItemIds.includes(activeDragItem.id)
+                ? selectedItemIds.length
+                : 1
+            }
+          />
+        ) : null}
+      </DragOverlay>
+
+      {/* Full-Page Computer Drag & Drop Overlay */}
+      {isDraggingFilesFromComputer && (
+        <div
+          onDragOver={(e) => e.preventDefault()}
+          onDragLeave={(e) => {
+            computerDragCounter.current--;
+            if (computerDragCounter.current <= 0) {
+              setIsDraggingFilesFromComputer(false);
+              computerDragCounter.current = 0;
+            }
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            computerDragCounter.current = 0;
+            setIsDraggingFilesFromComputer(false);
+            setComputerHoverFolderId(null);
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+              Array.from(e.dataTransfer.files).forEach((f) => startFileUpload(f));
+            }
+          }}
+          className="fixed inset-0 z-50 bg-[#181818]/90 backdrop-blur-sm border-2 border-dashed border-[#4876F3] flex flex-col items-center justify-center p-6 text-center select-none cursor-copy animate-in fade-in duration-150"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-[#4876F3]/10 border border-[#4876F3]/30 flex items-center justify-center mb-4 text-[#4876F3] shadow-lg animate-bounce">
+            <Upload className="w-8 h-8" />
+          </div>
+          <h3 className="text-xl font-bold text-white mb-1">
+            Drop to upload to {currentFolderName}
+          </h3>
+          <p className="text-xs text-[#9A9DA0] max-w-sm">
+            Release anywhere to upload into this folder, or drop directly onto a folder card below to upload into that folder.
+          </p>
+        </div>
+      )}
     </div>
+    </DndContext>
   );
 }

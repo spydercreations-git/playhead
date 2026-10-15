@@ -1084,6 +1084,42 @@ func (q *Queries) ListProjectsForUserWithAccess(ctx context.Context, arg ListPro
 	return items, nil
 }
 
+const moveProjectToClient = `-- name: MoveProjectToClient :one
+UPDATE projects
+SET client_id = $1,
+    updated_at = NOW()
+WHERE company_id = $2 AND id = $3 AND deleted_at IS NULL
+RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at
+`
+
+type MoveProjectToClientParams struct {
+	ClientID  pgtype.UUID `json:"client_id"`
+	CompanyID pgtype.UUID `json:"company_id"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) MoveProjectToClient(ctx context.Context, arg MoveProjectToClientParams) (Project, error) {
+	row := q.db.QueryRow(ctx, moveProjectToClient, arg.ClientID, arg.CompanyID, arg.ID)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.CompanyID,
+		&i.ClientID,
+		&i.Name,
+		&i.Status,
+		&i.TrackerItemID,
+		&i.FileCount,
+		&i.FolderCount,
+		&i.VideoCount,
+		&i.TotalBytes,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const setProjectStatus = `-- name: SetProjectStatus :one
 UPDATE projects
 SET status = $1,

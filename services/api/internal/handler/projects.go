@@ -298,7 +298,8 @@ func (h *ProjectHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 type UpdateProjectRequest struct {
-	Name string `json:"name"`
+	Name     *string `json:"name"`
+	ClientID *string `json:"client_id"`
 }
 
 func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -339,7 +340,7 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	access, err := authz.Access(r.Context(), h.queries, person, target)
 	if err != nil || !access.CanManage() {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Full access required to rename project"})
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Full access required to edit project"})
 		return
 	}
 
@@ -349,16 +350,52 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	name := strings.TrimSpace(req.Name)
-	if name == "" {
-		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "name_required"})
+	if (req.Name == nil || strings.TrimSpace(*req.Name) == "") && req.ClientID == nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_changes_provided"})
 		return
 	}
 
-	updated, err := h.queries.UpdateProject(r.Context(), db.UpdateProjectParams{
+	if req.ClientID != nil {
+		var targetClientID pgtype.UUID
+		if err := targetClientID.Scan(*req.ClientID); err != nil || !targetClientID.Valid {
+			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_client_id"})
+			return
+		}
+
+		// Verify client belongs to company
+		_, err := h.queries.GetClientByID(r.Context(), db.GetClientByIDParams{
+			CompanyID: companyID,
+			ID:        targetClientID,
+		})
+		if err != nil {
+			respondJSON(w, http.StatusNotFound, map[string]string{"error": "client_not_found"})
+			return
+		}
+
+		if _, err := h.queries.MoveProjectToClient(r.Context(), db.MoveProjectToClientParams{
+			CompanyID: companyID,
+			ID:        projectID,
+			ClientID:  targetClientID,
+		}); err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to move project"})
+			return
+		}
+	}
+
+	if req.Name != nil && strings.TrimSpace(*req.Name) != "" {
+		if _, err := h.queries.UpdateProject(r.Context(), db.UpdateProjectParams{
+			CompanyID: companyID,
+			ID:        projectID,
+			Name:      pgtype.Text{String: strings.TrimSpace(*req.Name), Valid: true},
+		}); err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to rename project"})
+			return
+		}
+	}
+
+	updated, err := h.queries.GetProjectByID(r.Context(), db.GetProjectByIDParams{
 		CompanyID: companyID,
 		ID:        projectID,
-		Name:      pgtype.Text{String: name, Valid: true},
 	})
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
@@ -367,6 +404,7 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	respondJSON(w, http.StatusOK, updated)
 }
+
 
 func (h *ProjectHandler) Archive(w http.ResponseWriter, r *http.Request) {
 	user, _ := middleware.GetAuthenticatedUser(r.Context())

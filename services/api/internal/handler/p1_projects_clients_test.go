@@ -317,7 +317,40 @@ func TestP1ProjectsAndClients(t *testing.T) {
 	if clientDetailsResp.Client.Notes.String != "Lead agency client notes" {
 		t.Fatalf("expected plain text notes, got %q", clientDetailsResp.Client.Notes.String)
 	}
+
+	// 13. Move project to client: forbidden for commenter, succeeds for admin
+	targetClient, _ := queries.CreateClient(ctx, db.CreateClientParams{
+		CompanyID: comp.ID,
+		Name:      "Second Client",
+		CreatedBy: adminUser.ID,
+	})
+	targetClientIDStr := pgUUIDToString(targetClient.ID)
+
+	moveBody, _ := json.Marshal(UpdateProjectRequest{
+		ClientID: &targetClientIDStr,
+	})
+	rUpdateProj := chi.NewRouter()
+	rUpdateProj.Patch("/api/v1/projects/{id}", projectH.Update)
+
+	// Commenter forbidden
+	reqForbiddenMove := httptest.NewRequest("PATCH", "/api/v1/projects/"+projIDA1Str, bytes.NewReader(moveBody))
+	reqForbiddenMove = reqForbiddenMove.WithContext(contextWithAuth(reqForbiddenMove.Context(), commenterUser, comp.ID, ""))
+	recForbiddenMove := httptest.NewRecorder()
+	rUpdateProj.ServeHTTP(recForbiddenMove, reqForbiddenMove)
+	if recForbiddenMove.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden for Commenter moving project, got %d", recForbiddenMove.Code)
+	}
+
+	// Admin succeeds
+	reqAdminMove := httptest.NewRequest("PATCH", "/api/v1/projects/"+projIDA1Str, bytes.NewReader(moveBody))
+	reqAdminMove = reqAdminMove.WithContext(contextWithAuth(reqAdminMove.Context(), adminUser, comp.ID, authz.RoleAdmin))
+	recAdminMove := httptest.NewRecorder()
+	rUpdateProj.ServeHTTP(recAdminMove, reqAdminMove)
+	if recAdminMove.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for Admin moving project, got %d: %s", recAdminMove.Code, recAdminMove.Body.String())
+	}
 }
+
 
 func contextWithAuth(parent context.Context, u db.User, companyID pgtype.UUID, role string) context.Context {
 	authUser := &middleware.AuthenticatedUser{

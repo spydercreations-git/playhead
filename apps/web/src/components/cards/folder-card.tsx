@@ -18,6 +18,8 @@ interface FolderCardProps {
   onRenameChange?: (val: string) => void;
   onRenameSubmit?: () => void;
   onRenameCancel?: () => void;
+  isDropTarget?: boolean;
+  dropLabel?: string;
 }
 
 function formatBytes(bytes?: number): string {
@@ -43,6 +45,8 @@ export function FolderCard({
   onRenameChange,
   onRenameSubmit,
   onRenameCancel,
+  isDropTarget = false,
+  dropLabel,
 }: FolderCardProps) {
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -69,8 +73,10 @@ export function FolderCard({
     >
       {/* Top Left Folder Tab */}
       <div
-        className={`absolute top-0 left-0 h-4 w-28 rounded-t-[8px] border-t border-l border-r transition-colors z-10 ${
-          isSelected
+        className={`absolute top-0 left-0 h-4 w-28 rounded-t-[8px] border-t border-l border-r transition-all z-10 ${
+          isDropTarget
+            ? "bg-[#212121] border-[#4876F3] border-t-2 border-l-2 border-r-2"
+            : isSelected
             ? "bg-[#212121] border-[#4876F3]"
             : "bg-[#212121] border-[#2E2F34] group-hover:border-[#424344]"
         }`}
@@ -80,10 +86,12 @@ export function FolderCard({
 
       {/* Main Folder Body */}
       <div
-        className={`relative rounded-[12px] rounded-tl-none border p-3 bg-[#212121] transition-all ${
-          isSelected
-            ? "border-[#4876F3] shadow-md ring-1 ring-[#4876F3]/50"
-            : "border-[#2E2F34] group-hover:border-[#424344]"
+        className={`relative rounded-[12px] rounded-tl-none border p-3 transition-all ${
+          isDropTarget
+            ? "border-2 border-[#4876F3] bg-[#4876F3]/10 shadow-lg ring-2 ring-[#4876F3]/30"
+            : isSelected
+            ? "bg-[#212121] border-[#4876F3] shadow-md ring-1 ring-[#4876F3]/50"
+            : "bg-[#212121] border-[#2E2F34] group-hover:border-[#424344]"
         }`}
       >
         {/* Preview Container: 1 large + 2 small slots (Empty slots: #2E2F35 box with grey folder icon) */}
@@ -181,10 +189,16 @@ export function FolderCard({
                 <p className="text-xs font-semibold text-white truncate leading-tight">
                   {name}
                 </p>
-                <p className="text-[11px] text-[#9A9DA0] truncate mt-0.5">
-                  {itemCount} {itemCount === 1 ? "item" : "items"}
-                  {totalBytes > 0 && ` · ${formatBytes(totalBytes)}`}
-                </p>
+                {isDropTarget ? (
+                  <p className="text-[11px] font-medium text-[#4876F3] truncate mt-0.5 animate-pulse">
+                    {dropLabel || "Move to folder"}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-[#9A9DA0] truncate mt-0.5">
+                    {itemCount} {itemCount === 1 ? "item" : "items"}
+                    {totalBytes > 0 && ` · ${formatBytes(totalBytes)}`}
+                  </p>
+                )}
               </>
             )}
           </div>

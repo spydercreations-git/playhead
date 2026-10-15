@@ -183,6 +183,13 @@ SET name = COALESCE(sqlc.narg('name'), name),
 WHERE company_id = @company_id AND id = @id AND deleted_at IS NULL
 RETURNING *;
 
+-- name: MoveProjectToClient :one
+UPDATE projects
+SET client_id = @client_id,
+    updated_at = NOW()
+WHERE company_id = @company_id AND id = @id AND deleted_at IS NULL
+RETURNING *;
+
 -- name: SetProjectStatus :one
 UPDATE projects
 SET status = @status,

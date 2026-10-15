@@ -2,9 +2,10 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
+import { toast } from "@/lib/toast";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
 import { ProjectCard } from "@/components/cards/project-card";
@@ -24,6 +25,7 @@ interface ProjectItem {
 }
 
 export default function ProjectsPage() {
+  const queryClient = useQueryClient();
   const { hasPermission } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("active");
@@ -31,6 +33,12 @@ export default function ProjectsPage() {
   const [view, setView] = useState<"grid" | "table">("grid");
   const [showNewProject, setShowNewProject] = useState(false);
   const [showNewClient, setShowNewClient] = useState(false);
+  const [dropTargetClientId, setDropTargetClientId] = useState<string | null>(null);
+  const [moveConfirm, setMoveConfirm] = useState<{
+    project: { id: string; name: string; clientId: string };
+    targetClient: { id: string; name: string };
+  } | null>(null);
+  const [isMovingProject, setIsMovingProject] = useState(false);
 
   // Fetch client options for filter dropdown
   const { data: clientsData } = useQuery({
@@ -187,20 +195,43 @@ export default function ProjectsPage() {
           {clientOptions.map((client: any) => {
             const count = projects.filter((p) => p.client_id === client.id).length;
             const isSelected = selectedClientId === client.id;
+            const isDropTarget = dropTargetClientId === client.id;
             return (
               <button
                 key={client.id}
                 type="button"
                 onClick={() => setSelectedClientId(isSelected ? "" : client.id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 flex items-center gap-1.5 ${
-                  isSelected
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDropTargetClientId(client.id);
+                }}
+                onDragLeave={() => {
+                  setDropTargetClientId(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDropTargetClientId(null);
+                  const raw = e.dataTransfer.getData("application/project");
+                  if (raw) {
+                    try {
+                      const proj = JSON.parse(raw);
+                      if (proj.clientId !== client.id) {
+                        setMoveConfirm({ project: proj, targetClient: client });
+                      }
+                    } catch {}
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
+                  isDropTarget
+                    ? "ring-2 ring-[#4876F3] bg-[#4876F3]/30 text-white font-semibold scale-105"
+                    : isSelected
                     ? "bg-[#4876F3] text-white font-semibold shadow-sm"
                     : "bg-[#212121] border border-[#2E2F34] text-[#9A9DA0] hover:text-white hover:border-[#424344]"
                 }`}
               >
                 <span>{client.name}</span>
-                <span className={`text-[10px] ${isSelected ? "text-white/80" : "text-[#7C7F87]"}`}>
-                  {count}
+                <span className={`text-[10px] ${isSelected || isDropTarget ? "text-white/80" : "text-[#7C7F87]"}`}>
+                  {isDropTarget ? "Drop to move" : count}
                 </span>
               </button>
             );
@@ -241,14 +272,29 @@ export default function ProjectsPage() {
       ) : view === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {filtered.map((project) => (
-            <ProjectCard
+            <div
               key={project.id}
-              id={project.id}
-              name={project.name}
-              clientName={project.client_name || "Client"}
-              videoCount={project.video_count || 0}
-              totalBytes={project.total_bytes || 0}
-            />
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData(
+                  "application/project",
+                  JSON.stringify({
+                    id: project.id,
+                    name: project.name,
+                    clientId: project.client_id,
+                  })
+                );
+              }}
+              className="cursor-grab active:cursor-grabbing transition-opacity active:opacity-40"
+            >
+              <ProjectCard
+                id={project.id}
+                name={project.name}
+                clientName={project.client_name || "Client"}
+                videoCount={project.video_count || 0}
+                totalBytes={project.total_bytes || 0}
+              />
+            </div>
           ))}
         </div>
       ) : (
@@ -317,6 +363,58 @@ export default function ProjectsPage() {
         </div>
       )}
 
+      {/* Move Project to Client Confirmation Modal */}
+      {moveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl bg-[#212121] border border-[#2E2F34] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#4876F3]/20 border border-[#4876F3]/30 flex items-center justify-center text-[#4876F3]">
+                <Folder className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Move project to {moveConfirm.targetClient.name}?</h3>
+                <p className="text-xs text-[#9A9DA0] mt-0.5">Moving "{moveConfirm.project.name}"</p>
+              </div>
+            </div>
+            <p className="text-xs text-[#9A9DA0] leading-relaxed">
+              This project will be moved under <span className="text-white font-medium">{moveConfirm.targetClient.name}</span>. Members with client-level access will be updated.
+            </p>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setMoveConfirm(null)}
+                className="px-4 py-2 rounded-lg bg-[#2A2B30] hover:bg-[#323338] text-xs font-semibold text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isMovingProject}
+                onClick={async () => {
+                  setIsMovingProject(true);
+                  try {
+                    await apiRequest(`/projects/${moveConfirm.project.id}`, {
+                      method: "PATCH",
+                      body: JSON.stringify({ client_id: moveConfirm.targetClient.id }),
+                    });
+                    queryClient.invalidateQueries({ queryKey: ["projects-list"] });
+                    toast.success(`Moved "${moveConfirm.project.name}" to ${moveConfirm.targetClient.name}`);
+                    setMoveConfirm(null);
+                  } catch (err: any) {
+                    toast.error(err.message || "Failed to move project");
+                  } finally {
+                    setIsMovingProject(false);
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-[#3B67E0] hover:bg-[#325AC8] text-xs font-semibold text-white transition-colors shadow"
+              >
+                {isMovingProject ? "Moving..." : "Move Project"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Dialogs */}
       <NewProjectDialog
         isOpen={showNewProject}
@@ -334,3 +432,4 @@ export default function ProjectsPage() {
     </div>
   );
 }
+

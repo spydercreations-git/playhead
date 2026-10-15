@@ -37,7 +37,7 @@ func New(cfg Config) *Mailer {
 		cfg.FromEmail = "no-reply@playhead.app"
 	}
 	if cfg.FromName == "" {
-		cfg.FromName = "Playhead"
+		cfg.FromName = "Playhead by Idyll Productions"
 	}
 	if cfg.SMTPHost == "" {
 		cfg.SMTPHost = "localhost"

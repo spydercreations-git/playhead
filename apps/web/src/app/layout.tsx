@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Playhead - Upload, Review and Track Every Video",
+  title: "Playhead by Idyll Productions",
   description:
     "Unified cloud storage, Frame.io-style review and Monday-style project tracking for video agencies.",
   icons: {

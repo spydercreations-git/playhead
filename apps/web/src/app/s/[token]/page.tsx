@@ -249,42 +249,72 @@ export default function PublicSharePage() {
 
   if (passwordRequired) {
     return (
-      <div className="min-h-screen bg-[#0D0D0E] flex items-center justify-center p-4">
-        <form
-          onSubmit={handleUnlock}
-          className="max-w-sm w-full bg-[#18181A] border border-[#27272A] rounded-2xl p-6 shadow-2xl space-y-4"
-        >
-          <div className="w-10 h-10 rounded-full bg-[#3366FF]/10 text-[#3366FF] flex items-center justify-center mx-auto">
-            <Lock className="w-5 h-5" />
+      <div className="min-h-screen bg-[#181818] flex flex-col justify-between p-6 sm:p-12 font-sans text-white">
+        <div>
+          <div className="inline-block">
+            <span className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              <svg width="24" height="24" viewBox="0 0 64 64" fill="currentColor">
+                <g transform="translate(0 6.5)">
+                  <path
+                    fillRule="evenodd"
+                    d="M12.000 12.000Q12.000 5.000 19.000 5.000L45.000 5.000Q52.000 5.000 52.000 12.000L52.000 29.000Q52.000 31.000 50.400 32.200L34.400 44.200Q32.000 46.000 29.600 44.200L13.600 32.200Q12.000 31.000 12.000 29.000ZM25.500 16.662Q25.500 12.000 29.466 14.450L38.919 20.288Q42.500 22.500 38.919 24.712L29.466 30.550Q25.500 33.000 25.500 28.338Z"
+                  />
+                </g>
+              </svg>
+              playhead
+            </span>
           </div>
-          <div className="text-center">
-            <h2 className="text-base font-semibold text-white">Protected Link</h2>
-            <p className="text-xs text-[#9A9DA0] mt-1">
-              This link requires a password to view its contents.
-            </p>
-          </div>
+          <p className="mt-1 text-[13.5px] text-[#7C7F87]">by Idyll Productions</p>
+        </div>
 
-          <div>
-            <input
-              type="password"
-              value={passwordInput}
-              onChange={(e) => setPasswordInput(e.target.value)}
-              placeholder="Enter password"
-              required
-              className="w-full bg-[#121214] border border-[#27272A] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-[#52525B] focus:outline-none focus:border-[#3366FF]"
-            />
-            {passwordError && (
-              <p className="text-xs text-rose-400 mt-1.5">{passwordError}</p>
-            )}
-          </div>
+        <div className="my-auto w-full max-w-[400px] mx-auto py-8">
+          <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-2">
+            Protected link
+          </h1>
+          <p className="text-sm text-[#8E9096] mb-8">
+            This link requires a password to view its contents.
+          </p>
 
-          <button
-            type="submit"
-            className="w-full py-2.5 bg-[#3366FF] hover:bg-[#2554DB] text-white text-xs font-medium rounded-xl transition-all"
-          >
-            Unlock & View
-          </button>
-        </form>
+          <form onSubmit={handleUnlock} className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-[#9A9DA0] mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7C7F87]">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <input
+                  type="password"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  placeholder="Enter password"
+                  required
+                  autoFocus
+                  className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#3A3B40] pl-10 pr-4 text-sm text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
+                />
+              </div>
+              {passwordError && (
+                <p className="text-xs text-red-400 mt-2">{passwordError}</p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full h-[48px] rounded-[10px] bg-[#3B67E0] hover:bg-[#4876F3] text-white text-sm font-semibold transition flex items-center justify-center shadow-md"
+            >
+              Unlock & view
+            </button>
+          </form>
+        </div>
+
+        <div className="pt-6">
+          <div className="flex items-center gap-5 text-xs text-[#7C7F87]">
+            <span>Privacy</span>
+            <span>Terms</span>
+            <span>Help</span>
+          </div>
+        </div>
       </div>
     );
   }

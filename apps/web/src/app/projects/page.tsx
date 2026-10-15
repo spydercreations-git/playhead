@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
+import { ProjectCard } from "@/components/cards/project-card";
 import { Folder, ChevronDown } from "lucide-react";
 
 interface ProjectItem {
@@ -196,45 +197,16 @@ export default function ProjectsPage() {
           )}
         </div>
       ) : view === "grid" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {filtered.map((project) => (
-            <Link
+            <ProjectCard
               key={project.id}
-              href={`/projects/${project.id}`}
-              className="group flex flex-col justify-between rounded-xl border border-[#424344] bg-[#212121] p-5 hover:border-[#686B6E] hover:shadow-xl transition-all"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <span className="text-[11px] font-semibold text-[#4876F3] truncate uppercase tracking-wider">
-                    {project.client_name || "Client"}
-                  </span>
-                  <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${
-                      project.status === "archived"
-                        ? "bg-[#424344] text-[#9A9DA0]"
-                        : "bg-green-500/20 text-green-400"
-                    }`}
-                  >
-                    {project.status}
-                  </span>
-                </div>
-
-                <h3 className="text-base font-bold text-white group-hover:text-[#4876F3] transition-colors truncate">
-                  {project.name}
-                </h3>
-
-                <p className="mt-2 text-xs text-[#9A9DA0]">
-                  {project.video_count || 0} videos · {project.file_count || 0} files · {project.folder_count || 0} folders · {formatBytes(project.total_bytes || 0)}
-                </p>
-              </div>
-
-              <div className="mt-5 pt-3.5 border-t border-[#424344]/50 flex items-center justify-between text-xs text-[#9A9DA0]">
-                <span>Updated {formatDate(project.updated_at)}</span>
-                <span className="font-semibold text-white group-hover:translate-x-0.5 transition-transform">
-                  Open →
-                </span>
-              </div>
-            </Link>
+              id={project.id}
+              name={project.name}
+              clientName={project.client_name || "Client"}
+              videoCount={project.video_count || 0}
+              totalBytes={project.total_bytes || 0}
+            />
           ))}
         </div>
       ) : (

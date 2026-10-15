@@ -20,6 +20,9 @@ import { FileViewer, ViewerItem } from "@/components/files/file-viewer";
 import { ShareModal } from "@/components/sharing/share-modal";
 import { NewDocumentDialog } from "@/components/documents/new-document-dialog";
 import { NewSpreadsheetDialog } from "@/components/spreadsheets/new-spreadsheet-dialog";
+import { FolderCard } from "@/components/cards/folder-card";
+import { SectionHeader } from "@/components/layout/section-header";
+import { SelectionBar } from "@/components/layout/selection-bar";
 import {
   Download,
   FolderDown,
@@ -101,10 +104,14 @@ export default function ProjectWorkspacePage() {
   const [showNewDocModal, setShowNewDocModal] = useState(false);
   const [showNewSheetModal, setShowNewSheetModal] = useState(false);
 
-  // Inline folder creation state (per Part C spec: "New folder: appears in place with the name in edit mode; Enter saves, Escape cancels.")
+  // Inline folder creation state (per spec: "New folder: appears instantly as 'untitled folder' with the name selected inside a #4876F3 outlined input")
   const [isCreatingInlineFolder, setIsCreatingInlineFolder] = useState(false);
-  const [inlineFolderName, setInlineFolderName] = useState("New Folder");
+  const [inlineFolderName, setInlineFolderName] = useState("untitled folder");
   const inlineFolderInputRef = useRef<HTMLInputElement>(null);
+
+  // Group section collapse states
+  const [isFoldersCollapsed, setIsFoldersCollapsed] = useState(false);
+  const [isFilesCollapsed, setIsFilesCollapsed] = useState(false);
 
   // Inline rename state
   const [renamingItemId, setRenamingItemId] = useState<string | null>(null);
@@ -598,7 +605,7 @@ export default function ProjectWorkspacePage() {
 
   // Inline folder creation trigger
   const triggerInlineNewFolder = () => {
-    setInlineFolderName("New Folder");
+    setInlineFolderName("untitled folder");
     setIsCreatingInlineFolder(true);
     setTimeout(() => {
       inlineFolderInputRef.current?.focus();
@@ -948,7 +955,34 @@ export default function ProjectWorkspacePage() {
 
   // Selection calculations
   const selectedItems = items.filter((i: any) => selectedItemIds.includes(i.id));
-  const selectedBytes = selectedItems.reduce((acc: number, cur: any) => acc + (cur.total_bytes || cur.latest_size_bytes || 0), 0);
+  const selectedBytes = selectedItems.reduce(
+    (acc: number, cur: any) => acc + (cur.total_bytes || cur.latest_size_bytes || cur.size_bytes || 0),
+    0
+  );
+  const selectedFolderCount = foldersList.filter((f: any) => selectedItemIds.includes(f.id)).length;
+  const selectedFileCount = filesList.filter((f: any) => selectedItemIds.includes(f.id)).length;
+  const totalFolderBytes = foldersList.reduce((acc: number, f: any) => acc + (f.total_bytes || 0), 0);
+  const totalFileBytes = filesList.reduce((acc: number, f: any) => acc + (f.size_bytes || f.latest_size_bytes || 0), 0);
+
+  const toggleSelectAllFolders = () => {
+    const folderIds = foldersList.map((f: any) => f.id);
+    const allSelected = folderIds.length > 0 && folderIds.every((id: string) => selectedItemIds.includes(id));
+    if (allSelected) {
+      setSelectedItemIds(selectedItemIds.filter((id) => !folderIds.includes(id)));
+    } else {
+      setSelectedItemIds(Array.from(new Set([...selectedItemIds, ...folderIds])));
+    }
+  };
+
+  const toggleSelectAllFiles = () => {
+    const fileIds = filesList.map((f: any) => f.id);
+    const allSelected = fileIds.length > 0 && fileIds.every((id: string) => selectedItemIds.includes(id));
+    if (allSelected) {
+      setSelectedItemIds(selectedItemIds.filter((id) => !fileIds.includes(id)));
+    } else {
+      setSelectedItemIds(Array.from(new Set([...selectedItemIds, ...fileIds])));
+    }
+  };
 
   // Active uploads in this folder
   const activeUploadsHere = uploads.filter(
@@ -1559,157 +1593,286 @@ export default function ProjectWorkspacePage() {
           onContextMenu={selectedItemIds.length > 1 ? handleSelectionContextMenu : undefined}
           className="flex-1 overflow-y-auto p-8 space-y-8"
         >
-          {/* Folders Section with 30ms Stagger per Part C */}
+          {/* Folders Section with 30ms Stagger */}
           {(foldersList.length > 0 || isCreatingInlineFolder) && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-xs font-semibold text-[#9A9DA0]">
-                <span>{foldersList.length + (isCreatingInlineFolder ? 1 : 0)} folders</span>
-              </div>
+              <SectionHeader
+                count={foldersList.length + (isCreatingInlineFolder ? 1 : 0)}
+                totalBytes={totalFolderBytes}
+                unitSingular="folder"
+                unitPlural="folders"
+                selectedCount={selectedFolderCount}
+                isCollapsed={isFoldersCollapsed}
+                onToggleCollapse={() => setIsFoldersCollapsed(!isFoldersCollapsed)}
+                onToggleSelectAll={toggleSelectAllFolders}
+              />
 
-              <motion.div
-                initial="hidden"
-                animate="visible"
-                variants={
-                  shouldReduceMotion
-                    ? {}
-                    : {
-                        hidden: { opacity: 0 },
-                        visible: {
-                          opacity: 1,
-                          transition: { staggerChildren: 0.03 },
-                        },
-                      }
-                }
-                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-              >
-                <AnimatePresence mode="popLayout">
-                  {/* Inline New Folder Input Card per Part C */}
-                  {isCreatingInlineFolder && (
-                    <motion.div
-                      layout
-                      initial={{ opacity: 0, scale: 0.95, y: 6 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                      className="rounded-2xl border border-[#4876F3] bg-[#4876F3]/10 p-4 shadow-lg flex flex-col justify-between"
-                    >
-                      <div className="h-28 w-full rounded-xl bg-[#121214] border border-[#27272A] flex items-center justify-center mb-3">
-                        <Folder className="w-10 h-10 text-[#4876F3]" />
-                      </div>
-
-                      <div className="space-y-2">
-                        <input
-                          ref={inlineFolderInputRef}
-                          type="text"
-                          value={inlineFolderName}
-                          onChange={(e) => setInlineFolderName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              if (inlineFolderName.trim()) {
-                                createFolderMutation.mutate(inlineFolderName.trim());
-                              }
-                            } else if (e.key === "Escape") {
-                              setIsCreatingInlineFolder(false);
-                            }
-                          }}
-                          onBlur={() => {
-                            if (inlineFolderName.trim() && inlineFolderName !== "New Folder") {
+              {!isFoldersCollapsed && (
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  variants={
+                    shouldReduceMotion
+                      ? {}
+                      : {
+                          hidden: { opacity: 0 },
+                          visible: {
+                            opacity: 1,
+                            transition: { staggerChildren: 0.03 },
+                          },
+                        }
+                  }
+                  className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                >
+                  <AnimatePresence mode="popLayout">
+                    {/* Inline New Folder Input Card per Phase 3 spec */}
+                    {isCreatingInlineFolder && (
+                      <motion.div
+                        layout
+                        initial={{ opacity: 0, scale: 0.95, y: 6 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      >
+                        <FolderCard
+                          id="inline-new-folder"
+                          name={inlineFolderName}
+                          itemCount={0}
+                          totalBytes={0}
+                          isSelected={false}
+                          onToggleSelect={() => {}}
+                          onOpen={() => {}}
+                          onContextMenu={() => {}}
+                          isRenaming={true}
+                          renameValue={inlineFolderName}
+                          onRenameChange={(val) => setInlineFolderName(val)}
+                          onRenameSubmit={() => {
+                            if (inlineFolderName.trim()) {
                               createFolderMutation.mutate(inlineFolderName.trim());
                             } else {
                               setIsCreatingInlineFolder(false);
                             }
                           }}
-                          className="w-full h-8 rounded-lg bg-[#2A2B30] border border-[#4876F3] px-2.5 text-xs text-white focus:outline-none"
+                          onRenameCancel={() => setIsCreatingInlineFolder(false)}
                         />
-                        <p className="text-[10px] text-[#9A9DA0]">
-                          Press Enter to save · Esc to cancel
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
+                      </motion.div>
+                    )}
 
-                  {/* Folder Cards */}
-                  {foldersList.map((folder: any) => {
-                    const isSelected = selectedItemIds.includes(folder.id);
-                    const isRenaming = renamingItemId === folder.id;
+                    {/* Folder Cards */}
+                    {foldersList.map((folder: any) => {
+                      const isSelected = selectedItemIds.includes(folder.id);
+                      const isRenaming = renamingItemId === folder.id;
 
-                    return (
+                      return (
+                        <motion.div
+                          layout
+                          key={folder.id}
+                          variants={
+                            shouldReduceMotion
+                              ? {}
+                              : {
+                                  hidden: { opacity: 0, scale: 0.98, y: 6 },
+                                  visible: {
+                                    opacity: 1,
+                                    scale: 1,
+                                    y: 0,
+                                    transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] },
+                                  },
+                                }
+                          }
+                          exit={{
+                            opacity: 0,
+                            scale: 0.95,
+                            y: -6,
+                            transition: { duration: 0.12, ease: [0.4, 0, 1, 1] },
+                          }}
+                        >
+                          <FolderCard
+                            id={folder.id}
+                            name={folder.name}
+                            itemCount={(folder.file_count || 0) + (folder.folder_count || 0)}
+                            totalBytes={folder.total_bytes || 0}
+                            thumbnails={folder.thumbnails || []}
+                            isSelected={isSelected}
+                            onToggleSelect={() => {
+                              if (isSelected) {
+                                setSelectedItemIds(selectedItemIds.filter((id) => id !== folder.id));
+                              } else {
+                                setSelectedItemIds([...selectedItemIds, folder.id]);
+                              }
+                            }}
+                            onOpen={() => router.push(`/projects/${projectId}?folder=${folder.id}`)}
+                            onContextMenu={(e) => handleItemContextMenu(e, folder)}
+                            isRenaming={isRenaming}
+                            renameValue={inlineRenameName}
+                            onRenameChange={(val) => setInlineRenameName(val)}
+                            onRenameSubmit={() => {
+                              if (inlineRenameName.trim()) {
+                                renameMutation.mutate({ id: folder.id, name: inlineRenameName.trim() });
+                              } else {
+                                setRenamingItemId(null);
+                              }
+                            }}
+                            onRenameCancel={() => setRenamingItemId(null)}
+                          />
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </div>
+          )}
+
+          {/* Files & Active Uploads Section */}
+          {(filesList.length > 0 || activeUploadsHere.length > 0) && (
+            <div className="space-y-3">
+              <SectionHeader
+                count={filesList.length}
+                totalBytes={totalFileBytes}
+                unitSingular="file"
+                unitPlural="files"
+                selectedCount={selectedFileCount}
+                isCollapsed={isFilesCollapsed}
+                onToggleCollapse={() => setIsFilesCollapsed(!isFilesCollapsed)}
+                onToggleSelectAll={toggleSelectAllFiles}
+              />
+
+              {!isFilesCollapsed && (
+                <motion.div
+                  layout
+                  className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                >
+                  <AnimatePresence mode="popLayout">
+                    {/* Active Uploads in Grid with Progress Bar per Part C */}
+                    {activeUploadsHere.map((upload) => (
                       <motion.div
                         layout
-                        key={folder.id}
-                        variants={
-                          shouldReduceMotion
-                            ? {}
-                            : {
-                                hidden: { opacity: 0, scale: 0.98, y: 6 },
-                                visible: {
-                                  opacity: 1,
-                                  scale: 1,
-                                  y: 0,
-                                  transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] },
-                                },
-                              }
-                        }
-                        exit={{
-                          opacity: 0,
-                          scale: 0.95,
-                          y: -6,
-                          transition: { duration: 0.12, ease: [0.4, 0, 1, 1] },
-                        }}
-                        onDoubleClick={() => router.push(`/projects/${projectId}?folder=${folder.id}`)}
-                        onClick={() => {
-                          if (isSelected) {
-                            setSelectedItemIds(selectedItemIds.filter((id) => id !== folder.id));
-                          } else {
-                            setSelectedItemIds([...selectedItemIds, folder.id]);
-                          }
-                        }}
-                        onContextMenu={(e) => handleItemContextMenu(e, folder)}
-                        onTouchStart={(e) => {
-                          const touch = e.touches[0];
-                          touchTimerRef.current = setTimeout(() => {
-                            handleItemContextMenu({ clientX: touch.clientX, clientY: touch.clientY }, folder);
-                          }, 500);
-                        }}
-                        onTouchEnd={() => {
-                          if (touchTimerRef.current) {
-                            clearTimeout(touchTimerRef.current);
-                            touchTimerRef.current = null;
-                          }
-                        }}
-                        className={`group relative rounded-2xl border transition-all cursor-pointer p-4 ${
-                          isSelected
-                            ? "bg-[#4876F3]/15 border-[#4876F3] shadow-md"
-                            : "bg-[#18181A] border-[#27272A] hover:border-[#3F3F46]"
-                        }`}
+                        key={upload.id}
+                        initial={{ opacity: 0, scale: 0.96 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className="rounded-2xl border border-[#4876F3]/50 bg-[#212121] p-4 flex flex-col justify-between shadow-lg relative overflow-hidden"
                       >
-                        {/* Checkbox */}
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {}}
-                          className="absolute top-4 left-4 rounded border-[#3F3F46] text-[#4876F3] focus:ring-0 z-10"
-                        />
-
-                        {/* Folder Silhouette */}
-                        <div className="h-28 w-full rounded-xl bg-[#121214] border border-[#27272A] flex overflow-hidden mb-3">
-                          <div className="w-2/3 h-full border-r border-[#27272A] flex items-center justify-center bg-[#151518]">
-                            <Folder className="w-10 h-10 text-[#4876F3] opacity-80" />
-                          </div>
-                          <div className="w-1/3 h-full flex flex-col">
-                            <div className="h-1/2 border-b border-[#27272A] flex items-center justify-center bg-[#18181C]">
-                              <Folder className="w-5 h-5 text-[#52525B]" />
-                            </div>
-                            <div className="h-1/2 flex items-center justify-center bg-[#18181C]">
-                              <Folder className="w-5 h-5 text-[#52525B]" />
-                            </div>
-                          </div>
+                        <div className="h-32 w-full rounded-xl bg-[#18181A] flex flex-col items-center justify-center gap-2 mb-3">
+                          <Upload className="w-8 h-8 text-[#4876F3] animate-bounce" />
+                          <span className="text-[11px] font-semibold text-[#4876F3]">
+                            {upload.progressPercent}%
+                          </span>
                         </div>
 
-                        {/* Folder Details & Inline Rename */}
-                        <div className="flex items-center justify-between">
-                          <div className="truncate pr-2 flex-1">
+                        <div className="space-y-1.5">
+                          <h4 className="text-xs font-medium text-white truncate">
+                            {upload.filename}
+                          </h4>
+                          <div className="w-full bg-[#2E2F34] h-1.5 rounded-full overflow-hidden">
+                            <div
+                              className="bg-[#4876F3] h-full transition-all duration-200"
+                              style={{ width: `${upload.progressPercent}%` }}
+                            />
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+
+                    {/* Completed Files */}
+                    {filesList.map((file: any) => {
+                      const isSelected = selectedItemIds.includes(file.id);
+                      const isRenaming = renamingItemId === file.id;
+                      const isVideo = file.name.endsWith(".mp4") || file.name.endsWith(".mov");
+                      const isAudio = file.name.endsWith(".mp3") || file.name.endsWith(".wav");
+                      const isSheet = file.name.endsWith(".xlsx") || file.name.endsWith(".csv");
+
+                      return (
+                        <motion.div
+                          layout
+                          key={file.id}
+                          initial={{ opacity: 0, scale: 0.98, y: 6 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{
+                            opacity: 0,
+                            scale: 0.95,
+                            y: -6,
+                            transition: { duration: 0.12, ease: [0.4, 0, 1, 1] },
+                          }}
+                          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                          onDoubleClick={() => setActiveViewerItem(file)}
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedItemIds(selectedItemIds.filter((id) => id !== file.id));
+                            } else {
+                              setSelectedItemIds([...selectedItemIds, file.id]);
+                            }
+                          }}
+                          onContextMenu={(e) => handleItemContextMenu(e, file)}
+                          onTouchStart={(e) => {
+                            const touch = e.touches[0];
+                            touchTimerRef.current = setTimeout(() => {
+                              handleItemContextMenu({ clientX: touch.clientX, clientY: touch.clientY }, file);
+                            }, 500);
+                          }}
+                          onTouchEnd={() => {
+                            if (touchTimerRef.current) {
+                              clearTimeout(touchTimerRef.current);
+                              touchTimerRef.current = null;
+                            }
+                          }}
+                          className={`group relative rounded-2xl border transition-all cursor-pointer p-4 flex flex-col justify-between ${
+                            isSelected
+                              ? "bg-[#4876F3]/15 border-[#4876F3] shadow-md"
+                              : "bg-[#18181A] border-[#27272A] hover:border-[#3F3F46]"
+                          }`}
+                        >
+                          {/* Checkbox */}
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            className="absolute top-4 left-4 rounded border-[#3F3F46] text-[#4876F3] focus:ring-0 z-10"
+                          />
+
+                          {/* Preview Area */}
+                          <div className="relative h-32 w-full rounded-xl bg-[#121214] border border-[#27272A] flex items-center justify-center overflow-hidden mb-3">
+                            {isVideo ? (
+                              <>
+                                <div className="w-full h-full bg-gradient-to-tr from-[#16161D] to-[#201D2B] flex items-center justify-center">
+                                  <Film className="w-10 h-10 text-violet-400" />
+                                </div>
+                                <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-[#4876F3] text-[10px] font-bold text-white uppercase">
+                                  v{file.latest_version_number || 1}
+                                </span>
+                                <span className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/60 text-[10px] font-mono text-white">
+                                  01:15
+                                </span>
+                                <div className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/60 text-[10px] text-white flex items-center gap-1.5 font-medium">
+                                  <MessageSquare className="w-3 h-3 text-zinc-300" />
+                                  <span>5</span>
+                                </div>
+                              </>
+                            ) : isSheet ? (
+                              <div className="w-full h-full bg-[#131E18] flex flex-col justify-between p-3">
+                                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">SHEET</span>
+                                <div className="space-y-1">
+                                  <div className="h-1.5 w-full bg-emerald-500/20 rounded" />
+                                  <div className="h-1.5 w-2/3 bg-emerald-500/10 rounded" />
+                                </div>
+                                <span className="text-[9px] text-emerald-400 font-mono">Tracker | Summary</span>
+                              </div>
+                            ) : (
+                              <div className="w-full h-full bg-[#141722] flex flex-col justify-between p-3">
+                                <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">DOC</span>
+                                <div className="space-y-1.5">
+                                  <div className="h-1.5 w-full bg-blue-500/20 rounded" />
+                                  <div className="h-1.5 w-4/5 bg-blue-500/10 rounded" />
+                                </div>
+                                <span className="text-[9px] text-[#71717A]">PDF Preview</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* File Details */}
+                          <div>
                             {isRenaming ? (
                               <input
                                 ref={renameInputRef}
@@ -1721,7 +1884,7 @@ export default function ProjectWorkspacePage() {
                                   if (e.key === "Enter") {
                                     e.preventDefault();
                                     if (inlineRenameName.trim()) {
-                                      renameMutation.mutate({ id: folder.id, name: inlineRenameName.trim() });
+                                      renameMutation.mutate({ id: file.id, name: inlineRenameName.trim() });
                                     }
                                   } else if (e.key === "Escape") {
                                     setRenamingItemId(null);
@@ -1729,7 +1892,7 @@ export default function ProjectWorkspacePage() {
                                 }}
                                 onBlur={() => {
                                   if (inlineRenameName.trim()) {
-                                    renameMutation.mutate({ id: folder.id, name: inlineRenameName.trim() });
+                                    renameMutation.mutate({ id: file.id, name: inlineRenameName.trim() });
                                   } else {
                                     setRenamingItemId(null);
                                   }
@@ -1738,234 +1901,38 @@ export default function ProjectWorkspacePage() {
                               />
                             ) : (
                               <>
-                                <h3 className="text-xs font-semibold text-white truncate" title={folder.name}>
-                                  {folder.name}
+                                <h3 className="text-xs font-semibold text-white truncate" title={file.name}>
+                                  {file.name}
                                 </h3>
                                 <p className="text-[10px] text-[#9A9DA0] mt-0.5">
-                                  {folder.file_count || 0} items · {formatBytes(folder.total_bytes || 0)}
+                                  {file.created_by_name || "Editor"} · Oct 14
                                 </p>
                               </>
                             )}
-                          </div>
 
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleItemContextMenu(e, folder);
-                            }}
-                            className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-[#27272A] text-[#9A9DA0] hover:text-white transition-opacity shrink-0"
-                          >
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </motion.div>
-            </div>
-          )}
-
-          {/* Files & Active Uploads Section */}
-          {(filesList.length > 0 || activeUploadsHere.length > 0) && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-xs font-semibold text-[#9A9DA0]">
-                <span>{filesList.length} files</span>
-              </div>
-
-              <motion.div
-                layout
-                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-              >
-                <AnimatePresence mode="popLayout">
-                  {/* Active Uploads in Grid with Progress Bar per Part C */}
-                  {activeUploadsHere.map((upload) => (
-                    <motion.div
-                      layout
-                      key={upload.id}
-                      initial={{ opacity: 0, scale: 0.96 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                      className="rounded-2xl border border-[#4876F3]/50 bg-[#212121] p-4 flex flex-col justify-between shadow-lg relative overflow-hidden"
-                    >
-                      <div className="h-32 w-full rounded-xl bg-[#18181A] flex flex-col items-center justify-center gap-2 mb-3">
-                        <Upload className="w-8 h-8 text-[#4876F3] animate-bounce" />
-                        <span className="text-[11px] font-semibold text-[#4876F3]">
-                          {upload.progressPercent}%
-                        </span>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <h4 className="text-xs font-medium text-white truncate">
-                          {upload.filename}
-                        </h4>
-                        <div className="w-full bg-[#2E2F34] h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className="bg-[#4876F3] h-full transition-all duration-200"
-                            style={{ width: `${upload.progressPercent}%` }}
-                          />
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-
-                  {/* Completed Files */}
-                  {filesList.map((file: any) => {
-                    const isSelected = selectedItemIds.includes(file.id);
-                    const isRenaming = renamingItemId === file.id;
-                    const isVideo = file.name.endsWith(".mp4") || file.name.endsWith(".mov");
-                    const isAudio = file.name.endsWith(".mp3") || file.name.endsWith(".wav");
-                    const isSheet = file.name.endsWith(".xlsx") || file.name.endsWith(".csv");
-
-                    return (
-                      <motion.div
-                        layout
-                        key={file.id}
-                        initial={{ opacity: 0, scale: 0.98, y: 6 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{
-                          opacity: 0,
-                          scale: 0.95,
-                          y: -6,
-                          transition: { duration: 0.12, ease: [0.4, 0, 1, 1] },
-                        }}
-                        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                        onDoubleClick={() => setActiveViewerItem(file)}
-                        onClick={() => {
-                          if (isSelected) {
-                            setSelectedItemIds(selectedItemIds.filter((id) => id !== file.id));
-                          } else {
-                            setSelectedItemIds([...selectedItemIds, file.id]);
-                          }
-                        }}
-                        onContextMenu={(e) => handleItemContextMenu(e, file)}
-                        onTouchStart={(e) => {
-                          const touch = e.touches[0];
-                          touchTimerRef.current = setTimeout(() => {
-                            handleItemContextMenu({ clientX: touch.clientX, clientY: touch.clientY }, file);
-                          }, 500);
-                        }}
-                        onTouchEnd={() => {
-                          if (touchTimerRef.current) {
-                            clearTimeout(touchTimerRef.current);
-                            touchTimerRef.current = null;
-                          }
-                        }}
-                        className={`group relative rounded-2xl border transition-all cursor-pointer p-4 flex flex-col justify-between ${
-                          isSelected
-                            ? "bg-[#4876F3]/15 border-[#4876F3] shadow-md"
-                            : "bg-[#18181A] border-[#27272A] hover:border-[#3F3F46]"
-                        }`}
-                      >
-                        {/* Checkbox */}
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {}}
-                          className="absolute top-4 left-4 rounded border-[#3F3F46] text-[#4876F3] focus:ring-0 z-10"
-                        />
-
-                        {/* Preview Area */}
-                        <div className="relative h-32 w-full rounded-xl bg-[#121214] border border-[#27272A] flex items-center justify-center overflow-hidden mb-3">
-                          {isVideo ? (
-                            <>
-                              <div className="w-full h-full bg-gradient-to-tr from-[#16161D] to-[#201D2B] flex items-center justify-center">
-                                <Film className="w-10 h-10 text-violet-400" />
-                              </div>
-                              <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-[#4876F3] text-[10px] font-bold text-white uppercase">
-                                v{file.latest_version_number || 1}
+                            <div className="mt-2.5 flex items-center justify-between">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                <span>Approved</span>
                               </span>
-                              <span className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/60 text-[10px] font-mono text-white">
-                                01:15
-                              </span>
-                              <div className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/60 text-[10px] text-white flex items-center gap-1.5 font-medium">
-                                <MessageSquare className="w-3 h-3 text-zinc-300" />
-                                <span>5</span>
-                              </div>
-                            </>
-                          ) : isSheet ? (
-                            <div className="w-full h-full bg-[#131E18] flex flex-col justify-between p-3">
-                              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">SHEET</span>
-                              <div className="space-y-1">
-                                <div className="h-1.5 w-full bg-emerald-500/20 rounded" />
-                                <div className="h-1.5 w-2/3 bg-emerald-500/10 rounded" />
-                              </div>
-                              <span className="text-[9px] text-emerald-400 font-mono">Tracker | Summary</span>
+
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleItemContextMenu(e, file);
+                                }}
+                                className="p-1 rounded-lg hover:bg-[#27272A] text-[#9A9DA0] hover:text-white"
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                              </button>
                             </div>
-                          ) : (
-                            <div className="w-full h-full bg-[#141722] flex flex-col justify-between p-3">
-                              <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">DOC</span>
-                              <div className="space-y-1.5">
-                                <div className="h-1.5 w-full bg-blue-500/20 rounded" />
-                                <div className="h-1.5 w-4/5 bg-blue-500/10 rounded" />
-                              </div>
-                              <span className="text-[9px] text-[#71717A]">PDF Preview</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* File Details */}
-                        <div>
-                          {isRenaming ? (
-                            <input
-                              ref={renameInputRef}
-                              type="text"
-                              value={inlineRenameName}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) => setInlineRenameName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  if (inlineRenameName.trim()) {
-                                    renameMutation.mutate({ id: file.id, name: inlineRenameName.trim() });
-                                  }
-                                } else if (e.key === "Escape") {
-                                  setRenamingItemId(null);
-                                }
-                              }}
-                              onBlur={() => {
-                                if (inlineRenameName.trim()) {
-                                  renameMutation.mutate({ id: file.id, name: inlineRenameName.trim() });
-                                } else {
-                                  setRenamingItemId(null);
-                                }
-                              }}
-                              className="w-full h-7 rounded bg-[#2A2B30] border border-[#4876F3] px-2 text-xs text-white focus:outline-none"
-                            />
-                          ) : (
-                            <>
-                              <h3 className="text-xs font-semibold text-white truncate" title={file.name}>
-                                {file.name}
-                              </h3>
-                              <p className="text-[10px] text-[#9A9DA0] mt-0.5">
-                                {file.created_by_name || "Editor"} · Oct 14
-                              </p>
-                            </>
-                          )}
-
-                          <div className="mt-2.5 flex items-center justify-between">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                              <span>Approved</span>
-                            </span>
-
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleItemContextMenu(e, file);
-                              }}
-                              className="p-1 rounded-lg hover:bg-[#27272A] text-[#9A9DA0] hover:text-white"
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                            </button>
                           </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </motion.div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </motion.div>
+              )}
             </div>
           )}
 
@@ -1981,86 +1948,38 @@ export default function ProjectWorkspacePage() {
         </div>
 
         {/* =========================================================================
-            BOTTOM FLOATING SELECTION BAR
+            BOTTOM FLOATING SELECTION BAR (Phase 3 Spec)
             ========================================================================= */}
-        {selectedItemIds.length > 0 && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#18181A] border border-[#27272A] px-5 py-2.5 rounded-full shadow-2xl flex items-center gap-5 text-xs font-medium text-white z-40 animate-in fade-in slide-in-from-bottom-3">
-            <span className="font-semibold text-zinc-300">
-              {selectedItemIds.length} selected · {formatBytes(selectedBytes)}
-            </span>
-
-            <div className="h-4 w-px bg-[#27272A]" />
-
-            {/* Share */}
-            <button
-              onClick={() => {
-                if (selectedItemIds.length === 1) {
-                  const it = items.find((x: any) => x.id === selectedItemIds[0]);
-                  setShareTargetItem({ id: it.id, name: it.name, type: "item" });
-                } else {
-                  setShareTargetItem({ id: projectId, name: project.name, type: "project" });
-                }
-                setShowShareModal(true);
-              }}
-              className="flex items-center gap-1.5 text-[#9A9DA0] hover:text-white transition-colors"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>Share</span>
-            </button>
-
-            {/* Copy Link */}
-            <button
-              onClick={handleCopyProjectLink}
-              className="flex items-center gap-1.5 text-[#9A9DA0] hover:text-white transition-colors"
-            >
-              <Copy className="w-3.5 h-3.5" />
-              <span>Copy link</span>
-            </button>
-
-            {/* Download */}
-            {canDownload && (
-              <button
-                onClick={() => handleStartDownload("zip")}
-                className="flex items-center gap-1.5 text-[#9A9DA0] hover:text-white transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download</span>
-              </button>
-            )}
-
-            {/* Move to */}
-            <button
-              onClick={() => {
-                const it = items.find((x: any) => x.id === selectedItemIds[0]);
-                if (it) setMoveItem({ id: it.id, name: it.name });
-              }}
-              className="flex items-center gap-1.5 text-[#9A9DA0] hover:text-white transition-colors"
-            >
-              <Folder className="w-3.5 h-3.5" />
-              <span>Move to</span>
-            </button>
-
-            {/* Delete */}
-            <button
-              onClick={handleBatchDeleteWithUndo}
-              className="flex items-center gap-1.5 text-red-400 hover:text-red-300 transition-colors"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Delete</span>
-            </button>
-
-            <div className="h-4 w-px bg-[#27272A]" />
-
-            {/* Deselect */}
-            <button
-              onClick={() => setSelectedItemIds([])}
-              className="text-[#9A9DA0] hover:text-white transition-colors"
-              title="Clear selection"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        <SelectionBar
+          selectedCount={selectedItemIds.length}
+          selectedBytes={selectedBytes}
+          selectedFolderCount={selectedFolderCount}
+          selectedFileCount={selectedFileCount}
+          onClearSelection={() => setSelectedItemIds([])}
+          onCopyLink={handleCopyProjectLink}
+          onDownload={() => handleStartDownload("zip")}
+          onManageAccess={() => {
+            setShareTargetItem({
+              id: projectId,
+              name: workspaceData?.project?.name || "Project",
+              type: "project",
+            });
+            setShowShareModal(true);
+          }}
+          onDelete={handleBatchDeleteWithUndo}
+          onMoveTo={() => {
+            const it = items.find((x: any) => x.id === selectedItemIds[0]);
+            if (it) setMoveItem({ id: it.id, name: it.name });
+          }}
+          onDuplicate={() => {
+            toast.info("Duplicate selected");
+          }}
+          onCopyTo={() => {
+            const it = items.find((x: any) => x.id === selectedItemIds[0]);
+            if (it) setMoveItem({ id: it.id, name: it.name });
+          }}
+          canDownload={canDownload}
+        />
         </div>
       </div>
 

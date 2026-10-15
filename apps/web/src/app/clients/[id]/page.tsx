@@ -8,6 +8,7 @@ import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
+import { ProjectCard } from "@/components/cards/project-card";
 import { ChevronDown, X, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 
 export default function ClientDetailPage() {
@@ -308,32 +309,16 @@ export default function ClientDetailPage() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {filteredProjects.map((p: any) => (
-                <Link
+                <ProjectCard
                   key={p.id}
-                  href={`/projects/${p.id}`}
-                  className="rounded-xl border border-[#424344] bg-[#212121] p-5 hover:border-[#686B6E] transition-all hover:shadow-md block"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-bold text-white truncate">
-                      {p.name}
-                    </h3>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${
-                        p.status === "archived"
-                          ? "bg-[#424344] text-[#9A9DA0]"
-                          : "bg-green-500/20 text-green-400"
-                      }`}
-                    >
-                      {p.status}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-[#9A9DA0]">
-                    {p.file_count || 0} files · {p.folder_count || 0} folders · {formatBytes(p.total_bytes || 0)}
-                  </p>
-                </Link>
+                  id={p.id}
+                  name={p.name}
+                  clientName={client?.name || "Client"}
+                  videoCount={p.video_count || 0}
+                  totalBytes={p.total_bytes || 0}
+                />
               ))}
             </div>
           )}

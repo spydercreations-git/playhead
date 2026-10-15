@@ -76,21 +76,21 @@ func TestSignupAndLoginFlow(t *testing.T) {
 		t.Fatalf("failed to create test invite: %v", err)
 	}
 
-	// 3. Known email signup should now succeed
+	// 3. Known email signup should now succeed with 200 OK
 	recKnown := httptest.NewRecorder()
 	reqKnown := httptest.NewRequest("POST", "/api/v1/auth/signup", bytes.NewReader(signupBody))
 	authH.Signup(recKnown, reqKnown)
 
-	if recKnown.Code != http.StatusCreated {
-		t.Fatalf("expected 201 Created on known signup, got %d: %s", recKnown.Code, recKnown.Body.String())
+	if recKnown.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK on known signup, got %d: %s", recKnown.Code, recKnown.Body.String())
 	}
 
-	// 2. Duplicate Signup should be rejected with 409 Conflict
+	// Duplicate Signup should return 200 OK with identical neutral message ("Check your email to continue.")
 	recDup := httptest.NewRecorder()
 	reqDup := httptest.NewRequest("POST", "/api/v1/auth/signup", bytes.NewReader(signupBody))
 	authH.Signup(recDup, reqDup)
-	if recDup.Code != http.StatusConflict {
-		t.Fatalf("expected 409 Conflict on duplicate signup, got %d", recDup.Code)
+	if recDup.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK on duplicate signup, got %d: %s", recDup.Code, recDup.Body.String())
 	}
 
 	// 3. Login with incorrect password should be rejected
@@ -222,3 +222,217 @@ func TestInviteEmailMatchingRule(t *testing.T) {
 		t.Fatalf("expected 403 Forbidden for email mismatch on invite accept, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestRequireVerifiedEmailAndNeutralSignup(t *testing.T) {
+	queries, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	mailClient := mailer.New(mailer.Config{})
+	authH := NewAuthHandler(queries, mailClient, "mock-client-id", "http://localhost:3000", false)
+	authMw := middleware.NewAuthMiddleware(queries)
+
+	// 1. Create a company, project, and client contact
+	comp, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
+		Name: "Security Test Studio",
+		Slug: "sec-studio-" + time.Now().Format("150405000000"),
+	})
+	if err != nil {
+		t.Fatalf("failed to create test company: %v", err)
+	}
+
+	clientUser, err := queries.CreateUser(ctx, db.CreateUserParams{
+		Email: "owner-sec-" + time.Now().Format("20060102150405.000000000") + "@playhead.dev",
+		Name:  "Owner",
+	})
+	if err != nil {
+		t.Fatalf("failed to create owner: %v", err)
+	}
+
+	testClient, err := queries.CreateClient(ctx, db.CreateClientParams{
+		CompanyID: comp.ID,
+		Name:      "Acme Corp",
+		CreatedBy: clientUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	clientEmail := "client-" + time.Now().Format("150405000000") + "@acme.corp"
+	_, err = queries.CreateClientContact(ctx, db.CreateClientContactParams{
+		CompanyID:    comp.ID,
+		ClientID:     testClient.ID,
+		Email:        clientEmail,
+		Name:         "Acme Contact",
+		DefaultLevel: "full",
+		CanDownload:  true,
+	})
+	if err != nil {
+		t.Fatalf("failed to add client contact: %v", err)
+	}
+
+	// 2. Someone who knows the client email attempts password signup
+	origPassword := "InitialPass123!"
+	signupBody, _ := json.Marshal(SignupRequest{
+		Email:    clientEmail,
+		Password: origPassword,
+		Name:     "Imposter",
+	})
+	recSignup := httptest.NewRecorder()
+	reqSignup := httptest.NewRequest("POST", "/api/v1/auth/signup", bytes.NewReader(signupBody))
+	authH.Signup(recSignup, reqSignup)
+
+	if recSignup.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK on signup, got %d: %s", recSignup.Code, recSignup.Body.String())
+	}
+
+	var signupResp map[string]interface{}
+	json.NewDecoder(recSignup.Body).Decode(&signupResp)
+	if signupResp["message"] != "Check your email to continue." {
+		t.Fatalf("expected neutral message 'Check your email to continue.', got: %v", signupResp["message"])
+	}
+
+	// 3. User logs in with password before verifying email
+	loginBody, _ := json.Marshal(LoginRequest{
+		Email:    clientEmail,
+		Password: origPassword,
+	})
+	recLogin := httptest.NewRecorder()
+	reqLogin := httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewReader(loginBody))
+	authH.Login(recLogin, reqLogin)
+
+	if recLogin.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK on login, got %d: %s", recLogin.Code, recLogin.Body.String())
+	}
+
+	// Extract session cookie
+	var sessionCookie *http.Cookie
+	for _, c := range recLogin.Result().Cookies() {
+		if c.Name == "playhead_session" {
+			sessionCookie = c
+			break
+		}
+	}
+	if sessionCookie == nil {
+		t.Fatalf("expected playhead_session cookie")
+	}
+
+	// 4. Construct protected router with Authenticate and RequireVerifiedEmail
+	r := chi.NewRouter()
+	r.Group(func(protected chi.Router) {
+		protected.Use(authMw.Authenticate)
+		protected.Use(middleware.RequireVerifiedEmail)
+
+		protected.Get("/api/v1/me", authH.Me)
+		protected.Get("/api/v1/projects", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"projects":[]}`))
+		})
+	})
+
+	// 4a. Attempt to access /api/v1/me while email is unverified -> 403 email_unverified
+	reqMe := httptest.NewRequest("GET", "/api/v1/me", nil)
+	reqMe.AddCookie(sessionCookie)
+	recMe := httptest.NewRecorder()
+	r.ServeHTTP(recMe, reqMe)
+
+	if recMe.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden for unverified email on /me, got %d: %s", recMe.Code, recMe.Body.String())
+	}
+	var errResp map[string]string
+	json.NewDecoder(recMe.Body).Decode(&errResp)
+	if errResp["error"] != "email_unverified" {
+		t.Fatalf("expected error 'email_unverified', got '%s'", errResp["error"])
+	}
+
+	// 4b. Attempt to access /api/v1/projects while email is unverified -> 403 email_unverified
+	reqProjects := httptest.NewRequest("GET", "/api/v1/projects", nil)
+	reqProjects.AddCookie(sessionCookie)
+	recProjects := httptest.NewRecorder()
+	r.ServeHTTP(recProjects, reqProjects)
+
+	if recProjects.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden for unverified email on /projects, got %d: %s", recProjects.Code, recProjects.Body.String())
+	}
+
+	// 5. Test: Signup for existing email does NOT change password or log in
+	hackedPassword := "HackedNewPassword999!"
+	signupBody2, _ := json.Marshal(SignupRequest{
+		Email:    clientEmail,
+		Password: hackedPassword,
+		Name:     "Hacker",
+	})
+	recSignup2 := httptest.NewRecorder()
+	reqSignup2 := httptest.NewRequest("POST", "/api/v1/auth/signup", bytes.NewReader(signupBody2))
+	authH.Signup(recSignup2, reqSignup2)
+
+	if recSignup2.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK on existing user signup, got %d", recSignup2.Code)
+	}
+
+	// Attempt login with hacked password -> must fail with 401 Unauthorized
+	loginHackedBody, _ := json.Marshal(LoginRequest{
+		Email:    clientEmail,
+		Password: hackedPassword,
+	})
+	recLoginHacked := httptest.NewRecorder()
+	reqLoginHacked := httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewReader(loginHackedBody))
+	authH.Login(recLoginHacked, reqLoginHacked)
+
+	if recLoginHacked.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 Unauthorized with hacked password, got %d", recLoginHacked.Code)
+	}
+
+	// Attempt login with original password -> must succeed
+	recLoginOrig := httptest.NewRecorder()
+	reqLoginOrig := httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewReader(loginBody))
+	authH.Login(recLoginOrig, reqLoginOrig)
+
+	if recLoginOrig.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK with original password, got %d", recLoginOrig.Code)
+	}
+
+	// 6. Verify email unlocks access
+	dbUser, err := queries.GetUserByEmail(ctx, clientEmail)
+	if err != nil {
+		t.Fatalf("failed to fetch user from db: %v", err)
+	}
+	_ = queries.VerifyUserEmail(ctx, dbUser.ID)
+
+	recMeVerified := httptest.NewRecorder()
+	reqMeVerified := httptest.NewRequest("GET", "/api/v1/me", nil)
+	reqMeVerified.AddCookie(sessionCookie)
+	r.ServeHTTP(recMeVerified, reqMeVerified)
+
+	if recMeVerified.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK on /me after email verified, got %d: %s", recMeVerified.Code, recMeVerified.Body.String())
+	}
+
+	// 7. Google sign-in tests
+	// 7a. Reject unverified Google email
+	googleUnverifiedBody, _ := json.Marshal(map[string]interface{}{
+		"email":          clientEmail,
+		"email_verified": false,
+	})
+	recGUnver := httptest.NewRecorder()
+	reqGUnver := httptest.NewRequest("POST", "/api/v1/auth/google/callback", bytes.NewReader(googleUnverifiedBody))
+	authH.GoogleOAuthCallback(recGUnver, reqGUnver)
+
+	if recGUnver.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 Forbidden for Google unverified email, got %d", recGUnver.Code)
+	}
+
+	// 7b. Accept verified Google email
+	googleVerifiedBody, _ := json.Marshal(map[string]interface{}{
+		"email":          clientEmail,
+		"email_verified": true,
+	})
+	recGVer := httptest.NewRecorder()
+	reqGVer := httptest.NewRequest("POST", "/api/v1/auth/google/callback", bytes.NewReader(googleVerifiedBody))
+	authH.GoogleOAuthCallback(recGVer, reqGVer)
+
+	if recGVer.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for Google verified email, got %d: %s", recGVer.Code, recGVer.Body.String())
+	}
+}
+

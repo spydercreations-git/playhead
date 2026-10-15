@@ -45,7 +45,7 @@ func TestTrialMaxFiveSeatsEnforcement(t *testing.T) {
 
 	// 2. Create owner user
 	ownerUser, err := queries.CreateUser(ctx, db.CreateUserParams{
-		Email: "owner-" + time.Now().Format("150405000") + "@playhead.dev",
+		Email: "owner-inv-" + time.Now().Format("20060102150405.000000000") + "@playhead.dev",
 		Name:  "Owner",
 	})
 	if err != nil {

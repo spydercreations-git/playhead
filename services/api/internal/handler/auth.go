@@ -69,9 +69,13 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if user already exists
+	// Check if user already exists: do not change password, do not log in.
+	// Return neutral message to prevent account takeover and email enumeration.
 	if _, err := h.queries.GetUserByEmail(r.Context(), email); err == nil {
-		respondJSON(w, http.StatusConflict, map[string]string{"error": "email_exists", "message": "An account with this email already exists"})
+		respondJSON(w, http.StatusOK, map[string]interface{}{
+			"status":  "ok",
+			"message": "Check your email to continue.",
+		})
 		return
 	}
 
@@ -82,7 +86,7 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create user
+	// Create user (email_verified_at remains NULL until email link clicked)
 	user, err := h.queries.CreateUser(r.Context(), db.CreateUserParams{
 		Email:        email,
 		Name:         name,
@@ -108,7 +112,7 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 	rawToken, err := authz.GenerateSecureToken(32)
 	if err == nil {
 		tokenHash := authz.HashToken(rawToken)
-		h.queries.CreateVerificationToken(r.Context(), db.CreateVerificationTokenParams{
+		_, _ = h.queries.CreateVerificationToken(r.Context(), db.CreateVerificationTokenParams{
 			UserID:    user.ID,
 			TokenHash: tokenHash,
 			ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(24 * time.Hour), Valid: true},
@@ -118,9 +122,9 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 		_ = h.mailer.SendEmailVerification(email, name, rawToken)
 	}
 
-	respondJSON(w, http.StatusCreated, map[string]interface{}{
+	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"status":  "ok",
-		"message": "Account created. Please check your email to verify your address.",
+		"message": "Check your email to continue.",
 		"user": map[string]interface{}{
 			"id":             user.ID,
 			"email":          user.Email,
@@ -231,8 +235,10 @@ func (h *AuthHandler) VerifyLoginCode(w http.ResponseWriter, r *http.Request) {
 			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to create user account"})
 			return
 		}
-		_ = h.queries.VerifyUserEmail(r.Context(), user.ID)
 	}
+
+	// Email code proves the email and marks it verified
+	_ = h.queries.VerifyUserEmail(r.Context(), user.ID)
 
 	// Link client contacts and grants
 	_ = h.queries.LinkClientContactsToUser(r.Context(), db.LinkClientContactsToUserParams{
@@ -328,6 +334,49 @@ func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]string{
 		"status":  "verified",
 		"message": "Email address verified successfully. You can now create your workspace.",
+	})
+}
+
+type ResendVerificationRequest struct {
+	Email string `json:"email"`
+}
+
+func (h *AuthHandler) ResendVerification(w http.ResponseWriter, r *http.Request) {
+	var req ResendVerificationRequest
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	email := authz.NormalizeEmail(req.Email)
+	if email == "" {
+		if cookie, err := r.Cookie("playhead_session"); err == nil && cookie.Value != "" {
+			tokenHash := authz.HashToken(cookie.Value)
+			if session, err := h.queries.GetSessionByTokenHash(r.Context(), tokenHash); err == nil {
+				if user, err := h.queries.GetUserByID(r.Context(), session.UserID); err == nil {
+					email = user.Email
+				}
+			}
+		}
+	}
+
+	if email != "" {
+		if user, err := h.queries.GetUserByEmail(r.Context(), email); err == nil {
+			if !user.EmailVerifiedAt.Valid {
+				rawToken, err := authz.GenerateSecureToken(32)
+				if err == nil {
+					tokenHash := authz.HashToken(rawToken)
+					_, _ = h.queries.CreateVerificationToken(r.Context(), db.CreateVerificationTokenParams{
+						UserID:    user.ID,
+						TokenHash: tokenHash,
+						ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(24 * time.Hour), Valid: true},
+					})
+					_ = h.mailer.SendEmailVerification(user.Email, user.Name, rawToken)
+				}
+			}
+		}
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"status":  "ok",
+		"message": "If an unverified account exists with this email, a verification link has been sent.",
 	})
 }
 
@@ -619,6 +668,160 @@ func (h *AuthHandler) GoogleOAuthURL(w http.ResponseWriter, r *http.Request) {
 		"&response_type=code&scope=openid%20email%20profile"
 
 	respondJSON(w, http.StatusOK, map[string]string{"url": authURL})
+}
+
+type GoogleOAuthCallbackRequest struct {
+	Code          string `json:"code"`
+	Credential    string `json:"credential"`
+	Email         string `json:"email"`
+	EmailVerified *bool  `json:"email_verified"`
+	Name          string `json:"name"`
+	GoogleID      string `json:"google_id"`
+}
+
+func (h *AuthHandler) GoogleOAuthCallback(w http.ResponseWriter, r *http.Request) {
+	var req GoogleOAuthCallbackRequest
+	if r.Method == http.MethodPost {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	email := authz.NormalizeEmail(req.Email)
+	if email == "" {
+		email = authz.NormalizeEmail(r.URL.Query().Get("email"))
+	}
+
+	// Verify Google email_verified flag (must strictly be true)
+	var emailVerified bool
+	if req.EmailVerified != nil {
+		emailVerified = *req.EmailVerified
+	} else if evStr := r.URL.Query().Get("email_verified"); evStr != "" {
+		emailVerified = (evStr == "true" || evStr == "1")
+	}
+
+	if !emailVerified {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "email_unverified",
+			"message": "Google account email is not verified. Please verify your Google email first.",
+		})
+		return
+	}
+
+	if email == "" {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "missing_email",
+			"message": "Google account did not provide a valid email.",
+		})
+		return
+	}
+
+	// Email must be known in Playhead (invite, client contact, grant, or existing user)
+	isKnown, err := h.queries.CheckEmailIsKnown(r.Context(), email)
+	if err != nil || !isKnown {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "access_denied",
+			"message": "This email doesn't have access to Playhead yet. Ask the person who invited you.",
+		})
+		return
+	}
+
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		name = r.URL.Query().Get("name")
+	}
+	if name == "" {
+		name = strings.Split(email, "@")[0]
+	}
+
+	user, err := h.queries.GetUserByEmail(r.Context(), email)
+	if err != nil {
+		googleID := req.GoogleID
+		if googleID == "" {
+			googleID = r.URL.Query().Get("google_id")
+		}
+		user, err = h.queries.CreateUser(r.Context(), db.CreateUserParams{
+			Email:        email,
+			Name:         name,
+			PasswordHash: pgtype.Text{Valid: false},
+			GoogleID:     pgtype.Text{String: googleID, Valid: googleID != ""},
+		})
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to create user account"})
+			return
+		}
+	}
+
+	// Google sign in with verified email marks the user's email as verified
+	_ = h.queries.VerifyUserEmail(r.Context(), user.ID)
+
+	_ = h.queries.LinkClientContactsToUser(r.Context(), db.LinkClientContactsToUserParams{
+		Email:  email,
+		UserID: user.ID,
+	})
+	_ = h.queries.LinkGrantsToUser(r.Context(), db.LinkGrantsToUserParams{
+		Email:  email,
+		UserID: user.ID,
+	})
+
+	// Create session
+	rawSessionToken, err := authz.GenerateSecureToken(32)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to generate session"})
+		return
+	}
+
+	sessionHash := authz.HashToken(rawSessionToken)
+	expiresAt := time.Now().Add(30 * 24 * time.Hour)
+
+	_, err = h.queries.CreateSession(r.Context(), db.CreateSessionParams{
+		UserID:    user.ID,
+		TokenHash: sessionHash,
+		ExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
+		UserAgent: pgtype.Text{String: r.UserAgent(), Valid: true},
+		Ip:        pgtype.Text{String: r.RemoteAddr, Valid: true},
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to persist session"})
+		return
+	}
+
+	rawCSRFToken, _ := authz.GenerateSecureToken(16)
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "playhead_session",
+		Value:    rawSessionToken,
+		Path:     "/",
+		Expires:  expiresAt,
+		HttpOnly: true,
+		Secure:   h.isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     middleware.CSRFCookieName,
+		Value:    rawCSRFToken,
+		Path:     "/",
+		Expires:  expiresAt,
+		HttpOnly: false,
+		Secure:   h.isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	if r.Method == http.MethodGet {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"status":     "ok",
+		"csrf_token": rawCSRFToken,
+		"user": map[string]interface{}{
+			"id":             user.ID,
+			"email":          user.Email,
+			"name":           user.Name,
+			"avatar_url":     user.AvatarUrl.String,
+			"email_verified": true,
+		},
+	})
 }
 
 func respondJSON(w http.ResponseWriter, status int, data interface{}) {

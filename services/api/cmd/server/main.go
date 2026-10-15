@@ -165,7 +165,10 @@ func main() {
 			auth.With(rateLimiter.LimitAuth("forgot")).Post("/forgot-password", authHandler.ForgotPassword)
 			auth.With(rateLimiter.LimitAuth("reset")).Post("/reset-password", authHandler.ResetPassword)
 			auth.Post("/verify-email", authHandler.VerifyEmail)
+			auth.With(rateLimiter.LimitAuth("code_send")).Post("/resend-verification", authHandler.ResendVerification)
 			auth.Get("/google/url", authHandler.GoogleOAuthURL)
+			auth.Get("/google/callback", authHandler.GoogleOAuthCallback)
+			auth.Post("/google/callback", authHandler.GoogleOAuthCallback)
 			auth.Post("/logout", authHandler.Logout)
 		})
 
@@ -196,10 +199,11 @@ func main() {
 			share.Get("/documents/{id}/items/{itemId}/card-preview", documentsHandler.PublicShareGetCardPreview)
 		})
 
-		// Protected endpoints (Requires authentication and CSRF token validation)
+		// Protected endpoints (Requires authentication, CSRF token validation, and verified email)
 		api.Group(func(protected chi.Router) {
 			protected.Use(authMw.Authenticate)
 			protected.Use(middleware.CSRF)
+			protected.Use(middleware.RequireVerifiedEmail)
 
 			protected.Get("/me", authHandler.Me)
 

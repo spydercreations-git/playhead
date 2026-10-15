@@ -114,12 +114,12 @@ export default function DocumentPage() {
 
   return (
     <DocumentEditor
-      documentId={document.id}
+      documentId={document.id || (document as any).document_id || documentId}
       initialTitle={document.title}
       projectId={document.project_id}
       projectName={document.project_name}
       isTeamMember={document.is_team_member}
-      canEdit={document.can_edit}
+      canEdit={document.can_edit ?? document.is_team_member}
       initialContentJson={document.content_json}
     />
   );

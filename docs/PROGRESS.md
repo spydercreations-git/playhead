@@ -396,12 +396,40 @@ Google Login is built into the backend and UI, but hidden until configured. When
    - Aggregate count banner and client filter chips with document counts.
    - Client isolation: client contacts only see their own client's documents and chips.
    - Physical folded top-right corner document cards with blue `DOC` badge, paper preview snippet, and project metadata.
-   - "New document" modal with 5 templates (Blank, Brief, Script, Production Notes, Review Summary).
+   - "New document" modal with exact 5 templates: `Blank`, `Brief`, `Script`, `Shot list`, `Creator notes` (from `FEATURES_DOCS_SHEETS.md`).
+
+6. **P5 Advisor Review Hardening & Data Loss Fixes**:
+   - **Initial Content Yjs Seeding**: Implemented server-side ProseMirror to Y.Doc conversion via internal collab endpoint `POST /internal/init-document`. Stores binary `content_state` upon template creation and Word docx import. Removed initialContentJson seeding in `useEditor` when collaboration is active, preventing content duplication across concurrent collaborators.
+   - **Separate Read-Only Version Preview**: Decoupled version previewing from the live editor by rendering `<ReadOnlyVersionPreview />` (without Collaboration extension) alongside a persistent preview banner. Live collaborative editor state is never touched or overwritten during inspection.
+   - **In-Memory CRDT Content Replacement**: Route restore version (`POST /documents/{id}/restore`) and Word import (`POST /documents/{id}/import-docx`) through `POST /internal/replace-content` in the collab service. Content replacement occurs inside `ydoc.transact()` with element deletion, ensuring peers see updates live and reconnecting offline clients with IndexedDB do not resurrect stale content.
+   - **Automatic 10-Minute Versions**: Collab service tracks last version timestamp on document store and automatically generates an `"Automatic version"` snapshot when edits occurred and last snapshot is >= 10 minutes old.
+   - **Public Plain Text**: Strips `team_notes` and saves clean human-readable plain text into `public_plain_text` (resolving bug where JSON was stringified into this column).
+   - **Server-Side Word (.docx) Import**: Converted entirely server-side via `mammoth` in the collab service with a strict 25 MB file size limit.
+   - **Instant Access Revocation**: Publishing to Redis channel `playhead:collab:revocations` on grants, roles, company memberships, and project collaborator changes.
+
+### Testing Breakdown (Browser vs Automated):
+- **Browser Tests (Verified End-to-End)**:
+  - *Templates Verification*: Opened "+ New document" dialog in `/documents`, verified exact 5 templates displayed (`Blank`, `Brief`, `Script`, `Shot list`, `Creator notes`).
+  - *Template Document Creation*: Selected "Brief" template, assigned to project, created document, verified seamless navigation to `/d/[id]`.
+  - *Editor Loading & Non-Duplication*: Verified editor content renders template structure without duplicating blocks.
+  - *Version History & Previewing*: Opened Version History drawer, selected initial version snapshot, verified read-only preview banner displays ("Previewing version ... Live editing is paused. Your changes are safe.") with Restore and Exit Preview buttons. Confirmed live editor is not overwritten.
+  - *Exit Preview & Live Editing*: Exited preview mode, typed into live editor, verified green "Saved" status indicator updates cleanly.
+- **Automated Tests (`make test`)**:
+  - `services/collab/src/__tests__/automatic-versions.test.ts`: Verifies automatic version creation when edits occurred and last version >= 10m old, and suppression when < 10m old.
+  - `services/collab/src/__tests__/converter-replace.test.ts`: Verifies Y.Doc binary state generation from ProseMirror JSON, and transactional replace content with node deletion preventing offline client resurrecting old content.
+  - `services/collab/src/__tests__/text-extractor.test.ts`: Verifies extraction of plain text and public plain text with `team_notes` stripped.
+  - `services/api/internal/handler/p5_documents_test.go`:
+    - `TestCollabTicketSecurity`: Verifies HMAC ticket issuance, 60s expiration, tampering prevention, and cross-document rejection.
+    - `TestStripTeamNotesSanitization`: Verifies server-side team notes removal.
+    - `TestCollabVerifyConstantTimeSecret`: Verifies constant-time secret comparison.
+    - `TestP5DocumentsIntegration`: Full integration of documents CRUD, permissions, and image isolation.
+    - `TestAdvisorReviewTemplatesAndPlainText`: Verifies exact 5 templates and plain text output.
+    - `TestDocxImportFileSizeLimit`: Verifies 25MB file size limit enforcement on Word imports.
 
 ### How to test locally:
 1. Run all tests: `make test`
    - Go backend tests: `go test -v ./services/api/... ./services/shared/... ./services/worker/...`
-   - P5 Documents unit & integration tests: `go test -v -run "TestCollab|TestStripTeamNotes" ./services/api/internal/handler`
+   - P5 Documents unit & integration tests: `go test -v -run "TestCollab|TestStripTeamNotes|TestAdvisor" ./services/api/internal/handler`
    - Collab service tests: `cd services/collab && npm test && npm run build`
    - Frontend type check: `cd apps/web && npm run typecheck`
 2. Run development stack: `make dev` (starts postgres, redis, minio, mailpit, worker, api on :8080, collab on :8082, web on :3000).

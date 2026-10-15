@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -10,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -134,6 +136,147 @@ func StripTeamNotes(node map[string]interface{}) map[string]interface{} {
 		node["content"] = newContent
 	}
 	return node
+}
+
+// ExtractPlainTextFromNode recursively extracts plain text from ProseMirror JSON nodes.
+func ExtractPlainTextFromNode(node map[string]interface{}) string {
+	if node == nil {
+		return ""
+	}
+	if text, ok := node["text"].(string); ok {
+		return text
+	}
+	var sb strings.Builder
+	if content, ok := node["content"].([]interface{}); ok {
+		for _, child := range content {
+			if childMap, ok := child.(map[string]interface{}); ok {
+				t := ExtractPlainTextFromNode(childMap)
+				if t != "" {
+					if sb.Len() > 0 {
+						sb.WriteString(" ")
+					}
+					sb.WriteString(t)
+				}
+			}
+		}
+	}
+	return sb.String()
+}
+
+type CollabImportResponse struct {
+	OK                 bool   `json:"ok"`
+	DocumentID         string `json:"document_id"`
+	VersionID          string `json:"version_id"`
+	WordCount          int32  `json:"word_count"`
+	CharacterCount     int32  `json:"character_count"`
+	ReadingTimeSeconds int32  `json:"reading_time_seconds"`
+}
+
+func (h *DocumentsHandler) callCollabInitDocument(ctx context.Context, docID, companyID uuid.UUID, contentJSON interface{}) error {
+	collabURL := h.cfg.CollabURL
+	if collabURL == "" {
+		collabURL = "http://localhost:8082"
+	}
+	payload, err := json.Marshal(map[string]interface{}{
+		"document_id":  docID.String(),
+		"company_id":   companyID.String(),
+		"content_json": contentJSON,
+	})
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", collabURL+"/internal/init-document", bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Collab-Secret", h.cfg.CollabInternalSecret)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("collab init-document failed (%d): %s", resp.StatusCode, string(body))
+	}
+	return nil
+}
+
+func (h *DocumentsHandler) callCollabReplaceContent(ctx context.Context, docID, companyID, userID uuid.UUID, contentJSON interface{}, versionName string) error {
+	collabURL := h.cfg.CollabURL
+	if collabURL == "" {
+		collabURL = "http://localhost:8082"
+	}
+	payload, err := json.Marshal(map[string]interface{}{
+		"document_id":  docID.String(),
+		"company_id":   companyID.String(),
+		"user_id":      userID.String(),
+		"content_json": contentJSON,
+		"version_name": versionName,
+		"is_named":     true,
+	})
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", collabURL+"/internal/replace-content", bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Collab-Secret", h.cfg.CollabInternalSecret)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("collab replace-content failed (%d): %s", resp.StatusCode, string(body))
+	}
+	return nil
+}
+
+func (h *DocumentsHandler) callCollabImportDocx(ctx context.Context, docID, companyID, userID uuid.UUID, fileBase64 string) (*CollabImportResponse, error) {
+	collabURL := h.cfg.CollabURL
+	if collabURL == "" {
+		collabURL = "http://localhost:8082"
+	}
+	payload, err := json.Marshal(map[string]interface{}{
+		"document_id": docID.String(),
+		"company_id":  companyID.String(),
+		"user_id":     userID.String(),
+		"file_base64": fileBase64,
+	})
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", collabURL+"/internal/import-docx", bytes.NewReader(payload))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Collab-Secret", h.cfg.CollabInternalSecret)
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("collab import-docx failed (%d): %s", resp.StatusCode, string(body))
+	}
+	var res CollabImportResponse
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return nil, err
+	}
+	return &res, nil
 }
 
 // ---------------------------------------------------------
@@ -400,12 +543,16 @@ func (h *DocumentsHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	qtx := h.q.WithTx(tx)
 
+	var itemPos pgtype.Numeric
+	_ = itemPos.Scan("1000")
+
 	item, err := qtx.CreateItem(ctx, db.CreateItemParams{
 		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
 		ProjectID: pgtype.UUID{Bytes: projUUID, Valid: true},
 		ParentID:  parentUUID,
 		Kind:      "document",
 		Name:      docName,
+		Position:  itemPos,
 		CreatedBy: pgtype.UUID{Bytes: caller.UserID, Valid: true},
 	})
 	if err != nil {
@@ -442,6 +589,9 @@ func (h *DocumentsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Transaction commit failed", http.StatusInternalServerError)
 		return
 	}
+
+	// 1. Initial content: Build real Yjs state on server via collab service
+	_ = h.callCollabInitDocument(ctx, uuid.UUID(doc.ID.Bytes), caller.CompanyID, templateContent)
 
 	renderJSON(w, http.StatusCreated, map[string]interface{}{
 		"id":         uuid.UUID(doc.ID.Bytes).String(),
@@ -744,14 +894,18 @@ func (h *DocumentsHandler) GetSanitizedView(w http.ResponseWriter, r *http.Reque
 	}
 
 	renderJSON(w, http.StatusOK, map[string]interface{}{
+		"id":                   uuid.UUID(doc.ID.Bytes).String(),
 		"document_id":          uuid.UUID(doc.ID.Bytes).String(),
 		"title":                doc.Title,
+		"project_id":           uuid.UUID(doc.ProjectID.Bytes).String(),
+		"project_name":         doc.ProjectName,
 		"content_json":         contentJSON,
 		"word_count":           doc.WordCount,
 		"character_count":      doc.CharacterCount,
 		"reading_time_seconds": doc.ReadingTimeSeconds,
 		"updated_at":           doc.UpdatedAt.Time,
 		"is_team_member":       isTeamMember,
+		"can_edit":             (isTeamMember && (access.Level == authz.LevelFull || access.CanUpload())),
 	})
 }
 
@@ -1303,8 +1457,19 @@ func (h *DocumentsHandler) RestoreVersion(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	versionUUID, err := uuid.Parse(chi.URLParam(r, "version_id"))
-	if err != nil {
+	var versionUUID uuid.UUID
+	vParam := chi.URLParam(r, "version_id")
+	if vParam != "" {
+		versionUUID, err = uuid.Parse(vParam)
+	} else {
+		var req struct {
+			VersionID string `json:"version_id"`
+		}
+		if decErr := json.NewDecoder(r.Body).Decode(&req); decErr == nil && req.VersionID != "" {
+			versionUUID, err = uuid.Parse(req.VersionID)
+		}
+	}
+	if err != nil || versionUUID == uuid.Nil {
 		http.Error(w, "Invalid version ID", http.StatusBadRequest)
 		return
 	}
@@ -1345,6 +1510,33 @@ func (h *DocumentsHandler) RestoreVersion(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	restoreLabel := fmt.Sprintf("Restored from %s", version.Name.String)
+	if version.Name.String == "" {
+		restoreLabel = fmt.Sprintf("Restored from version (%s)", version.CreatedAt.Time.Format("Jan 02, 15:04"))
+	}
+
+	var parsed map[string]interface{}
+	if len(version.ContentJson) > 0 {
+		_ = json.Unmarshal(version.ContentJson, &parsed)
+	}
+	if parsed == nil {
+		parsed = map[string]interface{}{"type": "doc", "content": []interface{}{}}
+	}
+
+	// 3. Restore must go through the collab service
+	collabErr := h.callCollabReplaceContent(ctx, docUUID, caller.CompanyID, caller.UserID, parsed, restoreLabel)
+	if collabErr == nil {
+		renderJSON(w, http.StatusOK, map[string]interface{}{
+			"success": true,
+			"message": "Version restored successfully",
+		})
+		return
+	}
+
+	// Fallback to direct DB write if collab service is unreachable
+	stripped := StripTeamNotes(parsed)
+	publicPlainText := ExtractPlainTextFromNode(stripped)
+
 	tx, err := h.dbPool.Begin(ctx)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
@@ -1354,7 +1546,6 @@ func (h *DocumentsHandler) RestoreVersion(w http.ResponseWriter, r *http.Request
 
 	qtx := h.q.WithTx(tx)
 
-	// Hard Rule: Restoring must NOT delete newer versions
 	words := strings.Fields(version.PlainText)
 	wordCount := int32(len(words))
 	charCount := int32(len(version.PlainText))
@@ -1363,20 +1554,13 @@ func (h *DocumentsHandler) RestoreVersion(w http.ResponseWriter, r *http.Request
 		readTime = int32((len(words) + 199) / 200 * 60)
 	}
 
-	var parsed map[string]interface{}
-	if len(version.ContentJson) > 0 {
-		_ = json.Unmarshal(version.ContentJson, &parsed)
-	}
-	stripped := StripTeamNotes(parsed)
-	publicBytes, _ := json.Marshal(stripped)
-
 	_, err = qtx.UpdateDocumentCollab(ctx, db.UpdateDocumentCollabParams{
 		ID:                 pgtype.UUID{Bytes: docUUID, Valid: true},
 		CompanyID:          pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
 		ContentState:       version.ContentState,
 		ContentJson:        version.ContentJson,
 		PlainText:          version.PlainText,
-		PublicPlainText:    string(publicBytes),
+		PublicPlainText:    publicPlainText,
 		WordCount:          wordCount,
 		CharacterCount:     charCount,
 		ReadingTimeSeconds: readTime,
@@ -1384,11 +1568,6 @@ func (h *DocumentsHandler) RestoreVersion(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		http.Error(w, "Failed to update document: "+err.Error(), http.StatusInternalServerError)
 		return
-	}
-
-	restoreLabel := fmt.Sprintf("Restored from %s", version.Name.String)
-	if version.Name.String == "" {
-		restoreLabel = fmt.Sprintf("Restored from version (%s)", version.CreatedAt.Time.Format("Jan 02, 15:04"))
 	}
 
 	_, _ = qtx.CreateDocumentVersion(ctx, db.CreateDocumentVersionParams{
@@ -1738,68 +1917,65 @@ func (h *DocumentsHandler) ImportDocx(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req ImportDocxRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid payload", http.StatusBadRequest)
-		return
+	// 7. Word import: do not trust content and plain text sent by browser.
+	// Convert the .docx on the server side via collab service (mammoth) with 25MB limit.
+	var fileBytes []byte
+	contentType := r.Header.Get("Content-Type")
+
+	if strings.HasPrefix(contentType, "multipart/form-data") {
+		// 25MB file limit
+		if err := r.ParseMultipartForm(25 << 20); err != nil {
+			http.Error(w, "File exceeds 25MB limit or invalid form", http.StatusBadRequest)
+			return
+		}
+		file, fileHeader, err := r.FormFile("file")
+		if err != nil {
+			http.Error(w, "Missing file in form data", http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+		if fileHeader.Size > 25*1024*1024 {
+			http.Error(w, "File exceeds 25MB limit", http.StatusBadRequest)
+			return
+		}
+		fileBytes, err = io.ReadAll(file)
+		if err != nil {
+			http.Error(w, "Failed to read file", http.StatusBadRequest)
+			return
+		}
+	} else {
+		var req struct {
+			FileBase64 string `json:"file_base64"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.FileBase64 == "" {
+			http.Error(w, "Invalid payload: file_base64 is required", http.StatusBadRequest)
+			return
+		}
+		decoded, err := base64.StdEncoding.DecodeString(req.FileBase64)
+		if err != nil {
+			http.Error(w, "Invalid base64 encoding", http.StatusBadRequest)
+			return
+		}
+		if len(decoded) > 25*1024*1024 {
+			http.Error(w, "File exceeds 25MB limit", http.StatusBadRequest)
+			return
+		}
+		fileBytes = decoded
 	}
 
-	contentBytes, _ := json.Marshal(req.ContentJSON)
-	words := strings.Fields(req.PlainText)
-	wordCount := int32(len(words))
-	charCount := int32(len(req.PlainText))
-	readTime := int32(1)
-	if wordCount > 0 {
-		readTime = int32((len(words) + 199) / 200 * 60)
-	}
-
-	stripped := StripTeamNotes(req.ContentJSON)
-	publicBytes, _ := json.Marshal(stripped)
-
-	tx, err := h.dbPool.Begin(ctx)
+	b64Str := base64.StdEncoding.EncodeToString(fileBytes)
+	collabRes, err := h.callCollabImportDocx(ctx, docUUID, caller.CompanyID, caller.UserID, b64Str)
 	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
-		return
-	}
-	defer tx.Rollback(ctx)
-
-	qtx := h.q.WithTx(tx)
-
-	_, err = qtx.UpdateDocumentCollab(ctx, db.UpdateDocumentCollabParams{
-		ID:                 pgtype.UUID{Bytes: docUUID, Valid: true},
-		CompanyID:          pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
-		ContentState:       nil,
-		ContentJson:        contentBytes,
-		PlainText:          req.PlainText,
-		PublicPlainText:    string(publicBytes),
-		WordCount:          wordCount,
-		CharacterCount:     charCount,
-		ReadingTimeSeconds: readTime,
-	})
-	if err != nil {
-		http.Error(w, "Failed to update document: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	_, _ = qtx.CreateDocumentVersion(ctx, db.CreateDocumentVersionParams{
-		DocumentID:   pgtype.UUID{Bytes: docUUID, Valid: true},
-		CompanyID:    pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
-		Name:         pgtype.Text{String: "Imported Word (.docx) document", Valid: true},
-		IsNamed:      true,
-		ContentState: nil,
-		ContentJson:  contentBytes,
-		PlainText:    req.PlainText,
-		CreatedBy:    pgtype.UUID{Bytes: caller.UserID, Valid: true},
-	})
-
-	if err := tx.Commit(ctx); err != nil {
-		http.Error(w, "Transaction commit failed", http.StatusInternalServerError)
+		http.Error(w, "Server-side docx conversion failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	renderJSON(w, http.StatusOK, map[string]interface{}{
-		"success": true,
-		"message": "Word document imported successfully",
+		"success":         true,
+		"message":         "Word document imported successfully",
+		"version_id":      collabRes.VersionID,
+		"word_count":      collabRes.WordCount,
+		"character_count": collabRes.CharacterCount,
 	})
 }
 

@@ -35,6 +35,7 @@ type Config struct {
 	StoragePricePerGB    float64
 	StorageAlertGB       int
 	CollabInternalSecret string
+	CollabURL            string
 }
 
 func (c *Config) IsProduction() bool {
@@ -123,6 +124,7 @@ func Load() *Config {
 		StoragePricePerGB:    storagePrice,
 		StorageAlertGB:       storageAlert,
 		CollabInternalSecret: getEnv("COLLAB_INTERNAL_SECRET", DefaultDevCollabSecret),
+		CollabURL:            getEnv("COLLAB_URL", "http://localhost:8082"),
 	}
 }
 

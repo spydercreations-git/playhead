@@ -29,32 +29,32 @@ interface NewDocumentDialogProps {
 const TEMPLATES = [
   {
     id: "blank",
-    title: "Blank Document",
+    title: "Blank",
     desc: "Start with a clean page",
     icon: FileText,
   },
   {
     id: "brief",
-    title: "Project Brief",
+    title: "Brief",
     desc: "Objectives, deliverables & timelines",
     icon: FilePlus,
   },
   {
     id: "script",
-    title: "Script / Screenplay",
-    desc: "Scene headings, action & dialogue",
+    title: "Script",
+    desc: "Two-column AV table, action & dialogue",
     icon: Clapperboard,
   },
   {
-    id: "production_notes",
-    title: "Production Notes",
-    desc: "Call sheets, crew & gear checklist",
+    id: "shot_list",
+    title: "Shot list",
+    desc: "Call times, angles, descriptions & status",
     icon: ClipboardList,
   },
   {
-    id: "review_summary",
-    title: "Review & Feedback Summary",
-    desc: "Action items & revision round notes",
+    id: "creator_notes",
+    title: "Creator notes",
+    desc: "UGC guidelines, hooks & concepts",
     icon: MessageSquare,
   },
 ];

@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/redis/go-redis/v9"
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
@@ -18,10 +19,15 @@ import (
 
 type CompanyHandler struct {
 	queries *db.Queries
+	rdb     *redis.Client
 }
 
 func NewCompanyHandler(queries *db.Queries) *CompanyHandler {
 	return &CompanyHandler{queries: queries}
+}
+
+func (h *CompanyHandler) SetRedisClient(r *redis.Client) {
+	h.rdb = r
 }
 
 type CreateCompanyRequest struct {
@@ -306,6 +312,8 @@ func (h *CompanyHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	PublishCollabRevocation(r.Context(), h.rdb, "", pgUUIDToString(targetUserID))
+
 	respondJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 }
 
@@ -390,6 +398,8 @@ func (h *CompanyHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
 		return
 	}
+
+	PublishCollabRevocation(r.Context(), h.rdb, "", pgUUIDToString(targetUserID))
 
 	respondJSON(w, http.StatusOK, map[string]string{"status": "removed"})
 }

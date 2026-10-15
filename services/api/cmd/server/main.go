@@ -101,9 +101,12 @@ func main() {
 	authMw := middleware.NewAuthMiddleware(queries)
 
 	rolesHandler := handler.NewRolesHandler(queries)
+	rolesHandler.SetRedisClient(rdb)
+	companyHandler.SetRedisClient(rdb)
 	notifHandler := handler.NewNotificationSettingsHandler(queries)
 	shareLinksHandler := handler.NewShareLinksHandler(queries, storageClient, cfg.SessionSecret, cfg.Environment)
 	grantsHandler := handler.NewGrantsHandler(queries, mailClient)
+	grantsHandler.SetRedisClient(rdb)
 	reviewHandler := handler.NewReviewHandler(queries, storageClient, cfg)
 	var pgxPool *pgxpool.Pool
 	if dbPool != nil {
@@ -322,9 +325,11 @@ func main() {
 			protected.Get("/documents/{id}/versions", documentsHandler.ListVersions)
 			protected.Post("/documents/{id}/versions/{versionId}/name", documentsHandler.NameVersion)
 			protected.Post("/documents/{id}/restore", documentsHandler.RestoreVersion)
+			protected.Post("/documents/{id}/versions/{version_id}/restore", documentsHandler.RestoreVersion)
 			protected.Get("/documents/{id}/items/{itemId}/card-preview", documentsHandler.GetCardPreview)
 			protected.Get("/documents/{id}/export/{format}", documentsHandler.Export)
 			protected.Post("/documents/{id}/import/docx", documentsHandler.ImportDocx)
+			protected.Post("/documents/{id}/import-docx", documentsHandler.ImportDocx)
 		})
 	})
 

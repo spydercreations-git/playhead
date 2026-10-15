@@ -217,7 +217,18 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
   - **Secure Video Cards & Image Flow**:
     - Embedded video cards resolve metadata through `GET /api/v1/items/{id}/card-preview` using `authz.AccessItem`. Readers without access receive a locked card (`"No access: You don't have permission to view this video"`). Video cards on public share links resolve via the shared public share helper.
     - Document image uploads use Playhead's standard presigned R2 upload workflow with storage quota reservations in PostgreSQL transactions.
-- **Reason**: Guarantees absolute team data privacy for agency operations, provides 100% open-source compliance without recurring vendor fees, and guarantees robust real-time collaboration.
+## 34. P5 Advisor Review: Data Loss Prevention, In-Doc Replacements, Template Parity, and Server-Side Conversions
+- **Decision**:
+  - **Server-Side Yjs State Initialization**: When a document is created from a template or imported, the Go API calls the internal collab endpoint (`POST /internal/init-document`) which constructs the real `Y.Doc` state with `y-prosemirror` and saves `content_state`. `useEditor`'s `content` property is strictly omitted when the collaboration extension is active to prevent content duplication when multiple users open a new document.
+  - **Separate Read-Only Version Preview**: Historical version previews are rendered inside a dedicated `<ReadOnlyVersionPreview />` component without the Collaboration extension. `editor.commands.setContent` is never invoked on the live collaborative editor during version inspection.
+  - **In-Memory CRDT Content Replacement**: Document version restores and Word document imports execute through `POST /internal/replace-content` in the collab service. Content replacement occurs inside a live `ydoc.transact()` call that deletes existing fragment elements and inserts the new state. This guarantees that connected collaborators see changes immediately and reconnecting offline clients with local IndexedDB caches do not resurrect deleted content.
+  - **Collab-Driven Automatic Version Snapshots**: On every document store event in the collab service, if document edits occurred and the last version snapshot was created >= 10 minutes ago, an `"Automatic version"` snapshot is recorded in `document_versions`.
+  - **Template Parity**: Templates are locked strictly to the 5 specified in `FEATURES_DOCS_SHEETS.md`: `Blank`, `Brief`, `Script`, `Shot list`, and `Creator notes`.
+  - **Clean Public Plain Text**: `public_plain_text` is stored strictly as cleaned human-readable plain text with all `team_notes` stripped (fixing previous bug where JSON was stringified into the column).
+  - **Server-Side Word Conversion**: Word (.docx) imports are uploaded to the API and converted on the server side in the collab service using `mammoth` with a 25MB file size limit.
+  - **Instant Connection Revocation**: Whenever grants, roles, company memberships, or project people change, the API publishes to Redis channel `playhead:collab:revocations` to disconnect active collaboration sessions immediately.
+- **Reason**: Fixes all potential data loss bugs identified in advisor review, ensures offline CRDT consistency, and enforces strict template and security compliance.
+
 
 
 

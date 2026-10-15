@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/redis/go-redis/v9"
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
@@ -15,10 +16,15 @@ import (
 
 type RolesHandler struct {
 	queries *db.Queries
+	rdb     *redis.Client
 }
 
 func NewRolesHandler(queries *db.Queries) *RolesHandler {
 	return &RolesHandler{queries: queries}
+}
+
+func (h *RolesHandler) SetRedisClient(r *redis.Client) {
+	h.rdb = r
 }
 
 type RoleResponse struct {
@@ -277,6 +283,8 @@ func (h *RolesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	PublishCollabRevocation(r.Context(), h.rdb, "", "")
+
 	respondJSON(w, http.StatusOK, RoleResponse{
 		ID:          pgUUIDToString(updatedRole.ID),
 		CompanyID:   pgUUIDToString(updatedRole.CompanyID),
@@ -355,6 +363,8 @@ func (h *RolesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_delete_role"})
 		return
 	}
+
+	PublishCollabRevocation(r.Context(), h.rdb, "", "")
 
 	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }

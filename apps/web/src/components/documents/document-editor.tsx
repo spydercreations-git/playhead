@@ -19,7 +19,49 @@ import TableCell from "@tiptap/extension-table-cell";
 import LinkExtension from "@tiptap/extension-link";
 import CharacterCount from "@tiptap/extension-character-count";
 import Collaboration from "@tiptap/extension-collaboration";
-import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
+import { Extension } from "@tiptap/core";
+import { yCursorPlugin } from "@tiptap/y-tiptap";
+
+const PlayheadCollabCursor = Extension.create({
+  name: "collaborationCursor",
+  priority: 999,
+  addOptions() {
+    return {
+      provider: null as any,
+      user: {
+        name: "Collaborator",
+        color: "#3b82f6",
+      },
+      render: (user: any) => {
+        const cursor = document.createElement("span");
+        cursor.classList.add("collaboration-cursor__caret");
+        cursor.setAttribute("style", `border-color: ${user.color}`);
+
+        const label = document.createElement("div");
+        label.classList.add("collaboration-cursor__label");
+        label.setAttribute("style", `background-color: ${user.color}`);
+        label.insertBefore(document.createTextNode(user.name || "Collaborator"), null);
+        cursor.insertBefore(label, null);
+
+        return cursor;
+      },
+    };
+  },
+  addProseMirrorPlugins() {
+    if (!this.options.provider || !this.options.provider.awareness) {
+      return [];
+    }
+    this.options.provider.awareness.setLocalStateField("user", this.options.user);
+    return [
+      yCursorPlugin(
+        this.options.provider.awareness,
+        {
+          cursorBuilder: this.options.render,
+        } as any
+      ),
+    ];
+  },
+});
 
 import {
   ArrowLeft,
@@ -84,6 +126,58 @@ interface OutlineItem {
   text: string;
   level: number;
   pos: number;
+}
+
+interface ReadOnlyVersionPreviewProps {
+  contentJson: any;
+}
+
+function ReadOnlyVersionPreview({ contentJson }: ReadOnlyVersionPreviewProps) {
+  const previewExtensions = useMemo(
+    () => [
+      StarterKit.configure({
+        undoRedo: false,
+        dropcursor: false,
+      }),
+      Underline,
+      TextStyle,
+      Color,
+      Highlight.configure({ multicolor: true }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      TaskList,
+      TaskItem.configure({ nested: true }),
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
+      LinkExtension.configure({ openOnClick: false }),
+      CharacterCount,
+      TeamNotes,
+      PlayheadVideoCard,
+      ResizableImage,
+    ],
+    []
+  );
+
+  const previewEditor = useEditor(
+    {
+      extensions: previewExtensions,
+      editable: false,
+      content: contentJson || {
+        type: "doc",
+        content: [{ type: "paragraph" }],
+      },
+      editorProps: {
+        attributes: {
+          class:
+            "prose dark:prose-invert max-w-none focus:outline-none min-h-[600px] text-foreground leading-relaxed select-text",
+        },
+      },
+    },
+    [contentJson]
+  );
+
+  return <EditorContent editor={previewEditor} />;
 }
 
 export function DocumentEditor({
@@ -207,7 +301,7 @@ export function DocumentEditor({
         })
       );
       list.push(
-        CollaborationCursor.configure({
+        PlayheadCollabCursor.configure({
           provider: provider,
           user: {
             name: "Collaborator",
@@ -220,15 +314,22 @@ export function DocumentEditor({
     return list;
   }, [isTeamMember, provider, ydoc, userColor]);
 
+  // Word import loading state
+  const [isImportingDocx, setIsImportingDocx] = useState(false);
+
   // Editor instance
+  // 1. Initial content: With Collaboration extension, content must NOT be used
   const editor = useEditor(
     {
       extensions,
       editable: canEdit && !selectedHistoricalVersion,
-      content: initialContentJson || {
-        type: "doc",
-        content: [{ type: "paragraph" }],
-      },
+      content:
+        isTeamMember && provider
+          ? undefined
+          : initialContentJson || {
+              type: "doc",
+              content: [{ type: "paragraph" }],
+            },
       editorProps: {
         attributes: {
           class:
@@ -241,20 +342,14 @@ export function DocumentEditor({
         }
       },
     },
-    [extensions, canEdit, selectedHistoricalVersion]
+    [extensions, canEdit]
   );
 
-  // If a historical version is selected, update editor content read-only
+  // 2. Version preview: Never call setContent on live collaborative editor.
+  // Toggle live editor editable state when historical preview is active.
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
-    if (selectedHistoricalVersion) {
-      editor.setEditable(false);
-      if (selectedHistoricalVersion.content_json) {
-        editor.commands.setContent(selectedHistoricalVersion.content_json);
-      }
-    } else {
-      editor.setEditable(canEdit);
-    }
+    editor.setEditable(canEdit && !selectedHistoricalVersion);
   }, [selectedHistoricalVersion, editor, canEdit]);
 
   // Handle title rename debounce
@@ -300,7 +395,7 @@ export function DocumentEditor({
       }
     });
     return items;
-  }, [editor?.state.doc]);
+  }, [editor?.state?.doc]);
 
   function jumpToHeading(pos: number) {
     if (!editor) return;
@@ -498,9 +593,53 @@ export function DocumentEditor({
     window.print();
   }
 
+  // 7. Word import: converts .docx on the server side via collab service with 25MB limit
+  async function handleImportDocx(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    if (file.size > 25 * 1024 * 1024) {
+      alert("Word document exceeds 25MB limit.");
+      return;
+    }
+
+    try {
+      setIsImportingDocx(true);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const token = localStorage.getItem("playhead_session");
+      const res = await fetch(`/api/documents/${documentId}/import-docx`, {
+        method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || "Failed to import Word document");
+      }
+
+      // Re-fetch versions
+      apiRequest<{ versions: DocumentVersionItem[] }>(
+        `/documents/${documentId}/versions`
+      ).then((vRes) => {
+        if (vRes?.versions) setVersions(vRes.versions);
+      });
+    } catch (err: any) {
+      console.error("Failed to import Word document:", err);
+      alert(err.message || "Failed to import Word document.");
+    } finally {
+      setIsImportingDocx(false);
+    }
+  }
+
   // Word & character stats
-  const words = editor?.storage.characterCount?.words() || 0;
-  const characters = editor?.storage.characterCount?.characters() || 0;
+  const words = editor?.storage?.characterCount?.words?.() || 0;
+  const characters = editor?.storage?.characterCount?.characters?.() || 0;
   const readTimeMin = Math.max(1, Math.ceil(words / 200));
 
   return (
@@ -639,6 +778,25 @@ export function DocumentEditor({
           >
             <History className="w-4 h-4" />
           </button>
+
+          {/* Import .docx Button */}
+          {canEdit && !selectedHistoricalVersion && (
+            <label className="px-3 py-1.5 rounded-lg bg-muted text-xs font-semibold text-foreground hover:bg-muted/80 transition-colors flex items-center gap-1.5 cursor-pointer">
+              {isImportingDocx ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+              ) : (
+                <Upload className="w-3.5 h-3.5" />
+              )}
+              <span>{isImportingDocx ? "Importing..." : "Import .docx"}</span>
+              <input
+                type="file"
+                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="hidden"
+                disabled={isImportingDocx}
+                onChange={handleImportDocx}
+              />
+            </label>
+          )}
 
           {/* Export Dropdown */}
           <div className="relative">
@@ -980,10 +1138,64 @@ export function DocumentEditor({
 
         {/* Scrollable Document Area */}
         <div
-          className={`flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center ${
+          className={`flex-1 overflow-y-auto p-4 sm:p-8 flex flex-col items-center ${
             isDarkPage ? "bg-background" : "bg-neutral-100 dark:bg-neutral-900"
           }`}
         >
+          {/* Historical Version Preview Banner */}
+          {selectedHistoricalVersion && (
+            <div className="w-full max-w-[816px] mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs text-amber-500 shrink-0">
+              <div className="flex items-center gap-2">
+                <History className="w-4 h-4 shrink-0" />
+                <span>
+                  Viewing snapshot (read-only):{" "}
+                  <strong>{selectedHistoricalVersion.name || "Untitled version"}</strong>{" "}
+                  <span className="text-muted-foreground ml-1">
+                    ({new Date(selectedHistoricalVersion.created_at).toLocaleString()})
+                  </span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const confirmed = window.confirm(
+                        `Restore "${selectedHistoricalVersion.name || "this version"}"? A new version will be created with its contents.`
+                      );
+                      if (!confirmed) return;
+                      try {
+                        await apiRequest(`/documents/${documentId}/restore`, {
+                          method: "POST",
+                          body: JSON.stringify({ version_id: selectedHistoricalVersion.id }),
+                        });
+                        setSelectedHistoricalVersion(null);
+                        apiRequest<{ versions: DocumentVersionItem[] }>(
+                          `/documents/${documentId}/versions`
+                        ).then((res) => {
+                          if (res?.versions) setVersions(res.versions);
+                        });
+                      } catch (err) {
+                        console.error("Failed to restore version", err);
+                        alert("Failed to restore version");
+                      }
+                    }}
+                    className="px-3 py-1 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 text-xs"
+                  >
+                    Restore
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedHistoricalVersion(null)}
+                  className="px-3 py-1 bg-muted hover:bg-muted/80 text-foreground font-semibold rounded-lg text-xs"
+                >
+                  Exit preview
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Document Sheet / Canvas */}
           <div
             className={`transition-all duration-200 ${
@@ -996,7 +1208,11 @@ export function DocumentEditor({
                 : "bg-white text-neutral-900 border-neutral-200"
             }`}
           >
-            <EditorContent editor={editor} />
+            {selectedHistoricalVersion ? (
+              <ReadOnlyVersionPreview contentJson={selectedHistoricalVersion.content_json} />
+            ) : (
+              <EditorContent editor={editor} />
+            )}
           </div>
         </div>
 

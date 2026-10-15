@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
@@ -57,5 +58,18 @@ func SeedDefaultCompanyRoles(ctx context.Context, q *db.Queries, companyID pgtyp
 
 func renderJSON(w http.ResponseWriter, status int, data interface{}) {
 	respondJSON(w, status, data)
+}
+
+func PublishCollabRevocation(ctx context.Context, rdb *redis.Client, documentID, userID string) {
+	if rdb == nil {
+		return
+	}
+	payload, err := json.Marshal(map[string]string{
+		"document_id": documentID,
+		"user_id":     userID,
+	})
+	if err == nil {
+		_ = rdb.Publish(ctx, "playhead:collab:revocations", payload).Err()
+	}
 }
 

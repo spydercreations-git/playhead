@@ -13,15 +13,21 @@ import (
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
 	"github.com/playhead/playhead/services/shared/mailer"
+	"github.com/redis/go-redis/v9"
 )
 
 type GrantsHandler struct {
 	queries *db.Queries
 	mailer  *mailer.Mailer
+	rdb     *redis.Client
 }
 
 func NewGrantsHandler(queries *db.Queries, mailer *mailer.Mailer) *GrantsHandler {
 	return &GrantsHandler{queries: queries, mailer: mailer}
+}
+
+func (h *GrantsHandler) SetRedisClient(r *redis.Client) {
+	h.rdb = r
 }
 
 type GrantResponse struct {
@@ -214,6 +220,8 @@ func (h *GrantsHandler) AddProjectGrant(w http.ResponseWriter, r *http.Request) 
 			_ = h.mailer.SendProjectAccessEmail(email, "", project.Name, projectURL, user.Name)
 		}
 	}
+
+	PublishCollabRevocation(r.Context(), h.rdb, "", pgUUIDToString(userUUID))
 
 	respondJSON(w, http.StatusOK, GrantResponse{
 		ID:          pgUUIDToString(grant.ID),
@@ -442,6 +450,8 @@ func (h *GrantsHandler) AddItemGrant(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	PublishCollabRevocation(r.Context(), h.rdb, itemUUID.String(), pgUUIDToString(userUUID))
+
 	respondJSON(w, http.StatusOK, GrantResponse{
 		ID:          pgUUIDToString(grant.ID),
 		TargetType:  grant.TargetType,
@@ -470,6 +480,8 @@ func (h *GrantsHandler) DeleteGrant(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_delete_grant"})
 		return
 	}
+
+	PublishCollabRevocation(r.Context(), h.rdb, "", "")
 
 	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }

@@ -498,6 +498,38 @@ Google Login is built into the backend and UI, but hidden until configured. When
 
 ---
 
+## Design & Layout Cleanup Pass
+
+### Status: Completed ✅ (Verified end-to-end in browser and tests)
+
+### What was built:
+1. **Layout & Single AppShell**:
+   - Removed nested `<AppShell>` wrappers in `apps/web/src/app/documents/page.tsx` and `apps/web/src/app/spreadsheets/page.tsx` eliminating duplicate sidebars and headers.
+2. **Top Bar / Header (Spec Section 5.2)**:
+   - Replaced static placeholder title and button with dynamic breadcrumbs based on active route.
+   - Restricted `"Welcome back, {name}"` strictly to the Home screen (`/`).
+   - Integrated upload progress icon, notification bell, and user avatar with real initials.
+   - Created custom dark 404 page (`apps/web/src/app/not-found.tsx`) with proper "Page Not Found" title.
+3. **Sidebar Navigation (Spec Section 5.1)**:
+   - Built full `+ New` dropdown menu: Client, Project, Folder, Upload files, Upload folder, Document, Spreadsheet.
+   - Added Admin storage bar showing bytes used vs limit with real-time percentage progress.
+   - Added user profile card displaying real user display name, email, role badge, and sign-out dropdown.
+4. **Design System & Visual Tokens**:
+   - Switched entire application font to **Plus Jakarta Sans** via `next/font/google` in `layout.tsx`.
+   - Eliminated all white inputs; enforced background `#2A2B30`, border `#2E2F34`, text white, placeholder `#7C7F87`, focus border `#4876F3`, and 10px radius (`rounded-[10px]`).
+   - Removed all 26 occurrences of `backdrop-blur`; modal overlays now use plain black 60% opacity (`bg-black/60`).
+   - Modal panels standardized to `#212121`, border `#2E2F34`, and 16px radius (`rounded-2xl`).
+   - Option cards styled in `#2A2B30` with border `#2E2F34`; active selection highlights in `#4876F3` with blue tint.
+   - All dropdown selects now hide browser default arrows (`appearance-none`) and display a custom 14px `ChevronDown` placed 12px from right with 36px right padding.
+   - Created reusable searchable `<ProjectSelect />` component grouping projects by client.
+   - Replaced all emojis (e.g. 🔒, ✕, ✓) with Lucide SVG icons.
+5. **Spreadsheets Reliability & Error States**:
+   - Fixed `/spreadsheets` loading state lifecycle to prevent infinite loading.
+   - Added error state with "Try again" retry button and clean empty state.
+   - Ensured backend `ListSpreadsheets` returns empty array `[]` instead of null.
+
+---
+
 ## Upcoming Milestones (Version 2: P7)
 
 - **Milestone P7: Search, notifications, polish**
@@ -505,6 +537,7 @@ Google Login is built into the backend and UI, but hidden until configured. When
   - In-app notification bell and email notifications.
   - Client Notes. Performance validation against Section 7 benchmarks. Security audit.
   - **Internal launch for the Idyll team and clients after P7.**
+
 
 
 

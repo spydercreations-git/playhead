@@ -177,7 +177,7 @@ export function ShareModal({
   // Render "Request Access" UI for users without Full access
   if (isReadOnlyOrCommenter) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
         <div className="w-full max-w-md bg-[#18181A] border border-[#27272A] rounded-2xl p-6 shadow-2xl">
           <div className="flex items-center justify-between pb-4 border-b border-[#27272A]">
             <h3 className="text-base font-semibold text-white">Request Access</h3>
@@ -243,7 +243,7 @@ export function ShareModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-xl bg-[#18181A] border border-[#27272A] rounded-2xl shadow-2xl flex flex-col max-h-[85vh]">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-[#27272A]">

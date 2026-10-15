@@ -45,3 +45,8 @@ Project and player layout follows `docs/PROJECT_WORKSPACE.md`.
 ## Definition of done
 
 Works end to end in the browser, permissions enforced and tested, all states designed, tests passing, PROGRESS.md updated.
+
+## Summary for Harsh (Permanent Rule)
+
+At the very end of every report, write a section called SUMMARY FOR HARSH: one short paragraph in plain simple English (no code, no file names) saying what you did, what you tested, what is not done or not working, and the commit ID.
+

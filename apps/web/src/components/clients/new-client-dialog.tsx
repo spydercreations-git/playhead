@@ -2,18 +2,19 @@
 
 import React, { useState } from "react";
 import { apiRequest } from "@/lib/api";
-
-interface ContactRow {
-  name: string;
-  email: string;
-  default_level: string;
-  can_download: boolean;
-}
+import { ChevronDown, X } from "lucide-react";
 
 interface NewClientDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (newClient: any) => void;
+  onSuccess?: () => void;
+}
+
+interface ContactRow {
+  name: string;
+  email: string;
+  default_level: "none" | "viewer" | "commenter" | "uploader" | "full";
+  can_download: boolean;
 }
 
 export function NewClientDialog({
@@ -26,6 +27,7 @@ export function NewClientDialog({
   const [notes, setNotes] = useState("");
   const [contacts, setContacts] = useState<ContactRow[]>([]);
   const [emailOnboarding, setEmailOnboarding] = useState(true);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,8 +39,8 @@ export function NewClientDialog({
       {
         name: "",
         email: "",
-        default_level: "none",
-        can_download: true,
+        default_level: "commenter",
+        can_download: false,
       },
     ]);
   }
@@ -48,40 +50,38 @@ export function NewClientDialog({
     field: keyof ContactRow,
     value: any
   ) {
-    const updated = [...contacts];
-    updated[index] = { ...updated[index], [field]: value };
-    setContacts(updated);
+    const next = [...contacts];
+    next[index] = { ...next[index], [field]: value };
+    setContacts(next);
   }
 
   function handleRemoveContact(index: number) {
-    setContacts(contacts.filter((_, i) => i !== index));
+    setContacts(contacts.filter((_, idx) => idx !== index));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    if (!name.trim()) {
-      setError("Client name is required");
-      return;
-    }
+    if (!name.trim()) return;
 
-    setLoading(true);
     try {
+      setLoading(true);
+      setError(null);
+
       const payload = {
         name: name.trim(),
-        website: website.trim(),
-        notes: notes.trim(),
-        contacts: contacts.filter((c) => c.email.trim() !== ""),
+        website: website.trim() || undefined,
+        notes: notes.trim() || undefined,
         email_onboarding: emailOnboarding,
+        contacts: contacts.filter((c) => c.email.trim().length > 0),
       };
 
-      const result = await apiRequest("/clients", {
+      await apiRequest("/clients", {
         method: "POST",
         body: JSON.stringify(payload),
       });
 
-      onSuccess(result);
       onClose();
+      if (onSuccess) onSuccess();
     } catch (err: any) {
       setError(err?.error || "Failed to create client");
     } finally {
@@ -90,20 +90,20 @@ export function NewClientDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="w-full max-w-xl rounded-xl border border-[#424344] bg-[#212121] p-6 shadow-2xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between pb-4 border-b border-[#424344]/60">
-          <h2 className="text-lg font-bold text-white">Create New Client</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-in fade-in duration-150">
+      <div className="w-full max-w-xl rounded-2xl border border-[#2E2F34] bg-[#212121] p-6 shadow-2xl max-h-[90vh] flex flex-col relative">
+        <div className="flex items-center justify-between pb-4 border-b border-[#2E2F34]">
+          <h2 className="text-base font-bold text-white">Create New Client</h2>
           <button
             onClick={onClose}
-            className="text-[#9A9DA0] hover:text-white text-lg p-1"
+            className="p-1 rounded-lg text-[#7C7F87] hover:text-white hover:bg-[#2A2B30] transition-colors"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {error && (
-          <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
+          <div className="mt-4 rounded-[10px] border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
             {error}
           </div>
         )}
@@ -120,7 +120,7 @@ export function NewClientDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Everygen, Nike, Red Bull"
-              className="w-full rounded-lg border border-[#424344] bg-[#2E2F34] px-3.5 py-2 text-sm text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none"
+              className="w-full h-10 rounded-[10px] border border-[#2E2F34] bg-[#2A2B30] px-3.5 text-xs text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none transition-colors"
             />
           </div>
 
@@ -133,7 +133,7 @@ export function NewClientDialog({
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               placeholder="https://everygen.com"
-              className="w-full rounded-lg border border-[#424344] bg-[#2E2F34] px-3.5 py-2 text-sm text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none"
+              className="w-full h-10 rounded-[10px] border border-[#2E2F34] bg-[#2A2B30] px-3.5 text-xs text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none transition-colors"
             />
           </div>
 
@@ -146,7 +146,7 @@ export function NewClientDialog({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Brand guidelines, deliverables preferences, account notes..."
-              className="w-full rounded-lg border border-[#424344] bg-[#2E2F34] px-3.5 py-2 text-sm text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none resize-none"
+              className="w-full rounded-[10px] border border-[#2E2F34] bg-[#2A2B30] p-3 text-xs text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none resize-none transition-colors"
             />
           </div>
 
@@ -166,15 +166,15 @@ export function NewClientDialog({
             </div>
 
             {contacts.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-[#424344] p-4 text-center text-xs text-[#747678]">
+              <div className="rounded-[10px] border border-dashed border-[#2E2F34] p-4 text-center text-xs text-[#7C7F87]">
                 No contacts added yet. Click &quot;+ Add Contact&quot; to add team or client emails.
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {contacts.map((contact, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2 rounded-lg bg-[#2E2F34] p-2.5 border border-[#424344]"
+                    className="flex items-center gap-2 rounded-[10px] bg-[#2A2B30] p-2 border border-[#2E2F34]"
                   >
                     <input
                       type="text"
@@ -183,7 +183,7 @@ export function NewClientDialog({
                       onChange={(e) =>
                         handleUpdateContact(idx, "name", e.target.value)
                       }
-                      className="w-28 rounded bg-[#212121] border border-[#424344] px-2 py-1 text-xs text-white placeholder-[#686B6E] focus:outline-none"
+                      className="w-28 h-8 rounded-[8px] bg-[#212121] border border-[#2E2F34] px-2.5 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3]"
                     />
                     <input
                       type="email"
@@ -193,25 +193,28 @@ export function NewClientDialog({
                       onChange={(e) =>
                         handleUpdateContact(idx, "email", e.target.value)
                       }
-                      className="flex-1 rounded bg-[#212121] border border-[#424344] px-2 py-1 text-xs text-white placeholder-[#686B6E] focus:outline-none"
+                      className="flex-1 h-8 rounded-[8px] bg-[#212121] border border-[#2E2F34] px-2.5 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3]"
                     />
-                    <select
-                      value={contact.default_level}
-                      onChange={(e) =>
-                        handleUpdateContact(idx, "default_level", e.target.value)
-                      }
-                      title="Access to all projects"
-                      className="rounded bg-[#212121] border border-[#424344] px-2 py-1 text-xs text-white focus:outline-none"
-                    >
-                      <option value="none">Access: None</option>
-                      <option value="viewer">Viewer</option>
-                      <option value="commenter">Commenter</option>
-                      <option value="uploader">Uploader</option>
-                      <option value="full">Full access</option>
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={contact.default_level}
+                        onChange={(e) =>
+                          handleUpdateContact(idx, "default_level", e.target.value)
+                        }
+                        title="Access to all projects"
+                        className="h-8 rounded-[8px] bg-[#212121] border border-[#2E2F34] pl-2.5 pr-8 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none"
+                      >
+                        <option value="none">Access: None</option>
+                        <option value="viewer">Viewer</option>
+                        <option value="commenter">Commenter</option>
+                        <option value="uploader">Uploader</option>
+                        <option value="full">Full access</option>
+                      </select>
+                      <ChevronDown className="w-3 h-3 text-[#7C7F87] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
                     <label
                       title="Can download files"
-                      className="flex items-center gap-1 text-[11px] text-[#9A9DA0] shrink-0"
+                      className="flex items-center gap-1 text-[11px] text-[#9A9DA0] shrink-0 px-1"
                     >
                       <input
                         type="checkbox"
@@ -223,16 +226,16 @@ export function NewClientDialog({
                             e.target.checked
                           )
                         }
-                        className="rounded border-[#424344]"
+                        className="rounded border-[#2E2F34] text-[#4876F3] focus:ring-[#4876F3]"
                       />
                       DL
                     </label>
                     <button
                       type="button"
                       onClick={() => handleRemoveContact(idx)}
-                      className="text-[#9A9DA0] hover:text-red-400 text-xs px-1"
+                      className="p-1 text-[#7C7F87] hover:text-red-400 text-xs"
                     >
-                      ✕
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
@@ -241,18 +244,18 @@ export function NewClientDialog({
           </div>
 
           <div className="pt-2">
-            <label className="flex items-center gap-2 text-xs text-[#9A9DA0]">
+            <label className="flex items-center gap-2 text-xs text-[#9A9DA0] cursor-pointer">
               <input
                 type="checkbox"
                 checked={emailOnboarding}
                 onChange={(e) => setEmailOnboarding(e.target.checked)}
-                className="rounded border-[#424344]"
+                className="rounded border-[#2E2F34] text-[#4876F3] focus:ring-[#4876F3]"
               />
               Email contacts about their access
             </label>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#424344]/60">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#2E2F34]">
             <button
               type="button"
               onClick={onClose}
@@ -264,7 +267,7 @@ export function NewClientDialog({
             <button
               type="submit"
               disabled={loading}
-              className="rounded-lg bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3b66df] disabled:opacity-50"
+              className="rounded-[10px] bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3B66D6] disabled:opacity-50 transition-colors"
             >
               {loading ? "Creating..." : "Create Client"}
             </button>

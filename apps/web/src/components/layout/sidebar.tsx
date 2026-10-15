@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -14,31 +14,55 @@ import {
   SearchIcon,
 } from "@/components/icons";
 import { useAuth } from "@/lib/use-auth";
-import { Star, Building2, Folder, Zap, FileText, Table } from "lucide-react";
+import {
+  Star,
+  Building2,
+  Folder,
+  Zap,
+  FileText,
+  Table,
+  Upload,
+  FolderUp,
+  ChevronDown,
+  X,
+  LogOut,
+} from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
+import { NewDocumentDialog } from "@/components/documents/new-document-dialog";
+import { NewSpreadsheetDialog } from "@/components/spreadsheets/new-spreadsheet-dialog";
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, role, isClient, isAdmin, isManager, canCreateClientOrProject } = useAuth();
+  const { user, company, role, isClient, isAdmin, isManager, canCreateClientOrProject } = useAuth();
 
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const [showNewClient, setShowNewClient] = useState(false);
   const [showNewProject, setShowNewProject] = useState(false);
+  const [showNewDoc, setShowNewDoc] = useState(false);
+  const [showNewSheet, setShowNewSheet] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   async function handleLogout() {
     try {
       await apiRequest("/auth/logout", { method: "POST" });
     } catch {}
-    // Clear y-indexeddb documents data (User approved Change 7)
+    // Clear y-indexeddb documents data
     try {
       if (typeof window !== "undefined" && window.indexedDB) {
         if (window.indexedDB.databases) {
@@ -62,7 +86,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     {
       name: "Clients",
       href: "/clients",
-      icon: TeamIcon,
+      icon: Building2,
       show: !isClient && (isAdmin || isManager),
     },
     { name: "Projects", href: "/projects", icon: ProjectIcon, show: true },
@@ -79,23 +103,57 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     { name: "Trash", href: "/trash", icon: TrashIcon, show: true },
   ];
 
+  // User initials & real name
+  const initials = useMemo(() => {
+    if (user?.name) {
+      const parts = user.name.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return user.name.slice(0, 2).toUpperCase();
+    }
+    if (user?.email) {
+      return user.email.slice(0, 2).toUpperCase();
+    }
+    return "PH";
+  }, [user]);
+
+  const displayName = useMemo(() => {
+    if (user?.name && user.name.trim()) return user.name;
+    if (user?.email) return user.email.split("@")[0];
+    return "Playhead User";
+  }, [user]);
+
+  // Storage percentage calculation
+  const storageStats = useMemo(() => {
+    if (!company) return null;
+    const limit = company.storage_limit_bytes || 0;
+    const used = company.storage_used_bytes || 0;
+    const percent = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+    return {
+      usedFormatted: formatBytes(used),
+      limitFormatted: formatBytes(limit),
+      percent,
+    };
+  }, [company]);
+
   return (
     <>
       {/* Mobile backdrop */}
       {isOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-black/70 md:hidden"
+          className="fixed inset-0 z-40 bg-black/60 md:hidden"
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col border-r border-[#424344] bg-[#212121] transition-transform duration-200 ease-in-out md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col border-r border-[#2E2F34] bg-[#212121] transition-transform duration-200 ease-in-out md:static md:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Top Header: Official Playhead Logo */}
-        <div className="flex h-16 items-center justify-between px-6 border-b border-[#424344]/50">
+        <div className="flex h-16 items-center justify-between px-6 border-b border-[#2E2F34]">
           <Link href="/" className="flex items-center">
             <PlayheadLogoWithText width={140} color="#FFFFFF" />
           </Link>
@@ -103,21 +161,25 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <button
             onClick={onClose}
             title="Close menu"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#9A9DA0] hover:bg-[#2E2F34] hover:text-white md:hidden"
+            className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[#7C7F87] hover:bg-[#2A2B30] hover:text-white md:hidden"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Action: + New Button (for Admins and Managers) */}
-        {canCreateClientOrProject && (
+        {/* Action: + New Button (Spec Section 5.1) */}
+        {!isClient && (
           <div className="relative px-6 pt-5 pb-2">
             <button
               onClick={() => setNewMenuOpen(!newMenuOpen)}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#4876F3] text-sm font-semibold text-white shadow hover:bg-[#3b66df] transition-colors"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-[10px] bg-[#4876F3] text-xs font-semibold text-white shadow hover:bg-[#3B66D6] transition-colors"
             >
               <span>+ New</span>
-              <span className="text-xs opacity-80">▾</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform ${
+                  newMenuOpen ? "rotate-180" : ""
+                }`}
+              />
             </button>
 
             {newMenuOpen && (
@@ -126,26 +188,87 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   className="fixed inset-0 z-30"
                   onClick={() => setNewMenuOpen(false)}
                 />
-                <div className="absolute left-6 right-6 top-[66px] z-40 rounded-lg border border-[#424344] bg-[#212121] py-1.5 shadow-2xl">
+                <div className="absolute left-6 right-6 top-[66px] z-40 rounded-[10px] border border-[#2E2F34] bg-[#212121] py-1.5 shadow-2xl space-y-0.5">
+                  {canCreateClientOrProject && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setNewMenuOpen(false);
+                          setShowNewClient(true);
+                        }}
+                        className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
+                      >
+                        <Building2 className="w-4 h-4 text-emerald-400" />
+                        <span>Client</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setNewMenuOpen(false);
+                          setShowNewProject(true);
+                        }}
+                        className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
+                      >
+                        <Folder className="w-4 h-4 text-[#4876F3]" />
+                        <span>Project</span>
+                      </button>
+                    </>
+                  )}
+
                   <button
                     onClick={() => {
                       setNewMenuOpen(false);
-                      setShowNewClient(true);
+                      router.push("/projects");
                     }}
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2E2F34]"
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
                   >
-                    <Building2 className="w-4 h-4 text-emerald-400" />
-                    <span>New Client</span>
+                    <Folder className="w-4 h-4 text-amber-400" />
+                    <span>Folder</span>
                   </button>
+
                   <button
                     onClick={() => {
                       setNewMenuOpen(false);
-                      setShowNewProject(true);
+                      router.push("/projects");
                     }}
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2E2F34]"
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
                   >
-                    <Folder className="w-4 h-4 text-[#4876F3]" />
-                    <span>New Project</span>
+                    <Upload className="w-4 h-4 text-cyan-400" />
+                    <span>Upload files</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setNewMenuOpen(false);
+                      router.push("/projects");
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
+                  >
+                    <FolderUp className="w-4 h-4 text-teal-400" />
+                    <span>Upload folder</span>
+                  </button>
+
+                  <div className="my-1 border-t border-[#2E2F34]" />
+
+                  <button
+                    onClick={() => {
+                      setNewMenuOpen(false);
+                      setShowNewDoc(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
+                  >
+                    <FileText className="w-4 h-4 text-blue-400" />
+                    <span>Document</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setNewMenuOpen(false);
+                      setShowNewSheet(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
+                  >
+                    <Table className="w-4 h-4 text-emerald-400" />
+                    <span>Spreadsheet</span>
                   </button>
                 </div>
               </>
@@ -155,16 +278,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Search Bar */}
         <div className="px-6 py-2">
-          <div className="flex h-[42px] w-full items-center justify-between rounded-lg bg-[#2E2F34] px-3.5 text-[#9A9DA0] transition-colors focus-within:ring-1 focus-within:ring-[#4876F3]">
+          <div className="flex h-10 w-full items-center justify-between rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3.5 text-[#7C7F87] transition-colors focus-within:border-[#4876F3]">
             <div className="flex items-center gap-2.5">
-              <SearchIcon size={16} color="#9A9DA0" />
+              <SearchIcon size={16} color="#7C7F87" />
               <input
                 type="text"
                 placeholder="Search (⌘K)"
-                className="w-28 bg-transparent text-xs text-white placeholder-[#9A9DA0] focus:outline-none"
+                className="w-28 bg-transparent text-xs text-white placeholder-[#7C7F87] focus:outline-none"
               />
             </div>
-            <kbd className="rounded border border-[#424344] bg-[#212121] px-1.5 py-0.5 text-[9px] font-mono text-[#9A9DA0]">
+            <kbd className="rounded border border-[#2E2F34] bg-[#212121] px-1.5 py-0.5 text-[9px] font-mono text-[#7C7F87]">
               ⌘K
             </kbd>
           </div>
@@ -184,15 +307,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex h-[42px] items-center justify-between rounded-lg px-3 text-xs font-medium transition-colors ${
+                  className={`flex h-10 items-center justify-between rounded-[10px] px-3 text-xs font-medium transition-colors ${
                     isActive
-                      ? "bg-[#2E2F34] text-white font-semibold"
-                      : "text-[#9A9DA0] hover:bg-[#2E2F34]/60 hover:text-white"
+                      ? "bg-[#2A2B30] text-white font-semibold border border-[#2E2F34]"
+                      : "text-[#9A9DA0] hover:bg-[#2A2B30]/60 hover:text-white"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <item.icon
-                      size={18}
+                      size={17}
                       color={isActive ? "#4876F3" : "#9A9DA0"}
                     />
                     <span>{item.name}</span>
@@ -201,61 +324,74 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               );
             })}
 
-          {/* Admin Team Setting */}
-          {!isClient && isAdmin && (
-            <div className="pt-3 pb-1 border-t border-[#424344]/50 mt-3">
-              <Link
-                href="/team"
-                className={`flex h-[42px] items-center gap-3 rounded-lg px-3 text-xs font-medium transition-colors ${
-                  pathname.startsWith("/team")
-                    ? "bg-[#2E2F34] text-white font-semibold"
-                    : "text-[#9A9DA0] hover:bg-[#2E2F34]/60 hover:text-white"
-                }`}
-              >
-                <TeamIcon size={18} color="#9A9DA0" />
-                <span>Team</span>
-              </Link>
-              <Link
-                href="/settings/storage"
-                className={`flex h-[42px] items-center gap-3 rounded-lg px-3 text-xs font-medium transition-colors ${
-                  pathname.startsWith("/settings/storage")
-                    ? "bg-[#2E2F34] text-white font-semibold"
-                    : "text-[#9A9DA0] hover:bg-[#2E2F34]/60 hover:text-white"
-                }`}
-              >
-                <Zap className="w-4 h-4 text-amber-400" />
-                <span>Storage</span>
-              </Link>
+          {/* Admin Team & Settings */}
+          {!isClient && (
+            <div className="pt-3 pb-1 border-t border-[#2E2F34] mt-3">
+              {isAdmin && (
+                <Link
+                  href="/team"
+                  className={`flex h-10 items-center gap-3 rounded-[10px] px-3 text-xs font-medium transition-colors ${
+                    pathname.startsWith("/team")
+                      ? "bg-[#2A2B30] text-white font-semibold border border-[#2E2F34]"
+                      : "text-[#9A9DA0] hover:bg-[#2A2B30]/60 hover:text-white"
+                  }`}
+                >
+                  <TeamIcon size={17} color="#9A9DA0" />
+                  <span>Team</span>
+                </Link>
+              )}
+
               <Link
                 href="/settings"
-                className={`flex h-[42px] items-center gap-3 rounded-lg px-3 text-xs font-medium transition-colors ${
-                  pathname === "/settings"
-                    ? "bg-[#2E2F34] text-white font-semibold"
-                    : "text-[#9A9DA0] hover:bg-[#2E2F34]/60 hover:text-white"
+                className={`flex h-10 items-center gap-3 rounded-[10px] px-3 text-xs font-medium transition-colors ${
+                  pathname.startsWith("/settings")
+                    ? "bg-[#2A2B30] text-white font-semibold border border-[#2E2F34]"
+                    : "text-[#9A9DA0] hover:bg-[#2A2B30]/60 hover:text-white"
                 }`}
               >
-                <SettingsIcon size={18} color="#9A9DA0" />
+                <SettingsIcon size={17} color="#9A9DA0" />
                 <span>Settings</span>
               </Link>
             </div>
           )}
         </div>
 
+        {/* Storage Used for Admins (Spec Section 5.1) */}
+        {!isClient && isAdmin && storageStats && (
+          <div className="px-5 py-3 border-t border-[#2E2F34] bg-[#1c1c1c]">
+            <div className="flex items-center justify-between text-[11px] mb-1.5">
+              <span className="text-[#9A9DA0] font-medium flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <span>Storage</span>
+              </span>
+              <span className="text-[#7C7F87] font-mono text-[10px]">
+                {storageStats.usedFormatted} of {storageStats.limitFormatted}
+              </span>
+            </div>
+            <div className="h-1.5 w-full bg-[#2A2B30] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#4876F3] rounded-full transition-all duration-300"
+                style={{ width: `${storageStats.percent}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* User Profile Card */}
-        <div className="relative p-4 border-t border-[#424344]/50">
+        <div className="relative p-4 border-t border-[#2E2F34]">
           <div
             onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-            className="flex h-[60px] items-center justify-between rounded-lg bg-[#2E2F34] px-3 cursor-pointer hover:bg-[#383a42] transition-colors"
+            className="flex h-14 items-center justify-between rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3 cursor-pointer hover:bg-[#34353B] transition-colors"
           >
             <div className="flex items-center gap-2.5 truncate">
               <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#4876F3] text-xs font-bold text-white uppercase">
-                {user?.name ? user.name.slice(0, 2) : "PH"}
+                {initials}
               </div>
               <div className="flex flex-col truncate">
                 <span className="text-xs font-semibold text-white truncate">
-                  {user?.name || "Playhead User"}
+                  {displayName}
                 </span>
-                <span className="text-[10px] text-[#9A9DA0] truncate">
+                <span className="text-[10px] text-[#7C7F87] truncate">
                   {user?.email || ""}
                 </span>
               </div>
@@ -263,7 +399,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
             {/* Role Badge (hidden for clients) */}
             {!isClient && role && (
-              <span className="shrink-0 rounded bg-[#4876F3]/20 px-1.5 py-0.5 text-[10px] font-semibold text-[#4876F3] capitalize">
+              <span className="shrink-0 rounded-[6px] bg-[#4876F3]/15 px-1.5 py-0.5 text-[10px] font-semibold text-[#4876F3] capitalize border border-[#4876F3]/20">
                 {role}
               </span>
             )}
@@ -275,12 +411,22 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 className="fixed inset-0 z-30"
                 onClick={() => setProfileMenuOpen(false)}
               />
-              <div className="absolute bottom-[76px] left-4 right-4 z-40 rounded-lg border border-[#424344] bg-[#212121] py-1 shadow-2xl">
+              <div className="absolute bottom-[72px] left-4 right-4 z-40 rounded-[10px] border border-[#2E2F34] bg-[#212121] py-1 shadow-2xl">
+                <Link
+                  href="/settings"
+                  onClick={() => setProfileMenuOpen(false)}
+                  className="flex w-full items-center gap-2 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
+                >
+                  <SettingsIcon size={14} color="#9A9DA0" />
+                  <span>Settings</span>
+                </Link>
+                <div className="my-1 border-t border-[#2E2F34]" />
                 <button
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-xs font-medium text-red-400 hover:bg-[#2E2F34]"
+                  className="flex w-full items-center gap-2 px-3.5 py-2 text-left text-xs font-medium text-red-400 hover:bg-[#2A2B30] transition-colors"
                 >
-                  Sign Out
+                  <LogOut className="w-3.5 h-3.5 text-red-400" />
+                  <span>Sign Out</span>
                 </button>
               </div>
             </>
@@ -301,6 +447,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           setShowNewProject(false);
           setShowNewClient(true);
         }}
+      />
+      <NewDocumentDialog
+        isOpen={showNewDoc}
+        onClose={() => setShowNewDoc(false)}
+      />
+      <NewSpreadsheetDialog
+        isOpen={showNewSheet}
+        onClose={() => setShowNewSheet(false)}
       />
     </>
   );

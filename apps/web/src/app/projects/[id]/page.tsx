@@ -699,7 +699,7 @@ export default function ProjectWorkspacePage() {
           ========================================================================= */}
       <div className="flex-1 flex flex-col overflow-hidden bg-[#0D0D0E]">
         {/* Top Breadcrumb & User Bar */}
-        <div className="h-14 border-b border-[#212124] px-8 flex items-center justify-between bg-[#121214]/40 backdrop-blur-md">
+        <div className="h-14 border-b border-[#212124] px-8 flex items-center justify-between bg-[#121214]/40">
           {/* Breadcrumbs */}
           <div className="flex items-center gap-2 text-xs text-[#9A9DA0]">
             <Link href="/clients" className="hover:text-white">Clients</Link>
@@ -1027,11 +1027,11 @@ export default function ProjectWorkspacePage() {
                               v{file.latest_version_number || 1}
                             </span>
                             {/* Duration Pill */}
-                            <span className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-mono text-white">
+                            <span className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/60 text-[10px] font-mono text-white">
                               01:15
                             </span>
                             {/* Comment Counter (Lucide MessageSquare SVG icon - NO EMOJI!) */}
-                            <div className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] text-white flex items-center gap-1.5 font-medium">
+                            <div className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/60 text-[10px] text-white flex items-center gap-1.5 font-medium">
                               <MessageSquare className="w-3 h-3 text-zinc-300" />
                               <span>5</span>
                             </div>
@@ -1256,7 +1256,7 @@ export default function ProjectWorkspacePage() {
 
       {/* New Folder Modal */}
       {showNewFolderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1296,7 +1296,7 @@ export default function ProjectWorkspacePage() {
 
       {/* Rename Modal */}
       {renameItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <form
             onSubmit={(e) => {
               e.preventDefault();

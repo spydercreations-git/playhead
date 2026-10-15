@@ -101,13 +101,13 @@ export default function StarredPage() {
 
         {items.length > 0 && (
           <div className="relative w-full max-w-xs">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#7C7F87]" />
             <input
               type="text"
               placeholder="Search starred..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-lg border border-[#383838] bg-[#1a1a1a] py-2 pl-9 pr-3 text-sm text-white placeholder-neutral-500 focus:border-[#4B7BF5] focus:outline-none"
+              className="w-full rounded-[10px] border border-[#2E2F34] bg-[#2A2B30] py-2 pl-9 pr-3 text-xs text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none transition-colors"
             />
           </div>
         )}

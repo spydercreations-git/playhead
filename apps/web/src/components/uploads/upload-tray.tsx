@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { X } from "lucide-react";
 
 export interface UploadItem {
   id: string; // client upload tracking id
@@ -192,9 +193,9 @@ export function UploadTray({
                       <button
                         onClick={() => onCancel(item.id)}
                         title="Cancel"
-                        className="px-1.5 py-0.5 rounded bg-[#2E2F34] text-[#9A9DA0] hover:text-red-400 hover:bg-[#3b3d44]"
+                        className="p-1 rounded bg-[#2E2F34] text-[#9A9DA0] hover:text-red-400 hover:bg-[#3b3d44]"
                       >
-                        ✕
+                        <X className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>

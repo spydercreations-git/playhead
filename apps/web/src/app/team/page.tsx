@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { apiRequest, ApiError } from "@/lib/api";
-import { TeamIcon } from "@/components/icons";
-import { Shield, Plus, Trash2, Check, AlertCircle, X, Users } from "lucide-react";
+import { Shield, Plus, Trash2, Check, AlertCircle, X, Users, ChevronDown } from "lucide-react";
 
 interface Member {
   user_id: string;
@@ -468,12 +467,12 @@ export default function TeamPage() {
 
       {/* Create Custom Role Modal */}
       {roleModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <form
             onSubmit={handleCreateRole}
-            className="w-full max-w-2xl bg-[#18181A] border border-[#27272A] rounded-2xl shadow-2xl flex flex-col max-h-[90vh]"
+            className="w-full max-w-2xl bg-[#212121] border border-[#2E2F34] rounded-2xl shadow-2xl flex flex-col max-h-[90vh]"
           >
-            <div className="flex items-center justify-between p-5 border-b border-[#27272A]">
+            <div className="flex items-center justify-between p-5 border-b border-[#2E2F34]">
               <div>
                 <h3 className="text-base font-semibold text-white">New Role</h3>
                 <p className="text-xs text-[#9A9DA0] mt-0.5">
@@ -483,7 +482,7 @@ export default function TeamPage() {
               <button
                 type="button"
                 onClick={() => setRoleModalOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-[#27272A] text-[#9A9DA0] hover:text-white"
+                className="p-1 rounded-lg hover:bg-[#2A2B30] text-[#7C7F87] hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -491,7 +490,7 @@ export default function TeamPage() {
 
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
               {roleError && (
-                <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl">
+                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-[10px]">
                   {roleError}
                 </div>
               )}
@@ -507,7 +506,7 @@ export default function TeamPage() {
                     onChange={(e) => setRoleName(e.target.value)}
                     required
                     placeholder="e.g. Lead Colorist"
-                    className="w-full bg-[#121214] border border-[#27272A] rounded-xl px-3.5 py-2 text-xs text-white placeholder-[#52525B] focus:outline-none focus:border-[#3366FF]"
+                    className="w-full h-10 bg-[#2A2B30] border border-[#2E2F34] rounded-[10px] px-3.5 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
                   />
                 </div>
 
@@ -581,7 +580,7 @@ export default function TeamPage() {
               <button
                 type="submit"
                 disabled={roleLoading || !roleName}
-                className="px-5 py-2 bg-[#3366FF] hover:bg-[#2554DB] disabled:opacity-50 text-white text-xs font-medium rounded-xl"
+                className="px-5 py-2 bg-[#4876F3] hover:bg-[#3B66D6] disabled:opacity-50 text-white text-xs font-semibold rounded-[10px] shadow transition-colors"
               >
                 {roleLoading ? "Creating..." : "Create Role"}
               </button>
@@ -592,24 +591,24 @@ export default function TeamPage() {
 
       {/* Invite Modal */}
       {inviteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <form
             onSubmit={handleSendInvite}
-            className="w-full max-w-md bg-[#18181A] border border-[#27272A] rounded-2xl p-6 shadow-2xl space-y-4"
+            className="w-full max-w-md bg-[#212121] border border-[#2E2F34] rounded-2xl p-6 shadow-2xl space-y-4"
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[#27272A]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#2E2F34]">
               <h3 className="text-base font-semibold text-white">Invite Team Member</h3>
               <button
                 type="button"
                 onClick={() => setInviteModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-[#27272A] text-[#9A9DA0] hover:text-white"
+                className="p-1 rounded-lg hover:bg-[#2A2B30] text-[#7C7F87] hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {inviteError && (
-              <p className="text-xs text-rose-400 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20">
+              <p className="text-xs text-red-400 bg-red-500/10 p-2.5 rounded-[10px] border border-red-500/20">
                 {inviteError}
               </p>
             )}
@@ -622,42 +621,45 @@ export default function TeamPage() {
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 placeholder="colleague@agency.com"
-                className="w-full bg-[#121214] border border-[#27272A] rounded-xl px-3 py-2 text-xs text-white placeholder-[#52525B] focus:outline-none focus:border-[#3366FF]"
+                className="w-full h-10 bg-[#2A2B30] border border-[#2E2F34] rounded-[10px] px-3.5 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
               />
             </div>
 
             <div>
               <label className="text-xs font-medium text-white block mb-1">Role</label>
-              <select
-                value={inviteRole}
-                onChange={(e) => setInviteRole(e.target.value)}
-                className="w-full bg-[#121214] border border-[#27272A] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#3366FF]"
-              >
-                <option value="editor">Editor</option>
-                <option value="manager">Manager</option>
-                <option value="admin">Admin</option>
-                {roles
-                  .filter((r) => !r.is_system && r.name.toLowerCase() !== "manager" && r.name.toLowerCase() !== "editor")
-                  .map((r) => (
-                    <option key={r.id} value={r.name}>
-                      {r.name}
-                    </option>
-                  ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value)}
+                  className="w-full h-10 bg-[#2A2B30] border border-[#2E2F34] rounded-[10px] px-3.5 pr-9 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors"
+                >
+                  <option value="editor">Editor</option>
+                  <option value="manager">Manager</option>
+                  <option value="admin">Admin</option>
+                  {roles
+                    .filter((r) => !r.is_system && r.name.toLowerCase() !== "manager" && r.name.toLowerCase() !== "editor")
+                    .map((r) => (
+                      <option key={r.id} value={r.name}>
+                        {r.name}
+                      </option>
+                    ))}
+                </select>
+                <ChevronDown className="w-[14px] h-[14px] text-[#7C7F87] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#2E2F34]">
               <button
                 type="button"
                 onClick={() => setInviteModalOpen(false)}
-                className="px-3 py-2 bg-transparent hover:bg-[#27272A] text-xs text-[#9A9DA0] hover:text-white rounded-xl"
+                className="px-3.5 py-2 text-xs font-medium text-[#9A9DA0] hover:text-white rounded-[10px]"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={inviteLoading || !inviteEmail}
-                className="px-4 py-2 bg-[#3366FF] hover:bg-[#2554DB] disabled:opacity-50 text-white text-xs font-medium rounded-xl"
+                className="px-4 py-2 bg-[#4876F3] hover:bg-[#3B66D6] disabled:opacity-50 text-white text-xs font-semibold rounded-[10px] shadow transition-colors"
               >
                 {inviteLoading ? "Sending..." : "Send Invitation"}
               </button>

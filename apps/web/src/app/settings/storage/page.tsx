@@ -4,6 +4,7 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useAuth } from "@/lib/use-auth";
+import { Check } from "lucide-react";
 
 interface StorageStats {
   plan: string;
@@ -132,8 +133,15 @@ export default function StorageSettingsPage() {
             <div className="text-lg font-bold text-white capitalize">
               {isInternal ? "Internal Studio (Pay as you go)" : data.plan}
             </div>
-            <p className="text-xs text-emerald-400">
-              {isInternal ? "✓ Unlimited quota, no trial expiry" : `${formatBytes(data.storage_limit_bytes)} cap`}
+            <p className="text-xs text-emerald-400 flex items-center gap-1.5">
+              {isInternal ? (
+                <>
+                  <Check className="w-3.5 h-3.5 shrink-0" />
+                  <span>Unlimited quota, no trial expiry</span>
+                </>
+              ) : (
+                `${formatBytes(data.storage_limit_bytes)} cap`
+              )}
             </p>
           </div>
 

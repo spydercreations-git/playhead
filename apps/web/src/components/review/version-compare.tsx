@@ -126,7 +126,7 @@ export function VersionCompare({
       <div className="flex-1 grid grid-cols-2 gap-2 p-4 bg-[#0A0A0B] overflow-hidden">
         {/* Left Side: Version A */}
         <div className="flex flex-col items-center justify-center relative bg-[#121214] border border-[#222226] rounded-xl overflow-hidden p-2">
-          <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-[#18181A]/90 backdrop-blur px-3 py-1.5 rounded-lg border border-[#27272A]">
+          <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-[#18181A]/90 px-3 py-1.5 rounded-lg border border-[#27272A]">
             <span className="text-xs font-semibold text-[#9A9DA0]">Compare:</span>
             <select
               value={versionA}
@@ -150,7 +150,7 @@ export function VersionCompare({
 
         {/* Right Side: Version B */}
         <div className="flex flex-col items-center justify-center relative bg-[#121214] border border-[#222226] rounded-xl overflow-hidden p-2">
-          <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-[#18181A]/90 backdrop-blur px-3 py-1.5 rounded-lg border border-[#27272A]">
+          <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-[#18181A]/90 px-3 py-1.5 rounded-lg border border-[#27272A]">
             <span className="text-xs font-semibold text-[#9A9DA0]">Compare:</span>
             <select
               value={versionB}

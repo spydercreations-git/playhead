@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
+import { ChevronDown, X } from "lucide-react";
 
 export default function ClientDetailPage() {
   const params = useParams();
@@ -423,14 +424,23 @@ export default function ClientDetailPage() {
 
       {/* Add Contact Modal */}
       {showAddContact && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border border-[#424344] bg-[#212121] p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-white">
-              Add Contact to {client?.name}
-            </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+          <div className="w-full max-w-md rounded-2xl border border-[#2E2F34] bg-[#212121] p-6 shadow-2xl space-y-4 relative">
+            <div className="flex items-center justify-between pb-3 border-b border-[#2E2F34]">
+              <h3 className="text-base font-bold text-white">
+                Add Contact to {client?.name}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddContact(false)}
+                className="p-1 rounded-lg text-[#7C7F87] hover:text-white hover:bg-[#2A2B30] transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
             <div>
-              <label className="block text-xs font-medium text-[#9A9DA0] mb-1">
+              <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
                 Name
               </label>
               <input
@@ -438,12 +448,12 @@ export default function ClientDetailPage() {
                 value={newContactName}
                 onChange={(e) => setNewContactName(e.target.value)}
                 placeholder="Sarah Connor"
-                className="w-full rounded bg-[#2E2F34] border border-[#424344] px-3 py-1.5 text-xs text-white focus:outline-none"
+                className="w-full h-10 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3.5 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-[#9A9DA0] mb-1">
+              <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
                 Email
               </label>
               <input
@@ -452,44 +462,47 @@ export default function ClientDetailPage() {
                 value={newContactEmail}
                 onChange={(e) => setNewContactEmail(e.target.value)}
                 placeholder="sarah@everygen.com"
-                className="w-full rounded bg-[#2E2F34] border border-[#424344] px-3 py-1.5 text-xs text-white focus:outline-none"
+                className="w-full h-10 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3.5 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-[#9A9DA0] mb-1">
+              <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
                 Default Access to all projects
               </label>
-              <select
-                value={newContactLevel}
-                onChange={(e) => setNewContactLevel(e.target.value)}
-                className="w-full rounded bg-[#2E2F34] border border-[#424344] px-3 py-1.5 text-xs text-white focus:outline-none"
-              >
-                <option value="none">None (explicit project assignment only)</option>
-                <option value="viewer">Viewer</option>
-                <option value="commenter">Commenter</option>
-                <option value="uploader">Uploader</option>
-                <option value="full">Full access</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={newContactLevel}
+                  onChange={(e) => setNewContactLevel(e.target.value)}
+                  className="w-full h-10 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3.5 pr-9 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors"
+                >
+                  <option value="none">None (explicit project assignment only)</option>
+                  <option value="viewer">Viewer</option>
+                  <option value="commenter">Commenter</option>
+                  <option value="uploader">Uploader</option>
+                  <option value="full">Full access</option>
+                </select>
+                <ChevronDown className="w-[14px] h-[14px] text-[#7C7F87] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
 
             <div>
-              <label className="flex items-center gap-2 text-xs text-[#9A9DA0]">
+              <label className="flex items-center gap-2 text-xs text-[#9A9DA0] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={newContactDownload}
                   onChange={(e) => setNewContactDownload(e.target.checked)}
-                  className="rounded border-[#424344]"
+                  className="rounded border-[#2E2F34] text-[#4876F3] focus:ring-[#4876F3]"
                 />
                 Allow downloading video cuts and source files
               </label>
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex justify-end gap-3 pt-3 border-t border-[#2E2F34]">
               <button
                 type="button"
                 onClick={() => setShowAddContact(false)}
-                className="px-3 py-1.5 text-xs text-[#9A9DA0] hover:text-white"
+                className="px-3.5 py-2 text-xs font-semibold text-[#9A9DA0] hover:text-white rounded-[10px]"
               >
                 Cancel
               </button>
@@ -497,7 +510,7 @@ export default function ClientDetailPage() {
                 type="button"
                 disabled={!newContactEmail.trim() || addContactMutation.isPending}
                 onClick={() => addContactMutation.mutate()}
-                className="rounded bg-[#4876F3] px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-[#3b66df] disabled:opacity-50"
+                className="rounded-[10px] bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3B66D6] disabled:opacity-50 transition-colors"
               >
                 {addContactMutation.isPending ? "Adding..." : "Add Contact"}
               </button>

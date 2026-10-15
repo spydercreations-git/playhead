@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PlayheadLogoWithText } from "@/components/icons";
 import { apiRequest, ApiError } from "@/lib/api";
+import { Check, X } from "lucide-react";
 
 interface InviteRow {
   email: string;
@@ -188,7 +189,7 @@ export default function OnboardingPage() {
                 step === 1 ? "bg-[#4876F3] text-white" : "bg-emerald-500 text-white"
               }`}
             >
-              {step > 1 ? "✓" : "1"}
+              {step > 1 ? <Check className="w-3.5 h-3.5" /> : "1"}
             </div>
             <span className={`text-xs font-semibold ${step === 1 ? "text-white" : "text-[#9A9DA0]"}`}>
               Workspace
@@ -308,7 +309,7 @@ export default function OnboardingPage() {
                       className="flex h-9 w-9 items-center justify-center rounded-lg text-[#9A9DA0] hover:bg-[#2E2F34] hover:text-white"
                       title="Remove row"
                     >
-                      ✕
+                      <X className="w-4 h-4" />
                     </button>
                   )}
                 </div>

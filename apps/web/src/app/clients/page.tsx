@@ -96,13 +96,13 @@ export default function ClientsPage() {
 
         <div className="flex items-center gap-3">
           {/* Search */}
-          <div className="flex h-9 items-center rounded-lg bg-[#212121] border border-[#424344] px-3 text-xs text-[#9A9DA0]">
+          <div className="flex h-9 items-center rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3 text-xs text-[#7C7F87] focus-within:border-[#4876F3] transition-colors">
             <input
               type="text"
               placeholder="Search clients..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-40 bg-transparent text-white placeholder-[#686B6E] focus:outline-none"
+              className="w-40 bg-transparent text-white placeholder-[#7C7F87] focus:outline-none text-xs"
             />
           </div>
 
@@ -275,8 +275,8 @@ export default function ClientsPage() {
 
       {/* Delete Confirmation Modal (Admin Only, requires typing client name) */}
       {clientToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border border-red-500/40 bg-[#212121] p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+          <div className="w-full max-w-md rounded-2xl border border-red-500/40 bg-[#212121] p-6 shadow-2xl">
             <h3 className="text-base font-bold text-white mb-2">
               Delete {clientToDelete.name}?
             </h3>
@@ -285,13 +285,13 @@ export default function ClientsPage() {
             </p>
 
             {deleteError && (
-              <div className="mb-4 rounded bg-red-500/10 border border-red-500/30 p-2.5 text-xs text-red-400">
+              <div className="mb-4 rounded-[10px] bg-red-500/10 border border-red-500/30 p-2.5 text-xs text-red-400">
                 {deleteError}
               </div>
             )}
 
             <div className="mb-4">
-              <label className="block text-xs text-[#9A9DA0] mb-1">
+              <label className="block text-xs text-[#9A9DA0] mb-1.5">
                 Type <strong>{clientToDelete.name}</strong> to confirm:
               </label>
               <input
@@ -299,15 +299,15 @@ export default function ClientsPage() {
                 value={deleteInputName}
                 onChange={(e) => setDeleteInputName(e.target.value)}
                 placeholder={clientToDelete.name}
-                className="w-full rounded bg-[#2E2F34] border border-[#424344] px-3 py-1.5 text-xs text-white focus:outline-none"
+                className="w-full h-10 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3.5 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
               />
             </div>
 
-            <div className="flex justify-end gap-3">
+            <div className="flex justify-end gap-3 pt-2 border-t border-[#2E2F34]">
               <button
                 type="button"
                 onClick={() => setClientToDelete(null)}
-                className="px-3 py-1.5 text-xs text-[#9A9DA0] hover:text-white"
+                className="px-3.5 py-2 text-xs font-semibold text-[#9A9DA0] hover:text-white rounded-[10px]"
               >
                 Cancel
               </button>
@@ -318,7 +318,7 @@ export default function ClientsPage() {
                   deleteMutation.isPending
                 }
                 onClick={() => deleteMutation.mutate(clientToDelete.id)}
-                className="rounded bg-red-500 px-4 py-1.5 text-xs font-semibold text-white shadow hover:bg-red-600 disabled:opacity-40"
+                className="rounded-[10px] bg-red-500 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-red-600 disabled:opacity-40 transition-colors"
               >
                 {deleteMutation.isPending ? "Deleting..." : "Delete Client"}
               </button>

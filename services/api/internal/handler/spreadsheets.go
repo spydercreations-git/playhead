@@ -1067,7 +1067,7 @@ func (h *SpreadsheetsHandler) ListSpreadsheets(w http.ResponseWriter, r *http.Re
 		CanEdit     bool      `json:"can_edit"`
 	}
 
-	var items []SheetItem
+	items := []SheetItem{}
 	for _, s := range sheets {
 		projTarget := authz.ProjectTarget{
 			ID:        s.ProjectID.Bytes,

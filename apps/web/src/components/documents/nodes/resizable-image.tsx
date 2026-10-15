@@ -63,7 +63,7 @@ function ResizableImageView(props: NodeViewProps) {
         />
 
         {/* Floating Alignment Controls on Hover / Select */}
-        <div className="absolute top-2 right-2 bg-card/95 backdrop-blur border border-border rounded-lg shadow-lg p-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10">
+        <div className="absolute top-2 right-2 bg-card/95 border border-border rounded-lg shadow-lg p-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10">
           <button
             type="button"
             onClick={() => handleAlignment("left")}

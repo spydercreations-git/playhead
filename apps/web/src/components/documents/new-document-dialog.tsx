@@ -9,16 +9,10 @@ import {
   Clapperboard,
   ClipboardList,
   MessageSquare,
-  Folder,
   Loader2,
 } from "lucide-react";
 import { apiRequest } from "@/lib/api";
-
-interface ProjectOption {
-  id: string;
-  name: string;
-  client_name?: string;
-}
+import { ProjectSelect, ProjectOption } from "@/components/ui/project-select";
 
 interface NewDocumentDialogProps {
   isOpen: boolean;
@@ -100,7 +94,7 @@ export function NewDocumentDialog({
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedProjectId) {
-      setError("Please select a target project for this document.");
+      setError("Please select a project.");
       return;
     }
 
@@ -108,19 +102,23 @@ export function NewDocumentDialog({
       setIsSubmitting(true);
       setError(null);
 
-      const res = await apiRequest<{ id: string }>(
+      const res = await apiRequest<{ id: string; redirect_url?: string }>(
         `/projects/${selectedProjectId}/documents`,
         {
           method: "POST",
           body: JSON.stringify({
-            name: title.trim() || undefined,
+            title: title.trim() || undefined,
             template: selectedTemplate,
           }),
         }
       );
 
-      onClose();
-      router.push(`/d/${res.id}`);
+      if (res && res.id) {
+        onClose();
+        router.push(`/doc/${res.id}`);
+      } else {
+        throw new Error("Invalid response from server");
+      }
     } catch (err: any) {
       console.error("Failed to create document", err);
       setError(err.message || "Failed to create document.");
@@ -130,26 +128,26 @@ export function NewDocumentDialog({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-card border border-border rounded-2xl max-w-xl w-full p-6 shadow-2xl relative">
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div className="bg-[#212121] border border-[#2E2F34] rounded-2xl max-w-xl w-full p-6 shadow-2xl relative">
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+          className="absolute top-5 right-5 p-1 rounded-lg text-[#7C7F87] hover:text-white hover:bg-[#2A2B30] transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
 
-        <h2 className="text-lg font-semibold text-foreground mb-1">
+        <h2 className="text-base font-semibold text-white mb-1">
           Create new document
         </h2>
-        <p className="text-xs text-muted-foreground mb-5">
+        <p className="text-xs text-[#9A9DA0] mb-5">
           Select a template and choose which project this document belongs to.
         </p>
 
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs">
+          <div className="mb-4 p-3 rounded-[10px] bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
             {error}
           </div>
         )}
@@ -157,7 +155,7 @@ export function NewDocumentDialog({
         <form onSubmit={handleCreate} className="space-y-4">
           {/* Document Title */}
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1.5">
+            <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
               Document title
             </label>
             <input
@@ -165,41 +163,28 @@ export function NewDocumentDialog({
               placeholder="e.g. Q4 Brand Commercial Brief"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-muted/60 border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full h-10 bg-[#2A2B30] border border-[#2E2F34] rounded-[10px] px-3 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
               autoFocus
             />
           </div>
 
           {/* Project Selector */}
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1.5 flex items-center gap-1.5">
-              <Folder className="w-3.5 h-3.5 text-muted-foreground" />
-              <span>Project</span>
+            <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
+              Project
             </label>
-            {loadingProjects ? (
-              <div className="text-xs text-muted-foreground flex items-center gap-2 py-2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-                <span>Loading available projects...</span>
-              </div>
-            ) : (
-              <select
-                value={selectedProjectId}
-                onChange={(e) => setSelectedProjectId(e.target.value)}
-                className="w-full bg-muted/60 border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              >
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} {p.client_name ? `(${p.client_name})` : ""}
-                  </option>
-                ))}
-              </select>
-            )}
+            <ProjectSelect
+              projects={projects}
+              value={selectedProjectId}
+              onChange={(id) => setSelectedProjectId(id)}
+              disabled={loadingProjects}
+              required
+            />
           </div>
 
           {/* Template Selection Cards */}
           <div>
-            <label className="block text-xs font-medium text-foreground mb-2">
+            <label className="block text-xs font-medium text-[#9A9DA0] mb-2">
               Choose template
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -210,26 +195,26 @@ export function NewDocumentDialog({
                   <div
                     key={tmpl.id}
                     onClick={() => setSelectedTemplate(tmpl.id)}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-3 select-none ${
+                    className={`p-3 rounded-[10px] border cursor-pointer transition-all flex items-start gap-3 select-none ${
                       isSelected
-                        ? "bg-primary/10 border-primary shadow-sm"
-                        : "bg-muted/30 border-border/60 hover:bg-muted/60 hover:border-border"
+                        ? "bg-[#4876F3]/10 border-[#4876F3] text-white"
+                        : "bg-[#2A2B30] border-[#2E2F34] text-[#9A9DA0] hover:text-white hover:border-[#424344]"
                     }`}
                   >
                     <div
                       className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                         isSelected
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
+                          ? "bg-[#4876F3] text-white"
+                          : "bg-[#212121] text-[#7C7F87]"
                       }`}
                     >
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-semibold text-foreground">
+                      <div className="text-xs font-semibold text-white">
                         {tmpl.title}
                       </div>
-                      <div className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                      <div className="text-[11px] text-[#7C7F87] line-clamp-1 mt-0.5">
                         {tmpl.desc}
                       </div>
                     </div>
@@ -240,18 +225,18 @@ export function NewDocumentDialog({
           </div>
 
           {/* Footer Submit */}
-          <div className="pt-3 border-t border-border flex items-center justify-end gap-2">
+          <div className="pt-3 border-t border-[#2E2F34] flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
+              className="px-4 py-2 rounded-[10px] text-xs font-medium text-[#9A9DA0] hover:text-white hover:bg-[#2A2B30] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !selectedProjectId}
-              className="px-5 py-2 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+              className="px-5 py-2 rounded-[10px] text-xs font-semibold bg-[#4876F3] text-white hover:bg-[#3B66D6] disabled:opacity-50 flex items-center gap-1.5 shadow transition-colors"
             >
               {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               <span>Create Document</span>

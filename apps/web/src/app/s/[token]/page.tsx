@@ -375,7 +375,7 @@ export default function PublicSharePage() {
   return (
     <div className="min-h-screen bg-[#0D0D0E] text-white">
       {/* Top Navbar */}
-      <header className="h-16 border-b border-[#27272A] px-6 flex items-center justify-between bg-[#121214]/60 backdrop-blur-md sticky top-0 z-30">
+      <header className="h-16 border-b border-[#27272A] px-6 flex items-center justify-between bg-[#121214]/60 sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-[#3366FF] flex items-center justify-center font-bold text-white text-xs">
             PH

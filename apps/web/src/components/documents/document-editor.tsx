@@ -638,7 +638,7 @@ export function DocumentEditor({
       {/* ------------------------------------------------------------- */}
       {/* 1. Top Navigation Bar                                         */}
       {/* ------------------------------------------------------------- */}
-      <header className="h-14 border-b border-border bg-card/80 backdrop-blur px-4 flex items-center justify-between shrink-0 z-30">
+      <header className="h-14 border-b border-border bg-card/80 px-4 flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-3 min-w-0">
           <Link
             href={projectId ? `/projects/${projectId}` : "/documents"}
@@ -1243,7 +1243,7 @@ export function DocumentEditor({
 
       {/* Insert Video Card Modal */}
       {insertVideoModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 shadow-2xl">
             <h3 className="text-base font-semibold text-foreground mb-1">
               Insert Playhead Video Card

@@ -7,7 +7,7 @@ import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
-import { Folder } from "lucide-react";
+import { Folder, ChevronDown } from "lucide-react";
 
 interface ProjectItem {
   id: string;
@@ -88,41 +88,47 @@ export default function ProjectsPage() {
 
         <div className="flex flex-wrap items-center gap-3">
           {/* Search */}
-          <div className="flex h-9 items-center rounded-lg bg-[#212121] border border-[#424344] px-3 text-xs text-[#9A9DA0]">
+          <div className="flex h-9 items-center rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3 text-xs text-[#7C7F87] focus-within:border-[#4876F3] transition-colors">
             <input
               type="text"
               placeholder="Search projects..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-36 bg-transparent text-white placeholder-[#686B6E] focus:outline-none"
+              className="w-36 bg-transparent text-white placeholder-[#7C7F87] focus:outline-none text-xs"
             />
           </div>
 
           {/* Client Filter */}
           {clientOptions.length > 0 && (
-            <select
-              value={selectedClientId}
-              onChange={(e) => setSelectedClientId(e.target.value)}
-              className="h-9 rounded-lg bg-[#212121] border border-[#424344] px-2.5 text-xs text-white focus:outline-none"
-            >
-              <option value="">All Clients</option>
-              {clientOptions.map((c: any) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={selectedClientId}
+                onChange={(e) => setSelectedClientId(e.target.value)}
+                className="h-9 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-3 pr-8 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors"
+              >
+                <option value="">All Clients</option>
+                {clientOptions.map((c: any) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-[#7C7F87] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           )}
 
           {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-9 rounded-lg bg-[#212121] border border-[#424344] px-2.5 text-xs text-white focus:outline-none"
-          >
-            <option value="active">Active</option>
-            <option value="archived">Archived</option>
-          </select>
+          <div className="relative">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-9 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-3 pr-8 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors"
+            >
+              <option value="active">Active</option>
+              <option value="archived">Archived</option>
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-[#7C7F87] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
 
           {/* View toggle */}
           <div className="flex rounded-lg bg-[#212121] border border-[#424344] p-0.5">

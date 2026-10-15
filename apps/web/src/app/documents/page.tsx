@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { AppShell } from "@/components/layout/app-shell";
 import {
   DocumentCard,
   DocumentListItem,
@@ -95,7 +94,7 @@ export default function DocumentsPage() {
   }, [documents, searchQuery, selectedClientId]);
 
   return (
-    <AppShell>
+    <>
       <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-8">
         {/* Header & Aggregate Count Banner */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -172,13 +171,13 @@ export default function DocumentsPage() {
 
           {/* Search Bar */}
           <div className="relative max-w-md">
-            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[#7C7F87] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search by title or project..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-card border border-border/80 rounded-xl pl-9 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+              className="w-full bg-[#2A2B30] border border-[#2E2F34] rounded-[10px] pl-9 pr-4 py-2 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors shadow-sm"
             />
           </div>
         </div>
@@ -244,6 +243,6 @@ export default function DocumentsPage() {
         isOpen={newDocOpen}
         onClose={() => setNewDocOpen(false)}
       />
-    </AppShell>
+    </>
   );
 }

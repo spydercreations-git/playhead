@@ -665,7 +665,7 @@ export function SpreadsheetEditor({
             ctx.fillStyle = "#EF4444";
             ctx.font = "bold 11px sans-serif";
             ctx.textBaseline = "middle";
-            ctx.fillText("🔒 No access", startX + 8, startY + h / 2);
+            ctx.fillText("Locked (No access)", startX + 8, startY + h / 2);
           }
         }
       }
@@ -830,9 +830,9 @@ export function SpreadsheetEditor({
               </span>
               <button
                 onClick={() => setCellPopup(null)}
-                className="text-[#8E8F90] hover:text-white text-xs"
+                className="text-[#8E8F90] hover:text-white p-1 rounded hover:bg-[#2A2B30] transition-colors"
               >
-                ✕
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
@@ -974,7 +974,7 @@ export function SpreadsheetEditor({
 
       {/* Column Config Modal (Lock & Hide Columns) */}
       {showColumnConfig && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-2xl border border-[#2D2F34] bg-[#212121] p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-[#2D2F34]">
               <div className="flex items-center gap-2 text-white font-semibold text-sm">
@@ -983,9 +983,9 @@ export function SpreadsheetEditor({
               </div>
               <button
                 onClick={() => setShowColumnConfig(false)}
-                className="text-[#8E8F90] hover:text-white text-xs"
+                className="text-[#8E8F90] hover:text-white p-1 rounded hover:bg-[#2A2B30] transition-colors"
               >
-                ✕
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
@@ -1058,9 +1058,9 @@ export function SpreadsheetEditor({
             </div>
             <button
               onClick={() => setShowVersions(false)}
-              className="text-[#8E8F90] hover:text-white text-xs"
+              className="text-[#8E8F90] hover:text-white p-1 rounded hover:bg-[#2A2B30] transition-colors"
             >
-              ✕
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -1109,9 +1109,9 @@ export function SpreadsheetEditor({
             </div>
             <button
               onClick={() => setShowComments(false)}
-              className="text-[#8E8F90] hover:text-white text-xs"
+              className="text-[#8E8F90] hover:text-white p-1 rounded hover:bg-[#2A2B30] transition-colors"
             >
-              ✕
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
 

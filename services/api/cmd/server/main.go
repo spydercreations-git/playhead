@@ -113,6 +113,7 @@ func main() {
 		pgxPool = dbPool.Pool
 	}
 	documentsHandler := handler.NewDocumentsHandler(pgxPool, queries, rdb, storageClient, cfg)
+	spreadsheetsHandler := handler.NewSpreadsheetsHandler(pgxPool, queries, rdb, storageClient, cfg)
 
 	// Background job queue via Redis asynq
 	var asynqClient *asynq.Client
@@ -334,6 +335,23 @@ func main() {
 			protected.Get("/documents/{id}/export/{format}", documentsHandler.Export)
 			protected.Post("/documents/{id}/import/docx", documentsHandler.ImportDocx)
 			protected.Post("/documents/{id}/import-docx", documentsHandler.ImportDocx)
+
+			// Spreadsheets (Milestone P6)
+			protected.Get("/spreadsheets", spreadsheetsHandler.ListSpreadsheets)
+			protected.Post("/projects/{projectId}/spreadsheets", spreadsheetsHandler.CreateSpreadsheet)
+			protected.Get("/projects/{projectId}/spreadsheets", spreadsheetsHandler.ListSpreadsheets)
+			protected.Get("/spreadsheets/{id}", spreadsheetsHandler.GetSpreadsheet)
+			protected.Get("/spreadsheets/{id}/view", spreadsheetsHandler.GetSpreadsheetView)
+			protected.Post("/spreadsheets/{id}/cells", spreadsheetsHandler.SetCellValue)
+			protected.Post("/spreadsheets/{id}/rows", spreadsheetsHandler.InsertRow)
+			protected.Patch("/spreadsheets/{id}/columns", spreadsheetsHandler.UpdateColumnMeta)
+			protected.Post("/spreadsheets/{id}/collab-ticket", spreadsheetsHandler.CreateCollabTicket)
+			protected.Post("/spreadsheets/{id}/import", spreadsheetsHandler.ImportSpreadsheet)
+			protected.Get("/spreadsheets/{id}/versions", spreadsheetsHandler.ListVersions)
+			protected.Post("/spreadsheets/{id}/versions/{versionId}/restore", spreadsheetsHandler.RestoreVersion)
+			protected.Get("/spreadsheets/{id}/comments", spreadsheetsHandler.ListComments)
+			protected.Post("/spreadsheets/{id}/comments", spreadsheetsHandler.CreateComment)
+			protected.Patch("/spreadsheets/{id}/comments/{commentId}/resolve", spreadsheetsHandler.ResolveComment)
 		})
 	})
 

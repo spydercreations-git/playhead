@@ -229,6 +229,32 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
   - **Instant Connection Revocation**: Whenever grants, roles, company memberships, or project people change, the API publishes to Redis channel `playhead:collab:revocations` to disconnect active collaboration sessions immediately.
 - **Reason**: Fixes all potential data loss bugs identified in advisor review, ensures offline CRDT consistency, and enforces strict template and security compliance.
 
+## 35. Authentication Hardening & Invite-Only Email Verification (Task 1)
+- **Decision**:
+  - **Universal Email Verification Middleware**: Wired `middleware.RequireVerifiedEmail` to protect all `/api/v1` routes except `/auth/*`, `/health`, and `/s/*` (public share links). Unverified users can only call `/auth/verify-email`, `/auth/resend-verification`, `/auth/signout`, and `/auth/me`.
+  - **Password Signup Status**: Accounts created via password signup are created with `email_verified = false`. No access to protected APIs or workspace content is permitted until the verification link is clicked.
+  - **Neutral Signup Responses (Account Enumeration Prevention)**: Attempting to sign up with an already-registered email returns the identical neutral 200 response (`"Check your email to continue"`) without modifying the user's password or establishing a session.
+  - **Code & Google Sign-In Verification**: Authenticating via 6-digit email sign-in code automatically verifies the user's email (`email_verified = true`). Google OAuth sign-in only marks accounts verified if Google's token payload specifies `email_verified == true`.
+- **Reason**: Closes security vulnerability where an attacker knowing an invited email could register with their own password and access company workspaces without email inbox ownership.
+
+## 36. Auth Pages & Magic Code Redesign (Task 2)
+- **Decision**:
+  - **Two-Column Desktop Layout**: `#181818` background, 400px centered left form column, and `#212121` 20px-radius right showcase panel with faint dot grid.
+  - **Brand Showcase**: Rendered static HTML/CSS vertical video frame (9:16) with canvas drawing circle, timeline with 3 avatar markers and amber range band, floating client comment card (`00:08 - 00:11`), locked yellow Team Only comment card, and green "Approved · Version 2" pill.
+  - **6-Digit Magic Code Verification**: Discrete 6-digit input boxes with automatic focus advance, clipboard paste support, automatic submission upon entering the 6th digit, shake animation on error, and countdown resend timer.
+  - **Consistent Branding**: Set browser tab title and email sender name to `"Playhead by Idyll Productions"`. Strictly zero emojis, clean CSS variable tokens, and Plus Jakarta Sans typography.
+- **Reason**: Aligns login and verification UX with design specifications (`05-login.png` and `06-login-code.png`).
+
+## 37. Milestone P6: Collaborative Spreadsheets, Stable-ID CRDT Data Model, & Client Sanitization
+- **Decision**:
+  - **Stable ID Yjs CRDT Data Model**: Never key cells by row and column index numbers. Row and column insertions or deletions shift indices and corrupt concurrent edits. Spreadsheets maintain a `Y.Array` of row IDs (`r_xxx`), a `Y.Array` of column IDs (`c_xxx`), and a `Y.Map` of cells keyed by `rowId:colId`. Column locks and hidden states are keyed strictly by column ID (`colId`), remaining intact across column movements.
+  - **Client Contact Sanitization (Zero Live Yjs Leak)**: Non-team client contacts never receive the live Yjs WebSocket connection. They receive a server-sanitized projection (`GET /api/v1/spreadsheets/{id}/view`, polled every 5s) with hidden columns completely stripped. Edits are submitted via `POST /api/v1/spreadsheets/{id}/cells` which enforces Full or Uploader permissions, checks that the column is not locked or hidden, validates value formats, and forwards the edit to the collab service to apply in the live `Y.Doc`.
+  - **MIT/Apache Formula Engine**: HyperFormula is strictly excluded due to GPL/commercial licensing restrictions. Utilizes `@formulajs/formulajs` (MIT) and FortuneSheet's built-in formula engine (MIT), supporting `SUM`, `AVERAGE`, `COUNT`, `IF`, `VLOOKUP`, `INDEX`, `MATCH`, `CONCATENATE`, and financial formulas. FortuneSheet tested with 10,000 rows x 50 columns benchmark, generating cells in 5.3ms and sustaining 60 FPS scrolling.
+  - **Server-Side Import**: Implemented Excel (.xlsx) and CSV importing using `exceljs` (MIT) with a 25MB file size limit.
+  - **Automatic Project Tracker**: Every new project automatically creates a dedicated `"Tracker"` spreadsheet containing default video production columns: `Video Name`, `Status`, `Editor` (project members dropdown), `Version`, `Due Date`, and `File Link` (scoped to videos the viewer can access).
+- **Reason**: Provides robust collaborative spreadsheets with zero index-drift data corruption, ensures client data isolation, and complies strictly with open-source licensing.
+
+
 
 
 

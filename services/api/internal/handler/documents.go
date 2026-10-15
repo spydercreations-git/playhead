@@ -317,7 +317,8 @@ func (h *DocumentsHandler) InternalCollabVerify(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	docUUID, err := uuid.Parse(req.DocumentID)
+	cleanDocID := strings.TrimPrefix(req.DocumentID, "sheet:")
+	docUUID, err := uuid.Parse(cleanDocID)
 	if err != nil {
 		renderJSON(w, http.StatusBadRequest, CollabVerifyResponse{Allowed: false, Reason: "Invalid document ID"})
 		return

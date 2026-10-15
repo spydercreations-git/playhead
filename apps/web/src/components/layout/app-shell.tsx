@@ -18,7 +18,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/reset-password") ||
     pathname?.startsWith("/onboarding") ||
     pathname?.startsWith("/invite") ||
-    pathname?.startsWith("/s/");
+    pathname?.startsWith("/s/") ||
+    pathname?.startsWith("/sheet/") ||
+    pathname?.startsWith("/test-sheet-benchmark");
 
   if (isStandaloneRoute) {
     return <main className="min-h-screen bg-[#181818]">{children}</main>;

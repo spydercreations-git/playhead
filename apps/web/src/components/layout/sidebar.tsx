@@ -14,7 +14,7 @@ import {
   SearchIcon,
 } from "@/components/icons";
 import { useAuth } from "@/lib/use-auth";
-import { Star, Building2, Folder, Zap, FileText } from "lucide-react";
+import { Star, Building2, Folder, Zap, FileText, Table } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
@@ -67,6 +67,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     },
     { name: "Projects", href: "/projects", icon: ProjectIcon, show: true },
     { name: "Documents", href: "/documents", icon: FileText, show: true },
+    { name: "Spreadsheets", href: "/spreadsheets", icon: Table, show: true },
     { name: "Reviews", href: "/reviews", icon: ReviewsIcon, show: true },
     {
       name: "Shared with me",

@@ -15,6 +15,11 @@ import {
   saveDocumentContent,
   createDocumentVersion,
   checkAndCreateAutomaticVersion,
+  loadSpreadsheetState,
+  loadSpreadsheetRecord,
+  saveSpreadsheetContent,
+  createSpreadsheetVersion,
+  checkAndCreateAutomaticSpreadsheetVersion,
 } from "./database.js";
 import { extractDocumentData } from "./text-extractor.js";
 import {
@@ -28,6 +33,24 @@ import {
   replaceContentInLiveDoc,
   convertDocxToProseMirror,
 } from "./prosemirror-converter.js";
+import {
+  buildYDocFromSheets,
+  yDocToFortuneSheet,
+  extractSpreadsheetData,
+  setCellInLiveDoc,
+  insertRowInLiveDoc,
+  setColumnMetaInLiveDoc,
+  parseExcelOrCsvBuffer,
+} from "./spreadsheet-converter.js";
+
+// Helper functions for spreadsheet names
+function isSpreadsheet(name: string): boolean {
+  return name.startsWith("sheet:");
+}
+
+function parseSpreadsheetId(name: string): string {
+  return name.startsWith("sheet:") ? name.replace("sheet:", "") : name;
+}
 
 // 1. Production Secret Validation
 const isProd =
@@ -127,52 +150,104 @@ export const server = new Server({
   },
 
   async onLoadDocument(data: onLoadDocumentPayload) {
-    const state = await loadDocumentState(data.documentName);
-    if (state && state.length > 0) {
-      Y.applyUpdate(data.document, state);
+    if (isSpreadsheet(data.documentName)) {
+      const sId = parseSpreadsheetId(data.documentName);
+      const record = await loadSpreadsheetRecord(sId);
+      if (record?.state && record.state.length > 0) {
+        Y.applyUpdate(data.document, record.state);
+      } else if (record?.contentJson) {
+        const initDoc = buildYDocFromSheets(record.contentJson);
+        const state = Buffer.from(Y.encodeStateAsUpdate(initDoc));
+        Y.applyUpdate(data.document, state);
+      }
+    } else {
+      const state = await loadDocumentState(data.documentName);
+      if (state && state.length > 0) {
+        Y.applyUpdate(data.document, state);
+      }
     }
     return data.document;
   },
 
   async onStoreDocument(data: onStoreDocumentPayload) {
     const state = Buffer.from(Y.encodeStateAsUpdate(data.document));
-    const extracted = extractDocumentData(data.document);
 
-    await saveDocumentContent(
-      data.documentName,
-      state,
-      extracted.contentJson,
-      extracted.plainText,
-      extracted.publicPlainText,
-      extracted.wordCount,
-      extracted.characterCount,
-      extracted.readingTimeSeconds
-    );
+    if (isSpreadsheet(data.documentName)) {
+      const sId = parseSpreadsheetId(data.documentName);
+      const extracted = extractSpreadsheetData(data.document);
 
-    // Requirement 4: Automatic version when there were edits and last version >= 10 minutes old
-    await checkAndCreateAutomaticVersion(
-      data.documentName,
-      state,
-      extracted.contentJson,
-      extracted.plainText
-    );
+      await saveSpreadsheetContent(
+        sId,
+        state,
+        extracted.contentJson,
+        extracted.plainText,
+        extracted.publicPlainText,
+        extracted.rowCount,
+        extracted.colCount,
+        extracted.cellCount
+      );
+
+      await checkAndCreateAutomaticSpreadsheetVersion(
+        sId,
+        state,
+        extracted.contentJson,
+        extracted.plainText
+      );
+    } else {
+      const extracted = extractDocumentData(data.document);
+
+      await saveDocumentContent(
+        data.documentName,
+        state,
+        extracted.contentJson,
+        extracted.plainText,
+        extracted.publicPlainText,
+        extracted.wordCount,
+        extracted.characterCount,
+        extracted.readingTimeSeconds
+      );
+
+      await checkAndCreateAutomaticVersion(
+        data.documentName,
+        state,
+        extracted.contentJson,
+        extracted.plainText
+      );
+    }
   },
 
   async beforeUnloadDocument(data: beforeUnloadDocumentPayload) {
     // Last person left: ensure document state is stored cleanly
     const state = Buffer.from(Y.encodeStateAsUpdate(data.document));
-    const extracted = extractDocumentData(data.document);
 
-    await saveDocumentContent(
-      data.documentName,
-      state,
-      extracted.contentJson,
-      extracted.plainText,
-      extracted.publicPlainText,
-      extracted.wordCount,
-      extracted.characterCount,
-      extracted.readingTimeSeconds
-    );
+    if (isSpreadsheet(data.documentName)) {
+      const sId = parseSpreadsheetId(data.documentName);
+      const extracted = extractSpreadsheetData(data.document);
+
+      await saveSpreadsheetContent(
+        sId,
+        state,
+        extracted.contentJson,
+        extracted.plainText,
+        extracted.publicPlainText,
+        extracted.rowCount,
+        extracted.colCount,
+        extracted.cellCount
+      );
+    } else {
+      const extracted = extractDocumentData(data.document);
+
+      await saveDocumentContent(
+        data.documentName,
+        state,
+        extracted.contentJson,
+        extracted.plainText,
+        extracted.publicPlainText,
+        extracted.wordCount,
+        extracted.characterCount,
+        extracted.readingTimeSeconds
+      );
+    }
   },
 });
 
@@ -397,6 +472,355 @@ app.post("/internal/import-docx", authCollabInternal, async (req: Request, res: 
   } catch (err: any) {
     console.error(`Failed to import .docx for document ${document_id}:`, err);
     res.status(500).json({ error: err.message || "Failed to import Word document" });
+  }
+});
+
+/**
+ * Helper to get or load a live spreadsheet Y.Doc
+ */
+async function getOrLoadLiveSheetDoc(spreadsheetId: string): Promise<{ ydoc: Y.Doc; wasLive: boolean }> {
+  const docName = `sheet:${spreadsheetId}`;
+  const activeDoc = (server as any).documents?.get(docName) || (server as any).hocuspocus?.documents?.get(docName);
+  if (activeDoc) {
+    return { ydoc: activeDoc, wasLive: true };
+  }
+  const record = await loadSpreadsheetRecord(spreadsheetId);
+  let ydoc = new Y.Doc();
+  if (record?.state && record.state.length > 0) {
+    Y.applyUpdate(ydoc, record.state);
+  } else if (record?.contentJson) {
+    ydoc = buildYDocFromSheets(record.contentJson);
+    const state = Buffer.from(Y.encodeStateAsUpdate(ydoc));
+    const extracted = extractSpreadsheetData(ydoc);
+    await saveSpreadsheetContent(
+      spreadsheetId,
+      state,
+      extracted.contentJson,
+      extracted.plainText,
+      extracted.publicPlainText,
+      extracted.rowCount,
+      extracted.colCount,
+      extracted.cellCount
+    );
+  }
+  return { ydoc, wasLive: false };
+}
+
+/**
+ * Internal Endpoint: POST /internal/init-sheet
+ */
+app.post("/internal/init-sheet", authCollabInternal, async (req: Request, res: Response) => {
+  const { spreadsheet_id, sheets_data } = req.body;
+  if (!spreadsheet_id) {
+    res.status(400).json({ error: "spreadsheet_id is required" });
+    return;
+  }
+
+  try {
+    const ydoc = buildYDocFromSheets(sheets_data || []);
+    const state = Buffer.from(Y.encodeStateAsUpdate(ydoc));
+    const extracted = extractSpreadsheetData(ydoc);
+
+    await saveSpreadsheetContent(
+      spreadsheet_id,
+      state,
+      extracted.contentJson,
+      extracted.plainText,
+      extracted.publicPlainText,
+      extracted.rowCount,
+      extracted.colCount,
+      extracted.cellCount
+    );
+
+    const docName = `sheet:${spreadsheet_id}`;
+    const activeDoc = (server as any).documents?.get(docName) || (server as any).hocuspocus?.documents?.get(docName);
+    if (activeDoc) {
+      Y.applyUpdate(activeDoc, state);
+    }
+
+    res.json({
+      ok: true,
+      spreadsheet_id,
+      row_count: extracted.rowCount,
+      col_count: extracted.colCount,
+      cell_count: extracted.cellCount,
+    });
+  } catch (err: any) {
+    console.error(`Failed to init spreadsheet ${spreadsheet_id}:`, err);
+    res.status(500).json({ error: err.message || "Failed to initialize spreadsheet" });
+  }
+});
+
+/**
+ * Internal Endpoint: POST /internal/sheet/set-cell
+ * Sets cell in live Y.Doc by stable rowId and colId.
+ */
+app.post("/internal/sheet/set-cell", authCollabInternal, async (req: Request, res: Response) => {
+  const { spreadsheet_id, sheet_id, row_id, col_id, value } = req.body;
+  if (!spreadsheet_id || !sheet_id || !row_id || !col_id) {
+    res.status(400).json({ error: "spreadsheet_id, sheet_id, row_id, col_id are required" });
+    return;
+  }
+
+  try {
+    const { ydoc, wasLive } = await getOrLoadLiveSheetDoc(spreadsheet_id);
+    setCellInLiveDoc(ydoc, sheet_id, row_id, col_id, value);
+
+    const state = Buffer.from(Y.encodeStateAsUpdate(ydoc));
+    const extracted = extractSpreadsheetData(ydoc);
+
+    await saveSpreadsheetContent(
+      spreadsheet_id,
+      state,
+      extracted.contentJson,
+      extracted.plainText,
+      extracted.publicPlainText,
+      extracted.rowCount,
+      extracted.colCount,
+      extracted.cellCount
+    );
+
+    res.json({
+      ok: true,
+      spreadsheet_id,
+      was_live: wasLive,
+      row_id,
+      col_id,
+    });
+  } catch (err: any) {
+    console.error(`Failed to set cell in spreadsheet ${spreadsheet_id}:`, err);
+    res.status(500).json({ error: err.message || "Failed to set cell" });
+  }
+});
+
+/**
+ * Internal Endpoint: POST /internal/sheet/insert-row
+ */
+app.post("/internal/sheet/insert-row", authCollabInternal, async (req: Request, res: Response) => {
+  const { spreadsheet_id, sheet_id, index } = req.body;
+  if (!spreadsheet_id || !sheet_id) {
+    res.status(400).json({ error: "spreadsheet_id and sheet_id are required" });
+    return;
+  }
+
+  try {
+    const { ydoc, wasLive } = await getOrLoadLiveSheetDoc(spreadsheet_id);
+    const newRowId = insertRowInLiveDoc(ydoc, sheet_id, typeof index === "number" ? index : 0);
+
+    const state = Buffer.from(Y.encodeStateAsUpdate(ydoc));
+    const extracted = extractSpreadsheetData(ydoc);
+
+    await saveSpreadsheetContent(
+      spreadsheet_id,
+      state,
+      extracted.contentJson,
+      extracted.plainText,
+      extracted.publicPlainText,
+      extracted.rowCount,
+      extracted.colCount,
+      extracted.cellCount
+    );
+
+    res.json({
+      ok: true,
+      spreadsheet_id,
+      new_row_id: newRowId,
+      was_live: wasLive,
+    });
+  } catch (err: any) {
+    console.error(`Failed to insert row in spreadsheet ${spreadsheet_id}:`, err);
+    res.status(500).json({ error: err.message || "Failed to insert row" });
+  }
+});
+
+/**
+ * Internal Endpoint: POST /internal/sheet/set-column-meta
+ */
+app.post("/internal/sheet/set-column-meta", authCollabInternal, async (req: Request, res: Response) => {
+  const { spreadsheet_id, sheet_id, col_id, meta } = req.body;
+  if (!spreadsheet_id || !sheet_id || !col_id || !meta) {
+    res.status(400).json({ error: "spreadsheet_id, sheet_id, col_id, and meta are required" });
+    return;
+  }
+
+  try {
+    const { ydoc, wasLive } = await getOrLoadLiveSheetDoc(spreadsheet_id);
+    setColumnMetaInLiveDoc(ydoc, sheet_id, col_id, meta);
+
+    const state = Buffer.from(Y.encodeStateAsUpdate(ydoc));
+    const extracted = extractSpreadsheetData(ydoc);
+
+    await saveSpreadsheetContent(
+      spreadsheet_id,
+      state,
+      extracted.contentJson,
+      extracted.plainText,
+      extracted.publicPlainText,
+      extracted.rowCount,
+      extracted.colCount,
+      extracted.cellCount
+    );
+
+    res.json({
+      ok: true,
+      spreadsheet_id,
+      col_id,
+      was_live: wasLive,
+    });
+  } catch (err: any) {
+    console.error(`Failed to set column meta for spreadsheet ${spreadsheet_id}:`, err);
+    res.status(500).json({ error: err.message || "Failed to set column metadata" });
+  }
+});
+
+/**
+ * Internal Endpoint: POST /internal/sheet/get-view
+ * Returns JSON sheets data. If sanitized is true, strips all hidden columns and marks locked columns.
+ */
+app.post("/internal/sheet/get-view", authCollabInternal, async (req: Request, res: Response) => {
+  const { spreadsheet_id, sanitized } = req.body;
+  if (!spreadsheet_id) {
+    res.status(400).json({ error: "spreadsheet_id is required" });
+    return;
+  }
+
+  try {
+    const { ydoc } = await getOrLoadLiveSheetDoc(spreadsheet_id);
+    const sheets = yDocToFortuneSheet(ydoc, !!sanitized);
+
+    res.json({
+      ok: true,
+      spreadsheet_id,
+      sheets,
+    });
+  } catch (err: any) {
+    console.error(`Failed to get view for spreadsheet ${spreadsheet_id}:`, err);
+    res.status(500).json({ error: err.message || "Failed to get sheet view" });
+  }
+});
+
+/**
+ * Internal Endpoint: POST /internal/sheet/replace-content
+ */
+app.post("/internal/sheet/replace-content", authCollabInternal, async (req: Request, res: Response) => {
+  const { spreadsheet_id, sheets_data, version_name, is_named, user_id } = req.body;
+  if (!spreadsheet_id) {
+    res.status(400).json({ error: "spreadsheet_id is required" });
+    return;
+  }
+
+  try {
+    const docName = `sheet:${spreadsheet_id}`;
+    const activeDoc = (server as any).documents?.get(docName) || (server as any).hocuspocus?.documents?.get(docName);
+    const newYDoc = buildYDocFromSheets(sheets_data || []);
+    const state = Buffer.from(Y.encodeStateAsUpdate(newYDoc));
+
+    if (activeDoc) {
+      Y.applyUpdate(activeDoc, state);
+    }
+
+    const extracted = extractSpreadsheetData(activeDoc || newYDoc);
+
+    await saveSpreadsheetContent(
+      spreadsheet_id,
+      state,
+      extracted.contentJson,
+      extracted.plainText,
+      extracted.publicPlainText,
+      extracted.rowCount,
+      extracted.colCount,
+      extracted.cellCount
+    );
+
+    let versionId: string | null = null;
+    if (version_name) {
+      versionId = await createSpreadsheetVersion(
+        spreadsheet_id,
+        version_name,
+        is_named ?? true,
+        state,
+        extracted.contentJson,
+        extracted.plainText,
+        user_id
+      );
+    }
+
+    res.json({
+      ok: true,
+      spreadsheet_id,
+      version_id: versionId,
+      row_count: extracted.rowCount,
+      col_count: extracted.colCount,
+      cell_count: extracted.cellCount,
+    });
+  } catch (err: any) {
+    console.error(`Failed to replace spreadsheet content for ${spreadsheet_id}:`, err);
+    res.status(500).json({ error: err.message || "Failed to replace spreadsheet content" });
+  }
+});
+
+/**
+ * Internal Endpoint: POST /internal/sheet/import-excel
+ */
+app.post("/internal/sheet/import-excel", authCollabInternal, async (req: Request, res: Response) => {
+  const { spreadsheet_id, file_base64, filename, user_id } = req.body;
+  if (!spreadsheet_id || !file_base64) {
+    res.status(400).json({ error: "spreadsheet_id and file_base64 are required" });
+    return;
+  }
+
+  try {
+    const fileBuffer = Buffer.from(file_base64, "base64");
+    const MAX_BYTES = 25 * 1024 * 1024; // 25MB limit
+    if (fileBuffer.length > MAX_BYTES) {
+      res.status(400).json({ error: "File size exceeds 25MB limit" });
+      return;
+    }
+
+    const sheetsData = await parseExcelOrCsvBuffer(fileBuffer, filename || "import.xlsx");
+    const newYDoc = buildYDocFromSheets(sheetsData);
+    const state = Buffer.from(Y.encodeStateAsUpdate(newYDoc));
+
+    const docName = `sheet:${spreadsheet_id}`;
+    const activeDoc = (server as any).documents?.get(docName) || (server as any).hocuspocus?.documents?.get(docName);
+    if (activeDoc) {
+      Y.applyUpdate(activeDoc, state);
+    }
+
+    const extracted = extractSpreadsheetData(activeDoc || newYDoc);
+
+    await saveSpreadsheetContent(
+      spreadsheet_id,
+      state,
+      extracted.contentJson,
+      extracted.plainText,
+      extracted.publicPlainText,
+      extracted.rowCount,
+      extracted.colCount,
+      extracted.cellCount
+    );
+
+    const versionId = await createSpreadsheetVersion(
+      spreadsheet_id,
+      `Import: ${filename || "Excel/CSV"}`,
+      true,
+      state,
+      extracted.contentJson,
+      extracted.plainText,
+      user_id
+    );
+
+    res.json({
+      ok: true,
+      spreadsheet_id,
+      version_id: versionId,
+      row_count: extracted.rowCount,
+      col_count: extracted.colCount,
+      cell_count: extracted.cellCount,
+    });
+  } catch (err: any) {
+    console.error(`Failed to import Excel/CSV for spreadsheet ${spreadsheet_id}:`, err);
+    res.status(500).json({ error: err.message || "Failed to import Excel/CSV" });
   }
 });
 

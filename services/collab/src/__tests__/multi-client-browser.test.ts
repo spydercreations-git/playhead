@@ -60,6 +60,9 @@ async function runTests() {
   console.log(`User A (Admin): ${userA.email} (${userA.id}, role: ${userA.role})`);
   console.log(`User B (Editor): ${userB.email} (${userB.id}, role: ${userB.role})`);
 
+  // Ensure test users have verified email per Task 1 security rule
+  await pool.query("UPDATE users SET email_verified_at = NOW() WHERE id = ANY($1)", [[userA.id, userB.id]]);
+
   const sessionA = await createTestSession(userA.id);
   const sessionB = await createTestSession(userB.id);
 

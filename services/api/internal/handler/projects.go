@@ -113,6 +113,40 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		project.FolderCount = int32(len(defaultFolders))
 	}
 
+	// Auto-create Tracker spreadsheet for the project
+	var trackerPos pgtype.Numeric
+	_ = trackerPos.Scan("0")
+	trackerItem, tErr := h.queries.CreateItem(r.Context(), db.CreateItemParams{
+		CompanyID: companyID,
+		ProjectID: project.ID,
+		ParentID:  pgtype.UUID{Valid: false},
+		Kind:      "spreadsheet",
+		Name:      "Tracker",
+		Position:  trackerPos,
+		CreatedBy: user.ID,
+	})
+	if tErr == nil {
+		trackerData := GetSpreadsheetTemplate("tracker", nil)
+		tJSON, _ := json.Marshal(trackerData)
+		_, _ = h.queries.CreateSpreadsheet(r.Context(), db.CreateSpreadsheetParams{
+			ID:              trackerItem.ID,
+			CompanyID:       companyID,
+			ContentState:    nil,
+			ContentJson:     tJSON,
+			PlainText:       "Tracker Video Name Status Editor Version Due Date File Link",
+			PublicPlainText: "Tracker Video Name Status Editor Version Due Date File Link",
+			RowCount:        20,
+			ColCount:        6,
+			CellCount:       6,
+		})
+		_ = h.queries.SetProjectTrackerItemID(r.Context(), db.SetProjectTrackerItemIDParams{
+			ID:            project.ID,
+			TrackerItemID: trackerItem.ID,
+			CompanyID:     companyID,
+		})
+		project.TrackerItemID = trackerItem.ID
+	}
+
 	// Assign initial people
 	for _, p := range req.People {
 		personEmail := authz.NormalizeEmail(p.Email)

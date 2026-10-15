@@ -338,6 +338,50 @@ type ShareVisitor struct {
 	LastSeenAt  pgtype.Timestamptz `json:"last_seen_at"`
 }
 
+type Spreadsheet struct {
+	ID              pgtype.UUID        `json:"id"`
+	CompanyID       pgtype.UUID        `json:"company_id"`
+	ContentState    []byte             `json:"content_state"`
+	ContentJson     []byte             `json:"content_json"`
+	PlainText       string             `json:"plain_text"`
+	PublicPlainText string             `json:"public_plain_text"`
+	RowCount        int32              `json:"row_count"`
+	ColCount        int32              `json:"col_count"`
+	CellCount       int32              `json:"cell_count"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type SpreadsheetComment struct {
+	ID              pgtype.UUID        `json:"id"`
+	SpreadsheetID   pgtype.UUID        `json:"spreadsheet_id"`
+	CompanyID       pgtype.UUID        `json:"company_id"`
+	SheetID         string             `json:"sheet_id"`
+	RowID           string             `json:"row_id"`
+	ColID           string             `json:"col_id"`
+	AuthorID        pgtype.UUID        `json:"author_id"`
+	ParentCommentID pgtype.UUID        `json:"parent_comment_id"`
+	Content         string             `json:"content"`
+	Resolved        bool               `json:"resolved"`
+	ResolvedBy      pgtype.UUID        `json:"resolved_by"`
+	ResolvedAt      pgtype.Timestamptz `json:"resolved_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type SpreadsheetVersion struct {
+	ID            pgtype.UUID        `json:"id"`
+	SpreadsheetID pgtype.UUID        `json:"spreadsheet_id"`
+	CompanyID     pgtype.UUID        `json:"company_id"`
+	Name          pgtype.Text        `json:"name"`
+	IsNamed       bool               `json:"is_named"`
+	ContentState  []byte             `json:"content_state"`
+	ContentJson   []byte             `json:"content_json"`
+	PlainText     string             `json:"plain_text"`
+	CreatedBy     pgtype.UUID        `json:"created_by"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 type Star struct {
 	CompanyID pgtype.UUID        `json:"company_id"`
 	UserID    pgtype.UUID        `json:"user_id"`

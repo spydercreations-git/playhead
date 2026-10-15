@@ -74,16 +74,20 @@ export default function ProjectsPage() {
     });
   }
 
+  const uniqueClientIds = Array.from(new Set(projects.map((p) => p.client_id).filter(Boolean)));
+  const clientCount = uniqueClientIds.length || clientOptions.length;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white">
             Projects
           </h1>
-          <p className="text-xs text-[#9A9DA0]">
-            Review, collaborate, and track video production projects
+          <p className="text-xs text-[#9A9DA0] mt-0.5">
+            {projects.length} {projects.length === 1 ? "project" : "projects"} across{" "}
+            {clientCount} {clientCount === 1 ? "client" : "clients"}
           </p>
         </div>
 
@@ -95,7 +99,7 @@ export default function ProjectsPage() {
               placeholder="Search projects..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-36 bg-transparent text-white placeholder-[#7C7F87] focus:outline-none text-xs"
+              className="w-40 bg-transparent text-white placeholder-[#7C7F87] focus:outline-none text-xs"
             />
           </div>
 
@@ -132,7 +136,7 @@ export default function ProjectsPage() {
           </div>
 
           {/* View toggle */}
-          <div className="flex rounded-lg bg-[#212121] border border-[#424344] p-0.5">
+          <div className="flex rounded-lg bg-[#212121] border border-[#2E2F34] p-0.5">
             <button
               onClick={() => setView("grid")}
               className={`px-2.5 py-1 text-xs font-medium rounded ${
@@ -158,13 +162,51 @@ export default function ProjectsPage() {
           {hasPermission("projects.create") && (
             <button
               onClick={() => setShowNewProject(true)}
-              className="flex h-9 items-center justify-center rounded-lg bg-[#4876F3] px-4 text-xs font-semibold text-white shadow hover:bg-[#3b66df] transition-colors"
+              className="flex h-9 items-center justify-center rounded-lg bg-[#4876F3] hover:bg-[#3B67E0] px-4 text-xs font-semibold text-white shadow transition-colors"
             >
               + New Project
             </button>
           )}
         </div>
       </div>
+
+      {/* Client Chips Row */}
+      {clientOptions.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <button
+            type="button"
+            onClick={() => setSelectedClientId("")}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 ${
+              selectedClientId === ""
+                ? "bg-[#4876F3] text-white font-semibold shadow-sm"
+                : "bg-[#212121] border border-[#2E2F34] text-[#9A9DA0] hover:text-white hover:border-[#424344]"
+            }`}
+          >
+            All ({projects.length})
+          </button>
+          {clientOptions.map((client: any) => {
+            const count = projects.filter((p) => p.client_id === client.id).length;
+            const isSelected = selectedClientId === client.id;
+            return (
+              <button
+                key={client.id}
+                type="button"
+                onClick={() => setSelectedClientId(isSelected ? "" : client.id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 flex items-center gap-1.5 ${
+                  isSelected
+                    ? "bg-[#4876F3] text-white font-semibold shadow-sm"
+                    : "bg-[#212121] border border-[#2E2F34] text-[#9A9DA0] hover:text-white hover:border-[#424344]"
+                }`}
+              >
+                <span>{client.name}</span>
+                <span className={`text-[10px] ${isSelected ? "text-white/80" : "text-[#7C7F87]"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Projects List */}
       {isLoading ? (

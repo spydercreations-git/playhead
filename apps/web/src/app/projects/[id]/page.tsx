@@ -23,6 +23,10 @@ import { NewSpreadsheetDialog } from "@/components/spreadsheets/new-spreadsheet-
 import { FolderCard } from "@/components/cards/folder-card";
 import { SectionHeader } from "@/components/layout/section-header";
 import { SelectionBar } from "@/components/layout/selection-bar";
+import { DeleteDialog } from "@/components/dialogs/delete-dialog";
+import { MoveCopyPanel } from "@/components/panels/move-copy-panel";
+import { ManageAccessDialog } from "@/components/access/manage-access-dialog";
+import { buildUnifiedItemMenuGroups } from "@/components/items/unified-item-menu";
 import {
   Download,
   FolderDown,
@@ -128,6 +132,30 @@ export default function ProjectWorkspacePage() {
   // Move Modal state
   const [moveItem, setMoveItem] = useState<{ id: string; name: string } | null>(null);
   const [targetMoveFolderId, setTargetMoveFolderId] = useState<string | null>(null);
+
+  // Delete Dialog state
+  const [deleteDialogState, setDeleteDialogState] = useState<{
+    isOpen: boolean;
+    itemName?: string;
+    itemCount?: number;
+    isPermanent?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
+
+  // Move / Copy slide-up panel state
+  const [moveCopyPanelState, setMoveCopyPanelState] = useState<{
+    isOpen: boolean;
+    mode: "move" | "copy";
+    itemIds: string[];
+    itemName?: string;
+  } | null>(null);
+
+  // Manage Access dialog state
+  const [manageAccessDialogState, setManageAccessDialogState] = useState<{
+    isOpen: boolean;
+    targetName: string;
+    itemId?: string;
+  } | null>(null);
 
   // File Viewer modal state
   const [activeViewerItem, setActiveViewerItem] = useState<ViewerItem | null>(null);
@@ -719,99 +747,60 @@ export default function ProjectWorkspacePage() {
       e.stopPropagation();
     }
 
-    const isFolder = item.kind === "folder";
-
-    const groups: MenuGroup[] = [
-      {
-        items: [
-          {
-            label: "Open",
-            icon: <ArrowRight className="w-4 h-4" />,
-            onClick: () => {
-              if (isFolder) {
-                router.push(`/projects/${projectId}?folder=${item.id}`);
-              } else {
-                setActiveViewerItem(item);
-              }
-            },
-          },
-          {
-            label: "Open in new tab",
-            icon: <ExternalLink className="w-4 h-4" />,
-            onClick: () => {
-              if (isFolder) {
-                window.open(`/projects/${projectId}?folder=${item.id}`, "_blank");
-              } else {
-                window.open(`/projects/${projectId}?item=${item.id}`, "_blank");
-              }
-            },
-          },
-        ],
+    const groups = buildUnifiedItemMenuGroups({
+      kind: item.kind === "folder" ? "folder" : "file",
+      canDownload: canDownload,
+      canUploadVersion: true,
+      onManageAccess: () => {
+        setManageAccessDialogState({
+          isOpen: true,
+          targetName: item.name,
+          itemId: item.id,
+        });
       },
-      {
-        items: [
-          {
-            label: "Share",
-            icon: <Share2 className="w-4 h-4 text-[#4876F3]" />,
-            onClick: () => {
-              setShareTargetItem({ id: item.id, name: item.name, type: "item" });
-              setShowShareModal(true);
-            },
-          },
-          {
-            label: "Copy link",
-            icon: <Copy className="w-4 h-4" />,
-            onClick: () => {
-              const url = `${window.location.origin}/projects/${projectId}?item=${item.id}`;
-              navigator.clipboard.writeText(url);
-              toast.success("Link copied to clipboard");
-            },
-          },
-          ...(!isFolder && canDownload
-            ? [
-                {
-                  label: "Download",
-                  icon: <Download className="w-4 h-4" />,
-                  onClick: () => {
-                    setSelectedItemIds([item.id]);
-                    handleStartDownload("zip");
-                  },
-                },
-              ]
-            : []),
-        ],
+      onCreateShareLink: () => {
+        setShareTargetItem({ id: item.id, name: item.name, type: "item" });
+        setShowShareModal(true);
       },
-      {
-        items: [
-          {
-            label: "Rename",
-            icon: <Edit3 className="w-4 h-4" />,
-            onClick: () => triggerInlineRename(item),
-          },
-          {
-            label: "Move to",
-            icon: <Move className="w-4 h-4" />,
-            onClick: () => setMoveItem({ id: item.id, name: item.name }),
-          },
-          {
-            label: item.is_starred ? "Unstar" : "Star",
-            icon: <Star className="w-4 h-4 text-amber-400" />,
-            onClick: () =>
-              starMutation.mutate({ id: item.id, isStarred: Boolean(item.is_starred) }),
-          },
-        ],
+      onDownload: () => {
+        setSelectedItemIds([item.id]);
+        handleStartDownload("zip");
       },
-      {
-        items: [
-          {
-            label: "Delete",
-            icon: <Trash2 className="w-4 h-4" />,
-            danger: true,
-            onClick: () => handleDeleteWithUndo(item),
-          },
-        ],
+      onUploadNewVersion: () => {
+        fileInputRef.current?.click();
       },
-    ];
+      onCopyTo: () => {
+        setMoveCopyPanelState({
+          isOpen: true,
+          mode: "copy",
+          itemIds: [item.id],
+          itemName: item.name,
+        });
+      },
+      onMoveTo: () => {
+        setMoveCopyPanelState({
+          isOpen: true,
+          mode: "move",
+          itemIds: [item.id],
+          itemName: item.name,
+        });
+      },
+      onDuplicate: () => {
+        toast.info("Duplicate not supported for this item type yet");
+      },
+      onRename: () => triggerInlineRename(item),
+      onDelete: () => {
+        setDeleteDialogState({
+          isOpen: true,
+          itemName: item.name,
+          itemCount: 1,
+          onConfirm: () => {
+            setDeleteDialogState(null);
+            handleDeleteWithUndo(item);
+          },
+        });
+      },
+    });
 
     openContextMenu(e, groups);
   };
@@ -1110,7 +1099,7 @@ export default function ProjectWorkspacePage() {
             PROJECT PANEL (280px, Collapsible)
             ========================================================================= */}
         {isProjectPanelOpen && (
-          <aside className="w-[280px] min-w-[280px] max-w-[280px] h-full border-r border-[#2E2F34] bg-[#212121] flex flex-col justify-between shrink-0 overflow-hidden select-none z-10">
+          <aside className="w-[280px] min-w-[280px] max-w-[280px] h-full border-r border-[#2E2F34] bg-[#212121] flex flex-col justify-between shrink-0 overflow-hidden select-none z-10 relative">
             <div className="flex-1 flex flex-col overflow-y-auto">
               {/* Project Switcher */}
               <div className="relative border-b border-[#2E2F34]">
@@ -1397,6 +1386,37 @@ export default function ProjectWorkspacePage() {
                 <span>Recently deleted</span>
               </Link>
             </div>
+
+            {/* Slide-up Move to / Copy to panel over lower part of project panel */}
+            <AnimatePresence>
+              {moveCopyPanelState?.isOpen && (
+                <MoveCopyPanel
+                  isOpen={moveCopyPanelState.isOpen}
+                  mode={moveCopyPanelState.mode}
+                  itemCount={moveCopyPanelState.itemIds.length}
+                  clientName={project.client_name || "Client"}
+                  projectName={project.name || "Project"}
+                  folders={treeData?.folders || []}
+                  onClose={() => setMoveCopyPanelState(null)}
+                  onConfirm={(targetFolderId) => {
+                    const ids = moveCopyPanelState.itemIds;
+                    if (ids.length === 1) {
+                      moveMutation.mutate({
+                        id: ids[0],
+                        targetParentId: targetFolderId,
+                      });
+                    } else {
+                      batchActionMutation.mutate({
+                        action: "move",
+                        ids,
+                        targetParentId: targetFolderId,
+                      });
+                    }
+                    setMoveCopyPanelState(null);
+                  }}
+                />
+              )}
+            </AnimatePresence>
           </aside>
         )}
 
@@ -1959,24 +1979,37 @@ export default function ProjectWorkspacePage() {
           onCopyLink={handleCopyProjectLink}
           onDownload={() => handleStartDownload("zip")}
           onManageAccess={() => {
-            setShareTargetItem({
-              id: projectId,
-              name: workspaceData?.project?.name || "Project",
-              type: "project",
+            setManageAccessDialogState({
+              isOpen: true,
+              targetName: workspaceData?.project?.name || "Project",
             });
-            setShowShareModal(true);
           }}
-          onDelete={handleBatchDeleteWithUndo}
+          onDelete={() => {
+            setDeleteDialogState({
+              isOpen: true,
+              itemCount: selectedItemIds.length,
+              onConfirm: () => {
+                setDeleteDialogState(null);
+                handleBatchDeleteWithUndo();
+              },
+            });
+          }}
           onMoveTo={() => {
-            const it = items.find((x: any) => x.id === selectedItemIds[0]);
-            if (it) setMoveItem({ id: it.id, name: it.name });
+            setMoveCopyPanelState({
+              isOpen: true,
+              mode: "move",
+              itemIds: selectedItemIds,
+            });
           }}
           onDuplicate={() => {
             toast.info("Duplicate selected");
           }}
           onCopyTo={() => {
-            const it = items.find((x: any) => x.id === selectedItemIds[0]);
-            if (it) setMoveItem({ id: it.id, name: it.name });
+            setMoveCopyPanelState({
+              isOpen: true,
+              mode: "copy",
+              itemIds: selectedItemIds,
+            });
           }}
           canDownload={canDownload}
         />
@@ -2074,6 +2107,65 @@ export default function ProjectWorkspacePage() {
         isOpen={showNewSheetModal}
         onClose={() => setShowNewSheetModal(false)}
         defaultProjectId={projectId}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteDialog
+        isOpen={!!deleteDialogState?.isOpen}
+        name={deleteDialogState?.itemName}
+        itemCount={deleteDialogState?.itemCount}
+        isPermanent={deleteDialogState?.isPermanent}
+        onClose={() => setDeleteDialogState(null)}
+        onConfirm={() => {
+          deleteDialogState?.onConfirm();
+        }}
+      />
+
+      {/* Manage Access Dialog */}
+      <ManageAccessDialog
+        isOpen={!!manageAccessDialogState?.isOpen}
+        targetName={manageAccessDialogState?.targetName || project.name}
+        onClose={() => setManageAccessDialogState(null)}
+        isRestricted={Boolean(workspaceData?.project?.is_restricted)}
+        onToggleRestricted={(restricted) => {
+          apiRequest(`/projects/${projectId}`, {
+            method: "PATCH",
+            body: JSON.stringify({ is_restricted: restricted }),
+          }).then(() => {
+            queryClient.invalidateQueries({ queryKey: ["project-items", projectId] });
+            toast.success(restricted ? "Project restricted" : "Inherited access restored");
+          });
+        }}
+        members={
+          grantsData?.grants?.map((g: any) => ({
+            id: g.id || g.user_id,
+            name: g.user_name || g.email,
+            email: g.email || "",
+            level: g.access_level || "commenter",
+            can_download: g.can_download ?? true,
+            inherited_from: g.inherited ? (g.inherited_from || "Company") : undefined,
+          })) || []
+        }
+        onAddMember={async (email, level, canDownload, message) => {
+          await apiRequest(`/projects/${projectId}/grants`, {
+            method: "POST",
+            body: JSON.stringify({
+              email,
+              access_level: level,
+              can_download: canDownload,
+              message,
+            }),
+          });
+          queryClient.invalidateQueries({ queryKey: ["project-grants", projectId] });
+          toast.success(`Access granted to ${email}`);
+        }}
+        onRemoveMember={async (memberId) => {
+          await apiRequest(`/projects/${projectId}/grants/${memberId}`, {
+            method: "DELETE",
+          });
+          queryClient.invalidateQueries({ queryKey: ["project-grants", projectId] });
+          toast.success("Member removed");
+        }}
       />
     </div>
   );

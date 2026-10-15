@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/hibiken/asynq"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/playhead/playhead/services/api/internal/config"
 	"github.com/playhead/playhead/services/api/internal/handler"
 	"github.com/playhead/playhead/services/api/internal/middleware"
@@ -104,6 +105,11 @@ func main() {
 	shareLinksHandler := handler.NewShareLinksHandler(queries, storageClient, cfg.SessionSecret, cfg.Environment)
 	grantsHandler := handler.NewGrantsHandler(queries, mailClient)
 	reviewHandler := handler.NewReviewHandler(queries, storageClient, cfg)
+	var pgxPool *pgxpool.Pool
+	if dbPool != nil {
+		pgxPool = dbPool.Pool
+	}
+	documentsHandler := handler.NewDocumentsHandler(pgxPool, queries, rdb, storageClient, cfg)
 
 	// Background job queue via Redis asynq
 	var asynqClient *asynq.Client
@@ -141,6 +147,9 @@ func main() {
 	healthHandler := handler.NewHealthHandler(dbPool, rdb, storageClient)
 	r.Get("/healthz", healthHandler.Check)
 
+	// Internal service endpoints (e.g. Hocuspocus Collab Service)
+	r.Post("/api/internal/collab/verify", documentsHandler.InternalCollabVerify)
+
 	r.Route("/api/v1", func(api chi.Router) {
 		api.Get("/health", healthHandler.Check)
 
@@ -177,6 +186,11 @@ func main() {
 			share.Post("/items/{id}/comments", reviewHandler.PublicCreateComment)
 			share.Post("/items/{id}/review", reviewHandler.PublicSubmitReview)
 			share.Get("/items/{id}/comments/export", reviewHandler.PublicExportCommentsCSV)
+
+			// Document views and images on share links (P5)
+			share.Get("/documents/{id}/view", documentsHandler.PublicShareGetDocumentView)
+			share.Get("/documents/{id}/images/{imageId}", documentsHandler.PublicShareGetDocumentImage)
+			share.Get("/documents/{id}/items/{itemId}/card-preview", documentsHandler.PublicShareGetCardPreview)
 		})
 
 		// Protected endpoints (Requires authentication and CSRF token validation)
@@ -294,6 +308,23 @@ func main() {
 
 			// Admin Storage Dashboard (P2 Requirement 1)
 			protected.With(middleware.RequirePermission(authz.PermAdminStorage)).Get("/admin/storage", storageUploadsHandler.GetStorageAdminStats)
+
+			// Documents (P5)
+			protected.Get("/documents", documentsHandler.List)
+			protected.Post("/projects/{id}/documents", documentsHandler.Create)
+			protected.Get("/documents/{id}", documentsHandler.Get)
+			protected.Get("/documents/{id}/view", documentsHandler.GetSanitizedView)
+			protected.Post("/documents/{id}/collab-ticket", documentsHandler.IssueCollabTicket)
+			protected.Patch("/documents/{id}/title", documentsHandler.Rename)
+			protected.Post("/documents/{id}/images/presign", documentsHandler.PresignImageUpload)
+			protected.Post("/documents/{id}/images/complete", documentsHandler.CompleteImageUpload)
+			protected.Get("/documents/{id}/images/{imageId}", documentsHandler.GetImage)
+			protected.Get("/documents/{id}/versions", documentsHandler.ListVersions)
+			protected.Post("/documents/{id}/versions/{versionId}/name", documentsHandler.NameVersion)
+			protected.Post("/documents/{id}/restore", documentsHandler.RestoreVersion)
+			protected.Get("/documents/{id}/items/{itemId}/card-preview", documentsHandler.GetCardPreview)
+			protected.Get("/documents/{id}/export/{format}", documentsHandler.Export)
+			protected.Post("/documents/{id}/import/docx", documentsHandler.ImportDocx)
 		})
 	})
 

@@ -19,8 +19,9 @@ func TestConfig_Validate_Production(t *testing.T) {
 			Environment:       "production",
 			SessionSecret:     "e8b4e7240c0c6606a4a62253ad5c935ee57a79a61f2249c58b209e99a8de4884",
 			DatabaseURL:       "postgres://user:prod_pass@prod-db.internal:5432/playhead_prod",
-			R2AccessKeyID:     "prod_r2_key_id",
-			R2SecretAccessKey: "prod_r2_secret_access_key_123456",
+			R2AccessKeyID:        "prod_r2_key_id",
+			R2SecretAccessKey:    "prod_r2_secret_access_key_123456",
+			CollabInternalSecret: "a9c5d7240c0c6606a4a62253ad5c935ee57a79a61f2249c58b209e99a8de1111",
 		}
 	}
 
@@ -75,5 +76,29 @@ func TestConfig_Validate_Production(t *testing.T) {
 		err := cfg.Validate()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "R2_SECRET_ACCESS_KEY")
+	})
+
+	t.Run("missing COLLAB_INTERNAL_SECRET fails", func(t *testing.T) {
+		cfg := validProdConfig()
+		cfg.CollabInternalSecret = ""
+		err := cfg.Validate()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "COLLAB_INTERNAL_SECRET is required")
+	})
+
+	t.Run("default dev COLLAB_INTERNAL_SECRET fails", func(t *testing.T) {
+		cfg := validProdConfig()
+		cfg.CollabInternalSecret = config.DefaultDevCollabSecret
+		err := cfg.Validate()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "COLLAB_INTERNAL_SECRET cannot be set to the development default")
+	})
+
+	t.Run("short COLLAB_INTERNAL_SECRET fails", func(t *testing.T) {
+		cfg := validProdConfig()
+		cfg.CollabInternalSecret = "short-secret"
+		err := cfg.Validate()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "at least 32 characters")
 	})
 }

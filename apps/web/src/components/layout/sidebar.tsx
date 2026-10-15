@@ -14,7 +14,7 @@ import {
   SearchIcon,
 } from "@/components/icons";
 import { useAuth } from "@/lib/use-auth";
-import { Star, Building2, Folder, Zap } from "lucide-react";
+import { Star, Building2, Folder, Zap, FileText } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
@@ -38,6 +38,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     try {
       await apiRequest("/auth/logout", { method: "POST" });
     } catch {}
+    // Clear y-indexeddb documents data (User approved Change 7)
+    try {
+      if (typeof window !== "undefined" && window.indexedDB) {
+        if (window.indexedDB.databases) {
+          const dbs = await window.indexedDB.databases();
+          for (const db of dbs) {
+            if (db.name && (db.name.startsWith("playhead-doc-") || db.name.startsWith("y-"))) {
+              window.indexedDB.deleteDatabase(db.name);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to clear offline doc databases", e);
+    }
     router.push("/login");
   }
 
@@ -51,6 +66,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       show: !isClient && (isAdmin || isManager),
     },
     { name: "Projects", href: "/projects", icon: ProjectIcon, show: true },
+    { name: "Documents", href: "/documents", icon: FileText, show: true },
     { name: "Reviews", href: "/reviews", icon: ReviewsIcon, show: true },
     {
       name: "Shared with me",

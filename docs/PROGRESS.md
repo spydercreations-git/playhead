@@ -354,11 +354,61 @@ Google Login is built into the backend and UI, but hidden until configured. When
 
 ---
 
-## Upcoming Milestones (Version 2: P5 – P7)
+## Milestone P5: Documents
 
-- **Milestone P5: Documents**
-  - Node.js collaboration service (`/services/collab`) with Hocuspocus and Yjs.
-  - Tiptap document editor (`/d/{id}`), live collaborative editing, presence/cursors, comments, version history, export/import.
+### Status: Completed ✅ (Verified end-to-end in browser and tests)
+
+### What was built:
+1. **Node.js Collaboration Service (`services/collab`)**:
+   - Built on `@hocuspocus/server` 4.7.1, `yjs`, `pg`, and `ioredis`.
+   - **Authentication Gate**: Connects via WebSocket receiving short-lived collab tickets (60s validity, HMAC-signed). Verifies caller with internal Go API endpoint `/api/internal/collab/verify` using constant-time comparison of `COLLAB_INTERNAL_SECRET`. In production, API and collab service refuse to start if secret is missing or default.
+   - **Strict Team-Only Gate (Option 2)**: Non-team users (client contacts, share link visitors) are strictly refused live Yjs connection (`onAuthenticate` rejection). They view sanitized read-only documents polled every 10 seconds via `/view`.
+   - **Revocation Listening**: Dual revocation mechanism (5-second fallback poll + Redis Pub/Sub subscriber on `playhead:collab:revocations`) terminates revoked sockets in < 5s.
+   - **Postgres Persistence & Sanitized Extraction**: Debounced saves at most every 2s and upon last client disconnect; extracts `content_json`, sanitized `content_json` (stripping all `team_notes`), `plain_text`, `public_plain_text`, word count, character count, and reading time.
+2. **Database Migration & SQL Queries (`00008_p5_documents.sql`)**:
+   - `documents`: Stores `content_state`, `content_json`, `plain_text`, `public_plain_text`, `word_count`, `character_count`, `reading_time_seconds`.
+   - `document_versions`: Historical snapshots with support for named versions and non-destructive restore (restoring never deletes newer versions).
+   - `document_assets`: Track uploaded images with `in_team_notes` boolean flag.
+3. **Go API Backend Handlers (`services/api/internal/handler/documents.go`)**:
+   - Internal verification (`/api/internal/collab/verify`).
+   - Collab ticket issuance (`POST /documents/{id}/collab-ticket`).
+   - CRUD and listing (`/documents`, `/projects/{id}/documents`, `/documents/{id}`).
+   - Sanitized read-only view (`GET /documents/{id}/view`).
+   - Title renaming (`PATCH /documents/{id}/title`).
+   - S3 presigned image uploads (`POST /documents/{id}/images/presign` and `complete`) with company storage quota checking in transactions.
+   - Image access gating (`GET /documents/{id}/images/{imageId}`): checks view access and strictly returns 404 for non-team users if `in_team_notes == true`.
+   - Version history & restore (`GET /documents/{id}/versions`, `POST /documents/{id}/restore`, `POST /documents/{id}/versions/{id}/name`).
+   - Video card permission preview (`GET /documents/{id}/items/{itemId}/card-preview` and share link variant).
+   - Exports (`GET /documents/{id}/export/{format}`: Markdown, Plain Text, Word, JSON).
+4. **Frontend Tiptap Editor (`apps/web/src/components/documents` & `/d/[id]`)**:
+   - Built with free open-source extensions only (no paid/Pro/cloud dependencies).
+   - Custom `TeamNotes` extension with lock badge and yellow callout.
+   - Custom `PlayheadVideoCard` extension with access verification, thumbnail, version, review status, and "No access" restricted fallback card.
+   - Custom `ResizableImage` extension with alignment controls and resize handles.
+   - Floating Table of Contents outline dynamically extracted from H1, H2, H3 headings.
+   - Find & replace bar with count and navigation.
+   - Page width toggle (816px Letter page vs 100% canvas) and Dark page toggle.
+   - Sync status indicator using colored dots and explicit text (`Saved`, `Saving`, `Offline: changes saved on this device` — zero emojis).
+   - Client export for Word (.docx via `docx`), Markdown (.md via `turndown`), PDF (via `@media print`), and Plain Text.
+   - Offline support via `IndexeddbPersistence` (`playhead-doc-${docId}`) with automatic cleanup on logout.
+5. **Dedicated `/documents` Page & Cards**:
+   - "Documents" navigation in sidebar under "Projects".
+   - Aggregate count banner and client filter chips with document counts.
+   - Client isolation: client contacts only see their own client's documents and chips.
+   - Physical folded top-right corner document cards with blue `DOC` badge, paper preview snippet, and project metadata.
+   - "New document" modal with 5 templates (Blank, Brief, Script, Production Notes, Review Summary).
+
+### How to test locally:
+1. Run all tests: `make test`
+   - Go backend tests: `go test -v ./services/api/... ./services/shared/... ./services/worker/...`
+   - P5 Documents unit & integration tests: `go test -v -run "TestCollab|TestStripTeamNotes" ./services/api/internal/handler`
+   - Collab service tests: `cd services/collab && npm test && npm run build`
+   - Frontend type check: `cd apps/web && npm run typecheck`
+2. Run development stack: `make dev` (starts postgres, redis, minio, mailpit, worker, api on :8080, collab on :8082, web on :3000).
+
+---
+
+## Upcoming Milestones (Version 2: P6 – P7)
 
 - **Milestone P6: Spreadsheets and Tracker**
   - Spreadsheet engine evaluation, comparison, and approval.
@@ -370,4 +420,5 @@ Google Login is built into the backend and UI, but hidden until configured. When
   - In-app notification bell and email notifications.
   - Client Notes. Performance validation against Section 7 benchmarks. Security audit.
   - **Internal launch for the Idyll team and clients after P7.**
+
 

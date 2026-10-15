@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -53,3 +54,8 @@ func SeedDefaultCompanyRoles(ctx context.Context, q *db.Queries, companyID pgtyp
 	})
 	return nil
 }
+
+func renderJSON(w http.ResponseWriter, status int, data interface{}) {
+	respondJSON(w, status, data)
+}
+

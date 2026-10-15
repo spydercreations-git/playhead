@@ -24,9 +24,10 @@ dev:
 	@echo "==> Starting Playhead services..."
 	@echo "API will run on http://localhost:8080"
 	@echo "Web will run on http://localhost:3000"
+	@echo "Collab will run on ws://localhost:8082"
 	@echo "MinIO Console on http://localhost:9001"
 	@echo "Mailpit Web on http://localhost:8025"
-	@(trap 'kill 0' SIGINT; cd services/api && $(GO) run cmd/server/main.go & cd apps/web && npm run dev & wait)
+	@(trap 'kill 0' SIGINT; cd services/api && $(GO) run cmd/server/main.go & cd services/collab && npm run dev & cd apps/web && npm run dev & wait)
 
 # Re-queue all pending video versions
 requeue:
@@ -37,6 +38,8 @@ requeue:
 test:
 	@echo "==> Running Go backend unit and package tests..."
 	@$(GO) test -v ./services/api/... ./services/shared/... ./services/worker/...
+	@echo "==> Testing and compiling Collab service..."
+	@cd services/collab && npm test && npm run build
 	@echo "==> Running frontend type check..."
 	@cd apps/web && npm run typecheck
 	@echo "==> All tests passed successfully!"
@@ -54,5 +57,6 @@ stop:
 	@-pkill -f "next-dev" 2>/dev/null || true
 	@-pkill -f "cmd/server/main.go" 2>/dev/null || true
 	@-pkill -f "cmd/worker/main.go" 2>/dev/null || true
+	@-pkill -f "tsx watch src/index.ts" 2>/dev/null || true
 	@echo "==> All stopped cleanly."
 

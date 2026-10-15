@@ -192,7 +192,9 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
   - **Standalone Collab Service (`services/collab`)**: Node.js microservice running on port `8082` using `@hocuspocus/server` and `yjs`. Dockerized in `infra/docker-compose.yml` (`playhead-collab`) and managed concurrently in `make dev`.
   - **Zero-Trust Connection & 5-Second Access Revocation**:
     - On WebSocket connection, Hocuspocus sends `POST /api/internal/collab/verify` to the Go API with `X-Collab-Secret`.
-    - Go API runs `authz.AccessItem` on the document: users without access are immediately refused; users with less than Full access (`Viewer`, `Commenter`, `Uploader`) receive `read_only = true`.
+    - Go API runs `authz.AccessItem` on the document: users without access are immediately refused; users with less than Full access (`Viewer`, `Commenter`, `Uploader`) receive `read_only = true`. Non-team members (client contacts, share link visitors) are strictly REFUSED at `onAuthenticate` even with Full access.
+    - **Short-Lived Signed Collab Ticket**: Rather than passing session tokens in WebSocket query params (which leak into access logs), the web app requests a short-lived ticket (`POST /api/v1/documents/{id}/collab-ticket`, valid for 60 seconds, HMAC-signed, strictly bound to `user_id` + `document_id`). The collab service receives this ticket in the Hocuspocus auth message payload.
+    - **Protected Internal Endpoints & Constant-Time Secret**: Collab internal endpoints (`/api/internal/collab/*`) are internal only, verify `X-Collab-Secret` using constant-time comparison (`subtle.ConstantTimeCompare`), and refuse to start in production if `COLLAB_INTERNAL_SECRET` is missing or default.
     - Every active connection is re-evaluated every 5 seconds (with immediate Redis pub/sub eviction whenever grants or memberships change). Revoked connections are closed immediately (`4403 Forbidden`).
     - Documents are persisted to PostgreSQL at most every 2 seconds during active editing and immediately when the last collaborator disconnects. Plain text is automatically extracted and stored in `plain_text` and sanitized `public_plain_text` for search.
   - **Strict Open-Source License Policy (Zero Tiptap Pro / Cloud)**:
@@ -200,16 +202,20 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
     - DOCX import: `mammoth` (BSD 2-Clause).
     - DOCX export: `docx` (MIT).
     - Markdown import/export: `marked` (MIT) and `turndown` / `turndown-plugin-gfm` (MIT).
-    - Offline sync: `y-indexeddb` (MIT).
+    - Offline sync: `y-indexeddb` (MIT). Cleared on user sign out.
     - PDF & Print: Clean `@media print` CSS stylesheet and `html2pdf.js` (MIT).
   - **Team-Only Notes Security Architecture (Zero-Leak Guarantee)**:
     - CRDT state cannot safely hide inline content from clients if the raw Yjs stream is delivered to them.
     - Architecture: Internal team members (`is_team_member = true`) connect directly to the live Yjs room (`doc:{id}`) with real-time multi-cursor collaboration.
-    - External clients and public share links **never receive the raw Yjs WebSocket stream**. Instead, they receive a server-sanitized read-only projection (`GET /api/v1/documents/{id}/view` or real-time sanitized deltas) with all `team_notes` blocks scrubbed on the server.
-    - All other export channels (PDF, Word, Markdown, Print), search indexing (`public_plain_text`), and version history snapshots recursively strip team notes before returning data to non-team members.
+    - External clients and public share links **never receive the raw Yjs WebSocket stream**. The collab service rejects them at `onAuthenticate`.
+    - Non-team users receive a server-sanitized read-only projection (`GET /api/v1/documents/{id}/view`, polled every 10 seconds for live updates).
+    - **Sanitized Single Source of Truth**: The collab service saves `content_json` on every store. Every non-team output (view, version history, export PDF/docx/md, print, search, share link page) is built from `content_json` with all `team_notes` nodes stripped on the server.
+    - **Image Isolation**: GET of document images verifies document view access. Images placed solely inside `team_notes` blocks return 404 for non-team users.
+    - **Scoped Document Listing**: `/documents` and `GET /api/v1/documents` strictly list only documents the user can view; client contacts only see documents belonging to their client company.
+    - **Design Tokens**: Zero emojis anywhere; sync status indicators use small colored status dots/icons and text: `Saved`, `Saving`, `Offline: changes saved on this device`.
   - **Non-Destructive Version History**: Automatic snapshots saved every 10 minutes of active editing plus manual "Name this version". Restoring a historical version writes a new snapshot and updates the active document, preserving all newer versions.
   - **Secure Video Cards & Image Flow**:
-    - Embedded video cards resolve metadata through `GET /api/v1/items/{id}/card-preview` using `authz.AccessItem`. Readers without access receive a locked card (`"No access: You don't have permission to view this video"`).
+    - Embedded video cards resolve metadata through `GET /api/v1/items/{id}/card-preview` using `authz.AccessItem`. Readers without access receive a locked card (`"No access: You don't have permission to view this video"`). Video cards on public share links resolve via the shared public share helper.
     - Document image uploads use Playhead's standard presigned R2 upload workflow with storage quota reservations in PostgreSQL transactions.
 - **Reason**: Guarantees absolute team data privacy for agency operations, provides 100% open-source compliance without recurring vendor fees, and guarantees robust real-time collaboration.
 

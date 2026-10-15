@@ -92,6 +92,48 @@ type Company struct {
 	StorageLastAlertGb   int32              `json:"storage_last_alert_gb"`
 }
 
+type Document struct {
+	ID                 pgtype.UUID        `json:"id"`
+	CompanyID          pgtype.UUID        `json:"company_id"`
+	ContentState       []byte             `json:"content_state"`
+	ContentJson        []byte             `json:"content_json"`
+	PlainText          string             `json:"plain_text"`
+	PublicPlainText    string             `json:"public_plain_text"`
+	WordCount          int32              `json:"word_count"`
+	CharacterCount     int32              `json:"character_count"`
+	ReadingTimeSeconds int32              `json:"reading_time_seconds"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+}
+
+type DocumentAsset struct {
+	ID          pgtype.UUID        `json:"id"`
+	DocumentID  pgtype.UUID        `json:"document_id"`
+	CompanyID   pgtype.UUID        `json:"company_id"`
+	StorageKey  string             `json:"storage_key"`
+	Filename    string             `json:"filename"`
+	Mime        string             `json:"mime"`
+	SizeBytes   int64              `json:"size_bytes"`
+	Width       pgtype.Int4        `json:"width"`
+	Height      pgtype.Int4        `json:"height"`
+	UploadedBy  pgtype.UUID        `json:"uploaded_by"`
+	InTeamNotes bool               `json:"in_team_notes"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+type DocumentVersion struct {
+	ID           pgtype.UUID        `json:"id"`
+	DocumentID   pgtype.UUID        `json:"document_id"`
+	CompanyID    pgtype.UUID        `json:"company_id"`
+	Name         pgtype.Text        `json:"name"`
+	IsNamed      bool               `json:"is_named"`
+	ContentState []byte             `json:"content_state"`
+	ContentJson  []byte             `json:"content_json"`
+	PlainText    string             `json:"plain_text"`
+	CreatedBy    pgtype.UUID        `json:"created_by"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
 type FileVersion struct {
 	ID            pgtype.UUID        `json:"id"`
 	CompanyID     pgtype.UUID        `json:"company_id"`

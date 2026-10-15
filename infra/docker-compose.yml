@@ -76,7 +76,29 @@ services:
       SMTP_PORT: 1025
       APP_URL: http://localhost:3000
 
+  collab:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.collab
+    image: playhead-collab:latest
+    container_name: playhead-collab
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: "8082"
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/playhead_dev?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      API_URL: http://api:8080
+      COLLAB_INTERNAL_SECRET: default-dev-collab-secret-at-least-32-chars-long
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+

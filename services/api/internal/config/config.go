@@ -12,27 +12,29 @@ const (
 	DefaultDevDatabaseURL       = "postgres://postgres:postgres@localhost:5432/playhead_dev?sslmode=disable"
 	DefaultDevR2AccessKeyID     = "playhead"
 	DefaultDevR2SecretAccessKey = "playheadsecret"
+	DefaultDevCollabSecret      = "default-dev-collab-secret-at-least-32-chars-long"
 )
 
 type Config struct {
-	Port              string
-	AppURL            string
-	ApiURL            string
-	DatabaseURL       string
-	RedisURL          string
-	R2AccountID       string
-	R2AccessKeyID     string
-	R2SecretAccessKey string
-	R2Bucket          string
-	R2Endpoint        string
-	SessionSecret     string
-	GoogleClientID    string
-	ResendAPIKey      string
-	SMTPHost          string
-	SMTPPort          int
-	Environment       string
-	StoragePricePerGB float64
-	StorageAlertGB    int
+	Port                 string
+	AppURL               string
+	ApiURL               string
+	DatabaseURL          string
+	RedisURL             string
+	R2AccountID          string
+	R2AccessKeyID        string
+	R2SecretAccessKey    string
+	R2Bucket             string
+	R2Endpoint           string
+	SessionSecret        string
+	GoogleClientID       string
+	ResendAPIKey         string
+	SMTPHost             string
+	SMTPPort             int
+	Environment          string
+	StoragePricePerGB    float64
+	StorageAlertGB       int
+	CollabInternalSecret string
 }
 
 func (c *Config) IsProduction() bool {
@@ -75,6 +77,16 @@ func (c *Config) Validate() error {
 		return errors.New("R2_SECRET_ACCESS_KEY cannot be set to the development default in production")
 	}
 
+	if c.CollabInternalSecret == "" {
+		return errors.New("COLLAB_INTERNAL_SECRET is required in production")
+	}
+	if c.CollabInternalSecret == DefaultDevCollabSecret {
+		return errors.New("COLLAB_INTERNAL_SECRET cannot be set to the development default in production")
+	}
+	if len(c.CollabInternalSecret) < 32 {
+		return errors.New("COLLAB_INTERNAL_SECRET must be at least 32 characters long in production")
+	}
+
 	return nil
 }
 
@@ -92,24 +104,25 @@ func Load() *Config {
 	}
 
 	return &Config{
-		Port:              getEnv("PORT", "8080"),
-		AppURL:            getEnv("APP_URL", "http://localhost:3000"),
-		ApiURL:            getEnv("API_URL", "http://localhost:8080"),
-		DatabaseURL:       getEnv("DATABASE_URL", DefaultDevDatabaseURL),
-		RedisURL:          getEnv("REDIS_URL", "redis://localhost:6379"),
-		R2AccountID:       getEnv("R2_ACCOUNT_ID", "local"),
-		R2AccessKeyID:     getEnv("R2_ACCESS_KEY_ID", DefaultDevR2AccessKeyID),
-		R2SecretAccessKey: getEnv("R2_SECRET_ACCESS_KEY", DefaultDevR2SecretAccessKey),
-		R2Bucket:          getEnv("R2_BUCKET", "playhead-dev"),
-		R2Endpoint:        getEnv("R2_ENDPOINT", "http://localhost:9000"),
-		SessionSecret:     getEnv("SESSION_SECRET", DefaultDevSessionSecret),
-		GoogleClientID:    getEnv("GOOGLE_CLIENT_ID", ""),
-		ResendAPIKey:      getEnv("RESEND_API_KEY", ""),
-		SMTPHost:          getEnv("SMTP_HOST", "localhost"),
-		SMTPPort:          1025,
-		Environment:       getEnv("ENV", getEnv("ENVIRONMENT", "development")),
-		StoragePricePerGB: storagePrice,
-		StorageAlertGB:    storageAlert,
+		Port:                 getEnv("PORT", "8080"),
+		AppURL:               getEnv("APP_URL", "http://localhost:3000"),
+		ApiURL:               getEnv("API_URL", "http://localhost:8080"),
+		DatabaseURL:          getEnv("DATABASE_URL", DefaultDevDatabaseURL),
+		RedisURL:             getEnv("REDIS_URL", "redis://localhost:6379"),
+		R2AccountID:          getEnv("R2_ACCOUNT_ID", "local"),
+		R2AccessKeyID:        getEnv("R2_ACCESS_KEY_ID", DefaultDevR2AccessKeyID),
+		R2SecretAccessKey:    getEnv("R2_SECRET_ACCESS_KEY", DefaultDevR2SecretAccessKey),
+		R2Bucket:             getEnv("R2_BUCKET", "playhead-dev"),
+		R2Endpoint:           getEnv("R2_ENDPOINT", "http://localhost:9000"),
+		SessionSecret:        getEnv("SESSION_SECRET", DefaultDevSessionSecret),
+		GoogleClientID:       getEnv("GOOGLE_CLIENT_ID", ""),
+		ResendAPIKey:         getEnv("RESEND_API_KEY", ""),
+		SMTPHost:             getEnv("SMTP_HOST", "localhost"),
+		SMTPPort:             1025,
+		Environment:          getEnv("ENV", getEnv("ENVIRONMENT", "development")),
+		StoragePricePerGB:    storagePrice,
+		StorageAlertGB:       storageAlert,
+		CollabInternalSecret: getEnv("COLLAB_INTERNAL_SECRET", DefaultDevCollabSecret),
 	}
 }
 

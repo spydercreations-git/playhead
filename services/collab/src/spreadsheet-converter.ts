@@ -268,6 +268,17 @@ export function setCellInLiveDoc(
 ): boolean {
   let updated = false;
   ydoc.transact(() => {
+    const rowsArray = ydoc.getArray<string>(`sheet_${sheetId}_rows`);
+    const colsArray = ydoc.getArray<string>(`sheet_${sheetId}_cols`);
+    const rowList = rowsArray.toArray();
+    if (rowList.indexOf(rowId) === -1) {
+      rowsArray.push([rowId]);
+    }
+    const colList = colsArray.toArray();
+    if (colList.indexOf(colId) === -1) {
+      colsArray.push([colId]);
+    }
+
     const cellsMap = ydoc.getMap<any>(`sheet_${sheetId}_cells`);
     const key = `${rowId}:${colId}`;
     if (value === null || value === undefined || (typeof value === "object" && value.v === null && !value.f)) {

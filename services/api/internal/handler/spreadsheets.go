@@ -106,30 +106,34 @@ func GetSpreadsheetTemplate(templateName string, projectMembers []string) []map[
 		return []map[string]interface{}{
 			{
 				"id":     "sheet_1",
-				"name":   "Video Tracker",
+				"name":   "Tracker",
 				"status": 1,
-				"row":    20,
-				"column": 6,
+				"row":    30,
+				"column": 7,
 				"columnMeta": []map[string]interface{}{
-					{"colIndex": 0, "name": "Video Name", "width": 240, "type": "text"},
-					{"colIndex": 1, "name": "Status", "width": 140, "type": "dropdown", "options": []string{"Backlog", "In Progress", "Review Ready", "Client Feedback", "Approved"}},
+					{"colIndex": 0, "name": "Video", "width": 220, "type": "text"},
+					{"colIndex": 1, "name": "File", "width": 180, "type": "file"},
 					{"colIndex": 2, "name": "Editor", "width": 160, "type": "person", "options": projectMembers},
-					{"colIndex": 3, "name": "Version", "width": 100, "type": "text"},
-					{"colIndex": 4, "name": "Due Date", "width": 130, "type": "date"},
-					{"colIndex": 5, "name": "File Link", "width": 200, "type": "file"},
+					{"colIndex": 3, "name": "Status", "width": 150, "type": "dropdown", "options": []string{"Not started", "Editing", "Needs review", "Changes requested", "Approved", "Delivered"}},
+					{"colIndex": 4, "name": "Due date", "width": 130, "type": "date"},
+					{"colIndex": 5, "name": "Revisions", "width": 100, "type": "text"},
+					{"colIndex": 6, "name": "Notes", "width": 240, "type": "text"},
 				},
 				"celldata": []map[string]interface{}{
-					{"r": 0, "c": 0, "v": map[string]interface{}{"v": "Video Name", "bl": 1, "bg": "#2A2B30", "fc": "#E0E0E0"}},
-					{"r": 0, "c": 1, "v": map[string]interface{}{"v": "Status", "bl": 1, "bg": "#2A2B30", "fc": "#E0E0E0"}},
+					{"r": 0, "c": 0, "v": map[string]interface{}{"v": "Video", "bl": 1, "bg": "#2A2B30", "fc": "#E0E0E0"}},
+					{"r": 0, "c": 1, "v": map[string]interface{}{"v": "File", "bl": 1, "bg": "#2A2B30", "fc": "#E0E0E0"}},
 					{"r": 0, "c": 2, "v": map[string]interface{}{"v": "Editor", "bl": 1, "bg": "#2A2B30", "fc": "#E0E0E0"}},
-					{"r": 0, "c": 3, "v": map[string]interface{}{"v": "Version", "bl": 1, "bg": "#2A2B30", "fc": "#E0E0E0"}},
-					{"r": 0, "c": 4, "v": map[string]interface{}{"v": "Due Date", "bl": 1, "bg": "#2A2B30", "fc": "#E0E0E0"}},
-					{"r": 0, "c": 5, "v": map[string]interface{}{"v": "File Link", "bl": 1, "bg": "#2A2B30", "fc": "#E0E0E0"}},
+					{"r": 0, "c": 3, "v": map[string]interface{}{"v": "Status", "bl": 1, "bg": "#2A2B30", "fc": "#E0E0E0"}},
+					{"r": 0, "c": 4, "v": map[string]interface{}{"v": "Due date", "bl": 1, "bg": "#2A2B30", "fc": "#E0E0E0"}},
+					{"r": 0, "c": 5, "v": map[string]interface{}{"v": "Revisions", "bl": 1, "bg": "#2A2B30", "fc": "#E0E0E0"}},
+					{"r": 0, "c": 6, "v": map[string]interface{}{"v": "Notes", "bl": 1, "bg": "#2A2B30", "fc": "#E0E0E0"}},
 					// Sample Row
-					{"r": 1, "c": 0, "v": map[string]interface{}{"v": "Brand Anthem 60s"}},
-					{"r": 1, "c": 1, "v": map[string]interface{}{"v": "Review Ready"}},
-					{"r": 1, "c": 3, "v": map[string]interface{}{"v": "v2"}},
+					{"r": 1, "c": 0, "v": map[string]interface{}{"v": "Brand Film 60s"}},
+					{"r": 1, "c": 1, "v": map[string]interface{}{"v": "Brand_Film_v2.mp4", "file_name": "Brand_Film_v2.mp4", "version": "v2", "status": "Approved"}},
+					{"r": 1, "c": 3, "v": map[string]interface{}{"v": "Approved", "bg": "#064E3B", "fc": "#34D399"}},
 					{"r": 1, "c": 4, "v": map[string]interface{}{"v": "2026-10-25"}},
+					{"r": 1, "c": 5, "v": map[string]interface{}{"v": "2"}},
+					{"r": 1, "c": 6, "v": map[string]interface{}{"v": "Final export delivered to client"}},
 				},
 			},
 		}
@@ -642,6 +646,9 @@ func (h *SpreadsheetsHandler) SetCellValue(w http.ResponseWriter, r *http.Reques
 		var sheets []map[string]interface{}
 		_ = json.Unmarshal(sheetRow.ContentJson, &sheets)
 		for _, s := range sheets {
+			if req.SheetID != "" && fmt.Sprintf("%v", s["id"]) != req.SheetID {
+				continue
+			}
 			if cols, ok := s["columnMeta"].([]interface{}); ok {
 				for _, col := range cols {
 					if cm, ok := col.(map[string]interface{}); ok {

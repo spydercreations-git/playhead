@@ -133,11 +133,11 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 			CompanyID:       companyID,
 			ContentState:    nil,
 			ContentJson:     tJSON,
-			PlainText:       "Tracker Video Name Status Editor Version Due Date File Link",
-			PublicPlainText: "Tracker Video Name Status Editor Version Due Date File Link",
-			RowCount:        20,
-			ColCount:        6,
-			CellCount:       6,
+			PlainText:       "Tracker Video File Editor Status Due date Revisions Notes",
+			PublicPlainText: "Tracker Video File Editor Status Due date Revisions Notes",
+			RowCount:        30,
+			ColCount:        7,
+			CellCount:       7,
 		})
 		_ = h.queries.SetProjectTrackerItemID(r.Context(), db.SetProjectTrackerItemIDParams{
 			ID:            project.ID,

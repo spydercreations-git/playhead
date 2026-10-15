@@ -460,19 +460,40 @@ Google Login is built into the backend and UI, but hidden until configured. When
    - Client contacts are strictly refused at WebSocket authentication (`onAuthenticate`).
    - Clients interact with spreadsheets through a server-sanitized view (`GET /api/v1/spreadsheets/{id}/view`, polled every 5s) where hidden columns are stripped server-side.
    - Client cell updates are submitted via `POST /api/v1/spreadsheets/{id}/cells`, validating column lock and hidden status before forwarding to the collab service to apply directly into the live `Y.Doc`.
-5. **Formula Engine & High-Performance Benchmark**:
+5. **Formula Engine & Real High-Performance Benchmark**:
    - Strict open-source licensing: HyperFormula excluded; uses MIT-licensed `@formulajs/formulajs` and FortuneSheet native calculation engine.
-   - Tested 10,000 rows x 50 columns benchmark: Initial load generated in 5.3ms and sustained smooth 60 FPS scrolling.
-6. **Feature Parity & Import/Export**:
-   - Features supported: conditional formatting, data validation (dropdowns, dates, numbers), checkboxes, cell comments with replies and mentions, freeze panes, group rows, fill handle, Excel copy/paste, PDF export, lock/hide columns modal, and formula auto-complete.
+   - Real 10,000 rows x 50 columns benchmark in Chrome browser: Fully loaded and interactive in **0.92s – 1.38s**.
+6. **Feature Parity, Tracker Columns & Custom Cells**:
+   - Tracker sheet: Exactly 7 columns (`Video`, `File`, `Editor`, `Status`, `Due date`, `Revisions`, `Notes`).
+   - Custom cell rendering: Status chip dropdown with 6 colors (`Not started`, `Editing`, `Needs review`, `Changes requested`, `Approved`, `Delivered`), Person cell (project members with photo/avatar), File link cell (video play badge, version, review status, "No access" access guard), Date picker popup.
    - Server-side Excel (`.xlsx`) and CSV import via `exceljs` with a 25MB file size limit.
-   - Tracker sheet: Editor dropdown scoped to project members; File link cell securely resolves items the viewer can see.
+   - Client multi-sheet editing with active sheet scoping and 403 locked column enforcement.
+
+### Testing Breakdown (Browser vs Automated):
+- **Automated Chrome Browser Tests (`multi-client-spreadsheet.test.ts`)**:
+  - `Proof 4a (Two-Window Live Sync)`: Window A typed in live Y.Doc; Window B saw update within 2 seconds.
+  - `Proof 4b (Refresh Persistence)`: Refreshed both windows; all data loaded cleanly from Y.Doc.
+  - `Proof 4c (Concurrent Row Insert)`: Window A inserted row at top while Window B edited below; B's cell remained bound to its stable row ID without data corruption.
+  - `Proof 5 (Client Multi-Sheet & Column Locking)`: Verified client contact can edit unlocked cells across sheets; editing a locked column is strictly refused with HTTP 403.
+  - `Proof 6 (Real 10k x 50 Load Time)`: Measured real load time in Chrome: **0.92s – 1.38s**.
+  - `Proof 7 (Feature Capabilities Audit in Browser)`:
+    - Conditional formatting: Working natively
+    - Data validation: Working natively
+    - Checkboxes: Working natively
+    - Date picker: Custom built (floating date input popup; FortuneSheet lacks native calendar popup)
+    - Group rows: Not supported (FortuneSheet lacks collapsible row grouping)
+    - Fill handle: Working natively
+    - Paste from Excel / Google Sheets: Working natively
+    - Freeze: Working natively
+    - Sort and filter: Working natively
+- **Automated Backend & CRDT Tests (`make test`)**:
+  - `p6_spreadsheets_test.go`: Column locking, hidden sanitization, auto-tracker creation with 7 columns.
+  - `spreadsheet-converter.test.ts`: Stable-ID CRDT row/column convergence, CSV & Excel import.
 
 ### How to test locally:
 1. Run all tests: `make test`
    - Go backend tests: `go test -v ./services/api/... ./services/shared/...`
-   - P6 Spreadsheets tests: `go test -v -run "TestSpreadsheet" ./services/api/internal/handler`
-   - Collab CRDT & sanitization tests: `cd services/collab && npm test`
+   - Collab CRDT & browser tests: `cd services/collab && npm test`
 2. Run development stack: `make dev`
 
 ---

@@ -328,7 +328,7 @@ func TestAutoTrackerCreationOnProjectCreation(t *testing.T) {
 	if sheetRow.Title != "Tracker" {
 		t.Errorf("Expected title 'Tracker', got '%s'", sheetRow.Title)
 	}
-	if sheetRow.ColCount != 6 {
-		t.Errorf("Expected 6 columns in default Tracker, got %d", sheetRow.ColCount)
+	if sheetRow.ColCount != 7 {
+		t.Errorf("Expected 7 columns in default Tracker (Video, File, Editor, Status, Due date, Revisions, Notes), got %d", sheetRow.ColCount)
 	}
 }

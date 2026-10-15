@@ -499,11 +499,11 @@ export function VideoPlayer({
         <div className="relative">
           <button
             onClick={() => setShowTimecodeMenu(!showTimecodeMenu)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1E1E22] hover:bg-[#27272D] border border-[#2E2E34] text-xs font-mono tracking-wider transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1E1E22] hover:bg-[#27272D] border border-[#2E2E34] text-xs font-mono tabular-nums tracking-wider transition-colors"
           >
-            <span className="text-white font-semibold">{formatTimecode(currentTimeMs, timecodeFormat, fps)}</span>
+            <span className="text-white font-semibold tabular-nums">{formatTimecode(currentTimeMs, timecodeFormat, fps)}</span>
             <span className="text-[#71717A]">/</span>
-            <span className="text-[#9A9DA0]">{formatTimecode(durationMs, timecodeFormat, fps)}</span>
+            <span className="text-[#9A9DA0] tabular-nums">{formatTimecode(durationMs, timecodeFormat, fps)}</span>
             <ChevronDown className="w-3 h-3 text-[#71717A] ml-1" />
           </button>
 

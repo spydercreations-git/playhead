@@ -19,6 +19,7 @@ October 2026
 8. **Card Shapes (Everywhere)**: Follow physical card silhouettes (Section 3.2): tabbed folders with 1 large + 2 small previews; folded-corner documents with paper preview and blue `DOC` label; spreadsheets with dark grid preview, green header row, colored status cells, hanging sheet tabs, and green `SHEET` label. Real metadata only: name, project, last editor & relative time ("Rik · 20m ago"), and collaborator avatars.
 9. References: Google Drive (files and sharing), Google Docs (documents), Google Sheets (spreadsheets), Frame.io (video review). Copy behavior and layout only. Never copy their logos, colors, icons or wording.
 10. Small decisions this spec leaves open: pick the most Google Drive or Frame.io like option and record it in `docs/DECISIONS.md`.
+11. **Typography**: Inter everywhere (weights 400 to 700 via next/font/google), tabular figures for timecodes, sheet numbers, and counters. Plus Jakarta Sans removed.
 
 ---
 

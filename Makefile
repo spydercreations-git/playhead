@@ -16,7 +16,7 @@ all: dev
 # Start local infrastructure, apply database migrations, and boot backend & frontend
 dev:
 	@echo "==> Starting local infrastructure (Postgres, Redis, MinIO, Mailpit, Worker)..."
-	@$(DOCKER) compose -f infra/docker-compose.yml up -d
+	@$(DOCKER) compose -f infra/docker-compose.yml up -d postgres redis minio mailpit worker
 	@echo "==> Waiting for PostgreSQL to be ready..."
 	@until $(DOCKER) exec playhead-postgres pg_isready -U postgres -d playhead_dev >/dev/null 2>&1; do sleep 1; done
 	@echo "==> Applying database migrations..."

@@ -330,11 +330,11 @@ export function CommentsPanel({
                         {comment.timecode_start_ms !== null && (
                           <button
                             onClick={() => onSeekToTime(comment.timecode_start_ms!)}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#FF5500]/15 text-[#FF5500] hover:bg-[#FF5500] hover:text-white text-[11px] font-mono font-medium transition-colors"
+                            className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#FF5500]/15 text-[#FF5500] hover:bg-[#FF5500] hover:text-white text-[11px] font-mono tabular-nums font-medium transition-colors"
                             title="Jump to timecode"
                           >
                             <Clock className="w-3 h-3" />
-                            <span>{formatTimecode(comment.timecode_start_ms, timecodeFormat, fps)}</span>
+                            <span className="tabular-nums">{formatTimecode(comment.timecode_start_ms, timecodeFormat, fps)}</span>
                           </button>
                         )}
 

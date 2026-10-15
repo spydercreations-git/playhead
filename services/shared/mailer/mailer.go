@@ -124,7 +124,7 @@ func (m *Mailer) SendEmailVerification(toEmail, toName, token string) error {
 	subject := "Verify your Playhead email address"
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
-<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+<body style="background-color: #181818; color: #FFFFFF; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
   <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
     <h2 style="color: #FFFFFF; margin-top: 0;">Welcome to Playhead</h2>
     <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">Hi %s,</p>
@@ -146,7 +146,7 @@ func (m *Mailer) SendPasswordReset(toEmail, toName, token string) error {
 	subject := "Reset your Playhead password"
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
-<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+<body style="background-color: #181818; color: #FFFFFF; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
   <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
     <h2 style="color: #FFFFFF; margin-top: 0;">Reset Your Password</h2>
     <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">Hi %s,</p>
@@ -168,7 +168,7 @@ func (m *Mailer) SendTeamInvite(toEmail, companyName, inviterName, token string)
 	subject := fmt.Sprintf("You're invited to join %s on Playhead", companyName)
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
-<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+<body style="background-color: #181818; color: #FFFFFF; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
   <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
     <h2 style="color: #FFFFFF; margin-top: 0;">Join %s on Playhead</h2>
     <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">%s invited you to collaborate on video projects, cuts, and reviews in <strong>%s</strong>.</p>
@@ -188,7 +188,7 @@ func (m *Mailer) SendLoginCode(toEmail, code string) error {
 	subject := fmt.Sprintf("%s is your Playhead verification code", code)
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
-<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+<body style="background-color: #181818; color: #FFFFFF; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
   <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px; text-align: center;">
     <h2 style="color: #FFFFFF; margin-top: 0;">Your Playhead Verification Code</h2>
     <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">Enter this 6-digit code on the sign-in screen to access your workspace:</p>
@@ -208,7 +208,7 @@ func (m *Mailer) SendStorageAlertEmail(toEmail, toName, companyName string, used
 	subject := fmt.Sprintf("Storage Alert: %s has used %d GB of storage", companyName, usedGB)
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
-<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+<body style="background-color: #181818; color: #FFFFFF; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
   <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
     <h2 style="color: #FFFFFF; margin-top: 0;">Storage Threshold Alert</h2>
     <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">Hi %s,</p>
@@ -229,7 +229,7 @@ func (m *Mailer) SendZipReadyEmail(toEmail, toName, downloadURL string) error {
 	subject := "Your Playhead download archive is ready"
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
-<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+<body style="background-color: #181818; color: #FFFFFF; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
   <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
     <h2 style="color: #FFFFFF; margin-top: 0;">Your Download is Ready</h2>
     <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">Hi %s,</p>
@@ -254,7 +254,7 @@ func (m *Mailer) SendProjectAccessEmail(toEmail, toName, projectName, projectURL
 	settingsURL := fmt.Sprintf("%s/settings/notifications", strings.TrimRight(m.FrontendURL, "/"))
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
-<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+<body style="background-color: #181818; color: #FFFFFF; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
   <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
     <div style="margin-bottom: 24px;">
       <span style="font-size: 20px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">playhead</span>
@@ -286,7 +286,7 @@ func (m *Mailer) SendItemSharedEmail(toEmail, toName, itemName, itemKind, itemUR
 	settingsURL := fmt.Sprintf("%s/settings/notifications", strings.TrimRight(m.FrontendURL, "/"))
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
-<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+<body style="background-color: #181818; color: #FFFFFF; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
   <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
     <div style="margin-bottom: 24px;">
       <span style="font-size: 20px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">playhead</span>
@@ -348,7 +348,7 @@ func (m *Mailer) SendGroupedCommentsNotificationEmail(toEmail, toName, itemName,
 	settingsURL := fmt.Sprintf("%s/settings/notifications", strings.TrimRight(m.FrontendURL, "/"))
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
-<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+<body style="background-color: #181818; color: #FFFFFF; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
   <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
     <div style="margin-bottom: 24px;">
       <span style="font-size: 20px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">playhead</span>
@@ -397,7 +397,7 @@ func (m *Mailer) SendReviewNotificationEmail(toEmail, toName, reviewerName, item
 	}
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
-<body style="background-color: #181818; color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
+<body style="background-color: #181818; color: #FFFFFF; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
   <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
     <div style="margin-bottom: 24px;">
       <span style="font-size: 20px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">playhead</span>

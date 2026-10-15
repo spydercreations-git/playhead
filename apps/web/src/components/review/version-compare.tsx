@@ -190,7 +190,7 @@ export function VersionCompare({
           className="flex-1 h-1.5 bg-[#27272A] rounded-lg appearance-none cursor-pointer accent-[#FF5500]"
         />
 
-        <div className="text-xs font-mono text-white">
+        <div className="text-xs font-mono tabular-nums text-white">
           {formatTimecode(currentTimeMs, "smpte", fps)}
         </div>
       </div>

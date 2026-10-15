@@ -252,7 +252,12 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
   - **Client Contact Sanitization & Multi-Sheet Scoping**: Non-team client contacts never receive the raw Yjs WebSocket connection. They interact via `GET /api/v1/spreadsheets/{id}/view` (polled every 5s) with hidden columns stripped. Cell edits are scoped to the active sheet (`sheet_id`), checked against column locks and hidden status, validated, and forwarded to the live Y.Doc.
   - **Open-Source Formula Engine**: HyperFormula strictly excluded (GPL/paid). Powered by `@formulajs/formulajs` (MIT) and FortuneSheet's built-in calculation engine (MIT).
   - **Real Browser Benchmark**: Real 10,000 rows x 50 columns spreadsheet load time in Google Chrome measured at **0.92s – 1.38s**.
-  - **Feature Capabilities Audit**: Verified in browser that conditional formatting, data validation, checkboxes, fill handle, Excel copy-paste, freeze, and sort/filter work. Identified and documented that date picker calendar popups and collapsible row groups are NOT supported natively by FortuneSheet (date picker provided via custom floating input overlay; group rows marked not supported).
+## 39. Frame.io & Google Drive Parity Pass: Permissions, Granular RBAC, & Custom Menus
+- **Decision**: Replaced hardcoded role name checks (`role === "admin"`) with granular capability checks based on `/auth/me` permission sets (`hasPermission(perm)`). Implemented Floating UI viewport-aware menus, selects, context menu provider, and non-blocking subtle animations (150ms-250ms easeOut).
+
+## 40. Frame.io Parity Pass: Phase 1 — Global Inter Typography & Tabular Numerals
+- **Decision**: Standardized entire application font across Next.js app, transactional emails (`mailer.go`), share pages, and PDF generators to Google Font `Inter` (`next/font/google`, weights 400, 500, 600, 700). Plus Jakarta Sans completely removed. Enforced `font-variant-numeric: tabular-nums` (`font-feature-settings: "tnum"`) across video player timecodes, timeline scrubbers, comment composer/cards, version compare, and collaborative spreadsheets to prevent character jitter during scrubbing and calculations.
+- **Reason**: Matches Frame.io and Google Drive high-density precision layout.
 - **Reason**: Guarantees zero data loss, bidirectional live collaboration, and strict compliance with Playhead spec section 6.11.
 
 

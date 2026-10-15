@@ -238,7 +238,7 @@ export function TimelineScrubber({
           )}
 
           {/* Timecode badge */}
-          <div className="bg-[#18181B]/95 text-white text-[11px] font-mono px-2 py-0.5 rounded shadow border border-[#3F3F46]">
+          <div className="bg-[#18181B]/95 text-white text-[11px] font-mono tabular-nums px-2 py-0.5 rounded shadow border border-[#3F3F46]">
             {formatTimecode(hoverTimeMs, timecodeFormat, fps)}
           </div>
         </div>

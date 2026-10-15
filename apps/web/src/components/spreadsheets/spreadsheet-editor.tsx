@@ -813,7 +813,7 @@ export function SpreadsheetEditor({
       </header>
 
       {/* Main Grid Area */}
-      <div className="relative flex-1 w-full overflow-hidden bg-[#181818]">
+      <div className="relative flex-1 w-full overflow-hidden bg-[#181818] tabular-nums">
         {sheets.length > 0 && (
           <Workbook
             ref={workbookRef}

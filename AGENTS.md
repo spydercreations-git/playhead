@@ -15,6 +15,7 @@ Project and player layout follows `docs/PROJECT_WORKSPACE.md`.
 ## Stack (do not change without asking)
 
 - Frontend: Next.js (App Router), React, TypeScript strict, Tailwind CSS, shadcn/ui, TanStack Query, TanStack Table, Zustand, Uppy, hls.js
+- Typography: Inter everywhere (weights 400-700 via next/font/google), tabular numbers for timecodes and sheet numbers. Plus Jakarta Sans removed.
 - Backend: Go, chi, pgx, sqlc, goose, asynq
 - Data: PostgreSQL, Redis
 - Storage: Cloudflare R2 (MinIO in local dev), aws-sdk-go-v2

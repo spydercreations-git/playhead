@@ -101,9 +101,9 @@ export function CommentComposer({
       {/* Active Playhead Timecode Chip */}
       <div className="flex items-center gap-2 mb-2">
         {includeTimecode ? (
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#FF5500]/15 text-[#FF5500] border border-[#FF5500]/30 text-xs font-mono font-medium">
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#FF5500]/15 text-[#FF5500] border border-[#FF5500]/30 text-xs font-mono tabular-nums font-medium">
             <Clock className="w-3 h-3" />
-            <span>{formatTimecode(timecodeStartMs, timecodeFormat, fps)}</span>
+            <span className="tabular-nums">{formatTimecode(timecodeStartMs, timecodeFormat, fps)}</span>
             <button
               onClick={() => setIncludeTimecode(false)}
               className="hover:text-white transition-colors"

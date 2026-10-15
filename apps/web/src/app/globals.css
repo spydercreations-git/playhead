@@ -44,10 +44,16 @@
 body {
   color: var(--text-primary);
   background-color: var(--bg-page);
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.01em;
+}
+
+/* Tabular figures for timecodes, sheet numbers, and counters */
+.tabular-nums, [data-tabular-nums] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
 @keyframes shake {

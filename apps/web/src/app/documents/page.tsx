@@ -18,6 +18,8 @@ import {
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 
+import { useRouter } from "next/navigation";
+
 interface ClientChip {
   id: string;
   name: string;
@@ -25,6 +27,7 @@ interface ClientChip {
 }
 
 export default function DocumentsPage() {
+  const router = useRouter();
   const { user, isClient, isLoading: authLoading } = useAuth();
 
   const [documents, setDocuments] = useState<DocumentListItem[]>([]);
@@ -32,6 +35,7 @@ export default function DocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
   const [newDocOpen, setNewDocOpen] = useState(false);
+  const [newlyCreatedDocId, setNewlyCreatedDocId] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -232,7 +236,11 @@ export default function DocumentsPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
             {filteredDocuments.map((doc) => (
-              <DocumentCard key={doc.id} document={doc} />
+              <DocumentCard
+                key={doc.id}
+                document={doc}
+                isNew={doc.id === newlyCreatedDocId}
+              />
             ))}
           </div>
         )}
@@ -242,6 +250,14 @@ export default function DocumentsPage() {
       <NewDocumentDialog
         isOpen={newDocOpen}
         onClose={() => setNewDocOpen(false)}
+        onDocumentCreated={(newDoc) => {
+          setDocuments((prev) => [newDoc, ...prev]);
+          setNewlyCreatedDocId(newDoc.id);
+          // Highlight card for 1 second, then navigate to editor with title selected
+          setTimeout(() => {
+            router.push(`/d/${newDoc.id}?new=1`);
+          }, 1000);
+        }}
       />
     </>
   );

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -80,9 +80,22 @@ export function SpreadsheetEditor({
   user,
 }: SpreadsheetEditorProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [sheets, setSheets] = useState<any[]>(initialData?.sheets || []);
   const [title, setTitle] = useState(initialData?.title || "Untitled Spreadsheet");
   const [statusText, setStatusText] = useState("Connected");
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus and select title when spreadsheet is newly created per Part C spec
+  useEffect(() => {
+    const isNew = searchParams?.get("new") === "1" || initialData?.title === "Untitled Spreadsheet";
+    if (isNew && canEdit) {
+      setTimeout(() => {
+        titleInputRef.current?.focus();
+        titleInputRef.current?.select();
+      }, 150);
+    }
+  }, [searchParams, initialData?.title, canEdit]);
   const [activeSheetId, setActiveSheetId] = useState<string>(
     initialData?.sheets?.[0]?.id || "sheet_1"
   );
@@ -705,6 +718,7 @@ export function SpreadsheetEditor({
               <FileSpreadsheet className="h-4 w-4" />
             </div>
             <input
+              ref={titleInputRef}
               type="text"
               value={title}
               disabled={!isTeamMember || !canEdit}

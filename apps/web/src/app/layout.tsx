@@ -3,6 +3,8 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { AppShell } from "@/components/layout/app-shell";
+import { ToastContainer } from "@/components/ui/toast";
+import { ContextMenuProvider } from "@/components/ui/menu";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -29,7 +31,10 @@ export default function RootLayout({
     <html lang="en" className={`dark ${plusJakartaSans.variable}`}>
       <body className={`${plusJakartaSans.className} bg-background text-foreground antialiased`}>
         <Providers>
-          <AppShell>{children}</AppShell>
+          <ContextMenuProvider>
+            <AppShell>{children}</AppShell>
+            <ToastContainer />
+          </ContextMenuProvider>
         </Providers>
       </body>
     </html>

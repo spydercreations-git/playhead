@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   FileSpreadsheet,
   Plus,
@@ -46,6 +47,7 @@ interface ClientChip {
 
 export default function SpreadsheetsPage() {
   const router = useRouter();
+  const shouldReduceMotion = useReducedMotion();
   const { user, isClient, isLoading: authLoading } = useAuth();
 
   const [spreadsheets, setSpreadsheets] = useState<SpreadsheetItem[]>([]);
@@ -53,6 +55,7 @@ export default function SpreadsheetsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
+  const [newlyCreatedSheetId, setNewlyCreatedSheetId] = useState<string | null>(null);
 
   // New Spreadsheet Dialog
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -152,7 +155,28 @@ export default function SpreadsheetsPage() {
 
       if (res && res.id) {
         setShowCreateModal(false);
-        router.push(`/sheet/${res.id}`);
+        const selectedProj = projects.find((p) => p.id === selectedProjectId);
+        const newSheetItem: SpreadsheetItem = {
+          id: res.id,
+          title: newTitle.trim() || "Untitled Spreadsheet",
+          project_id: selectedProjectId,
+          project_name: selectedProj?.name || "Project",
+          client_id: selectedProj?.client_id || "",
+          client_name: selectedProj?.client_name || "",
+          row_count: 30,
+          col_count: 7,
+          cell_count: 7,
+          updated_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          is_starred: false,
+          can_edit: true,
+        };
+        setSpreadsheets((prev) => [newSheetItem, ...prev]);
+        setNewlyCreatedSheetId(res.id);
+        // Soft blue highlight for 1 second, then navigate to editor with title selected per Part C spec
+        setTimeout(() => {
+          router.push(`/sheet/${res.id}?new=1`);
+        }, 1000);
       }
     } catch (err) {
       console.error("Failed to create spreadsheet", err);
@@ -339,73 +363,103 @@ export default function SpreadsheetsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredSpreadsheets.map((sheet) => (
-            <Link
-              key={sheet.id}
-              href={`/sheet/${sheet.id}`}
-              className="group flex flex-col justify-between p-5 rounded-2xl bg-[#212121] border border-[#2E2F34] hover:border-[#4876F3]/50 hover:bg-[#262629] transition-all duration-150"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-lg bg-[#4876F3]/10 text-[#4876F3] border border-[#4876F3]/20">
-                      <FileSpreadsheet className="h-4 w-4" />
+          {filteredSpreadsheets.map((sheet) => {
+            const isNew = sheet.id === newlyCreatedSheetId;
+            return (
+              <motion.div
+                layout
+                key={sheet.id}
+                initial={isNew && !shouldReduceMotion ? { opacity: 0, scale: 0.96 } : false}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className={`rounded-2xl transition-all duration-1000 ${
+                  isNew
+                    ? "ring-2 ring-[#4876F3] shadow-[0_0_24px_rgba(72,118,243,0.35)]"
+                    : ""
+                }`}
+              >
+                <Link
+                  href={`/sheet/${sheet.id}`}
+                  className="group flex flex-col justify-between p-5 rounded-2xl bg-[#212121] border border-[#2E2F34] hover:border-[#4876F3]/50 hover:bg-[#262629] transition-all duration-150 h-full"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 rounded-lg bg-[#4876F3]/10 text-[#4876F3] border border-[#4876F3]/20">
+                          <FileSpreadsheet className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold text-white group-hover:text-[#4876F3] transition-colors line-clamp-1">
+                            {sheet.title}
+                          </h4>
+                          <div className="flex items-center gap-1.5 text-[11px] text-[#9A9DA0] mt-0.5">
+                            <FolderOpen className="h-3 w-3" />
+                            <span className="truncate">{sheet.project_name}</span>
+                            {sheet.client_name && (
+                              <>
+                                <span>•</span>
+                                <span className="text-[#9A9DA0] truncate">
+                                  {sheet.client_name}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-sm font-semibold text-white group-hover:text-[#4876F3] transition-colors line-clamp-1">
-                        {sheet.title}
-                      </h4>
-                      <div className="flex items-center gap-1.5 text-[11px] text-[#9A9DA0] mt-0.5">
-                        <FolderOpen className="h-3 w-3" />
-                        <span className="truncate">{sheet.project_name}</span>
-                        {sheet.client_name && (
-                          <>
-                            <span>•</span>
-                            <span className="text-[#9A9DA0] truncate">
-                              {sheet.client_name}
-                            </span>
-                          </>
-                        )}
+
+                    <div className="grid grid-cols-2 gap-2 my-4 py-3 border-y border-[#2E2F34]/80 text-[11px]">
+                      <div className="flex items-center gap-1.5 text-[#9A9DA0]">
+                        <Layers className="h-3.5 w-3.5 text-[#7C7F87]" />
+                        <span>{sheet.row_count} rows × {sheet.col_count} cols</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[#9A9DA0] justify-end">
+                        <Calendar className="h-3.5 w-3.5 text-[#7C7F87]" />
+                        <span>
+                          {sheet.updated_at
+                            ? new Date(sheet.updated_at).toLocaleDateString()
+                            : "Recently"}
+                        </span>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2 my-4 py-3 border-y border-[#2E2F34]/80 text-[11px]">
-                  <div className="flex items-center gap-1.5 text-[#9A9DA0]">
-                    <Layers className="h-3.5 w-3.5 text-[#7C7F87]" />
-                    <span>{sheet.row_count} rows × {sheet.col_count} cols</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[#9A9DA0] justify-end">
-                    <Calendar className="h-3.5 w-3.5 text-[#7C7F87]" />
-                    <span>
-                      {sheet.updated_at
-                        ? new Date(sheet.updated_at).toLocaleDateString()
-                        : "Recently"}
+                  <div className="flex items-center justify-between text-[11px] text-[#9A9DA0] pt-1">
+                    <span className="text-emerald-400 font-medium flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                      Live Sync
+                    </span>
+                    <span className="flex items-center gap-1 text-[#4876F3] font-medium group-hover:translate-x-0.5 transition-transform">
+                      <span>Open Sheet</span>
+                      <ArrowRight className="h-3 w-3" />
                     </span>
                   </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] text-[#9A9DA0] pt-1">
-                <span className="text-emerald-400 font-medium flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Live Sync
-                </span>
-                <span className="flex items-center gap-1 text-[#4876F3] font-medium group-hover:translate-x-0.5 transition-transform">
-                  <span>Open Sheet</span>
-                  <ArrowRight className="h-3 w-3" />
-                </span>
-              </div>
-            </Link>
-          ))}
+                </Link>
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
-      {/* Create Spreadsheet Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-[#2E2F34] bg-[#212121] p-6 shadow-2xl relative">
+      {/* Create Spreadsheet Modal with Framer Motion */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
+              onClick={() => setShowCreateModal(false)}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 4 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className="relative z-10 w-full max-w-md rounded-2xl border border-[#2E2F34] bg-[#212121] p-6 shadow-2xl"
+            >
             <div className="flex items-center justify-between pb-4 border-b border-[#2E2F34]">
               <h3 className="text-sm font-semibold text-white">Create New Spreadsheet</h3>
               <button
@@ -489,9 +543,10 @@ export default function SpreadsheetsPage() {
                 </button>
               </div>
             </form>
-          </div>
+          </motion.div>
         </div>
       )}
+    </AnimatePresence>
 
       {/* Import Modal */}
       {showImportModal && (

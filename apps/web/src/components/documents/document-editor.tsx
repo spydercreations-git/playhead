@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -190,10 +190,23 @@ export function DocumentEditor({
   initialContentJson,
 }: DocumentEditorProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Document Title state & debounce save
   const [title, setTitle] = useState(initialTitle || "Untitled Document");
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus and select title when document is newly created per Part C spec
+  useEffect(() => {
+    const isNew = searchParams?.get("new") === "1" || initialTitle === "Untitled Document";
+    if (isNew && canEdit) {
+      setTimeout(() => {
+        titleInputRef.current?.focus();
+        titleInputRef.current?.select();
+      }, 150);
+    }
+  }, [searchParams, initialTitle, canEdit]);
 
   // Layout view options
   const [isCanvasMode, setIsCanvasMode] = useState(false); // false = 816px Letter page; true = 100% full width
@@ -651,6 +664,7 @@ export function DocumentEditor({
           {/* Document Title Editable In-Place */}
           <div className="flex items-center gap-2 min-w-0">
             <input
+              ref={titleInputRef}
               type="text"
               value={title}
               disabled={!canEdit || Boolean(selectedHistoricalVersion)}

@@ -4,8 +4,11 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
+import { toast } from "@/lib/toast";
+import { useContextMenu, MenuGroup } from "@/components/ui/menu";
 import { UploadTray, UploadItem } from "@/components/uploads/upload-tray";
 import {
   DownloadTray,
@@ -40,6 +43,11 @@ import {
   ArrowRight,
   Shield,
   FileSpreadsheet,
+  Trash2,
+  Edit3,
+  Move,
+  ExternalLink,
+  Loader2,
 } from "lucide-react";
 
 function formatBytes(bytes: number): string {
@@ -58,7 +66,9 @@ export default function ProjectWorkspacePage() {
   const projectId = params.id as string;
   const currentFolderId = searchParams.get("folder") || null;
 
-  const { user, role } = useAuth();
+  const { user, role, hasPermission } = useAuth();
+  const { openContextMenu } = useContextMenu();
+  const shouldReduceMotion = useReducedMotion();
 
   // Workspace UI states
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -71,16 +81,25 @@ export default function ProjectWorkspacePage() {
     name: "Project",
     type: "project",
   });
-  const [showNewFolderModal, setShowNewFolderModal] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
-  const [copyToast, setCopyToast] = useState(false);
+
+  // Inline folder creation state (per Part C spec: "New folder: appears in place with the name in edit mode; Enter saves, Escape cancels.")
+  const [isCreatingInlineFolder, setIsCreatingInlineFolder] = useState(false);
+  const [inlineFolderName, setInlineFolderName] = useState("New Folder");
+  const inlineFolderInputRef = useRef<HTMLInputElement>(null);
+
+  // Inline rename state
+  const [renamingItemId, setRenamingItemId] = useState<string | null>(null);
+  const [inlineRenameName, setInlineRenameName] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  // Optimistic deleted items (for smooth slide-out and Undo toast)
+  const [hiddenItemIds, setHiddenItemIds] = useState<string[]>([]);
 
   // Notification Bell state
   const [showBellDropdown, setShowBellDropdown] = useState(false);
   const [projectNotifPref, setProjectNotifPref] = useState<string>("all");
 
-  // Rename & Move Modal states
-  const [renameItem, setRenameItem] = useState<{ id: string; name: string } | null>(null);
+  // Move Modal state
   const [moveItem, setMoveItem] = useState<{ id: string; name: string } | null>(null);
   const [targetMoveFolderId, setTargetMoveFolderId] = useState<string | null>(null);
 
@@ -94,24 +113,11 @@ export default function ProjectWorkspacePage() {
 
   // Download Tray & Session state
   const [downloadSession, setDownloadSession] = useState<DownloadSession | null>(null);
-  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const downloadPausedRef = useRef(false);
   const downloadCancelledRef = useRef(false);
 
-  // Check if browser has File System Access API (Chrome, Edge, Opera)
-  const [hasFileSystemAccess, setHasFileSystemAccess] = useState(false);
-  useEffect(() => {
-    if (typeof window !== "undefined" && "showDirectoryPicker" in window) {
-      setHasFileSystemAccess(true);
-    }
-  }, []);
-
-  // Name conflict prompt state
-  const [conflictPrompt, setConflictPrompt] = useState<{
-    file: File;
-    existingId: string;
-    existingName: string;
-  } | null>(null);
+  // Touch long-press ref
+  const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 1. Fetch Items for current folder / project root
   const { data: workspaceData, isLoading, error } = useQuery({
@@ -151,6 +157,7 @@ export default function ProjectWorkspacePage() {
       setProjectNotifPref(pref);
       setShowBellDropdown(false);
       queryClient.invalidateQueries({ queryKey: ["project-notification", projectId] });
+      toast.success("Notification preferences updated");
     },
   });
 
@@ -168,8 +175,11 @@ export default function ProjectWorkspacePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project-items", projectId] });
       queryClient.invalidateQueries({ queryKey: ["project-tree", projectId] });
-      setShowNewFolderModal(false);
-      setNewFolderName("");
+      setIsCreatingInlineFolder(false);
+      toast.success("Folder created");
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Failed to create folder");
     },
   });
 
@@ -182,7 +192,8 @@ export default function ProjectWorkspacePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project-items", projectId] });
       queryClient.invalidateQueries({ queryKey: ["project-tree", projectId] });
-      setRenameItem(null);
+      setRenamingItemId(null);
+      toast.success("Renamed successfully");
     },
   });
 
@@ -197,6 +208,7 @@ export default function ProjectWorkspacePage() {
       queryClient.invalidateQueries({ queryKey: ["project-tree", projectId] });
       setMoveItem(null);
       setTargetMoveFolderId(null);
+      toast.success("Item moved");
     },
   });
 
@@ -233,8 +245,9 @@ export default function ProjectWorkspacePage() {
       apiRequest(`/items/${id}/star`, {
         method: isStarred ? "DELETE" : "POST",
       }),
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["project-items", projectId] });
+      toast.success(vars.isStarred ? "Removed from starred" : "Added to starred");
     },
   });
 
@@ -284,21 +297,12 @@ export default function ProjectWorkspacePage() {
         await executeMultipartUpload(newUpload, initRes.part_size_bytes, initRes.upload_id, file);
       }
     } catch (err: any) {
-      if (err.status === 409 && err.data?.existing_item_id) {
-        setConflictPrompt({
-          file,
-          existingId: err.data.existing_item_id,
-          existingName: filename,
-        });
-      } else {
-        alert(err.message || "Upload failed to start");
-      }
+      toast.error(err.message || "Upload failed to start");
     }
   };
 
   const executeSingleUpload = async (item: UploadItem, putUrl: string, file: File) => {
     const xhr = new XMLHttpRequest();
-
     let lastLoaded = 0;
     let lastTime = Date.now();
 
@@ -306,7 +310,7 @@ export default function ProjectWorkspacePage() {
       if (evt.lengthComputable) {
         const now = Date.now();
         const diffTime = (now - lastTime) / 1000;
-        if (diffTime > 0.5) {
+        if (diffTime > 0.4) {
           const diffBytes = evt.loaded - lastLoaded;
           const speed = diffBytes / diffTime;
           lastLoaded = evt.loaded;
@@ -347,10 +351,12 @@ export default function ProjectWorkspacePage() {
             )
           );
           queryClient.invalidateQueries({ queryKey: ["project-items", projectId] });
+          toast.success(`Uploaded "${item.filename}"`);
         } catch {
           setUploads((prev) =>
             prev.map((u) => (u.id === item.id ? { ...u, status: "error" } : u))
           );
+          toast.error(`Failed to complete "${item.filename}"`);
         }
       } else {
         setUploads((prev) =>
@@ -456,6 +462,7 @@ export default function ProjectWorkspacePage() {
               )
             );
             queryClient.invalidateQueries({ queryKey: ["project-items", projectId] });
+            toast.success(`Uploaded "${item.filename}"`);
           } catch {
             setUploads((prev) =>
               prev.map((u) => (u.id === item.id ? { ...u, status: "error" } : u))
@@ -482,7 +489,7 @@ export default function ProjectWorkspacePage() {
       });
 
       if (!manifestRes.files || manifestRes.files.length === 0) {
-        alert("No downloadable files found");
+        toast.error("No downloadable files found");
         return;
       }
 
@@ -529,30 +536,305 @@ export default function ProjectWorkspacePage() {
         isCancelledRef: downloadCancelledRef,
       });
     } catch (err: any) {
-      alert(err.message || "Failed to initiate download");
+      toast.error(err.message || "Failed to initiate download");
     }
   };
 
   const handleCopyProjectLink = () => {
     const url = typeof window !== "undefined" ? window.location.href : "";
     navigator.clipboard.writeText(url);
-    setCopyToast(true);
-    setTimeout(() => setCopyToast(false), 3000);
+    toast.success("Link copied. Only people with access can open it.");
+  };
+
+  // Inline folder creation trigger
+  const triggerInlineNewFolder = () => {
+    setInlineFolderName("New Folder");
+    setIsCreatingInlineFolder(true);
+    setTimeout(() => {
+      inlineFolderInputRef.current?.focus();
+      inlineFolderInputRef.current?.select();
+    }, 50);
+  };
+
+  // Inline rename trigger
+  const triggerInlineRename = (item: any) => {
+    setRenamingItemId(item.id);
+    setInlineRenameName(item.name);
+    setTimeout(() => {
+      renameInputRef.current?.focus();
+      renameInputRef.current?.select();
+    }, 50);
+  };
+
+  // Delete with reverse animation & Undo toast per Part C spec
+  const handleDeleteWithUndo = (item: any) => {
+    setHiddenItemIds((prev) => [...prev, item.id]);
+    let undone = false;
+
+    toast.success(`"${item.name}" moved to trash`, {
+      undoLabel: "Undo",
+      duration: 5000,
+      undo: () => {
+        undone = true;
+        setHiddenItemIds((prev) => prev.filter((id) => id !== item.id));
+      },
+    });
+
+    setTimeout(() => {
+      if (!undone) {
+        deleteItemMutation.mutate(item.id);
+      }
+    }, 5200);
+  };
+
+  const handleBatchDeleteWithUndo = () => {
+    const idsToDelete = [...selectedItemIds];
+    setHiddenItemIds((prev) => [...prev, ...idsToDelete]);
+    setSelectedItemIds([]);
+    let undone = false;
+
+    toast.success(`${idsToDelete.length} items moved to trash`, {
+      undoLabel: "Undo",
+      duration: 5000,
+      undo: () => {
+        undone = true;
+        setHiddenItemIds((prev) => prev.filter((id) => !idsToDelete.includes(id)));
+      },
+    });
+
+    setTimeout(() => {
+      if (!undone) {
+        batchActionMutation.mutate({ action: "delete", ids: idsToDelete });
+      }
+    }, 5200);
+  };
+
+  // Context Menu Handlers
+  const handleEmptyWorkspaceContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const groups: MenuGroup[] = [
+      {
+        items: [
+          {
+            label: "New folder",
+            icon: <FolderPlus className="w-4 h-4 text-amber-400" />,
+            onClick: triggerInlineNewFolder,
+          },
+          {
+            label: "Upload files",
+            icon: <Upload className="w-4 h-4 text-[#4876F3]" />,
+            onClick: () => fileInputRef.current?.click(),
+          },
+          {
+            label: "Upload folder",
+            icon: <Folder className="w-4 h-4 text-amber-400" />,
+            onClick: () => folderInputRef.current?.click(),
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            label: "New document",
+            icon: <FileText className="w-4 h-4 text-blue-400" />,
+            onClick: () => router.push("/documents"),
+          },
+          {
+            label: "New spreadsheet",
+            icon: <FileSpreadsheet className="w-4 h-4 text-emerald-400" />,
+            onClick: () => router.push("/spreadsheets"),
+          },
+        ],
+      },
+    ];
+
+    openContextMenu(e, groups);
+  };
+
+  const handleItemContextMenu = (
+    e: React.MouseEvent | { clientX: number; clientY: number },
+    item: any
+  ) => {
+    if ("preventDefault" in e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    const isFolder = item.kind === "folder";
+
+    const groups: MenuGroup[] = [
+      {
+        items: [
+          {
+            label: "Open",
+            icon: <ArrowRight className="w-4 h-4" />,
+            onClick: () => {
+              if (isFolder) {
+                router.push(`/projects/${projectId}?folder=${item.id}`);
+              } else {
+                setActiveViewerItem(item);
+              }
+            },
+          },
+          {
+            label: "Open in new tab",
+            icon: <ExternalLink className="w-4 h-4" />,
+            onClick: () => {
+              if (isFolder) {
+                window.open(`/projects/${projectId}?folder=${item.id}`, "_blank");
+              } else {
+                window.open(`/projects/${projectId}?item=${item.id}`, "_blank");
+              }
+            },
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            label: "Share",
+            icon: <Share2 className="w-4 h-4 text-[#4876F3]" />,
+            onClick: () => {
+              setShareTargetItem({ id: item.id, name: item.name, type: "item" });
+              setShowShareModal(true);
+            },
+          },
+          {
+            label: "Copy link",
+            icon: <Copy className="w-4 h-4" />,
+            onClick: () => {
+              const url = `${window.location.origin}/projects/${projectId}?item=${item.id}`;
+              navigator.clipboard.writeText(url);
+              toast.success("Link copied to clipboard");
+            },
+          },
+          ...(!isFolder && canDownload
+            ? [
+                {
+                  label: "Download",
+                  icon: <Download className="w-4 h-4" />,
+                  onClick: () => {
+                    setSelectedItemIds([item.id]);
+                    handleStartDownload("zip");
+                  },
+                },
+              ]
+            : []),
+        ],
+      },
+      {
+        items: [
+          {
+            label: "Rename",
+            icon: <Edit3 className="w-4 h-4" />,
+            onClick: () => triggerInlineRename(item),
+          },
+          {
+            label: "Move to",
+            icon: <Move className="w-4 h-4" />,
+            onClick: () => setMoveItem({ id: item.id, name: item.name }),
+          },
+          {
+            label: item.is_starred ? "Unstar" : "Star",
+            icon: <Star className="w-4 h-4 text-amber-400" />,
+            onClick: () =>
+              starMutation.mutate({ id: item.id, isStarred: Boolean(item.is_starred) }),
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            label: "Delete",
+            icon: <Trash2 className="w-4 h-4" />,
+            danger: true,
+            onClick: () => handleDeleteWithUndo(item),
+          },
+        ],
+      },
+    ];
+
+    openContextMenu(e, groups);
+  };
+
+  const handleSelectionContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (selectedItemIds.length <= 1) return;
+
+    const groups: MenuGroup[] = [
+      {
+        items: [
+          {
+            label: `Share (${selectedItemIds.length} items)`,
+            icon: <Share2 className="w-4 h-4 text-[#4876F3]" />,
+            onClick: () => {
+              setShareTargetItem({ id: projectId, name: project.name, type: "project" });
+              setShowShareModal(true);
+            },
+          },
+          {
+            label: "Copy link",
+            icon: <Copy className="w-4 h-4" />,
+            onClick: handleCopyProjectLink,
+          },
+          ...(canDownload
+            ? [
+                {
+                  label: `Download (${selectedItemIds.length} items)`,
+                  icon: <Download className="w-4 h-4" />,
+                  onClick: () => handleStartDownload("zip"),
+                },
+              ]
+            : []),
+        ],
+      },
+      {
+        items: [
+          {
+            label: "Move to",
+            icon: <Move className="w-4 h-4" />,
+            onClick: () => {
+              const it = items.find((x: any) => x.id === selectedItemIds[0]);
+              if (it) setMoveItem({ id: it.id, name: it.name });
+            },
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            label: `Delete (${selectedItemIds.length} items)`,
+            icon: <Trash2 className="w-4 h-4" />,
+            danger: true,
+            onClick: handleBatchDeleteWithUndo,
+          },
+        ],
+      },
+    ];
+
+    openContextMenu(e, groups);
   };
 
   if (isLoading && !workspaceData) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#0E0E0F]">
-        <div className="text-xs text-[#9A9DA0]">Loading project workspace...</div>
+      <div className="flex h-screen items-center justify-center bg-[#0D0D0E]">
+        <div className="flex items-center gap-2 text-xs text-[#9A9DA0]">
+          <Loader2 className="w-4 h-4 animate-spin text-[#4876F3]" />
+          <span>Loading project workspace...</span>
+        </div>
       </div>
     );
   }
 
   if (error || !workspaceData) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center bg-[#0E0E0F] text-white">
+      <div className="flex h-screen flex-col items-center justify-center bg-[#0D0D0E] text-white">
         <h2 className="text-lg font-bold">Project not found or access denied</h2>
-        <Link href="/projects" className="mt-4 px-4 py-2 bg-[#3366FF] text-xs rounded-xl">
+        <Link href="/projects" className="mt-4 px-4 py-2 bg-[#4876F3] text-xs font-semibold rounded-xl">
           Back to Projects
         </Link>
       </div>
@@ -560,7 +842,7 @@ export default function ProjectWorkspacePage() {
   }
 
   const { project, user_access = "viewer" } = workspaceData;
-  const items = Array.isArray(workspaceData.items) ? workspaceData.items : [];
+  const rawItems = Array.isArray(workspaceData.items) ? workspaceData.items : [];
   const breadcrumbs = Array.isArray(workspaceData.breadcrumbs) ? workspaceData.breadcrumbs : [];
   const access = workspaceData.access || {};
   const userAccessLevel = access.level || user_access;
@@ -569,7 +851,8 @@ export default function ProjectWorkspacePage() {
     userAccessLevel === "viewer" || userAccessLevel === "commenter" || userAccessLevel === "uploader";
   const canUpload = userAccessLevel === "full" || userAccessLevel === "uploader";
 
-  // Filter items
+  // Filter items omitting optimistically deleted items
+  const items = rawItems.filter((i: any) => !hiddenItemIds.includes(i.id));
   const foldersList = items.filter((i: any) => i.kind === "folder");
   const filesList = items.filter((i: any) => i.kind !== "folder");
 
@@ -577,17 +860,17 @@ export default function ProjectWorkspacePage() {
   const selectedItems = items.filter((i: any) => selectedItemIds.includes(i.id));
   const selectedBytes = selectedItems.reduce((acc: number, cur: any) => acc + (cur.total_bytes || cur.latest_size_bytes || 0), 0);
 
-  return (
-    <div className="flex h-screen bg-[#0D0D0E] text-[#E1E1E3] font-sans antialiased overflow-hidden select-none">
-      {/* Toast Notification */}
-      {copyToast && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-[#18181A] border border-[#27272A] text-white px-4 py-2 rounded-xl text-xs shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-          <Check className="w-4 h-4 text-emerald-400" />
-          <span>Link copied. Only people with access can open it.</span>
-        </div>
-      )}
+  // Active uploads in this folder
+  const activeUploadsHere = uploads.filter(
+    (u) => (u.parentId || null) === currentFolderId && u.status === "uploading"
+  );
 
-      {/* Hidden File Inputs */}
+  return (
+    <div
+      onContextMenu={handleEmptyWorkspaceContextMenu}
+      className="flex h-screen bg-[#0D0D0E] text-[#E1E1E3] font-sans antialiased overflow-hidden select-none"
+    >
+      {/* Hidden File & Folder Inputs */}
       <input
         type="file"
         ref={fileInputRef}
@@ -613,14 +896,14 @@ export default function ProjectWorkspacePage() {
       />
 
       {/* =========================================================================
-          LEFT SECONDARY TREE PANE (Design: 01-project-folder-view.png)
+          LEFT SECONDARY TREE PANE
           ========================================================================= */}
       <div className="w-64 border-r border-[#212124] bg-[#121214] flex flex-col justify-between shrink-0">
         <div className="flex flex-col overflow-y-auto">
-          {/* Project Dropdown Header */}
+          {/* Project Header */}
           <div className="p-4 border-b border-[#212124] flex items-center justify-between cursor-pointer hover:bg-[#18181A]/50 transition-colors">
             <div className="flex items-center gap-2.5 truncate">
-              <div className="w-7 h-7 rounded-lg bg-[#3366FF] text-white font-bold text-xs flex items-center justify-center shrink-0 uppercase">
+              <div className="w-7 h-7 rounded-lg bg-[#4876F3] text-white font-bold text-xs flex items-center justify-center shrink-0 uppercase shadow">
                 {project.name.substring(0, 2)}
               </div>
               <div className="truncate">
@@ -628,7 +911,6 @@ export default function ProjectWorkspacePage() {
                 <p className="text-[10px] text-[#9A9DA0] truncate">{project.client_name || "Workspace"}</p>
               </div>
             </div>
-            <ChevronDown className="w-4 h-4 text-[#9A9DA0] shrink-0" />
           </div>
 
           {/* Files Tree */}
@@ -644,7 +926,7 @@ export default function ProjectWorkspacePage() {
               }`}
             >
               <div className="flex items-center gap-2 truncate">
-                <Folder className="w-4 h-4 text-[#3366FF]" />
+                <Folder className="w-4 h-4 text-[#4876F3]" />
                 <span className="truncate">{project.name}</span>
               </div>
               <span className="text-[10px] text-[#71717A]">{project.file_count || 0}</span>
@@ -662,7 +944,7 @@ export default function ProjectWorkspacePage() {
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
-                    <Folder className={`w-3.5 h-3.5 ${isActive ? "text-[#3366FF]" : "text-[#71717A]"}`} />
+                    <Folder className={`w-3.5 h-3.5 ${isActive ? "text-[#4876F3]" : "text-[#71717A]"}`} />
                     <span className="truncate">{f.name}</span>
                   </div>
                   <span className="text-[10px] text-[#71717A]">{f.file_count || 0}</span>
@@ -676,7 +958,10 @@ export default function ProjectWorkspacePage() {
             <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
               Sheets and Docs
             </p>
-            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs text-[#9A9DA0] hover:bg-[#18181A] hover:text-white cursor-pointer">
+            <div
+              onClick={() => router.push(`/spreadsheets`)}
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs text-[#9A9DA0] hover:bg-[#18181A] hover:text-white cursor-pointer transition-colors"
+            >
               <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
               <span>Project Tracker</span>
             </div>
@@ -719,7 +1004,7 @@ export default function ProjectWorkspacePage() {
 
           {/* User profile avatar top right */}
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-full bg-orange-600 text-white flex items-center justify-center font-bold text-xs uppercase">
+            <div className="w-7 h-7 rounded-full bg-[#4876F3] text-white flex items-center justify-center font-bold text-xs uppercase shadow">
               {user?.name?.charAt(0) || "H"}
             </div>
           </div>
@@ -738,22 +1023,6 @@ export default function ProjectWorkspacePage() {
 
           {/* Right Header Buttons */}
           <div className="flex items-center gap-3">
-            {/* Collaborator Avatars (Design: R, K, J, +4) */}
-            <div className="flex items-center -space-x-1.5 mr-1">
-              <div className="w-7 h-7 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-bold ring-2 ring-[#0D0D0E]">
-                R
-              </div>
-              <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold ring-2 ring-[#0D0D0E]">
-                K
-              </div>
-              <div className="w-7 h-7 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] font-bold ring-2 ring-[#0D0D0E]">
-                J
-              </div>
-              <div className="w-7 h-7 rounded-full bg-[#27272A] text-[#9A9DA0] flex items-center justify-center text-[10px] font-medium ring-2 ring-[#0D0D0E]">
-                +4
-              </div>
-            </div>
-
             {/* Notification Bell Dropdown */}
             <div className="relative">
               <button
@@ -780,7 +1049,7 @@ export default function ProjectWorkspacePage() {
                       key={opt.id}
                       onClick={() => updateNotifMutation.mutate(opt.id)}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                        projectNotifPref === opt.id ? "bg-[#3366FF] text-white" : "text-[#9A9DA0] hover:bg-[#27272A] hover:text-white"
+                        projectNotifPref === opt.id ? "bg-[#4876F3] text-white" : "text-[#9A9DA0] hover:bg-[#27272A] hover:text-white"
                       }`}
                     >
                       <span>{opt.label}</span>
@@ -791,7 +1060,7 @@ export default function ProjectWorkspacePage() {
               )}
             </div>
 
-            {/* Copy Link Button (User Rule 6) */}
+            {/* Copy Link Button */}
             <button
               onClick={handleCopyProjectLink}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#27272A] bg-[#18181A] hover:bg-[#27272A] text-xs font-medium text-white transition-colors"
@@ -800,7 +1069,7 @@ export default function ProjectWorkspacePage() {
               <span>Copy link</span>
             </button>
 
-            {/* Share or Request Access Button (User Rule 2) */}
+            {/* Share or Request Access Button */}
             {isReadOnlyOrCommenter ? (
               <button
                 onClick={() => {
@@ -818,7 +1087,7 @@ export default function ProjectWorkspacePage() {
                   setShareTargetItem({ id: projectId, name: project.name, type: "project" });
                   setShowShareModal(true);
                 }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#3366FF] hover:bg-[#2554DB] text-xs font-semibold text-white transition-all shadow"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#4876F3] hover:bg-[#3B66D6] text-xs font-semibold text-white transition-all shadow"
               >
                 <Share2 className="w-3.5 h-3.5" />
                 <span>Share</span>
@@ -832,7 +1101,7 @@ export default function ProjectWorkspacePage() {
           <div className="flex items-center gap-3">
             {canUpload && (
               <div className="relative group">
-                <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#3366FF] hover:bg-[#2554DB] text-xs font-semibold text-white transition-colors shadow">
+                <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#4876F3] hover:bg-[#3B66D6] text-xs font-semibold text-white transition-colors shadow">
                   <Upload className="w-3.5 h-3.5" />
                   <span>Upload</span>
                   <ChevronDown className="w-3 h-3 ml-0.5 opacity-70" />
@@ -842,7 +1111,7 @@ export default function ProjectWorkspacePage() {
                     onClick={() => fileInputRef.current?.click()}
                     className="flex w-full items-center gap-2 px-3 py-2 text-xs text-white hover:bg-[#27272A]"
                   >
-                    <FileText className="w-4 h-4 text-[#3366FF]" />
+                    <FileText className="w-4 h-4 text-[#4876F3]" />
                     <span>Upload Files</span>
                   </button>
                   <button
@@ -858,7 +1127,7 @@ export default function ProjectWorkspacePage() {
 
             {canUpload && (
               <button
-                onClick={() => setShowNewFolderModal(true)}
+                onClick={triggerInlineNewFolder}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#27272A] bg-[#18181A] hover:bg-[#27272A] text-xs font-medium text-white transition-colors"
               >
                 <FolderPlus className="w-3.5 h-3.5" />
@@ -882,7 +1151,7 @@ export default function ProjectWorkspacePage() {
             </div>
           </div>
 
-          {/* Right Side: Sort & View Toggle */}
+          {/* Right Side: Sort */}
           <div className="flex items-center gap-2">
             <select
               value={sortBy}
@@ -897,214 +1166,433 @@ export default function ProjectWorkspacePage() {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto p-8 space-y-8">
-          {/* Folders Section */}
-          {foldersList.length > 0 && (
+        <div
+          onContextMenu={selectedItemIds.length > 1 ? handleSelectionContextMenu : undefined}
+          className="flex-1 overflow-y-auto p-8 space-y-8"
+        >
+          {/* Folders Section with 30ms Stagger per Part C */}
+          {(foldersList.length > 0 || isCreatingInlineFolder) && (
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-xs font-semibold text-[#9A9DA0]">
-                <span>{foldersList.length} {foldersList.length === 1 ? "folder" : "folders"}</span>
+                <span>{foldersList.length + (isCreatingInlineFolder ? 1 : 0)} folders</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {foldersList.map((folder: any) => {
-                  const isSelected = selectedItemIds.includes(folder.id);
-
-                  return (
-                    <div
-                      key={folder.id}
-                      onDoubleClick={() => router.push(`/projects/${projectId}?folder=${folder.id}`)}
-                      onClick={() => {
-                        if (isSelected) {
-                          setSelectedItemIds(selectedItemIds.filter((id) => id !== folder.id));
-                        } else {
-                          setSelectedItemIds([...selectedItemIds, folder.id]);
-                        }
-                      }}
-                      className={`group relative rounded-2xl border transition-all cursor-pointer p-4 ${
-                        isSelected
-                          ? "bg-[#3366FF]/10 border-[#3366FF]"
-                          : "bg-[#18181A] border-[#27272A] hover:border-[#3F3F46]"
-                      }`}
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={
+                  shouldReduceMotion
+                    ? {}
+                    : {
+                        hidden: { opacity: 0 },
+                        visible: {
+                          opacity: 1,
+                          transition: { staggerChildren: 0.03 },
+                        },
+                      }
+                }
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+              >
+                <AnimatePresence mode="popLayout">
+                  {/* Inline New Folder Input Card per Part C */}
+                  {isCreatingInlineFolder && (
+                    <motion.div
+                      layout
+                      initial={{ opacity: 0, scale: 0.95, y: 6 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                      className="rounded-2xl border border-[#4876F3] bg-[#4876F3]/10 p-4 shadow-lg flex flex-col justify-between"
                     >
-                      {/* Checkbox Top Left */}
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => {}}
-                        className="absolute top-4 left-4 rounded border-[#3F3F46] text-[#3366FF] focus:ring-0 z-10"
-                      />
-
-                      {/* Folder tab silhouette & previews */}
-                      <div className="h-28 w-full rounded-xl bg-[#121214] border border-[#27272A] flex overflow-hidden mb-3">
-                        <div className="w-2/3 h-full border-r border-[#27272A] flex items-center justify-center bg-[#151518]">
-                          <Folder className="w-10 h-10 text-[#3366FF] opacity-80" />
-                        </div>
-                        <div className="w-1/3 h-full flex flex-col">
-                          <div className="h-1/2 border-b border-[#27272A] flex items-center justify-center bg-[#18181C]">
-                            <Folder className="w-5 h-5 text-[#52525B]" />
-                          </div>
-                          <div className="h-1/2 flex items-center justify-center bg-[#18181C]">
-                            <Folder className="w-5 h-5 text-[#52525B]" />
-                          </div>
-                        </div>
+                      <div className="h-28 w-full rounded-xl bg-[#121214] border border-[#27272A] flex items-center justify-center mb-3">
+                        <Folder className="w-10 h-10 text-[#4876F3]" />
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <div className="truncate pr-2">
-                          <h3 className="text-xs font-semibold text-white truncate" title={folder.name}>
-                            {folder.name}
-                          </h3>
-                          <p className="text-[10px] text-[#9A9DA0] mt-0.5">
-                            {folder.file_count || 0} items · {formatBytes(folder.total_bytes || 0)}
-                          </p>
-                        </div>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRenameItem({ id: folder.id, name: folder.name });
+                      <div className="space-y-2">
+                        <input
+                          ref={inlineFolderInputRef}
+                          type="text"
+                          value={inlineFolderName}
+                          onChange={(e) => setInlineFolderName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              if (inlineFolderName.trim()) {
+                                createFolderMutation.mutate(inlineFolderName.trim());
+                              }
+                            } else if (e.key === "Escape") {
+                              setIsCreatingInlineFolder(false);
+                            }
                           }}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-[#27272A] text-[#9A9DA0] hover:text-white transition-opacity"
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Files Section */}
-          {filesList.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-xs font-semibold text-[#9A9DA0]">
-                <span>{filesList.length} {filesList.length === 1 ? "file" : "files"}</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filesList.map((file: any) => {
-                  const isSelected = selectedItemIds.includes(file.id);
-                  const isVideo = file.name.endsWith(".mp4") || file.name.endsWith(".mov");
-                  const isAudio = file.name.endsWith(".mp3") || file.name.endsWith(".wav");
-                  const isSheet = file.name.endsWith(".xlsx") || file.name.endsWith(".csv");
-
-                  return (
-                    <div
-                      key={file.id}
-                      onDoubleClick={() => setActiveViewerItem(file)}
-                      onClick={() => {
-                        if (isSelected) {
-                          setSelectedItemIds(selectedItemIds.filter((id) => id !== file.id));
-                        } else {
-                          setSelectedItemIds([...selectedItemIds, file.id]);
-                        }
-                      }}
-                      className={`group relative rounded-2xl border transition-all cursor-pointer p-4 flex flex-col justify-between ${
-                        isSelected
-                          ? "bg-[#3366FF]/10 border-[#3366FF]"
-                          : "bg-[#18181A] border-[#27272A] hover:border-[#3F3F46]"
-                      }`}
-                    >
-                      {/* Checkbox Top Left */}
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => {}}
-                        className="absolute top-4 left-4 rounded border-[#3F3F46] text-[#3366FF] focus:ring-0 z-10"
-                      />
-
-                      {/* Card Preview Area */}
-                      <div className="relative h-32 w-full rounded-xl bg-[#121214] border border-[#27272A] flex items-center justify-center overflow-hidden mb-3">
-                        {isVideo ? (
-                          <>
-                            <div className="w-full h-full bg-gradient-to-tr from-[#16161D] to-[#201D2B] flex items-center justify-center">
-                              <Film className="w-10 h-10 text-violet-400" />
-                            </div>
-                            {/* Version Tag */}
-                            <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-[#3366FF] text-[10px] font-bold text-white uppercase">
-                              v{file.latest_version_number || 1}
-                            </span>
-                            {/* Duration Pill */}
-                            <span className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/60 text-[10px] font-mono text-white">
-                              01:15
-                            </span>
-                            {/* Comment Counter (Lucide MessageSquare SVG icon - NO EMOJI!) */}
-                            <div className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/60 text-[10px] text-white flex items-center gap-1.5 font-medium">
-                              <MessageSquare className="w-3 h-3 text-zinc-300" />
-                              <span>5</span>
-                            </div>
-                          </>
-                        ) : isSheet ? (
-                          <div className="w-full h-full bg-[#131E18] flex flex-col justify-between p-3">
-                            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">SHEET</span>
-                            <div className="space-y-1">
-                              <div className="h-1.5 w-full bg-emerald-500/20 rounded" />
-                              <div className="h-1.5 w-2/3 bg-emerald-500/10 rounded" />
-                            </div>
-                            <span className="text-[9px] text-emerald-400 font-mono">Tracker | Summary</span>
-                          </div>
-                        ) : (
-                          <div className="w-full h-full bg-[#141722] flex flex-col justify-between p-3">
-                            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">DOC</span>
-                            <div className="space-y-1.5">
-                              <div className="h-1.5 w-full bg-blue-500/20 rounded" />
-                              <div className="h-1.5 w-4/5 bg-blue-500/10 rounded" />
-                              <div className="h-1.5 w-1/2 bg-blue-500/10 rounded" />
-                            </div>
-                            <span className="text-[9px] text-[#71717A]">PDF Preview</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* File Details */}
-                      <div>
-                        <h3 className="text-xs font-semibold text-white truncate" title={file.name}>
-                          {file.name}
-                        </h3>
-                        <p className="text-[10px] text-[#9A9DA0] mt-0.5">
-                          {file.created_by_name || "Editor"} · Oct 14
+                          onBlur={() => {
+                            if (inlineFolderName.trim() && inlineFolderName !== "New Folder") {
+                              createFolderMutation.mutate(inlineFolderName.trim());
+                            } else {
+                              setIsCreatingInlineFolder(false);
+                            }
+                          }}
+                          className="w-full h-8 rounded-lg bg-[#2A2B30] border border-[#4876F3] px-2.5 text-xs text-white focus:outline-none"
+                        />
+                        <p className="text-[10px] text-[#9A9DA0]">
+                          Press Enter to save · Esc to cancel
                         </p>
+                      </div>
+                    </motion.div>
+                  )}
 
-                        {/* Status Tag Pill */}
-                        <div className="mt-2.5 flex items-center justify-between">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                            <span>Approved</span>
-                          </span>
+                  {/* Folder Cards */}
+                  {foldersList.map((folder: any) => {
+                    const isSelected = selectedItemIds.includes(folder.id);
+                    const isRenaming = renamingItemId === folder.id;
+
+                    return (
+                      <motion.div
+                        layout
+                        key={folder.id}
+                        variants={
+                          shouldReduceMotion
+                            ? {}
+                            : {
+                                hidden: { opacity: 0, scale: 0.98, y: 6 },
+                                visible: {
+                                  opacity: 1,
+                                  scale: 1,
+                                  y: 0,
+                                  transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] },
+                                },
+                              }
+                        }
+                        exit={{
+                          opacity: 0,
+                          scale: 0.95,
+                          y: -6,
+                          transition: { duration: 0.12, ease: [0.4, 0, 1, 1] },
+                        }}
+                        onDoubleClick={() => router.push(`/projects/${projectId}?folder=${folder.id}`)}
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedItemIds(selectedItemIds.filter((id) => id !== folder.id));
+                          } else {
+                            setSelectedItemIds([...selectedItemIds, folder.id]);
+                          }
+                        }}
+                        onContextMenu={(e) => handleItemContextMenu(e, folder)}
+                        onTouchStart={(e) => {
+                          const touch = e.touches[0];
+                          touchTimerRef.current = setTimeout(() => {
+                            handleItemContextMenu({ clientX: touch.clientX, clientY: touch.clientY }, folder);
+                          }, 500);
+                        }}
+                        onTouchEnd={() => {
+                          if (touchTimerRef.current) {
+                            clearTimeout(touchTimerRef.current);
+                            touchTimerRef.current = null;
+                          }
+                        }}
+                        className={`group relative rounded-2xl border transition-all cursor-pointer p-4 ${
+                          isSelected
+                            ? "bg-[#4876F3]/15 border-[#4876F3] shadow-md"
+                            : "bg-[#18181A] border-[#27272A] hover:border-[#3F3F46]"
+                        }`}
+                      >
+                        {/* Checkbox */}
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {}}
+                          className="absolute top-4 left-4 rounded border-[#3F3F46] text-[#4876F3] focus:ring-0 z-10"
+                        />
+
+                        {/* Folder Silhouette */}
+                        <div className="h-28 w-full rounded-xl bg-[#121214] border border-[#27272A] flex overflow-hidden mb-3">
+                          <div className="w-2/3 h-full border-r border-[#27272A] flex items-center justify-center bg-[#151518]">
+                            <Folder className="w-10 h-10 text-[#4876F3] opacity-80" />
+                          </div>
+                          <div className="w-1/3 h-full flex flex-col">
+                            <div className="h-1/2 border-b border-[#27272A] flex items-center justify-center bg-[#18181C]">
+                              <Folder className="w-5 h-5 text-[#52525B]" />
+                            </div>
+                            <div className="h-1/2 flex items-center justify-center bg-[#18181C]">
+                              <Folder className="w-5 h-5 text-[#52525B]" />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Folder Details & Inline Rename */}
+                        <div className="flex items-center justify-between">
+                          <div className="truncate pr-2 flex-1">
+                            {isRenaming ? (
+                              <input
+                                ref={renameInputRef}
+                                type="text"
+                                value={inlineRenameName}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => setInlineRenameName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    if (inlineRenameName.trim()) {
+                                      renameMutation.mutate({ id: folder.id, name: inlineRenameName.trim() });
+                                    }
+                                  } else if (e.key === "Escape") {
+                                    setRenamingItemId(null);
+                                  }
+                                }}
+                                onBlur={() => {
+                                  if (inlineRenameName.trim()) {
+                                    renameMutation.mutate({ id: folder.id, name: inlineRenameName.trim() });
+                                  } else {
+                                    setRenamingItemId(null);
+                                  }
+                                }}
+                                className="w-full h-7 rounded bg-[#2A2B30] border border-[#4876F3] px-2 text-xs text-white focus:outline-none"
+                              />
+                            ) : (
+                              <>
+                                <h3 className="text-xs font-semibold text-white truncate" title={folder.name}>
+                                  {folder.name}
+                                </h3>
+                                <p className="text-[10px] text-[#9A9DA0] mt-0.5">
+                                  {folder.file_count || 0} items · {formatBytes(folder.total_bytes || 0)}
+                                </p>
+                              </>
+                            )}
+                          </div>
 
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setRenameItem({ id: file.id, name: file.name });
+                              handleItemContextMenu(e, folder);
                             }}
-                            className="p-1 rounded-lg hover:bg-[#27272A] text-[#9A9DA0] hover:text-white"
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-[#27272A] text-[#9A9DA0] hover:text-white transition-opacity shrink-0"
                           >
                             <MoreHorizontal className="w-4 h-4" />
                           </button>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </motion.div>
             </div>
           )}
 
-          {foldersList.length === 0 && filesList.length === 0 && (
+          {/* Files & Active Uploads Section */}
+          {(filesList.length > 0 || activeUploadsHere.length > 0) && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#9A9DA0]">
+                <span>{filesList.length} files</span>
+              </div>
+
+              <motion.div
+                layout
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+              >
+                <AnimatePresence mode="popLayout">
+                  {/* Active Uploads in Grid with Progress Bar per Part C */}
+                  {activeUploadsHere.map((upload) => (
+                    <motion.div
+                      layout
+                      key={upload.id}
+                      initial={{ opacity: 0, scale: 0.96 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      className="rounded-2xl border border-[#4876F3]/50 bg-[#212121] p-4 flex flex-col justify-between shadow-lg relative overflow-hidden"
+                    >
+                      <div className="h-32 w-full rounded-xl bg-[#18181A] flex flex-col items-center justify-center gap-2 mb-3">
+                        <Upload className="w-8 h-8 text-[#4876F3] animate-bounce" />
+                        <span className="text-[11px] font-semibold text-[#4876F3]">
+                          {upload.progressPercent}%
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <h4 className="text-xs font-medium text-white truncate">
+                          {upload.filename}
+                        </h4>
+                        <div className="w-full bg-[#2E2F34] h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-[#4876F3] h-full transition-all duration-200"
+                            style={{ width: `${upload.progressPercent}%` }}
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+
+                  {/* Completed Files */}
+                  {filesList.map((file: any) => {
+                    const isSelected = selectedItemIds.includes(file.id);
+                    const isRenaming = renamingItemId === file.id;
+                    const isVideo = file.name.endsWith(".mp4") || file.name.endsWith(".mov");
+                    const isAudio = file.name.endsWith(".mp3") || file.name.endsWith(".wav");
+                    const isSheet = file.name.endsWith(".xlsx") || file.name.endsWith(".csv");
+
+                    return (
+                      <motion.div
+                        layout
+                        key={file.id}
+                        initial={{ opacity: 0, scale: 0.98, y: 6 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{
+                          opacity: 0,
+                          scale: 0.95,
+                          y: -6,
+                          transition: { duration: 0.12, ease: [0.4, 0, 1, 1] },
+                        }}
+                        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                        onDoubleClick={() => setActiveViewerItem(file)}
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedItemIds(selectedItemIds.filter((id) => id !== file.id));
+                          } else {
+                            setSelectedItemIds([...selectedItemIds, file.id]);
+                          }
+                        }}
+                        onContextMenu={(e) => handleItemContextMenu(e, file)}
+                        onTouchStart={(e) => {
+                          const touch = e.touches[0];
+                          touchTimerRef.current = setTimeout(() => {
+                            handleItemContextMenu({ clientX: touch.clientX, clientY: touch.clientY }, file);
+                          }, 500);
+                        }}
+                        onTouchEnd={() => {
+                          if (touchTimerRef.current) {
+                            clearTimeout(touchTimerRef.current);
+                            touchTimerRef.current = null;
+                          }
+                        }}
+                        className={`group relative rounded-2xl border transition-all cursor-pointer p-4 flex flex-col justify-between ${
+                          isSelected
+                            ? "bg-[#4876F3]/15 border-[#4876F3] shadow-md"
+                            : "bg-[#18181A] border-[#27272A] hover:border-[#3F3F46]"
+                        }`}
+                      >
+                        {/* Checkbox */}
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {}}
+                          className="absolute top-4 left-4 rounded border-[#3F3F46] text-[#4876F3] focus:ring-0 z-10"
+                        />
+
+                        {/* Preview Area */}
+                        <div className="relative h-32 w-full rounded-xl bg-[#121214] border border-[#27272A] flex items-center justify-center overflow-hidden mb-3">
+                          {isVideo ? (
+                            <>
+                              <div className="w-full h-full bg-gradient-to-tr from-[#16161D] to-[#201D2B] flex items-center justify-center">
+                                <Film className="w-10 h-10 text-violet-400" />
+                              </div>
+                              <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-[#4876F3] text-[10px] font-bold text-white uppercase">
+                                v{file.latest_version_number || 1}
+                              </span>
+                              <span className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/60 text-[10px] font-mono text-white">
+                                01:15
+                              </span>
+                              <div className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/60 text-[10px] text-white flex items-center gap-1.5 font-medium">
+                                <MessageSquare className="w-3 h-3 text-zinc-300" />
+                                <span>5</span>
+                              </div>
+                            </>
+                          ) : isSheet ? (
+                            <div className="w-full h-full bg-[#131E18] flex flex-col justify-between p-3">
+                              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">SHEET</span>
+                              <div className="space-y-1">
+                                <div className="h-1.5 w-full bg-emerald-500/20 rounded" />
+                                <div className="h-1.5 w-2/3 bg-emerald-500/10 rounded" />
+                              </div>
+                              <span className="text-[9px] text-emerald-400 font-mono">Tracker | Summary</span>
+                            </div>
+                          ) : (
+                            <div className="w-full h-full bg-[#141722] flex flex-col justify-between p-3">
+                              <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">DOC</span>
+                              <div className="space-y-1.5">
+                                <div className="h-1.5 w-full bg-blue-500/20 rounded" />
+                                <div className="h-1.5 w-4/5 bg-blue-500/10 rounded" />
+                              </div>
+                              <span className="text-[9px] text-[#71717A]">PDF Preview</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* File Details */}
+                        <div>
+                          {isRenaming ? (
+                            <input
+                              ref={renameInputRef}
+                              type="text"
+                              value={inlineRenameName}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => setInlineRenameName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  if (inlineRenameName.trim()) {
+                                    renameMutation.mutate({ id: file.id, name: inlineRenameName.trim() });
+                                  }
+                                } else if (e.key === "Escape") {
+                                  setRenamingItemId(null);
+                                }
+                              }}
+                              onBlur={() => {
+                                if (inlineRenameName.trim()) {
+                                  renameMutation.mutate({ id: file.id, name: inlineRenameName.trim() });
+                                } else {
+                                  setRenamingItemId(null);
+                                }
+                              }}
+                              className="w-full h-7 rounded bg-[#2A2B30] border border-[#4876F3] px-2 text-xs text-white focus:outline-none"
+                            />
+                          ) : (
+                            <>
+                              <h3 className="text-xs font-semibold text-white truncate" title={file.name}>
+                                {file.name}
+                              </h3>
+                              <p className="text-[10px] text-[#9A9DA0] mt-0.5">
+                                {file.created_by_name || "Editor"} · Oct 14
+                              </p>
+                            </>
+                          )}
+
+                          <div className="mt-2.5 flex items-center justify-between">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              <span>Approved</span>
+                            </span>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleItemContextMenu(e, file);
+                              }}
+                              className="p-1 rounded-lg hover:bg-[#27272A] text-[#9A9DA0] hover:text-white"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </motion.div>
+            </div>
+          )}
+
+          {foldersList.length === 0 && filesList.length === 0 && !isCreatingInlineFolder && (
             <div className="py-20 text-center border border-dashed border-[#27272A] rounded-2xl">
               <Folder className="w-10 h-10 text-[#52525B] mx-auto mb-2" />
               <h3 className="text-sm font-semibold text-white">This folder is empty</h3>
               <p className="text-xs text-[#9A9DA0] mt-1">
-                Upload files or create subfolders using the buttons above.
+                Right-click anywhere to upload files or create subfolders.
               </p>
             </div>
           )}
         </div>
 
         {/* =========================================================================
-            BOTTOM FLOATING SELECTION BAR (Design: 01-project-folder-view.png)
+            BOTTOM FLOATING SELECTION BAR
             ========================================================================= */}
         {selectedItemIds.length > 0 && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#18181A] border border-[#27272A] px-5 py-2.5 rounded-full shadow-2xl flex items-center gap-5 text-xs font-medium text-white z-40 animate-in fade-in slide-in-from-bottom-3">
@@ -1142,15 +1630,13 @@ export default function ProjectWorkspacePage() {
 
             {/* Download */}
             {canDownload && (
-              <div className="relative">
-                <button
-                  onClick={() => handleStartDownload("zip")}
-                  className="flex items-center gap-1.5 text-[#9A9DA0] hover:text-white transition-colors"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download</span>
-                </button>
-              </div>
+              <button
+                onClick={() => handleStartDownload("zip")}
+                className="flex items-center gap-1.5 text-[#9A9DA0] hover:text-white transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download</span>
+              </button>
             )}
 
             {/* Move to */}
@@ -1165,9 +1651,18 @@ export default function ProjectWorkspacePage() {
               <span>Move to</span>
             </button>
 
+            {/* Delete */}
+            <button
+              onClick={handleBatchDeleteWithUndo}
+              className="flex items-center gap-1.5 text-red-400 hover:text-red-300 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete</span>
+            </button>
+
             <div className="h-4 w-px bg-[#27272A]" />
 
-            {/* Close / Deselect */}
+            {/* Deselect */}
             <button
               onClick={() => setSelectedItemIds([])}
               className="text-[#9A9DA0] hover:text-white transition-colors"
@@ -1243,7 +1738,7 @@ export default function ProjectWorkspacePage() {
         />
       )}
 
-      {/* Share Modal (People + Public Link tabs) */}
+      {/* Share Modal */}
       <ShareModal
         isOpen={showShareModal}
         onClose={() => setShowShareModal(false)}
@@ -1253,85 +1748,6 @@ export default function ProjectWorkspacePage() {
         userAccessLevel={user_access}
         canCreatePublicLinks={!isReadOnlyOrCommenter}
       />
-
-      {/* New Folder Modal */}
-      {showNewFolderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (newFolderName.trim()) createFolderMutation.mutate(newFolderName);
-            }}
-            className="w-full max-w-sm bg-[#18181A] border border-[#27272A] rounded-2xl p-6 shadow-2xl space-y-4"
-          >
-            <h3 className="text-base font-semibold text-white">Create New Folder</h3>
-            <input
-              type="text"
-              required
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              placeholder="Folder name"
-              autoFocus
-              className="w-full bg-[#121214] border border-[#27272A] rounded-xl px-3.5 py-2 text-xs text-white placeholder-[#52525B] focus:outline-none focus:border-[#3366FF]"
-            />
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowNewFolderModal(false)}
-                className="px-3 py-2 bg-transparent hover:bg-[#27272A] text-xs text-[#9A9DA0] hover:text-white rounded-xl"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={createFolderMutation.isPending || !newFolderName.trim()}
-                className="px-4 py-2 bg-[#3366FF] hover:bg-[#2554DB] text-white text-xs font-medium rounded-xl"
-              >
-                Create
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Rename Modal */}
-      {renameItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (renameItem.name.trim()) renameMutation.mutate(renameItem);
-            }}
-            className="w-full max-w-sm bg-[#18181A] border border-[#27272A] rounded-2xl p-6 shadow-2xl space-y-4"
-          >
-            <h3 className="text-base font-semibold text-white">Rename</h3>
-            <input
-              type="text"
-              required
-              value={renameItem.name}
-              onChange={(e) => setRenameItem({ ...renameItem, name: e.target.value })}
-              autoFocus
-              className="w-full bg-[#121214] border border-[#27272A] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#3366FF]"
-            />
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setRenameItem(null)}
-                className="px-3 py-2 bg-transparent hover:bg-[#27272A] text-xs text-[#9A9DA0] hover:text-white rounded-xl"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={renameMutation.isPending || !renameItem.name.trim()}
-                className="px-4 py-2 bg-[#3366FF] hover:bg-[#2554DB] text-white text-xs font-medium rounded-xl"
-              >
-                Save
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
     </div>
   );
 }

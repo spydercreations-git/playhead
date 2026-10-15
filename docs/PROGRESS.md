@@ -530,6 +530,41 @@ Google Login is built into the backend and UI, but hidden until configured. When
 
 ---
 
+## Part B & Part C: UI Polish, Unified Menus, and Fast Subtle Animations
+
+### Status: Completed ✅ (Verified end-to-end in browser and tests)
+
+### What was built:
+1. **Unified Menu & Select Architecture (`@floating-ui/react`)**:
+   - Reusable `<Menu>` and `<Select>` components matching Playhead dark tokens (`#212121`, `#2E2F34`, 10px radius).
+   - Viewport boundary detection with automatic flipping, shifting, and scroll containment.
+   - Built-in search filtering when options exceed 8 items.
+   - Mobile responsive bottom sheets on viewports < 640px.
+2. **Context Menu System (Right-Click & Touch Long-Press)**:
+   - `<ContextMenuProvider>` providing unified context menus across all devices.
+   - Empty workspace right-click menu: New folder, Upload files, Upload folder, New document, New spreadsheet.
+   - Item right-click & `⋯` button: Open, Open in new tab, Share, Copy link, Download, Rename, Move to, Star/Unstar, Delete.
+   - Multi-selection right-click: Share, Copy link, Download (ZIP), Move to, Delete.
+   - Mobile/tablet touch long-press (500ms) with bottom-sheet actions.
+3. **Frame.io-Style New Project Dialog**:
+   - 2-column layout: Left column with template cards (Video project & Blank project) featuring `#4876F3` active state; Right column with project name, client Select with search, "+ Create New Client", and People assignment.
+   - Real setup progress step inside the dialog with checkmarks ("Creating folders" ✓, "Creating Tracker" ✓) before smooth transition to project workspace.
+4. **Unified Toast System with Undo**:
+   - Zustand store managing notifications with max 3 items, 5s duration, pause on hover.
+   - Desktop bottom-right and mobile bottom-center placement.
+   - Interactive Undo button supporting optimistic delete and restore.
+5. **Create & Change Animations (Framer Motion)**:
+   - Standard 150ms to 250ms durations with `easeOut` curves; closes faster than opens (`easeIn`).
+   - Full support for `prefers-reduced-motion` (instant 0ms when reduced motion is preferred).
+   - New folder appears in-place with name in edit mode; Enter saves, Escape cancels.
+   - Inline rename on cards with Enter save and Escape cancel.
+   - Folders enter with 30ms stagger on workspace load.
+   - Uploads display live progress cards inside the grid, fading smoothly into final item cards.
+   - Delete and move fade and slide out smoothly with layout reorganization and Undo toast; Undo brings item back with reverse animation.
+   - New document and spreadsheet creation highlights new card with soft blue glow (`ring-2 ring-[#4876F3] shadow-[0_0_24px_rgba(72,118,243,0.35)]`) for 1 second, then editor opens with title focused and pre-selected.
+
+---
+
 ## Upcoming Milestones (Version 2: P7)
 
 - **Milestone P7: Search, notifications, polish**
@@ -537,6 +572,7 @@ Google Login is built into the backend and UI, but hidden until configured. When
   - In-app notification bell and email notifications.
   - Client Notes. Performance validation against Section 7 benchmarks. Security audit.
   - **Internal launch for the Idyll team and clients after P7.**
+
 
 
 

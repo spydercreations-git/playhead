@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   FileText,
   X,
@@ -18,6 +19,7 @@ interface NewDocumentDialogProps {
   isOpen: boolean;
   onClose: () => void;
   defaultProjectId?: string;
+  onDocumentCreated?: (newDoc: any) => void;
 }
 
 const TEMPLATES = [
@@ -57,8 +59,10 @@ export function NewDocumentDialog({
   isOpen,
   onClose,
   defaultProjectId,
+  onDocumentCreated,
 }: NewDocumentDialogProps) {
   const router = useRouter();
+  const shouldReduceMotion = useReducedMotion();
 
   const [title, setTitle] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("blank");
@@ -102,7 +106,7 @@ export function NewDocumentDialog({
       setIsSubmitting(true);
       setError(null);
 
-      const res = await apiRequest<{ id: string; redirect_url?: string }>(
+      const res = await apiRequest<{ id: string; title?: string }>(
         `/projects/${selectedProjectId}/documents`,
         {
           method: "POST",
@@ -115,7 +119,22 @@ export function NewDocumentDialog({
 
       if (res && res.id) {
         onClose();
-        router.push(`/doc/${res.id}`);
+        if (onDocumentCreated) {
+          const selectedProj = projects.find((p) => p.id === selectedProjectId);
+          onDocumentCreated({
+            id: res.id,
+            title: title.trim() || "Untitled Document",
+            project_id: selectedProjectId,
+            project_name: selectedProj?.name || "Project",
+            word_count: 0,
+            character_count: 0,
+            reading_time_seconds: 0,
+            updated_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          });
+        } else {
+          router.push(`/d/${res.id}?new=1`);
+        }
       } else {
         throw new Error("Invalid response from server");
       }
@@ -127,9 +146,34 @@ export function NewDocumentDialog({
     }
   }
 
+  const dialogTransition = shouldReduceMotion
+    ? { duration: 0 }
+    : { duration: 0.18, ease: "easeOut" as const };
+
+  const closeTransition = shouldReduceMotion
+    ? { duration: 0 }
+    : { duration: 0.12, ease: "easeIn" as const };
+
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-[#212121] border border-[#2E2F34] rounded-2xl max-w-xl w-full p-6 shadow-2xl relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={closeTransition}
+        onClick={onClose}
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+      />
+
+      {/* Modal Dialog */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.98, y: 6 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98, y: 4 }}
+        transition={dialogTransition}
+        className="relative z-10 bg-[#212121] border border-[#2E2F34] rounded-2xl max-w-xl w-full p-6 shadow-2xl"
+      >
         {/* Close Button */}
         <button
           type="button"
@@ -243,7 +287,7 @@ export function NewDocumentDialog({
             </button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }

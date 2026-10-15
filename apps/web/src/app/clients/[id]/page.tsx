@@ -7,7 +7,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
-import { ChevronDown, X } from "lucide-react";
+import { NewClientDialog } from "@/components/clients/new-client-dialog";
+import { ChevronDown, X, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 
 export default function ClientDetailPage() {
   const params = useParams();
@@ -18,6 +19,8 @@ export default function ClientDetailPage() {
 
   const [activeTab, setActiveTab] = useState<"projects" | "contacts" | "notes">("projects");
   const [showNewProject, setShowNewProject] = useState(false);
+  const [showEditClient, setShowEditClient] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
 
@@ -97,6 +100,13 @@ export default function ClientDetailPage() {
     },
   });
 
+  const deleteClientMutation = useMutation({
+    mutationFn: () => apiRequest(`/clients/${clientId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      router.push("/clients");
+    },
+  });
+
   if (isClient) {
     return (
       <div className="flex h-64 flex-col items-center justify-center text-center">
@@ -141,7 +151,7 @@ export default function ClientDetailPage() {
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="rounded-xl border border-[#424344] bg-[#212121] p-6 shadow-sm">
+      <div className="rounded-xl border border-[#2E2F34] bg-[#212121] p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#4876F3]/20 text-xl font-bold text-[#4876F3]">
@@ -169,20 +179,71 @@ export default function ClientDetailPage() {
             </div>
           </div>
 
-          {hasPermission("projects.create") && (
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 relative">
+            <button
+              onClick={() => setShowEditClient(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-[#2E2F34] bg-[#2A2B30] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#323338] transition-colors"
+            >
+              <Edit className="w-3.5 h-3.5" />
+              <span>Edit</span>
+            </button>
+
+            {/* ⋯ dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2E2F34] bg-[#2A2B30] text-[#9A9DA0] hover:text-white transition-colors"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+
+              {showMoreMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setShowMoreMenu(false)}
+                  />
+                  <div className="absolute right-0 top-10 z-40 w-44 rounded-xl border border-[#2E2F34] bg-[#212121] py-1 shadow-2xl">
+                    <button
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        setShowEditClient(true);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      <span>Rename</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        if (confirm(`Delete ${client?.name || "client"} and all its projects?`)) {
+                          deleteClientMutation.mutate();
+                        }
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-rose-400 hover:bg-[#2A2B30] transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {hasPermission("projects.create") && (
               <button
                 onClick={() => setShowNewProject(true)}
                 className="rounded-lg bg-[#4876F3] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#3b66df] transition-colors"
               >
                 + New Project
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="mt-6 flex border-b border-[#424344]/50 gap-6 text-xs font-semibold">
+        <div className="mt-6 flex border-b border-[#2E2F34] gap-6 text-xs font-semibold">
           <button
             onClick={() => setActiveTab("projects")}
             className={`pb-3 border-b-2 transition-colors ${
@@ -528,6 +589,25 @@ export default function ClientDetailPage() {
         isOpen={showNewProject}
         onClose={() => setShowNewProject(false)}
         defaultClientId={clientId}
+      />
+
+      {/* Edit Client Modal */}
+      <NewClientDialog
+        isOpen={showEditClient}
+        onClose={() => setShowEditClient(false)}
+        initialData={
+          client
+            ? {
+                id: client.id,
+                name: client.name,
+                website: client.website?.String || "",
+                notes: client.notes?.String || "",
+              }
+            : undefined
+        }
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["client-detail", clientId] });
+        }}
       />
     </div>
   );

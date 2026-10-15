@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
+import { ProjectIconRail } from "./project-icon-rail";
 
 import { usePathname } from "next/navigation";
 
@@ -24,6 +25,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (isStandaloneRoute) {
     return <main className="min-h-screen bg-[#181818]">{children}</main>;
+  }
+
+  const isProjectWorkspace = pathname?.startsWith("/projects/") && pathname !== "/projects";
+
+  if (isProjectWorkspace) {
+    return (
+      <div className="flex h-screen w-screen overflow-hidden bg-[#181818]">
+        <ProjectIconRail />
+        <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#181818]">
+          {children}
+        </main>
+      </div>
+    );
   }
 
   return (

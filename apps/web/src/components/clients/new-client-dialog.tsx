@@ -8,6 +8,12 @@ interface NewClientDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  initialData?: {
+    id: string;
+    name: string;
+    website?: string;
+    notes?: string;
+  };
 }
 
 interface ContactRow {
@@ -21,12 +27,25 @@ export function NewClientDialog({
   isOpen,
   onClose,
   onSuccess,
+  initialData,
 }: NewClientDialogProps) {
-  const [name, setName] = useState("");
-  const [website, setWebsite] = useState("");
-  const [notes, setNotes] = useState("");
+  const [name, setName] = useState(initialData?.name || "");
+  const [website, setWebsite] = useState(initialData?.website || "");
+  const [notes, setNotes] = useState(initialData?.notes || "");
   const [contacts, setContacts] = useState<ContactRow[]>([]);
   const [emailOnboarding, setEmailOnboarding] = useState(true);
+
+  React.useEffect(() => {
+    if (initialData) {
+      setName(initialData.name || "");
+      setWebsite(initialData.website || "");
+      setNotes(initialData.notes || "");
+    } else {
+      setName("");
+      setWebsite("");
+      setNotes("");
+    }
+  }, [initialData, isOpen]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,23 +86,34 @@ export function NewClientDialog({
       setLoading(true);
       setError(null);
 
-      const payload = {
-        name: name.trim(),
-        website: website.trim() || undefined,
-        notes: notes.trim() || undefined,
-        email_onboarding: emailOnboarding,
-        contacts: contacts.filter((c) => c.email.trim().length > 0),
-      };
+      if (initialData?.id) {
+        await apiRequest(`/clients/${initialData.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            name: name.trim(),
+            website: website.trim() || undefined,
+            notes: notes.trim() || undefined,
+          }),
+        });
+      } else {
+        const payload = {
+          name: name.trim(),
+          website: website.trim() || undefined,
+          notes: notes.trim() || undefined,
+          email_onboarding: emailOnboarding,
+          contacts: contacts.filter((c) => c.email.trim().length > 0),
+        };
 
-      await apiRequest("/clients", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+        await apiRequest("/clients", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      }
 
       onClose();
       if (onSuccess) onSuccess();
     } catch (err: any) {
-      setError(err?.error || "Failed to create client");
+      setError(err?.error || "Failed to save client");
     } finally {
       setLoading(false);
     }
@@ -93,7 +123,9 @@ export function NewClientDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-in fade-in duration-150">
       <div className="w-full max-w-xl rounded-2xl border border-[#2E2F34] bg-[#212121] p-6 shadow-2xl max-h-[90vh] flex flex-col relative">
         <div className="flex items-center justify-between pb-4 border-b border-[#2E2F34]">
-          <h2 className="text-base font-bold text-white">Create New Client</h2>
+          <h2 className="text-base font-bold text-white">
+            {initialData?.id ? "Edit Client" : "Create New Client"}
+          </h2>
           <button
             onClick={onClose}
             className="p-1 rounded-lg text-[#7C7F87] hover:text-white hover:bg-[#2A2B30] transition-colors"

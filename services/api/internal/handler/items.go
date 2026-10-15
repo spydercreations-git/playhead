@@ -166,13 +166,15 @@ func (h *ItemsHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"project": map[string]interface{}{
-			"id":           proj.ID,
-			"name":         proj.Name,
-			"client_id":    proj.ClientID,
-			"file_count":   proj.FileCount,
-			"folder_count": proj.FolderCount,
-			"video_count":  proj.VideoCount,
-			"total_bytes":  proj.TotalBytes,
+			"id":              proj.ID,
+			"name":            proj.Name,
+			"client_id":       proj.ClientID,
+			"client_name":     proj.ClientName,
+			"tracker_item_id": proj.TrackerItemID,
+			"file_count":      proj.FileCount,
+			"folder_count":    proj.FolderCount,
+			"video_count":     proj.VideoCount,
+			"total_bytes":     proj.TotalBytes,
 		},
 		"access": map[string]interface{}{
 			"level":                   folderAccess.Level,

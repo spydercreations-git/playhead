@@ -18,6 +18,8 @@ import {
 } from "@/components/downloads/download-tray";
 import { FileViewer, ViewerItem } from "@/components/files/file-viewer";
 import { ShareModal } from "@/components/sharing/share-modal";
+import { NewDocumentDialog } from "@/components/documents/new-document-dialog";
+import { NewSpreadsheetDialog } from "@/components/spreadsheets/new-spreadsheet-dialog";
 import {
   Download,
   FolderDown,
@@ -48,6 +50,12 @@ import {
   Move,
   ExternalLink,
   Loader2,
+  PanelLeft,
+  ChevronsUpDown,
+  LayoutGrid,
+  List,
+  ArrowUpDown,
+  Search,
 } from "lucide-react";
 
 function formatBytes(bytes: number): string {
@@ -81,6 +89,17 @@ export default function ProjectWorkspacePage() {
     name: "Project",
     type: "project",
   });
+
+  // Phase 2 Workspace Layout States
+  const [isProjectPanelOpen, setIsProjectPanelOpen] = useState(true);
+  const [projectSwitcherOpen, setProjectSwitcherOpen] = useState(false);
+  const [projectSwitcherQuery, setProjectSwitcherQuery] = useState("");
+  const [cardSize, setCardSize] = useState<"compact" | "normal" | "large">("normal");
+  const [searchInProject, setSearchInProject] = useState("");
+  const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+  const [shareLinksSort, setShareLinksSort] = useState<"newest" | "name">("newest");
+  const [showNewDocModal, setShowNewDocModal] = useState(false);
+  const [showNewSheetModal, setShowNewSheetModal] = useState(false);
 
   // Inline folder creation state (per Part C spec: "New folder: appears in place with the name in edit mode; Enter saves, Escape cancels.")
   const [isCreatingInlineFolder, setIsCreatingInlineFolder] = useState(false);
@@ -139,6 +158,37 @@ export default function ProjectWorkspacePage() {
   const { data: notifData } = useQuery({
     queryKey: ["project-notification", projectId],
     queryFn: () => apiRequest(`/projects/${projectId}/notifications`),
+  });
+
+  // 4. Fetch Client Projects for switcher
+  const { data: clientProjectsData } = useQuery({
+    queryKey: ["client-projects", workspaceData?.project?.client_id],
+    queryFn: () => apiRequest(`/projects?client_id=${workspaceData?.project?.client_id}`),
+    enabled: !!workspaceData?.project?.client_id,
+  });
+
+  // 5. Fetch Project Members/Grants for member avatars button
+  const { data: grantsData } = useQuery({
+    queryKey: ["project-grants", projectId],
+    queryFn: () => apiRequest(`/projects/${projectId}/grants`),
+  });
+
+  // 6. Fetch Spreadsheets (Tracker first)
+  const { data: spreadsheetsData } = useQuery({
+    queryKey: ["project-spreadsheets", projectId],
+    queryFn: () => apiRequest(`/projects/${projectId}/spreadsheets`),
+  });
+
+  // 7. Fetch Documents for this project
+  const { data: documentsData } = useQuery({
+    queryKey: ["project-docs", projectId],
+    queryFn: () => apiRequest(`/documents?project_id=${projectId}`),
+  });
+
+  // 8. Fetch Share Links for this project
+  const { data: shareLinksData } = useQuery({
+    queryKey: ["project-share-links", projectId],
+    queryFn: () => apiRequest(`/projects/${projectId}/share-links`),
   });
 
   useEffect(() => {
@@ -851,8 +901,48 @@ export default function ProjectWorkspacePage() {
     userAccessLevel === "viewer" || userAccessLevel === "commenter" || userAccessLevel === "uploader";
   const canUpload = userAccessLevel === "full" || userAccessLevel === "uploader";
 
-  // Filter items omitting optimistically deleted items
-  const items = rawItems.filter((i: any) => !hiddenItemIds.includes(i.id));
+  // Derived collections for Phase 2 project panel & switcher
+  const membersList = Array.isArray(grantsData) ? grantsData : [];
+  const spreadsheetsList = Array.isArray(spreadsheetsData?.spreadsheets)
+    ? spreadsheetsData.spreadsheets
+    : Array.isArray(spreadsheetsData)
+    ? spreadsheetsData
+    : [];
+  const documentsList = Array.isArray(documentsData?.documents)
+    ? documentsData.documents
+    : Array.isArray(documentsData)
+    ? documentsData
+    : [];
+  const shareLinksList = Array.isArray(shareLinksData?.links)
+    ? shareLinksData.links
+    : Array.isArray(shareLinksData)
+    ? shareLinksData
+    : [];
+
+  const sortedShareLinks = [...shareLinksList].sort((a, b) => {
+    if (shareLinksSort === "name") {
+      return (a.name || "").localeCompare(b.name || "");
+    }
+    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+  });
+
+  const trackerSheet =
+    spreadsheetsList.find((s: any) => s.is_tracker || s.title?.toLowerCase() === "tracker") ||
+    spreadsheetsList[0];
+  const otherSpreadsheets = spreadsheetsList.filter((s: any) => s.id !== trackerSheet?.id);
+
+  const clientProjects = (clientProjectsData?.projects || []).filter((p: any) => {
+    if (!projectSwitcherQuery.trim()) return true;
+    return p.name.toLowerCase().includes(projectSwitcherQuery.toLowerCase().trim());
+  });
+
+  // Filter items omitting optimistically deleted items and search query
+  const items = rawItems
+    .filter((i: any) => !hiddenItemIds.includes(i.id))
+    .filter((i: any) => {
+      if (!searchInProject.trim()) return true;
+      return i.name.toLowerCase().includes(searchInProject.toLowerCase().trim());
+    });
   const foldersList = items.filter((i: any) => i.kind === "folder");
   const filesList = items.filter((i: any) => i.kind !== "folder");
 
@@ -868,7 +958,7 @@ export default function ProjectWorkspacePage() {
   return (
     <div
       onContextMenu={handleEmptyWorkspaceContextMenu}
-      className="flex h-screen bg-[#0D0D0E] text-[#E1E1E3] font-sans antialiased overflow-hidden select-none"
+      className="flex flex-col h-screen w-full bg-[#181818] text-[#E1E1E3] font-sans antialiased overflow-hidden select-none"
     >
       {/* Hidden File & Folder Inputs */}
       <input
@@ -896,274 +986,573 @@ export default function ProjectWorkspacePage() {
       />
 
       {/* =========================================================================
-          LEFT SECONDARY TREE PANE
+          TOP BAR (Height: 48px, Panel Toggle, Breadcrumbs, Right Search)
           ========================================================================= */}
-      <div className="w-64 border-r border-[#212124] bg-[#121214] flex flex-col justify-between shrink-0">
-        <div className="flex flex-col overflow-y-auto">
-          {/* Project Header */}
-          <div className="p-4 border-b border-[#212124] flex items-center justify-between cursor-pointer hover:bg-[#18181A]/50 transition-colors">
-            <div className="flex items-center gap-2.5 truncate">
-              <div className="w-7 h-7 rounded-lg bg-[#4876F3] text-white font-bold text-xs flex items-center justify-center shrink-0 uppercase shadow">
-                {project.name.substring(0, 2)}
-              </div>
-              <div className="truncate">
-                <p className="text-xs font-semibold text-white truncate">{project.name}</p>
-                <p className="text-[10px] text-[#9A9DA0] truncate">{project.client_name || "Workspace"}</p>
-              </div>
-            </div>
-          </div>
+      <div className="h-12 border-b border-[#2E2F34] bg-[#181818] px-4 flex items-center justify-between shrink-0 z-20">
+        <div className="flex items-center min-w-0">
+          <button
+            onClick={() => setIsProjectPanelOpen(!isProjectPanelOpen)}
+            title={isProjectPanelOpen ? "Collapse project panel" : "Expand project panel"}
+            className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[#9A9DA0] hover:bg-[#2A2B30] hover:text-white transition-colors mr-2 shrink-0"
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
 
-          {/* Files Tree */}
-          <div className="p-3 space-y-1">
-            <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
-              Files
-            </p>
+          <div className="h-4 w-[1px] bg-[#2E2F34] mr-3 shrink-0" />
 
-            <button
-              onClick={() => router.push(`/projects/${projectId}`)}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-colors ${
-                !currentFolderId ? "bg-[#27272A] text-white font-semibold" : "text-[#9A9DA0] hover:text-white hover:bg-[#18181A]"
+          {/* Breadcrumbs: All projects / {Client} / {Project} [/ {Folder}] */}
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs truncate">
+            <Link
+              href="/projects"
+              className="text-[#9A9DA0] hover:text-white transition-colors shrink-0"
+            >
+              All projects
+            </Link>
+            <span className="text-[#7C7F87] shrink-0">/</span>
+            {project.client_id ? (
+              <Link
+                href={`/clients/${project.client_id}`}
+                className="text-[#9A9DA0] hover:text-white transition-colors truncate max-w-[140px]"
+              >
+                {project.client_name || "Client"}
+              </Link>
+            ) : (
+              <span className="text-[#9A9DA0] truncate max-w-[140px]">
+                {project.client_name || "Workspace"}
+              </span>
+            )}
+            <span className="text-[#7C7F87] shrink-0">/</span>
+            <Link
+              href={`/projects/${projectId}`}
+              className={`transition-colors truncate max-w-[160px] ${
+                !currentFolderId && breadcrumbs.length === 0
+                  ? "text-white font-semibold"
+                  : "text-[#9A9DA0] hover:text-white"
               }`}
             >
-              <div className="flex items-center gap-2 truncate">
-                <Folder className="w-4 h-4 text-[#4876F3]" />
-                <span className="truncate">{project.name}</span>
-              </div>
-              <span className="text-[10px] text-[#71717A]">{project.file_count || 0}</span>
-            </button>
-
-            {/* Folder list in tree */}
-            {treeData?.folders?.map((f: any) => {
-              const isActive = currentFolderId === f.id;
+              {project.name}
+            </Link>
+            {breadcrumbs.map((b: any, idx: number) => {
+              const isLast = idx === breadcrumbs.length - 1;
               return (
-                <button
-                  key={f.id}
-                  onClick={() => router.push(`/projects/${projectId}?folder=${f.id}`)}
-                  className={`w-full flex items-center justify-between pl-6 pr-2.5 py-1.5 rounded-xl text-xs transition-colors ${
-                    isActive ? "bg-[#27272A] text-white font-semibold" : "text-[#9A9DA0] hover:text-white hover:bg-[#18181A]"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <Folder className={`w-3.5 h-3.5 ${isActive ? "text-[#4876F3]" : "text-[#71717A]"}`} />
-                    <span className="truncate">{f.name}</span>
-                  </div>
-                  <span className="text-[10px] text-[#71717A]">{f.file_count || 0}</span>
-                </button>
+                <React.Fragment key={b.id}>
+                  <span className="text-[#7C7F87] shrink-0">/</span>
+                  <Link
+                    href={`/projects/${projectId}?folder=${b.id}`}
+                    className={`truncate max-w-[140px] transition-colors ${
+                      isLast ? "text-white font-semibold" : "text-[#9A9DA0] hover:text-white"
+                    }`}
+                  >
+                    {b.name}
+                  </Link>
+                </React.Fragment>
               );
             })}
-          </div>
-
-          {/* Sheets and Docs section */}
-          <div className="p-3 pt-2 space-y-1 border-t border-[#212124]">
-            <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
-              Sheets and Docs
-            </p>
-            <div
-              onClick={() => router.push(`/spreadsheets`)}
-              className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs text-[#9A9DA0] hover:bg-[#18181A] hover:text-white cursor-pointer transition-colors"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              <span>Project Tracker</span>
-            </div>
-          </div>
+          </nav>
         </div>
 
-        {/* Bottom User / Quick Links */}
-        <div className="p-3 border-t border-[#212124] space-y-2">
-          <Link
-            href="/trash"
-            className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs text-[#9A9DA0] hover:bg-[#18181A] hover:text-white transition-colors"
-          >
-            <span>Recently deleted</span>
-          </Link>
+        {/* Search on the right */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 h-8 px-2.5 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] text-xs text-[#7C7F87] focus-within:border-[#4876F3] transition-colors w-44 sm:w-60">
+            <Search className="w-3.5 h-3.5 text-[#7C7F87] shrink-0" />
+            <input
+              type="text"
+              placeholder="Search in project..."
+              value={searchInProject}
+              onChange={(e) => setSearchInProject(e.target.value)}
+              className="w-full bg-transparent text-white placeholder-[#7C7F87] focus:outline-none text-xs"
+            />
+            {searchInProject && (
+              <button onClick={() => setSearchInProject("")} className="hover:text-white">
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* =========================================================================
-          MAIN WORKSPACE AREA
-          ========================================================================= */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-[#0D0D0E]">
-        {/* Top Breadcrumb & User Bar */}
-        <div className="h-14 border-b border-[#212124] px-8 flex items-center justify-between bg-[#121214]/40">
-          {/* Breadcrumbs */}
-          <div className="flex items-center gap-2 text-xs text-[#9A9DA0]">
-            <Link href="/clients" className="hover:text-white">Clients</Link>
-            <span>/</span>
-            <span className="hover:text-white">{project.client_name || "Workspace"}</span>
-            <span>/</span>
-            <Link href={`/projects/${projectId}`} className="hover:text-white">{project.name}</Link>
-            {breadcrumbs.map((b: any) => (
-              <React.Fragment key={b.id}>
-                <span>/</span>
-                <Link href={`/projects/${projectId}?folder=${b.id}`} className="text-white font-medium">
-                  {b.name}
-                </Link>
-              </React.Fragment>
-            ))}
-          </div>
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* =========================================================================
+            PROJECT PANEL (280px, Collapsible)
+            ========================================================================= */}
+        {isProjectPanelOpen && (
+          <aside className="w-[280px] min-w-[280px] max-w-[280px] h-full border-r border-[#2E2F34] bg-[#212121] flex flex-col justify-between shrink-0 overflow-hidden select-none z-10">
+            <div className="flex-1 flex flex-col overflow-y-auto">
+              {/* Project Switcher */}
+              <div className="relative border-b border-[#2E2F34]">
+                <button
+                  type="button"
+                  onClick={() => setProjectSwitcherOpen(!projectSwitcherOpen)}
+                  className="w-full p-3.5 flex items-center justify-between hover:bg-[#2A2B30] transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-[8px] bg-[#4876F3]/20 text-[#4876F3] font-bold text-xs flex items-center justify-center shrink-0 uppercase border border-[#4876F3]/30">
+                      {(project.client_name || project.name || "P").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-white truncate leading-tight">
+                        {project.name}
+                      </p>
+                      <p className="text-[10px] text-[#9A9DA0] truncate leading-tight mt-0.5">
+                        {project.client_name || "Workspace"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    <span className="rounded-full bg-[#2A2B30] border border-[#2E2F34] px-1.5 py-0.5 text-[10px] font-medium text-[#9A9DA0]">
+                      {membersList.length || 1}
+                    </span>
+                    <ChevronsUpDown className="w-3.5 h-3.5 text-[#7C7F87]" />
+                  </div>
+                </button>
 
-          {/* User profile avatar top right */}
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-full bg-[#4876F3] text-white flex items-center justify-center font-bold text-xs uppercase shadow">
-              {user?.name?.charAt(0) || "H"}
-            </div>
-          </div>
-        </div>
+                {/* Project Switcher Dropdown */}
+                {projectSwitcherOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-30"
+                      onClick={() => setProjectSwitcherOpen(false)}
+                    />
+                    <div className="absolute left-2 right-2 top-14 z-40 rounded-xl border border-[#2E2F34] bg-[#212121] p-2 shadow-2xl space-y-2">
+                      <div className="px-2 pt-1 pb-1">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#7C7F87]">
+                          {project.client_name ? `${project.client_name}'s Projects` : "Client Projects"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 h-8 px-2 rounded-lg bg-[#2A2B30] border border-[#2E2F34] text-xs text-[#7C7F87]">
+                        <Search className="w-3.5 h-3.5 shrink-0" />
+                        <input
+                          type="text"
+                          placeholder="Search projects..."
+                          value={projectSwitcherQuery}
+                          onChange={(e) => setProjectSwitcherQuery(e.target.value)}
+                          className="w-full bg-transparent text-white placeholder-[#7C7F87] focus:outline-none text-xs"
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto space-y-0.5 pt-1">
+                        {clientProjects.length === 0 ? (
+                          <p className="text-xs text-[#7C7F87] px-2 py-2">No projects found</p>
+                        ) : (
+                          clientProjects.map((p: any) => {
+                            const isCurrent = p.id === projectId;
+                            return (
+                              <button
+                                key={p.id}
+                                onClick={() => {
+                                  setProjectSwitcherOpen(false);
+                                  router.push(`/projects/${p.id}`);
+                                }}
+                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
+                                  isCurrent
+                                    ? "bg-[#4876F3] text-white font-semibold"
+                                    : "text-[#9A9DA0] hover:bg-[#2A2B30] hover:text-white"
+                                }`}
+                              >
+                                <span className="truncate">{p.name}</span>
+                                {isCurrent && <Check className="w-3.5 h-3.5 shrink-0 ml-1.5" />}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
 
-        {/* Page Title & Actions Row */}
-        <div className="px-8 py-5 border-b border-[#212124] flex items-center justify-between bg-[#0D0D0E]">
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">
-              {breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1].name : project.name}
-            </h1>
-            <p className="text-xs text-[#9A9DA0] mt-1">
-              {project.file_count || 0} files · {project.folder_count || 0} folders · {project.video_count || 0} videos · {formatBytes(project.total_bytes || 0)}
-            </p>
-          </div>
-
-          {/* Right Header Buttons */}
-          <div className="flex items-center gap-3">
-            {/* Notification Bell Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowBellDropdown(!showBellDropdown)}
-                className={`p-2 rounded-xl border border-[#27272A] transition-colors ${
-                  projectNotifPref !== "off" ? "text-white bg-[#18181A]" : "text-[#71717A] bg-[#121214]"
-                }`}
-                title="Project Notification Settings"
-              >
-                <Bell className="w-4 h-4" />
-              </button>
-
-              {showBellDropdown && (
-                <div className="absolute right-0 top-11 z-40 w-56 rounded-xl border border-[#27272A] bg-[#18181A] p-1.5 shadow-2xl text-xs space-y-1">
-                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
-                    Project Notifications
-                  </p>
-                  {[
-                    { id: "all", label: "All activity" },
-                    { id: "mentions", label: "Only mentions & my files" },
-                    { id: "off", label: "Off" },
-                  ].map((opt) => (
+              {/* Files Root & Folder Tree */}
+              <div className="p-3 space-y-1">
+                <div className="flex items-center justify-between px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
+                  <span>Files</span>
+                  {canUpload && (
                     <button
-                      key={opt.id}
-                      onClick={() => updateNotifMutation.mutate(opt.id)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${
-                        projectNotifPref === opt.id ? "bg-[#4876F3] text-white" : "text-[#9A9DA0] hover:bg-[#27272A] hover:text-white"
+                      onClick={triggerInlineNewFolder}
+                      title="New folder at root"
+                      className="text-[#7C7F87] hover:text-white transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Project Root (Files) */}
+                <button
+                  onClick={() => router.push(`/projects/${projectId}`)}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs transition-colors ${
+                    !currentFolderId
+                      ? "bg-[#2A2B30] text-white font-semibold border border-[#2E2F34]"
+                      : "text-[#9A9DA0] hover:text-white hover:bg-[#2A2B30]/60"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <Folder className="w-4 h-4 text-[#4876F3]" />
+                    <span className="truncate">Files</span>
+                  </div>
+                  <span className="text-[10px] text-[#7C7F87] tabular-nums font-mono">
+                    {project.file_count || 0}
+                  </span>
+                </button>
+
+                {/* Folder tree */}
+                {treeData?.folders?.map((f: any) => {
+                  const isActive = currentFolderId === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => router.push(`/projects/${projectId}?folder=${f.id}`)}
+                      className={`w-full flex items-center justify-between pl-6 pr-2.5 py-1.5 rounded-[10px] text-xs transition-colors ${
+                        isActive
+                          ? "bg-[#2A2B30] text-white font-semibold border border-[#2E2F34]"
+                          : "text-[#9A9DA0] hover:text-white hover:bg-[#2A2B30]/60"
                       }`}
                     >
-                      <span>{opt.label}</span>
-                      {projectNotifPref === opt.id && <Check className="w-3.5 h-3.5" />}
+                      <div className="flex items-center gap-2 truncate">
+                        <Folder className={`w-3.5 h-3.5 ${isActive ? "text-[#4876F3]" : "text-[#7C7F87]"}`} />
+                        <span className="truncate">{f.name}</span>
+                      </div>
+                      <span className="text-[10px] text-[#7C7F87] tabular-nums font-mono">
+                        {f.file_count || 0}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Sheets and Docs (Tracker first) */}
+              <div className="p-3 pt-2 space-y-1 border-t border-[#2E2F34]">
+                <div className="flex items-center justify-between px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
+                  <span>Sheets and docs</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setShowNewSheetModal(true)}
+                      title="New spreadsheet"
+                      className="text-[#7C7F87] hover:text-emerald-400 transition-colors"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setShowNewDocModal(true)}
+                      title="New document"
+                      className="text-[#7C7F87] hover:text-blue-400 transition-colors"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Tracker first */}
+                {trackerSheet ? (
+                  <button
+                    onClick={() => router.push(`/spreadsheets/${trackerSheet.id}`)}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs text-[#9A9DA0] hover:bg-[#2A2B30]/60 hover:text-white transition-colors"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span className="truncate font-medium">{trackerSheet.title || "Tracker"}</span>
+                    </div>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold uppercase">
+                      Tracker
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowNewSheetModal(true)}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[10px] text-xs text-[#7C7F87] hover:bg-[#2A2B30]/60 hover:text-white transition-colors"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span className="truncate">+ Create Tracker</span>
+                  </button>
+                )}
+
+                {/* Other Spreadsheets */}
+                {otherSpreadsheets.map((s: any) => (
+                  <button
+                    key={s.id}
+                    onClick={() => router.push(`/spreadsheets/${s.id}`)}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs text-[#9A9DA0] hover:bg-[#2A2B30]/60 hover:text-white transition-colors"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-400/80 shrink-0" />
+                      <span className="truncate">{s.title || "Untitled sheet"}</span>
+                    </div>
+                  </button>
+                ))}
+
+                {/* Project Documents */}
+                {documentsList.map((d: any) => (
+                  <button
+                    key={d.id}
+                    onClick={() => router.push(`/documents/${d.id}`)}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs text-[#9A9DA0] hover:bg-[#2A2B30]/60 hover:text-white transition-colors"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <FileText className="w-4 h-4 text-blue-400 shrink-0" />
+                      <span className="truncate">{d.title || "Untitled document"}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Share links section */}
+              <div className="p-3 pt-2 space-y-1 border-t border-[#2E2F34]">
+                <div className="flex items-center justify-between px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
+                  <span>Share links</span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() =>
+                        setShareLinksSort(shareLinksSort === "newest" ? "name" : "newest")
+                      }
+                      title={`Sort: ${shareLinksSort}`}
+                      className="text-[#7C7F87] hover:text-white transition-colors"
+                    >
+                      <ArrowUpDown className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShareTargetItem({ id: projectId, name: project.name, type: "project" });
+                        setShowShareModal(true);
+                      }}
+                      title="New share link"
+                      className="text-[#7C7F87] hover:text-[#4876F3] transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                <p className="px-2 text-[10px] text-[#7C7F87]">
+                  All share links ({sortedShareLinks.length})
+                </p>
+
+                <div className="space-y-0.5 pt-1">
+                  {sortedShareLinks.length === 0 ? (
+                    <p className="text-[11px] text-[#7C7F87] px-2 py-1 italic">No share links yet</p>
+                  ) : (
+                    sortedShareLinks.map((link: any) => (
+                      <button
+                        key={link.id}
+                        onClick={() => {
+                          setShareTargetItem({ id: projectId, name: project.name, type: "project" });
+                          setShowShareModal(true);
+                        }}
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs text-[#9A9DA0] hover:bg-[#2A2B30]/60 hover:text-white transition-colors group"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <div className="w-4 h-4 rounded bg-[#2A2B30] border border-[#2E2F34] flex items-center justify-center shrink-0">
+                            <Share2 className="w-2.5 h-2.5 text-[#4876F3]" />
+                          </div>
+                          <span className="truncate">{link.name || "Share link"}</span>
+                        </div>
+                        <span className="text-[10px] text-[#7C7F87] group-hover:text-white tabular-nums">
+                          {link.view_count || 0} views
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom: Recently deleted */}
+            <div className="p-3 border-t border-[#2E2F34]">
+              <Link
+                href="/trash"
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[10px] text-xs font-medium text-[#9A9DA0] hover:bg-[#2A2B30] hover:text-white transition-colors"
+              >
+                <Trash2 className="w-4 h-4 text-[#7C7F87]" />
+                <span>Recently deleted</span>
+              </Link>
+            </div>
+          </aside>
+        )}
+
+        {/* =========================================================================
+            MAIN WORKSPACE AREA
+            ========================================================================= */}
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#181818]">
+          {/* Main Toolbar */}
+          <div className="h-12 border-b border-[#2E2F34] bg-[#181818] px-6 flex items-center justify-between shrink-0 select-none">
+            {/* Left Toolbar Controls */}
+            <div className="flex items-center gap-3">
+              {/* View Toggle (Grid / List) */}
+              <div className="flex items-center rounded-[8px] bg-[#212121] border border-[#2E2F34] p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  title="Grid view"
+                  className={`p-1.5 rounded-[6px] transition-colors ${
+                    viewMode === "grid" ? "bg-[#2A2B30] text-white" : "text-[#7C7F87] hover:text-white"
+                  }`}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  title="List view"
+                  className={`p-1.5 rounded-[6px] transition-colors ${
+                    viewMode === "list" ? "bg-[#2A2B30] text-white" : "text-[#7C7F87] hover:text-white"
+                  }`}
+                >
+                  <List className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Card size selector */}
+              {viewMode === "grid" && (
+                <div className="hidden sm:flex items-center rounded-[8px] bg-[#212121] border border-[#2E2F34] p-0.5 text-[10px] font-bold">
+                  {(["compact", "normal", "large"] as const).map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setCardSize(s)}
+                      className={`px-2 py-1 rounded-[6px] transition-colors uppercase ${
+                        cardSize === s ? "bg-[#2A2B30] text-white" : "text-[#7C7F87] hover:text-white"
+                      }`}
+                    >
+                      {s === "compact" ? "S" : s === "normal" ? "M" : "L"}
                     </button>
                   ))}
                 </div>
               )}
+
+              <div className="h-4 w-[1px] bg-[#2E2F34]" />
+
+              {/* Sort Selector */}
+              <div className="flex items-center gap-1.5 text-xs text-[#9A9DA0]">
+                <ArrowUpDown className="w-3.5 h-3.5 text-[#7C7F87]" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-[#212121] border border-[#2E2F34] rounded-[8px] px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#4876F3]"
+                >
+                  <option value="name">Name</option>
+                  <option value="modified">Date modified</option>
+                  <option value="size">Size</option>
+                </select>
+              </div>
+
+              <div className="h-4 w-[1px] bg-[#2E2F34]" />
+
+              {/* + Menu Button */}
+              {canUpload && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setPlusMenuOpen(!plusMenuOpen)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[#4876F3] hover:bg-[#3B67E0] text-xs font-semibold text-white transition-colors shadow"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>New</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${plusMenuOpen ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {plusMenuOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-30"
+                        onClick={() => setPlusMenuOpen(false)}
+                      />
+                      <div className="absolute left-0 top-9 z-40 w-48 rounded-xl border border-[#2E2F34] bg-[#212121] py-1 shadow-2xl">
+                        <button
+                          onClick={() => {
+                            setPlusMenuOpen(false);
+                            triggerInlineNewFolder();
+                          }}
+                          className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
+                        >
+                          <FolderPlus className="w-4 h-4 text-amber-400" />
+                          <span>New folder</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPlusMenuOpen(false);
+                            fileInputRef.current?.click();
+                          }}
+                          className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
+                        >
+                          <Upload className="w-4 h-4 text-[#4876F3]" />
+                          <span>Upload files</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPlusMenuOpen(false);
+                            folderInputRef.current?.click();
+                          }}
+                          className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
+                        >
+                          <Folder className="w-4 h-4 text-amber-400" />
+                          <span>Upload folder</span>
+                        </button>
+                        <div className="my-1 border-t border-[#2E2F34]" />
+                        <button
+                          onClick={() => {
+                            setPlusMenuOpen(false);
+                            setShowNewDocModal(true);
+                          }}
+                          className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
+                        >
+                          <FileText className="w-4 h-4 text-blue-400" />
+                          <span>New document</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPlusMenuOpen(false);
+                            setShowNewSheetModal(true);
+                          }}
+                          className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
+                        >
+                          <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                          <span>New spreadsheet</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Copy Link Button */}
-            <button
-              onClick={handleCopyProjectLink}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#27272A] bg-[#18181A] hover:bg-[#27272A] text-xs font-medium text-white transition-colors"
-            >
-              <Copy className="w-3.5 h-3.5" />
-              <span>Copy link</span>
-            </button>
-
-            {/* Share or Request Access Button */}
-            {isReadOnlyOrCommenter ? (
+            {/* Right Toolbar Controls */}
+            <div className="flex items-center gap-3">
+              {/* Member avatars button (opens Manage Access / Share modal) */}
               <button
+                type="button"
                 onClick={() => {
                   setShareTargetItem({ id: projectId, name: project.name, type: "project" });
                   setShowShareModal(true);
                 }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#27272A] hover:bg-[#323236] text-xs font-semibold text-white transition-all shadow"
+                title="Manage project access"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#212121] hover:bg-[#2A2B30] border border-[#2E2F34] transition-colors"
               >
-                <Lock className="w-3.5 h-3.5 text-amber-400" />
-                <span>Request access</span>
+                <div className="flex -space-x-1.5 overflow-hidden">
+                  {membersList.slice(0, 3).map((m: any, idx: number) => (
+                    <div
+                      key={m.id || idx}
+                      className="inline-block h-5 w-5 rounded-full ring-2 ring-[#212121] bg-[#4876F3] text-[9px] font-bold text-white flex items-center justify-center uppercase shrink-0"
+                    >
+                      {(m.email || "U").slice(0, 1).toUpperCase()}
+                    </div>
+                  ))}
+                </div>
+                <span className="text-[11px] font-semibold text-[#9A9DA0]">
+                  {membersList.length > 0 ? membersList.length : 1}
+                </span>
               </button>
-            ) : (
+
+              {/* Share Button (#3B67E0) */}
               <button
+                type="button"
                 onClick={() => {
                   setShareTargetItem({ id: projectId, name: project.name, type: "project" });
                   setShowShareModal(true);
                 }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#4876F3] hover:bg-[#3B66D6] text-xs font-semibold text-white transition-all shadow"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-[8px] bg-[#3B67E0] hover:bg-[#325AC8] text-xs font-semibold text-white transition-colors shadow"
               >
                 <Share2 className="w-3.5 h-3.5" />
                 <span>Share</span>
               </button>
-            )}
-          </div>
-        </div>
-
-        {/* Action Row / Filter Pills */}
-        <div className="px-8 py-3.5 border-b border-[#212124] flex items-center justify-between bg-[#121214]/30">
-          <div className="flex items-center gap-3">
-            {canUpload && (
-              <div className="relative group">
-                <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#4876F3] hover:bg-[#3B66D6] text-xs font-semibold text-white transition-colors shadow">
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Upload</span>
-                  <ChevronDown className="w-3 h-3 ml-0.5 opacity-70" />
-                </button>
-                <div className="absolute left-0 top-10 z-30 hidden group-hover:block rounded-xl border border-[#27272A] bg-[#18181A] py-1 shadow-2xl w-40">
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-xs text-white hover:bg-[#27272A]"
-                  >
-                    <FileText className="w-4 h-4 text-[#4876F3]" />
-                    <span>Upload Files</span>
-                  </button>
-                  <button
-                    onClick={() => folderInputRef.current?.click()}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-xs text-white hover:bg-[#27272A]"
-                  >
-                    <Folder className="w-4 h-4 text-amber-400" />
-                    <span>Upload Folder</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {canUpload && (
-              <button
-                onClick={triggerInlineNewFolder}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#27272A] bg-[#18181A] hover:bg-[#27272A] text-xs font-medium text-white transition-colors"
-              >
-                <FolderPlus className="w-3.5 h-3.5" />
-                <span>New folder</span>
-              </button>
-            )}
-
-            {/* Type Filter Pills */}
-            <div className="flex items-center gap-1 bg-[#18181A] p-1 rounded-xl border border-[#27272A] text-xs ml-2">
-              {["all", "videos", "audio", "images", "documents", "other"].map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setTypeFilter(f)}
-                  className={`px-3 py-1 rounded-lg capitalize font-medium transition-colors ${
-                    typeFilter === f ? "bg-[#27272A] text-white" : "text-[#71717A] hover:text-white"
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
             </div>
           </div>
-
-          {/* Right Side: Sort */}
-          <div className="flex items-center gap-2">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="bg-[#18181A] border border-[#27272A] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none"
-            >
-              <option value="name">Name</option>
-              <option value="modified">Modified</option>
-              <option value="size">Size</option>
-            </select>
-          </div>
-        </div>
 
         {/* Main Content Area */}
         <div
@@ -1672,6 +2061,7 @@ export default function ProjectWorkspacePage() {
             </button>
           </div>
         )}
+        </div>
       </div>
 
       {/* Upload Tray */}
@@ -1747,6 +2137,24 @@ export default function ProjectWorkspacePage() {
         targetName={shareTargetItem.name}
         userAccessLevel={user_access}
         canCreatePublicLinks={!isReadOnlyOrCommenter}
+      />
+
+      {/* New Document Dialog inside this project */}
+      <NewDocumentDialog
+        isOpen={showNewDocModal}
+        onClose={() => setShowNewDocModal(false)}
+        defaultProjectId={projectId}
+        onDocumentCreated={(newDoc) => {
+          queryClient.invalidateQueries({ queryKey: ["project-docs", projectId] });
+          if (newDoc?.id) router.push(`/documents/${newDoc.id}`);
+        }}
+      />
+
+      {/* New Spreadsheet Dialog inside this project */}
+      <NewSpreadsheetDialog
+        isOpen={showNewSheetModal}
+        onClose={() => setShowNewSheetModal(false)}
+        defaultProjectId={projectId}
       />
     </div>
   );

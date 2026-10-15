@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/use-auth";
 import { CloudUploadIcon, HelpIcon } from "@/components/icons";
 
 interface StoragePanelProps {
@@ -12,6 +14,8 @@ export function StoragePanel({
   usedBytes = 0,
   totalBytes = 25 * 1024 * 1024 * 1024, // 25 GB trial
 }: StoragePanelProps) {
+  const router = useRouter();
+  const { hasPermission } = useAuth();
   const percentage = Math.min(Math.round((usedBytes / totalBytes) * 100), 100);
 
   const categories = [
@@ -123,12 +127,21 @@ export function StoragePanel({
             </p>
           </div>
 
-          <button
-            onClick={() => {}}
-            className="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-[#4876F3] text-sm font-semibold text-white hover:bg-[#3B66D6] transition-colors"
-          >
-            + New Project
-          </button>
+          {hasPermission("projects.create") ? (
+            <button
+              onClick={() => router.push("/projects")}
+              className="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-[#4876F3] text-sm font-semibold text-white hover:bg-[#3B66D6] transition-colors"
+            >
+              + New Project
+            </button>
+          ) : (
+            <button
+              onClick={() => router.push("/projects")}
+              className="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-[#2A2B30] border border-[#424344] text-sm font-semibold text-white hover:bg-[#34353B] transition-colors"
+            >
+              View Projects
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -178,6 +178,9 @@ func (am *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 				if membership.RoleID.Valid {
 					roleID = uuid.UUID(membership.RoleID.Bytes)
 				}
+				if strings.ToLower(roleName) == "admin" || strings.ToLower(membership.Role) == "admin" || strings.ToLower(membership.Role) == "owner" {
+					perms = authz.AllPermissions
+				}
 				person := authz.Person{
 					UserID:      uuid.UUID(authUser.ID.Bytes),
 					Email:       authUser.Email,

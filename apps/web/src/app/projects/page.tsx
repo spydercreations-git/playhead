@@ -23,7 +23,7 @@ interface ProjectItem {
 }
 
 export default function ProjectsPage() {
-  const { canCreateClientOrProject } = useAuth();
+  const { hasPermission } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("active");
   const [selectedClientId, setSelectedClientId] = useState<string>("");
@@ -154,7 +154,7 @@ export default function ProjectsPage() {
             </button>
           </div>
 
-          {canCreateClientOrProject && (
+          {hasPermission("projects.create") && (
             <button
               onClick={() => setShowNewProject(true)}
               className="flex h-9 items-center justify-center rounded-lg bg-[#4876F3] px-4 text-xs font-semibold text-white shadow hover:bg-[#3b66df] transition-colors"
@@ -186,7 +186,7 @@ export default function ProjectsPage() {
               ? "No projects matched your search query."
               : "No projects in this view yet."}
           </p>
-          {canCreateClientOrProject && !search && (
+          {hasPermission("projects.create") && !search && (
             <button
               onClick={() => setShowNewProject(true)}
               className="mt-4 rounded-lg bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3b66df]"

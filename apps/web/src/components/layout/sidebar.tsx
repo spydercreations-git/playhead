@@ -49,7 +49,7 @@ function formatBytes(bytes: number): string {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, company, role, isClient, isAdmin, isManager, canCreateClientOrProject } = useAuth();
+  const { user, company, role, roleName, isClient, hasPermission } = useAuth();
 
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const [showNewClient, setShowNewClient] = useState(false);
@@ -87,7 +87,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       name: "Clients",
       href: "/clients",
       icon: Building2,
-      show: !isClient && (isAdmin || isManager),
+      show: !isClient && hasPermission("clients.view_all"),
     },
     { name: "Projects", href: "/projects", icon: ProjectIcon, show: true },
     { name: "Documents", href: "/documents", icon: FileText, show: true },
@@ -120,8 +120,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const displayName = useMemo(() => {
     if (user?.name && user.name.trim()) return user.name;
-    if (user?.email) return user.email.split("@")[0];
-    return "Playhead User";
+    if (user?.email) return user.email;
+    return "User";
   }, [user]);
 
   // Storage percentage calculation
@@ -189,29 +189,29 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   onClick={() => setNewMenuOpen(false)}
                 />
                 <div className="absolute left-6 right-6 top-[66px] z-40 rounded-[10px] border border-[#2E2F34] bg-[#212121] py-1.5 shadow-2xl space-y-0.5">
-                  {canCreateClientOrProject && (
-                    <>
-                      <button
-                        onClick={() => {
-                          setNewMenuOpen(false);
-                          setShowNewClient(true);
-                        }}
-                        className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
-                      >
-                        <Building2 className="w-4 h-4 text-emerald-400" />
-                        <span>Client</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setNewMenuOpen(false);
-                          setShowNewProject(true);
-                        }}
-                        className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
-                      >
-                        <Folder className="w-4 h-4 text-[#4876F3]" />
-                        <span>Project</span>
-                      </button>
-                    </>
+                  {hasPermission("clients.create") && (
+                    <button
+                      onClick={() => {
+                        setNewMenuOpen(false);
+                        setShowNewClient(true);
+                      }}
+                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
+                    >
+                      <Building2 className="w-4 h-4 text-emerald-400" />
+                      <span>Client</span>
+                    </button>
+                  )}
+                  {hasPermission("projects.create") && (
+                    <button
+                      onClick={() => {
+                        setNewMenuOpen(false);
+                        setShowNewProject(true);
+                      }}
+                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
+                    >
+                      <Folder className="w-4 h-4 text-[#4876F3]" />
+                      <span>Project</span>
+                    </button>
                   )}
 
                   <button
@@ -327,7 +327,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           {/* Admin Team & Settings */}
           {!isClient && (
             <div className="pt-3 pb-1 border-t border-[#2E2F34] mt-3">
-              {isAdmin && (
+              {(hasPermission("team.invite") || hasPermission("team.manage_roles")) && (
                 <Link
                   href="/team"
                   className={`flex h-10 items-center gap-3 rounded-[10px] px-3 text-xs font-medium transition-colors ${
@@ -357,7 +357,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Storage Used for Admins (Spec Section 5.1) */}
-        {!isClient && isAdmin && storageStats && (
+        {!isClient && hasPermission("admin.storage") && storageStats && (
           <div className="px-5 py-3 border-t border-[#2E2F34] bg-[#1c1c1c]">
             <div className="flex items-center justify-between text-[11px] mb-1.5">
               <span className="text-[#9A9DA0] font-medium flex items-center gap-1.5">

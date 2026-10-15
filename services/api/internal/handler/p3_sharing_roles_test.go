@@ -1257,7 +1257,7 @@ func TestP3_AdvisorSecondReviewSecurityFixes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create company: %v", err)
 	}
-	_ = SeedDefaultCompanyRoles(ctx, queries, comp.ID)
+	_, _ = SeedDefaultCompanyRoles(ctx, queries, comp.ID)
 
 	// Admin Alice
 	adminEmail := fmt.Sprintf("alice-%d@studio.com", time.Now().UnixNano())

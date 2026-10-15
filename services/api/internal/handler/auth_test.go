@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -408,6 +409,24 @@ func TestRequireVerifiedEmailAndNeutralSignup(t *testing.T) {
 		t.Fatalf("expected 200 OK on /me after email verified, got %d: %s", recMeVerified.Code, recMeVerified.Body.String())
 	}
 
+	var meResp map[string]interface{}
+	if err := json.NewDecoder(recMeVerified.Body).Decode(&meResp); err != nil {
+		t.Fatalf("failed to decode /me response: %v", err)
+	}
+	if meResp["user"] == nil {
+		t.Fatalf("expected user in /me response")
+	}
+	uMap := meResp["user"].(map[string]interface{})
+	if uMap["email"] != clientEmail {
+		t.Fatalf("expected user email %s, got %v", clientEmail, uMap["email"])
+	}
+	if _, ok := meResp["permissions"]; !ok {
+		t.Fatalf("expected permissions array in /me response")
+	}
+	if _, ok := meResp["is_client"]; !ok {
+		t.Fatalf("expected is_client in /me response")
+	}
+
 	// 7. Google sign-in tests
 	// 7a. Reject unverified Google email
 	googleUnverifiedBody, _ := json.Marshal(map[string]interface{}{
@@ -433,6 +452,185 @@ func TestRequireVerifiedEmailAndNeutralSignup(t *testing.T) {
 
 	if recGVer.Code != http.StatusOK {
 		t.Fatalf("expected 200 OK for Google verified email, got %d: %s", recGVer.Code, recGVer.Body.String())
+	}
+}
+
+func TestMe_PermissionsAndRoleGranularity(t *testing.T) {
+	ctx := context.Background()
+	queries, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	mailerInst := mailer.New(mailer.Config{})
+	authH := NewAuthHandler(queries, mailerInst, "client-id", "http://localhost:3000", false)
+	authMiddleware := middleware.NewAuthMiddleware(queries)
+
+	ts := time.Now().UnixNano()
+	comp, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
+		Name:              "Role Test Co",
+		Slug:              fmt.Sprintf("role-test-%d", ts),
+		Plan:              "pro",
+		Status:            "active",
+		StorageLimitBytes: 100 * 1024 * 1024 * 1024,
+		Seats:             10,
+	})
+	if err != nil {
+		t.Fatalf("failed to create company: %v", err)
+	}
+
+	adminRole, err := SeedDefaultCompanyRoles(ctx, queries, comp.ID)
+	if err != nil {
+		t.Fatalf("failed to seed roles: %v", err)
+	}
+	editorRole, err := queries.GetRoleByName(ctx, db.GetRoleByNameParams{CompanyID: comp.ID, Name: "Editor"})
+	if err != nil {
+		t.Fatalf("failed to get editor role: %v", err)
+	}
+
+	// 1. Admin user
+	adminEmail := fmt.Sprintf("admin-%d@roletest.com", ts)
+	pHash, _ := authz.HashPassword("password123")
+	adminUser, err := queries.CreateUser(ctx, db.CreateUserParams{
+		Email:        adminEmail,
+		Name:         "Admin User",
+		PasswordHash: pgtype.Text{String: pHash, Valid: true},
+	})
+	if err != nil {
+		t.Fatalf("failed to create admin: %v", err)
+	}
+	_ = queries.VerifyUserEmail(ctx, adminUser.ID)
+	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+		CompanyID: comp.ID,
+		UserID:    adminUser.ID,
+		Role:      "admin",
+	})
+	_ = queries.UpdateMembershipRole(ctx, db.UpdateMembershipRoleParams{
+		CompanyID: comp.ID,
+		UserID:    adminUser.ID,
+		Role:      "admin",
+		RoleID:    adminRole.ID,
+	})
+
+	// 2. Editor user
+	editorEmail := fmt.Sprintf("editor-%d@roletest.com", ts)
+	editorUser, err := queries.CreateUser(ctx, db.CreateUserParams{
+		Email:        editorEmail,
+		Name:         "Editor User",
+		PasswordHash: pgtype.Text{String: pHash, Valid: true},
+	})
+	if err != nil {
+		t.Fatalf("failed to create editor: %v", err)
+	}
+	_ = queries.VerifyUserEmail(ctx, editorUser.ID)
+	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+		CompanyID: comp.ID,
+		UserID:    editorUser.ID,
+		Role:      "editor",
+	})
+	_ = queries.UpdateMembershipRole(ctx, db.UpdateMembershipRoleParams{
+		CompanyID: comp.ID,
+		UserID:    editorUser.ID,
+		Role:      "editor",
+		RoleID:    editorRole.ID,
+	})
+
+	// 3. Client user (grant only)
+	clientEmail := fmt.Sprintf("client-%d@clientcorp.com", ts)
+	clientUser, err := queries.CreateUser(ctx, db.CreateUserParams{
+		Email:        clientEmail,
+		Name:         "Client Contact",
+		PasswordHash: pgtype.Text{String: pHash, Valid: true},
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+	_ = queries.VerifyUserEmail(ctx, clientUser.ID)
+	_, _ = queries.CreateGrant(ctx, db.CreateGrantParams{
+		CompanyID:   comp.ID,
+		TargetType:  "company",
+		TargetID:    comp.ID,
+		Email:       clientEmail,
+		UserID:      clientUser.ID,
+		Level:       "viewer",
+		CanDownload: true,
+		GrantedBy:   adminUser.ID,
+	})
+
+	// Helper to login and get /me
+	callMe := func(email, password string) map[string]interface{} {
+		loginBody, _ := json.Marshal(LoginRequest{Email: email, Password: password})
+		recLogin := httptest.NewRecorder()
+		reqLogin := httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewReader(loginBody))
+		authH.Login(recLogin, reqLogin)
+		if recLogin.Code != http.StatusOK {
+			t.Fatalf("login failed for %s: %s", email, recLogin.Body.String())
+		}
+		cookie := recLogin.Result().Cookies()[0]
+
+		r := chi.NewRouter()
+		r.Use(authMiddleware.Authenticate)
+		r.Get("/api/v1/me", authH.Me)
+
+		recMe := httptest.NewRecorder()
+		reqMe := httptest.NewRequest("GET", "/api/v1/me", nil)
+		reqMe.AddCookie(cookie)
+		r.ServeHTTP(recMe, reqMe)
+
+		if recMe.Code != http.StatusOK {
+			t.Fatalf("failed /me for %s: %s", email, recMe.Body.String())
+		}
+
+		var res map[string]interface{}
+		_ = json.NewDecoder(recMe.Body).Decode(&res)
+		return res
+	}
+
+	// Verify Admin
+	adminMe := callMe(adminEmail, "password123")
+	if adminMe["is_client"] != false {
+		t.Fatalf("expected admin is_client == false")
+	}
+	if adminMe["role_name"] != "Admin" {
+		t.Fatalf("expected admin role_name == Admin, got %v", adminMe["role_name"])
+	}
+	adminPerms := adminMe["permissions"].([]interface{})
+	hasProjectsCreate := false
+	for _, p := range adminPerms {
+		if p.(string) == "projects.create" {
+			hasProjectsCreate = true
+			break
+		}
+	}
+	if !hasProjectsCreate {
+		t.Fatalf("expected Admin to possess projects.create permission")
+	}
+
+	// Verify Editor
+	editorMe := callMe(editorEmail, "password123")
+	if editorMe["is_client"] != false {
+		t.Fatalf("expected editor is_client == false")
+	}
+	if editorMe["role_name"] != "Editor" {
+		t.Fatalf("expected editor role_name == Editor, got %v", editorMe["role_name"])
+	}
+	editorPerms := editorMe["permissions"].([]interface{})
+	editorHasProjectsCreate := false
+	for _, p := range editorPerms {
+		if p.(string) == "projects.create" {
+			editorHasProjectsCreate = true
+			break
+		}
+	}
+	if editorHasProjectsCreate {
+		t.Fatalf("expected Editor to NOT possess projects.create permission")
+	}
+
+	// Verify Client Contact
+	clientMe := callMe(clientEmail, "password123")
+	if clientMe["is_client"] != true {
+		t.Fatalf("expected client is_client == true, got %v", clientMe["is_client"])
+	}
+	if clientMe["role_name"] != "" {
+		t.Fatalf("expected client role_name to be empty, got %v", clientMe["role_name"])
 	}
 }
 

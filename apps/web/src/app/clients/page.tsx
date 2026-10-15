@@ -20,7 +20,7 @@ interface ClientListItem {
 
 export default function ClientsPage() {
   const queryClient = useQueryClient();
-  const { isAdmin, isManager, isClient } = useAuth();
+  const { hasPermission, isClient } = useAuth();
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"table" | "grid">("table");
   const [showNewClient, setShowNewClient] = useState(false);
@@ -31,7 +31,7 @@ export default function ClientsPage() {
   const { data, isLoading } = useQuery<{ clients: ClientListItem[] }>({
     queryKey: ["clients-list"],
     queryFn: () => apiRequest<{ clients: ClientListItem[] }>("/clients"),
-    enabled: !isClient && (isAdmin || isManager),
+    enabled: !isClient && hasPermission("clients.view_all"),
   });
 
   const deleteMutation = useMutation({
@@ -130,12 +130,14 @@ export default function ClientsPage() {
             </button>
           </div>
 
-          <button
-            onClick={() => setShowNewClient(true)}
-            className="flex h-9 items-center justify-center rounded-lg bg-[#4876F3] px-4 text-xs font-semibold text-white shadow hover:bg-[#3b66df] transition-colors"
-          >
-            + New Client
-          </button>
+          {hasPermission("clients.create") && (
+            <button
+              onClick={() => setShowNewClient(true)}
+              className="flex h-9 items-center justify-center rounded-lg bg-[#4876F3] px-4 text-xs font-semibold text-white shadow hover:bg-[#3b66df] transition-colors"
+            >
+              + New Client
+            </button>
+          )}
         </div>
       </div>
 
@@ -159,7 +161,7 @@ export default function ClientsPage() {
               ? "No clients matched your search filter."
               : "Get started by adding your first agency client."}
           </p>
-          {!search && (
+          {!search && hasPermission("clients.create") && (
             <button
               onClick={() => setShowNewClient(true)}
               className="mt-4 rounded-lg bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3b66df]"
@@ -225,7 +227,7 @@ export default function ClientsPage() {
                       >
                         Open
                       </Link>
-                      {isAdmin && (
+                      {hasPermission("clients.delete") && (
                         <button
                           onClick={() => setClientToDelete(client)}
                           className="rounded px-2.5 py-1 text-xs text-red-400 hover:bg-red-500/10"

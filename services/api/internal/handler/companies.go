@@ -91,17 +91,25 @@ func (h *CompanyHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = SeedDefaultCompanyRoles(r.Context(), h.queries, company.ID)
+	adminRole, _ := SeedDefaultCompanyRoles(r.Context(), h.queries, company.ID)
 
-	// Create owner membership
+	// Create admin membership for the founding user
 	_, err = h.queries.CreateMembership(r.Context(), db.CreateMembershipParams{
 		CompanyID: company.ID,
 		UserID:    user.ID,
-		Role:      authz.RoleOwner,
+		Role:      "admin",
 	})
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to establish company ownership"})
 		return
+	}
+	if adminRole.ID.Valid {
+		_ = h.queries.UpdateMembershipRole(r.Context(), db.UpdateMembershipRoleParams{
+			CompanyID: company.ID,
+			UserID:    user.ID,
+			Role:      "admin",
+			RoleID:    adminRole.ID,
+		})
 	}
 
 	respondJSON(w, http.StatusCreated, map[string]interface{}{

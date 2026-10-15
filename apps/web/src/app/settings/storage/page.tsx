@@ -33,7 +33,7 @@ function formatBytes(bytes: number): string {
 }
 
 export default function StorageSettingsPage() {
-  const { user, isAdmin, isLoading: authLoading } = useAuth();
+  const { user, hasPermission, isLoading: authLoading } = useAuth();
 
   const { data, isLoading, error } = useQuery<StorageStats>({
     queryKey: ["admin-storage"],
@@ -44,7 +44,7 @@ export default function StorageSettingsPage() {
       }
       return res.json();
     },
-    enabled: !!user && isAdmin,
+    enabled: !!user && hasPermission("admin.storage"),
   });
 
   if (authLoading || isLoading) {
@@ -60,7 +60,7 @@ export default function StorageSettingsPage() {
     );
   }
 
-  if (!isAdmin) {
+  if (!hasPermission("admin.storage")) {
     return (
       <div className="p-8 max-w-lg mx-auto text-center space-y-4">
         <h2 className="text-xl font-bold text-white">Admin Access Required</h2>

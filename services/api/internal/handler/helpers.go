@@ -20,7 +20,7 @@ func pgUUIDToString(u pgtype.UUID) string {
 	return uuid.UUID(u.Bytes).String()
 }
 
-func SeedDefaultCompanyRoles(ctx context.Context, q *db.Queries, companyID pgtype.UUID) error {
+func SeedDefaultCompanyRoles(ctx context.Context, q *db.Queries, companyID pgtype.UUID) (db.Role, error) {
 	allPermsBytes, _ := json.Marshal(authz.AllPermissions)
 	managerPermsBytes, _ := json.Marshal([]string{
 		authz.PermProjectsViewAll,
@@ -32,7 +32,7 @@ func SeedDefaultCompanyRoles(ctx context.Context, q *db.Queries, companyID pgtyp
 		authz.PermFilesDownloadAll,
 	})
 
-	_, _ = q.CreateRole(ctx, db.CreateRoleParams{
+	adminRole, err := q.CreateRole(ctx, db.CreateRoleParams{
 		CompanyID:   companyID,
 		Name:        "Admin",
 		Color:       "#0066FF",
@@ -53,7 +53,7 @@ func SeedDefaultCompanyRoles(ctx context.Context, q *db.Queries, companyID pgtyp
 		Permissions: editorPermsBytes,
 		IsSystem:    false,
 	})
-	return nil
+	return adminRole, err
 }
 
 func renderJSON(w http.ResponseWriter, status int, data interface{}) {

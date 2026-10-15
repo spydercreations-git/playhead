@@ -41,7 +41,7 @@ func TestTrialMaxFiveSeatsEnforcement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create test company: %v", err)
 	}
-	_ = SeedDefaultCompanyRoles(ctx, queries, testCompany.ID)
+	_, _ = SeedDefaultCompanyRoles(ctx, queries, testCompany.ID)
 
 	// 2. Create owner user
 	ownerUser, err := queries.CreateUser(ctx, db.CreateUserParams{

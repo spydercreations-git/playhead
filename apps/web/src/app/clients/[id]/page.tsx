@@ -14,7 +14,7 @@ export default function ClientDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const clientId = params.id as string;
-  const { isAdmin, isManager, isClient } = useAuth();
+  const { hasPermission, isClient } = useAuth();
 
   const [activeTab, setActiveTab] = useState<"projects" | "contacts" | "notes">("projects");
   const [showNewProject, setShowNewProject] = useState(false);
@@ -40,7 +40,7 @@ export default function ClientDetailPage() {
       }
       return res;
     },
-    enabled: !isClient && (isAdmin || isManager),
+    enabled: !isClient && hasPermission("clients.view_all"),
   });
 
   const updateContactMutation = useMutation({
@@ -169,14 +169,16 @@ export default function ClientDetailPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowNewProject(true)}
-              className="rounded-lg bg-[#4876F3] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#3b66df] transition-colors"
-            >
-              + New Project
-            </button>
-          </div>
+          {hasPermission("projects.create") && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowNewProject(true)}
+                className="rounded-lg bg-[#4876F3] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#3b66df] transition-colors"
+              >
+                + New Project
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Tab Navigation */}
@@ -287,12 +289,14 @@ export default function ClientDetailPage() {
                 Set default permissions that automatically apply to all projects of {client?.name}
               </p>
             </div>
-            <button
-              onClick={() => setShowAddContact(true)}
-              className="rounded-lg bg-[#4876F3] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#3b66df]"
-            >
-              + Add Contact
-            </button>
+            {hasPermission("clients.edit") && (
+              <button
+                onClick={() => setShowAddContact(true)}
+                className="rounded-lg bg-[#4876F3] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#3b66df]"
+              >
+                + Add Contact
+              </button>
+            )}
           </div>
 
           <div className="overflow-hidden rounded-lg border border-[#424344]">

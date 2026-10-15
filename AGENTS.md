@@ -33,6 +33,7 @@ Project and player layout follows `docs/PROJECT_WORKSPACE.md`.
 - Never commit secrets or `.env` files. Never log passwords, tokens or file contents.
 - Share link tokens and session tokens are stored only as hashes.
 - All UI must follow the design tokens and the files in /design.
+- Never add Supabase, Firebase or any similar hosted backend service. We use our own Go API, PostgreSQL, Redis, Cloudflare R2 and our collab service only.
 
 ## Quality
 

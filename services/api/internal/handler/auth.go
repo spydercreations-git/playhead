@@ -623,8 +623,51 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var roleID string
+	var roleName string
+	permissions := []string{}
+
+	if activeCompanyID.Valid {
+		membership, mErr := h.queries.GetMembership(r.Context(), db.GetMembershipParams{
+			CompanyID: activeCompanyID,
+			UserID:    user.ID,
+		})
+		if mErr == nil {
+			roleID = pgUUIDToString(membership.RoleID)
+			roleName = membership.Role
+			if membership.RoleName.Valid && membership.RoleName.String != "" {
+				roleName = membership.RoleName.String
+			}
+			if len(membership.RolePermissions) > 0 {
+				_ = json.Unmarshal(membership.RolePermissions, &permissions)
+			}
+			if strings.ToLower(membership.Role) == "admin" || strings.ToLower(membership.Role) == "owner" ||
+				strings.ToLower(roleName) == "admin" || strings.ToLower(roleName) == "owner" {
+				permissions = authz.AllPermissions
+				if roleID == "" {
+					adminRole, err := h.queries.GetRoleByName(r.Context(), db.GetRoleByNameParams{
+						CompanyID: activeCompanyID,
+						Name:      "Admin",
+					})
+					if err == nil {
+						roleID = pgUUIDToString(adminRole.ID)
+						_ = h.queries.UpdateMembershipRole(r.Context(), db.UpdateMembershipRoleParams{
+							CompanyID: activeCompanyID,
+							UserID:    user.ID,
+							Role:      "admin",
+							RoleID:    adminRole.ID,
+						})
+					}
+				}
+			}
+			if activeRole == "" {
+				activeRole = roleName
+			}
+		}
+	}
+
 	// Client users have no company team role (or guest role)
-	isClient := activeRole == "" || activeRole == "guest"
+	isClient := activeRole == "" || strings.ToLower(activeRole) == "guest"
 
 	// Feature flags for company plan
 	var features map[string]bool
@@ -641,11 +684,20 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 			"id":             user.ID,
 			"email":          user.Email,
 			"name":           user.Name,
+			"avatar":         user.AvatarURL.String,
 			"avatar_url":     user.AvatarURL.String,
 			"email_verified": user.EmailVerifiedAt.Valid,
 		},
 		"active_company": activeCompany,
 		"active_role":    activeRole,
+		"role_id":        roleID,
+		"role_name":      roleName,
+		"permissions":    permissions,
+		"role": map[string]interface{}{
+			"id":          roleID,
+			"name":        roleName,
+			"permissions": permissions,
+		},
 		"is_client":      isClient,
 		"companies":      companies,
 		"features":       features,

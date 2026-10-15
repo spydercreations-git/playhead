@@ -187,4 +187,31 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
   - **Strict Mention Access Scoping**: During comment creation and grouped email aggregation, parsed `@mentions` are cross-referenced with `authz.AccessItem(person, item)`. Only users with `CanView() == true` are notified. Mentions of users without access to the item are discarded and send zero emails.
   - **Worker Dockerization with Alpine and FFmpeg**: Integrated `playhead-worker` into `infra/docker-compose.yml` based on `infra/Dockerfile.worker`, including `ffmpeg 6.1.1` and `ffprobe`. Runs automatically in `make dev` with access to MinIO (`http://minio:9000`), Postgres, and Redis.
 
+## 33. Milestone P5: Documents Architecture, Collaboration Engine & Zero-Leak Team Notes
+- **Decision**:
+  - **Standalone Collab Service (`services/collab`)**: Node.js microservice running on port `8082` using `@hocuspocus/server` and `yjs`. Dockerized in `infra/docker-compose.yml` (`playhead-collab`) and managed concurrently in `make dev`.
+  - **Zero-Trust Connection & 5-Second Access Revocation**:
+    - On WebSocket connection, Hocuspocus sends `POST /api/internal/collab/verify` to the Go API with `X-Collab-Secret`.
+    - Go API runs `authz.AccessItem` on the document: users without access are immediately refused; users with less than Full access (`Viewer`, `Commenter`, `Uploader`) receive `read_only = true`.
+    - Every active connection is re-evaluated every 5 seconds (with immediate Redis pub/sub eviction whenever grants or memberships change). Revoked connections are closed immediately (`4403 Forbidden`).
+    - Documents are persisted to PostgreSQL at most every 2 seconds during active editing and immediately when the last collaborator disconnects. Plain text is automatically extracted and stored in `plain_text` and sanitized `public_plain_text` for search.
+  - **Strict Open-Source License Policy (Zero Tiptap Pro / Cloud)**:
+    - Editor built with open-source Tiptap core and community extensions (all MIT).
+    - DOCX import: `mammoth` (BSD 2-Clause).
+    - DOCX export: `docx` (MIT).
+    - Markdown import/export: `marked` (MIT) and `turndown` / `turndown-plugin-gfm` (MIT).
+    - Offline sync: `y-indexeddb` (MIT).
+    - PDF & Print: Clean `@media print` CSS stylesheet and `html2pdf.js` (MIT).
+  - **Team-Only Notes Security Architecture (Zero-Leak Guarantee)**:
+    - CRDT state cannot safely hide inline content from clients if the raw Yjs stream is delivered to them.
+    - Architecture: Internal team members (`is_team_member = true`) connect directly to the live Yjs room (`doc:{id}`) with real-time multi-cursor collaboration.
+    - External clients and public share links **never receive the raw Yjs WebSocket stream**. Instead, they receive a server-sanitized read-only projection (`GET /api/v1/documents/{id}/view` or real-time sanitized deltas) with all `team_notes` blocks scrubbed on the server.
+    - All other export channels (PDF, Word, Markdown, Print), search indexing (`public_plain_text`), and version history snapshots recursively strip team notes before returning data to non-team members.
+  - **Non-Destructive Version History**: Automatic snapshots saved every 10 minutes of active editing plus manual "Name this version". Restoring a historical version writes a new snapshot and updates the active document, preserving all newer versions.
+  - **Secure Video Cards & Image Flow**:
+    - Embedded video cards resolve metadata through `GET /api/v1/items/{id}/card-preview` using `authz.AccessItem`. Readers without access receive a locked card (`"No access: You don't have permission to view this video"`).
+    - Document image uploads use Playhead's standard presigned R2 upload workflow with storage quota reservations in PostgreSQL transactions.
+- **Reason**: Guarantees absolute team data privacy for agency operations, provides 100% open-source compliance without recurring vendor fees, and guarantees robust real-time collaboration.
+
+
 

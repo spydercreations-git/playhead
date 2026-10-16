@@ -630,6 +630,21 @@ Google Login is built into the backend and UI, but hidden until configured. When
 6. **Dev Account Badge & Cache Invalidation**:
    - Added dev-only session badge in sidebar account popup showing email and role.
    - Implemented `clearAuthCache(queryClient)` invoked on code login, password login, and sign out.
+7. **Google OAuth Security Hardening (Code Flow & Token Verification)**:
+   - Eliminated spoofing vulnerability where query parameters `?email=...&email_verified=true` could grant login without Google authorization.
+   - Added real OAuth 2.0 code exchange with Google token endpoint using `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+   - Verified ID token cryptographic claims via Google tokeninfo endpoint (audience matching client ID, issuer, expiry, and email verification).
+   - Enforced short-lived `google_oauth_state` cookie (10 minutes) to prevent CSRF / login forgery.
+   - Returns 404 Not Found if `GOOGLE_CLIENT_ID` is empty.
+   - Rigorous unit tests proving forged `?email=...&email_verified=true`, invalid state, and missing client ID are refused.
+8. **Signed-Out Session Protection & App Skeleton**:
+   - Resolved bug where signed-out visitors navigating directly to `/projects`, `/documents`, or `/` saw empty app shells and "User" placeholders.
+   - Protected all internal app routes: while session is verified, `AppShell` displays a dedicated dark `AppSkeleton`.
+   - If `/me` returns 401 or user is not logged in, redirects immediately to `/login?redirect=...`.
+   - On sign-in (via email code or password), redirects user back to their requested page.
+   - `apiRequest` intercepts 401 responses on protected pages with a "You've been signed out" toast.
+   - Sidebar, header, and rail now show the user's real name and email, never "User" or "PH" placeholders.
+   - Added Playwright smoke test `tests/auth-session.test.ts` verifying `/projects`, `/documents`, and `/` redirect to `/login` when signed out, and that an Admin sees "+ New Project" after sign in.
 
 ---
 

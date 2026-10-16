@@ -28,6 +28,7 @@ type Config struct {
 	R2Endpoint           string
 	SessionSecret        string
 	GoogleClientID       string
+	GoogleClientSecret   string
 	ResendAPIKey         string
 	SMTPHost             string
 	SMTPPort             int
@@ -118,6 +119,7 @@ func Load() *Config {
 		R2Endpoint:           getEnv("R2_ENDPOINT", "http://localhost:9000"),
 		SessionSecret:        getEnv("SESSION_SECRET", DefaultDevSessionSecret),
 		GoogleClientID:       getEnv("GOOGLE_CLIENT_ID", ""),
+		GoogleClientSecret:   getEnv("GOOGLE_CLIENT_SECRET", ""),
 		ResendAPIKey:         getEnv("RESEND_API_KEY", ""),
 		SMTPHost:             getEnv("SMTP_HOST", "localhost"),
 		SMTPPort:             1025,

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { AuthContainer } from "@/components/auth/auth-container";
 import { apiRequest, ApiError } from "@/lib/api";
@@ -10,9 +10,11 @@ import { clearAuthCache } from "@/lib/use-auth";
 
 type Screen = "email" | "password" | "code";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const redirectPath = searchParams.get("redirect") || "/";
 
   const [screen, setScreen] = useState<Screen>("email");
   const [email, setEmail] = useState("");
@@ -98,7 +100,7 @@ export default function LoginPage() {
         }),
       });
       clearAuthCache(queryClient);
-      router.push("/");
+      router.push(redirectPath);
     } catch (err: any) {
       const apiErr = err as ApiError;
       const newTries = triesLeft !== null ? Math.max(1, triesLeft - 1) : 4;
@@ -188,7 +190,7 @@ export default function LoginPage() {
         }),
       });
       clearAuthCache(queryClient);
-      router.push("/");
+      router.push(redirectPath);
     } catch (err: any) {
       const apiErr = err as ApiError;
       if (apiErr.status === 403 || apiErr.error === "access_denied") {
@@ -561,5 +563,13 @@ export default function LoginPage() {
         </div>
       )}
     </AuthContainer>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#181818]" />}>
+      <LoginForm />
+    </Suspense>
   );
 }

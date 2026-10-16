@@ -97,6 +97,8 @@ function formatServerErrorMessage(status: number, data: any): string {
   }
 }
 
+import { toast } from "./toast";
+
 export async function apiRequest<T = any>(
   path: string,
   options: RequestInit = {}
@@ -132,6 +134,28 @@ export async function apiRequest<T = any>(
   }
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== "undefined") {
+      const pathname = window.location.pathname;
+      const isPublic =
+        pathname.startsWith("/login") ||
+        pathname.startsWith("/signup") ||
+        pathname.startsWith("/verify-email") ||
+        pathname.startsWith("/forgot-password") ||
+        pathname.startsWith("/reset-password") ||
+        pathname.startsWith("/invite") ||
+        pathname.startsWith("/s/") ||
+        pathname.startsWith("/test-sheet-benchmark");
+
+      if (!isPublic) {
+        // Expired session on active protected page
+        if (path !== "/me") {
+          toast.error("You've been signed out");
+          const target = `/login?redirect=${encodeURIComponent(pathname + window.location.search)}`;
+          window.location.href = target;
+        }
+      }
+    }
+
     const rawError = typeof data === "object" ? data?.error || data?.message : data;
     const message = formatServerErrorMessage(response.status, data);
     const code = typeof data === "object" ? data?.code : undefined;

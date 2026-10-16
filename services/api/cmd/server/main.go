@@ -99,6 +99,7 @@ func main() {
 	// Handlers and middleware
 	authHandler := handler.NewAuthHandler(queries, mailClient, cfg.GoogleClientID, cfg.AppURL, cfg.Environment == "production")
 	authHandler.SetEnvironment(cfg.Environment)
+	authHandler.SetGoogleClientSecret(cfg.GoogleClientSecret)
 	companyHandler := handler.NewCompanyHandler(queries)
 	inviteHandler := handler.NewInviteHandler(queries, mailClient)
 	clientHandler := handler.NewClientHandler(queries, mailClient)

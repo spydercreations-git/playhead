@@ -47,7 +47,7 @@ export function ProjectIconRail({
   const unreadCount = typeof notifData === "number" ? notifData : 0;
 
   const initials = useMemo(() => {
-    if (user?.name) {
+    if (user?.name && user.name.trim()) {
       const parts = user.name.trim().split(/\s+/);
       if (parts.length >= 2) {
         return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -57,7 +57,7 @@ export function ProjectIconRail({
     if (user?.email) {
       return user.email.slice(0, 2).toUpperCase();
     }
-    return "PH";
+    return "";
   }, [user]);
 
   const queryClient = useQueryClient();
@@ -173,7 +173,7 @@ export function ProjectIconRail({
               <div className="absolute bottom-2 left-12 z-50 w-56 rounded-xl border border-[#2E2F34] bg-[#212121] py-1.5 shadow-overlay">
                 <div className="px-3.5 py-2 border-b border-[#2E2F34]">
                   <p className="text-xs font-semibold text-white truncate">
-                    {user?.name || "Playhead User"}
+                    {user?.name || user?.email || ""}
                   </p>
                   <p className="text-xs text-[#A3A6AD] truncate">
                     {user?.email}

@@ -34,6 +34,18 @@ func setupTestDB(t *testing.T) (*db.Queries, func()) {
 	}
 }
 
+type testGoogleOAuthClient struct {
+	tokenInfo *GoogleTokenInfo
+	err       error
+}
+
+func (m *testGoogleOAuthClient) ExchangeCode(ctx context.Context, code, clientID, clientSecret, redirectURI string) (*GoogleTokenInfo, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.tokenInfo, nil
+}
+
 func TestSignupAndLoginFlow(t *testing.T) {
 	queries, cleanup := setupTestDB(t)
 	defer cleanup()
@@ -427,31 +439,67 @@ func TestRequireVerifiedEmailAndNeutralSignup(t *testing.T) {
 		t.Fatalf("expected is_client in /me response")
 	}
 
-	// 7. Google sign-in tests
-	// 7a. Reject unverified Google email
-	googleUnverifiedBody, _ := json.Marshal(map[string]interface{}{
-		"email":          clientEmail,
-		"email_verified": false,
-	})
-	recGUnver := httptest.NewRecorder()
-	reqGUnver := httptest.NewRequest("POST", "/api/v1/auth/google/callback", bytes.NewReader(googleUnverifiedBody))
-	authH.GoogleOAuthCallback(recGUnver, reqGUnver)
-
-	if recGUnver.Code != http.StatusForbidden {
-		t.Fatalf("expected 403 Forbidden for Google unverified email, got %d", recGUnver.Code)
+	// 7. Hardened Google OAuth code flow tests
+	// 7a. Forged login attempt: ?email=...&email_verified=true with no valid code or state MUST FAIL
+	recSpoof := httptest.NewRecorder()
+	reqSpoof := httptest.NewRequest("GET", "/api/v1/auth/google/callback?email="+clientEmail+"&email_verified=true", nil)
+	authH.GoogleOAuthCallback(recSpoof, reqSpoof)
+	if recSpoof.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 Bad Request for spoofed Google callback with no code/state, got %d: %s", recSpoof.Code, recSpoof.Body.String())
 	}
 
-	// 7b. Accept verified Google email
-	googleVerifiedBody, _ := json.Marshal(map[string]interface{}{
-		"email":          clientEmail,
-		"email_verified": true,
-	})
-	recGVer := httptest.NewRecorder()
-	reqGVer := httptest.NewRequest("POST", "/api/v1/auth/google/callback", bytes.NewReader(googleVerifiedBody))
-	authH.GoogleOAuthCallback(recGVer, reqGVer)
+	// 7b. Bad state: invalid or mismatched state parameter MUST FAIL
+	recBadState := httptest.NewRecorder()
+	reqBadState := httptest.NewRequest("GET", "/api/v1/auth/google/callback?code=mock-code&state=fake-state", nil)
+	reqBadState.AddCookie(&http.Cookie{Name: "google_oauth_state", Value: "different-state"})
+	authH.GoogleOAuthCallback(recBadState, reqBadState)
+	if recBadState.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 Bad Request for mismatched OAuth state, got %d", recBadState.Code)
+	}
 
-	if recGVer.Code != http.StatusOK {
-		t.Fatalf("expected 200 OK for Google verified email, got %d: %s", recGVer.Code, recGVer.Body.String())
+	// 7c. Missing GOOGLE_CLIENT_ID returns 404
+	noClientAuthH := NewAuthHandler(queries, mailClient, "", "http://localhost:3000", false)
+	rec404 := httptest.NewRecorder()
+	req404 := httptest.NewRequest("GET", "/api/v1/auth/google/callback?code=mock-code&state=mock-state", nil)
+	noClientAuthH.GoogleOAuthCallback(rec404, req404)
+	if rec404.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 Not Found when GOOGLE_CLIENT_ID is empty, got %d", rec404.Code)
+	}
+
+	// 7d. Valid OAuth code flow with verified Google ID token succeeds
+	mockClient := &testGoogleOAuthClient{
+		tokenInfo: &GoogleTokenInfo{
+			Iss:           "https://accounts.google.com",
+			Aud:           "test-google-client-id",
+			Sub:           "google-sub-12345",
+			Email:         clientEmail,
+			EmailVerified: "true",
+			Name:          "Verified Google User",
+			Exp:           fmt.Sprintf("%d", time.Now().Add(1*time.Hour).Unix()),
+		},
+	}
+	authHWithClient := NewAuthHandler(queries, mailClient, "test-google-client-id", "http://localhost:3000", false)
+	authHWithClient.SetGoogleClientSecret("test-secret")
+	authHWithClient.SetGoogleOAuthClient(mockClient)
+
+	recValid := httptest.NewRecorder()
+	reqValid := httptest.NewRequest("GET", "/api/v1/auth/google/callback?code=valid-code&state=valid-state-123", nil)
+	reqValid.AddCookie(&http.Cookie{Name: "google_oauth_state", Value: "valid-state-123"})
+	authHWithClient.GoogleOAuthCallback(recValid, reqValid)
+
+	if recValid.Code != http.StatusFound {
+		t.Fatalf("expected 302 Redirect (StatusFound) for valid Google OAuth flow, got %d: %s", recValid.Code, recValid.Body.String())
+	}
+	// Verify session cookie was set
+	hasSessionCookie := false
+	for _, c := range recValid.Result().Cookies() {
+		if c.Name == "playhead_session" && c.Value != "" {
+			hasSessionCookie = true
+			break
+		}
+	}
+	if !hasSessionCookie {
+		t.Fatalf("expected playhead_session cookie to be set on successful Google login")
 	}
 }
 

@@ -71,7 +71,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
   }, [pathname]);
 
   const initials = useMemo(() => {
-    if (user?.name) {
+    if (user?.name && user.name.trim()) {
       const parts = user.name.trim().split(/\s+/);
       if (parts.length >= 2) {
         return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -81,17 +81,17 @@ export function Header({ onOpenSidebar }: HeaderProps) {
     if (user?.email) {
       return user.email.slice(0, 2).toUpperCase();
     }
-    return "PH";
+    return "";
   }, [user]);
 
   const firstName = useMemo(() => {
-    if (user?.name) {
+    if (user?.name && user.name.trim()) {
       return user.name.trim().split(" ")[0];
     }
     if (user?.email) {
       return user.email.split("@")[0];
     }
-    return "there";
+    return "";
   }, [user]);
 
   return (

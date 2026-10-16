@@ -108,7 +108,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // User initials & real name
   const initials = useMemo(() => {
-    if (user?.name) {
+    if (user?.name && user.name.trim()) {
       const parts = user.name.trim().split(/\s+/);
       if (parts.length >= 2) {
         return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -118,13 +118,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (user?.email) {
       return user.email.slice(0, 2).toUpperCase();
     }
-    return "PH";
+    return "";
   }, [user]);
 
   const displayName = useMemo(() => {
     if (user?.name && user.name.trim()) return user.name;
     if (user?.email) return user.email;
-    return "User";
+    return "";
   }, [user]);
 
   // Storage percentage calculation

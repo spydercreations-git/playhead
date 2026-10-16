@@ -1,9 +1,14 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,13 +20,100 @@ import (
 	"github.com/playhead/playhead/services/shared/plans"
 )
 
+type GoogleTokenInfo struct {
+	Iss           string `json:"iss"`
+	Aud           string `json:"aud"`
+	Sub           string `json:"sub"`
+	Email         string `json:"email"`
+	EmailVerified string `json:"email_verified"`
+	Name          string `json:"name"`
+	Exp           string `json:"exp"`
+}
+
+type GoogleOAuthClient interface {
+	ExchangeCode(ctx context.Context, code, clientID, clientSecret, redirectURI string) (*GoogleTokenInfo, error)
+}
+
+type RealGoogleOAuthClient struct {
+	httpClient *http.Client
+}
+
+func NewRealGoogleOAuthClient() *RealGoogleOAuthClient {
+	return &RealGoogleOAuthClient{
+		httpClient: &http.Client{Timeout: 10 * time.Second},
+	}
+}
+
+func (c *RealGoogleOAuthClient) ExchangeCode(ctx context.Context, code, clientID, clientSecret, redirectURI string) (*GoogleTokenInfo, error) {
+	form := url.Values{
+		"code":          {code},
+		"client_id":     {clientID},
+		"client_secret": {clientSecret},
+		"redirect_uri":  {redirectURI},
+		"grant_type":    {"authorization_code"},
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://oauth2.googleapis.com/token", strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to contact Google token endpoint: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("google token endpoint returned status %d", resp.StatusCode)
+	}
+
+	var tokenResp struct {
+		AccessToken string `json:"access_token"`
+		IdToken     string `json:"id_token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return nil, fmt.Errorf("failed to parse google token response: %w", err)
+	}
+
+	if tokenResp.IdToken == "" {
+		return nil, errors.New("no id_token in google response")
+	}
+
+	// Verify ID token via Google's tokeninfo endpoint (cryptographic signature checked against Google certs)
+	verifyReq, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://oauth2.googleapis.com/tokeninfo?id_token="+url.QueryEscape(tokenResp.IdToken), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	verifyResp, err := c.httpClient.Do(verifyReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify id_token with google: %w", err)
+	}
+	defer verifyResp.Body.Close()
+
+	if verifyResp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("google tokeninfo returned status %d", verifyResp.StatusCode)
+	}
+
+	var tokenInfo GoogleTokenInfo
+	if err := json.NewDecoder(verifyResp.Body).Decode(&tokenInfo); err != nil {
+		return nil, fmt.Errorf("failed to decode google tokeninfo: %w", err)
+	}
+
+	return &tokenInfo, nil
+}
+
 type AuthHandler struct {
-	queries        *db.Queries
-	mailer         *mailer.Mailer
-	googleClientID string
-	appURL         string
-	isProduction   bool
-	environment    string
+	queries            *db.Queries
+	mailer             *mailer.Mailer
+	googleClientID     string
+	googleClientSecret string
+	appURL             string
+	isProduction       bool
+	environment        string
+	googleOAuthClient  GoogleOAuthClient
 }
 
 func NewAuthHandler(queries *db.Queries, mailer *mailer.Mailer, googleClientID, appURL string, isProduction bool) *AuthHandler {
@@ -30,17 +122,26 @@ func NewAuthHandler(queries *db.Queries, mailer *mailer.Mailer, googleClientID, 
 		env = "production"
 	}
 	return &AuthHandler{
-		queries:        queries,
-		mailer:         mailer,
-		googleClientID: googleClientID,
-		appURL:         appURL,
-		isProduction:   isProduction,
-		environment:    env,
+		queries:           queries,
+		mailer:            mailer,
+		googleClientID:    googleClientID,
+		appURL:            appURL,
+		isProduction:      isProduction,
+		environment:       env,
+		googleOAuthClient: NewRealGoogleOAuthClient(),
 	}
 }
 
 func (h *AuthHandler) SetEnvironment(env string) {
 	h.environment = env
+}
+
+func (h *AuthHandler) SetGoogleClientSecret(secret string) {
+	h.googleClientSecret = secret
+}
+
+func (h *AuthHandler) SetGoogleOAuthClient(client GoogleOAuthClient) {
+	h.googleOAuthClient = client
 }
 
 type SignupRequest struct {
@@ -842,53 +943,144 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GoogleOAuthURL returns the Google authorization URL or disabled indicator
+// GoogleOAuthURL returns the Google authorization URL and sets a short-lived state cookie
 func (h *AuthHandler) GoogleOAuthURL(w http.ResponseWriter, r *http.Request) {
 	if h.googleClientID == "" {
-		respondJSON(w, http.StatusBadRequest, map[string]string{
+		respondJSON(w, http.StatusNotFound, map[string]string{
 			"error":   "google_auth_disabled",
 			"message": "Google Login is not configured. Set GOOGLE_CLIENT_ID to enable.",
 		})
 		return
 	}
 
+	state, err := authz.GenerateSecureToken(24)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to generate oauth state"})
+		return
+	}
+
+	// Set short-lived state cookie (10 minutes) to prevent CSRF / login forgery
+	http.SetCookie(w, &http.Cookie{
+		Name:     "google_oauth_state",
+		Value:    state,
+		Path:     "/",
+		MaxAge:   600,
+		Expires:  time.Now().Add(10 * time.Minute),
+		HttpOnly: true,
+		Secure:   h.isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
+
 	redirectURI := h.appURL + "/api/v1/auth/google/callback"
-	authURL := "https://accounts.google.com/o/oauth2/v2/auth?client_id=" + h.googleClientID +
-		"&redirect_uri=" + redirectURI +
-		"&response_type=code&scope=openid%20email%20profile"
+	authURL := "https://accounts.google.com/o/oauth2/v2/auth?client_id=" + url.QueryEscape(h.googleClientID) +
+		"&redirect_uri=" + url.QueryEscape(redirectURI) +
+		"&response_type=code&scope=openid%20email%20profile&state=" + url.QueryEscape(state)
 
 	respondJSON(w, http.StatusOK, map[string]string{"url": authURL})
 }
 
-type GoogleOAuthCallbackRequest struct {
-	Code          string `json:"code"`
-	Credential    string `json:"credential"`
-	Email         string `json:"email"`
-	EmailVerified *bool  `json:"email_verified"`
-	Name          string `json:"name"`
-	GoogleID      string `json:"google_id"`
-}
-
 func (h *AuthHandler) GoogleOAuthCallback(w http.ResponseWriter, r *http.Request) {
-	var req GoogleOAuthCallbackRequest
-	if r.Method == http.MethodPost {
-		_ = json.NewDecoder(r.Body).Decode(&req)
+	// If GOOGLE_CLIENT_ID is not set, return 404
+	if h.googleClientID == "" {
+		respondJSON(w, http.StatusNotFound, map[string]string{
+			"error":   "not_found",
+			"message": "Google Login is not configured.",
+		})
+		return
 	}
 
-	email := authz.NormalizeEmail(req.Email)
-	if email == "" {
-		email = authz.NormalizeEmail(r.URL.Query().Get("email"))
+	// 1. Extract code and state from URL query or JSON POST body
+	code := r.URL.Query().Get("code")
+	state := r.URL.Query().Get("state")
+	if r.Method == http.MethodPost && (code == "" || state == "") {
+		var postReq struct {
+			Code  string `json:"code"`
+			State string `json:"state"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&postReq)
+		if postReq.Code != "" {
+			code = postReq.Code
+		}
+		if postReq.State != "" {
+			state = postReq.State
+		}
 	}
 
-	// Verify Google email_verified flag (must strictly be true)
-	var emailVerified bool
-	if req.EmailVerified != nil {
-		emailVerified = *req.EmailVerified
-	} else if evStr := r.URL.Query().Get("email_verified"); evStr != "" {
-		emailVerified = (evStr == "true" || evStr == "1")
+	// 2. Validate state cookie to prevent CSRF / login forgery
+	stateCookie, stateErr := r.Cookie("google_oauth_state")
+	// Clear state cookie immediately
+	http.SetCookie(w, &http.Cookie{
+		Name:     "google_oauth_state",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+		Secure:   h.isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	if stateErr != nil || stateCookie.Value == "" || state == "" || state != stateCookie.Value {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "invalid_state",
+			"message": "Invalid or expired OAuth state parameter. Please try logging in again.",
+		})
+		return
 	}
 
-	if !emailVerified {
+	// 3. Authorization code is required
+	if strings.TrimSpace(code) == "" {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "missing_code",
+			"message": "Authorization code is required.",
+		})
+		return
+	}
+
+	// 4. Exchange authorization code with Google using Client ID and Secret, and verify ID token
+	redirectURI := h.appURL + "/api/v1/auth/google/callback"
+	client := h.googleOAuthClient
+	if client == nil {
+		client = NewRealGoogleOAuthClient()
+	}
+
+	tokenInfo, err := client.ExchangeCode(r.Context(), code, h.googleClientID, h.googleClientSecret, redirectURI)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "oauth_exchange_failed",
+			"message": "Failed to authenticate with Google: " + err.Error(),
+		})
+		return
+	}
+
+	// 5. Verify token audience, issuer, expiry, and email_verified
+	if tokenInfo.Aud != h.googleClientID {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "invalid_audience",
+			"message": "Google token audience mismatch.",
+		})
+		return
+	}
+
+	if tokenInfo.Iss != "https://accounts.google.com" && tokenInfo.Iss != "accounts.google.com" {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "invalid_issuer",
+			"message": "Invalid token issuer.",
+		})
+		return
+	}
+
+	if expInt, err := strconv.ParseInt(tokenInfo.Exp, 10, 64); err == nil && expInt > 0 {
+		if time.Now().Unix() > expInt {
+			respondJSON(w, http.StatusUnauthorized, map[string]string{
+				"error":   "token_expired",
+				"message": "Google token has expired.",
+			})
+			return
+		}
+	}
+
+	if tokenInfo.EmailVerified != "true" && tokenInfo.EmailVerified != "1" {
 		respondJSON(w, http.StatusForbidden, map[string]string{
 			"error":   "email_unverified",
 			"message": "Google account email is not verified. Please verify your Google email first.",
@@ -896,6 +1088,8 @@ func (h *AuthHandler) GoogleOAuthCallback(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// 6. Use ONLY the email from the verified token. Ignore any browser-provided email, name, or google_id
+	email := authz.NormalizeEmail(tokenInfo.Email)
 	if email == "" {
 		respondJSON(w, http.StatusBadRequest, map[string]string{
 			"error":   "missing_email",
@@ -904,7 +1098,7 @@ func (h *AuthHandler) GoogleOAuthCallback(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Email must be known in Playhead (invite, client contact, grant, or existing user)
+	// 7. Email must be known in Playhead (invite, client contact, grant, or existing user)
 	isKnown, err := h.queries.CheckEmailIsKnown(r.Context(), email)
 	if err != nil || !isKnown {
 		respondJSON(w, http.StatusForbidden, map[string]string{
@@ -914,30 +1108,28 @@ func (h *AuthHandler) GoogleOAuthCallback(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	name := strings.TrimSpace(req.Name)
-	if name == "" {
-		name = r.URL.Query().Get("name")
-	}
+	name := strings.TrimSpace(tokenInfo.Name)
 	if name == "" {
 		name = strings.Split(email, "@")[0]
 	}
 
 	user, err := h.queries.GetUserByEmail(r.Context(), email)
 	if err != nil {
-		googleID := req.GoogleID
-		if googleID == "" {
-			googleID = r.URL.Query().Get("google_id")
-		}
 		user, err = h.queries.CreateUser(r.Context(), db.CreateUserParams{
 			Email:        email,
 			Name:         name,
 			PasswordHash: pgtype.Text{Valid: false},
-			GoogleID:     pgtype.Text{String: googleID, Valid: googleID != ""},
+			GoogleID:     pgtype.Text{String: tokenInfo.Sub, Valid: tokenInfo.Sub != ""},
 		})
 		if err != nil {
 			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to create user account"})
 			return
 		}
+	} else if tokenInfo.Sub != "" && !user.GoogleID.Valid {
+		_ = h.queries.SetUserGoogleID(r.Context(), db.SetUserGoogleIDParams{
+			ID:       user.ID,
+			GoogleID: pgtype.Text{String: tokenInfo.Sub, Valid: true},
+		})
 	}
 
 	// Google sign in with verified email marks the user's email as verified

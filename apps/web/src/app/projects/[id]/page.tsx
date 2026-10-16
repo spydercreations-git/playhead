@@ -1487,7 +1487,7 @@ export default function ProjectWorkspacePage() {
                       <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
                       <span className="truncate font-medium">{trackerSheet.title || "Tracker"}</span>
                     </div>
-                    <span className="text-[11px] px-1.5 py-0.5 rounded bg-[#3FCF8E]/10 text-[#3FCF8E] font-semibold uppercase">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-[#3FCF8E]/10 text-[#3FCF8E] font-semibold ">
                       Tracker
                     </span>
                   </button>
@@ -1563,7 +1563,7 @@ export default function ProjectWorkspacePage() {
 
                 <div className="space-y-0.5 pt-1">
                   {sortedShareLinks.length === 0 ? (
-                    <p className="text-[11px] text-[#7C7F87] px-2 py-1 italic">No share links yet</p>
+                    <p className="text-xs text-[#7C7F87] px-2 py-1 italic">No share links yet</p>
                   ) : (
                     sortedShareLinks.map((link: any) => (
                       <button
@@ -1802,7 +1802,7 @@ export default function ProjectWorkspacePage() {
                     </div>
                   ))}
                 </div>
-                <span className="text-[11px] font-semibold text-[#A3A6AD]">
+                <span className="text-xs font-semibold text-[#A3A6AD]">
                   {membersList.length > 0 ? membersList.length : 1}
                 </span>
               </button>
@@ -2044,7 +2044,7 @@ export default function ProjectWorkspacePage() {
                       >
                         <div className="h-32 w-full rounded-xl bg-[#181818] flex flex-col items-center justify-center gap-2 mb-3">
                           <Upload className="w-8 h-8 text-[#4876F3] animate-bounce" />
-                          <span className="text-[11px] font-semibold text-[#4876F3]">
+                          <span className="text-xs font-semibold text-[#4876F3]">
                             {upload.progressPercent}%
                           </span>
                         </div>
@@ -2133,10 +2133,10 @@ export default function ProjectWorkspacePage() {
                           <div className="relative h-32 w-full rounded-xl bg-[#181818] border border-[#212121] flex items-center justify-center overflow-hidden mb-3">
                             {isVideo ? (
                               <>
-                                <div className="w-full h-full bg-gradient-to-tr from-[#181818] to-[#181818] flex items-center justify-center">
+                                <div className="w-full h-full bg-[#181818] flex items-center justify-center">
                                   <Film className="w-10 h-10 text-violet-400" />
                                 </div>
-                                <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-[#4876F3] text-[11px] font-bold text-white uppercase">
+                                <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-[#4876F3] text-xs font-bold text-white ">
                                   v{file.latest_version_number || 1}
                                 </span>
                                 <span className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/60 text-xs font-mono text-white">

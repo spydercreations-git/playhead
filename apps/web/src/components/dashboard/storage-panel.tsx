@@ -64,7 +64,7 @@ export function StoragePanel({
           {/* Center Text inside Ring Chart */}
           <div className="absolute flex flex-col items-center text-center">
             <span className="text-2xl font-bold text-white">0 B</span>
-            <span className="text-[11px] font-medium text-[#A3A6AD]">
+            <span className="text-xs font-medium text-[#A3A6AD]">
               Used of 25 GB
             </span>
           </div>
@@ -82,7 +82,7 @@ export function StoragePanel({
                   />
                   {cat.name}
                 </span>
-                <span className="text-[#A3A6AD] text-[11px] font-medium">
+                <span className="text-[#A3A6AD] text-xs font-medium">
                   {cat.size}
                 </span>
               </div>
@@ -108,7 +108,7 @@ export function StoragePanel({
             <CloudUploadIcon size={20} color="#4876F3" />
           </div>
           <span className="text-sm font-semibold text-white">Upload File</span>
-          <span className="mt-0.5 text-[11px] text-[#A3A6AD]">
+          <span className="mt-0.5 text-xs text-[#A3A6AD]">
             Drop cuts or click to browse
           </span>
         </div>

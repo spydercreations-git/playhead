@@ -205,7 +205,7 @@ export function CommentsPanel({
         {activeTab === "comments" && (
           <button
             onClick={onExportCSV}
-            className="flex items-center gap-1 text-[11px] font-medium text-[#A3A6AD] hover:text-white transition-colors"
+            className="flex items-center gap-1 text-xs font-medium text-[#A3A6AD] hover:text-white transition-colors"
             title="Export comments to CSV"
           >
             <Download className="w-3 h-3" />
@@ -223,7 +223,7 @@ export function CommentsPanel({
               <div className="flex items-center gap-1 bg-[#181818] p-0.5 rounded-lg border border-[#2E2F34]">
                 <button
                   onClick={() => setFilter("all")}
-                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                     filter === "all" ? "bg-[#2E2F34] text-white shadow-sm" : "text-[#A3A6AD] hover:text-white"
                   }`}
                 >
@@ -231,7 +231,7 @@ export function CommentsPanel({
                 </button>
                 <button
                   onClick={() => setFilter("unresolved")}
-                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                     filter === "unresolved" ? "bg-[#2E2F34] text-white shadow-sm" : "text-[#A3A6AD] hover:text-white"
                   }`}
                 >
@@ -239,7 +239,7 @@ export function CommentsPanel({
                 </button>
                 <button
                   onClick={() => setFilter("resolved")}
-                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                     filter === "resolved" ? "bg-[#2E2F34] text-white shadow-sm" : "text-[#A3A6AD] hover:text-white"
                   }`}
                 >
@@ -251,7 +251,7 @@ export function CommentsPanel({
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value as any)}
-                className="bg-[#181818] border border-[#2E2F34] text-[#A3A6AD] rounded-lg px-2 py-1 text-[11px] outline-none cursor-pointer"
+                className="bg-[#181818] border border-[#2E2F34] text-[#A3A6AD] rounded-lg px-2 py-1 text-xs outline-none cursor-pointer"
               >
                 <option value="timecode">Timecode</option>
                 <option value="newest">Newest</option>
@@ -330,7 +330,7 @@ export function CommentsPanel({
                         {comment.timecode_start_ms !== null && (
                           <button
                             onClick={() => onSeekToTime(comment.timecode_start_ms!)}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#FFBB56]/15 text-[#FFBB56] hover:bg-[#FFBB56] hover:text-white text-[11px] font-mono tabular-nums font-medium transition-colors"
+                            className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#FFBB56]/15 text-[#FFBB56] hover:bg-[#FFBB56] hover:text-white text-xs font-mono tabular-nums font-medium transition-colors"
                             title="Jump to timecode"
                           >
                             <Clock className="w-3 h-3" />
@@ -396,7 +396,7 @@ export function CommentsPanel({
                           }
                           onPreviewDrawing(comment.drawing);
                         }}
-                        className="flex items-center gap-1 text-[11px] text-[#FFBB56] hover:underline mb-2 font-medium"
+                        className="flex items-center gap-1 text-xs text-[#FFBB56] hover:underline mb-2 font-medium"
                       >
                         <Eye className="w-3 h-3" />
                         <span>View drawing on frame</span>
@@ -464,7 +464,7 @@ export function CommentsPanel({
                                   )}
                                 </div>
                               </div>
-                              <p className="text-[#A3A6AD] text-[11px]">{reply.body}</p>
+                              <p className="text-[#A3A6AD] text-xs">{reply.body}</p>
                             </div>
                           );
                         })}
@@ -537,7 +537,7 @@ export function CommentsPanel({
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-white">{rev.author_name}</span>
                       <span
-                        className={`text-[11px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                        className={`text-xs font-bold px-1.5 py-0.5 rounded  ${
                           rev.decision === "approved"
                             ? "bg-[#3FCF8E]/20 text-[#3FCF8E]"
                             : "bg-[#F0506E]/20 text-[#F0506E]"
@@ -575,7 +575,7 @@ export function CommentsPanel({
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-xs">v{ver.number}</span>
-                    <div className="text-[11px]">
+                    <div className="text-xs">
                       <div>{new Date(ver.created_at).toLocaleDateString()}</div>
                       <div className="text-xs text-[#A3A6AD]">
                         {ver.width && ver.height ? `${ver.width}x${ver.height}` : ver.mime}

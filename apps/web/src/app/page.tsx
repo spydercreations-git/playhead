@@ -154,13 +154,13 @@ export default function DashboardPage() {
                 <h3 className="text-sm sm:text-base font-semibold text-white truncate">
                   {card.title}
                 </h3>
-                <p className="text-[11px] sm:text-xs text-[#A3A6AD]">{card.count}</p>
+                <p className="text-xs sm:text-xs text-[#A3A6AD]">{card.count}</p>
               </div>
 
               <div className="space-y-1.5 sm:space-y-2">
                 <div className="flex items-center justify-between text-xs text-white">
                   <span className="font-medium text-xs sm:text-sm">{card.size}</span>
-                  <span className="text-xs sm:text-[11px] text-[#A3A6AD]">
+                  <span className="text-xs sm:text-xs text-[#A3A6AD]">
                     {card.fillPercent}%
                   </span>
                 </div>

@@ -246,7 +246,7 @@ export function NewClientDialog({
                     </div>
                     <label
                       title="Can download files"
-                      className="flex items-center gap-1 text-[11px] text-[#A3A6AD] shrink-0 px-1"
+                      className="flex items-center gap-1 text-xs text-[#A3A6AD] shrink-0 px-1"
                     >
                       <input
                         type="checkbox"

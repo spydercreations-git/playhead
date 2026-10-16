@@ -1,12 +1,13 @@
 /**
  * Playhead Design System Token Linter & Auditor
  * 
- * Audits apps/web/src for compliance:
- * 1. Zero uses of text-[9px] and text-[10px]
- * 2. Zero uses of uppercase (except tiny chips)
- * 3. Zero uses of shadow-2xl
- * 4. Only design tokens or explicitly allowed exceptions for hex colors
- * 5. Only allowed radius values: 6, 8, 10, 12, 16, full
+ * Audits apps/web/src for strict compliance:
+ * 1. Text sizes: ONLY 12, 13, 14, 16, 20, 28 (zero text-[11px], text-[34px], etc.)
+ * 2. Border radius: ONLY 6, 8, 10, 12, 16, full
+ * 3. Uppercase: ZERO uses (no exceptions, no uppercase chips or labels)
+ * 4. Gradients: ZERO bg-gradient- uses
+ * 5. Hover scales: ZERO scale-105/110/125 uses
+ * 6. Hex colors: ONLY design tokens or explicitly allowed exceptions
  */
 
 const fs = require('fs');
@@ -37,7 +38,7 @@ const ALLOWED_TOKENS = new Set([
   '#000000', // black
 ]);
 
-// 1. White "Continue with Google" button (#ffffff) & Google Logo Brand SVG colors
+// 1. Google Brand SVG logo colors ("Continue with Google" button)
 const GOOGLE_BRAND_COLORS = new Set([
   '#4285f4', '#34a853', '#fbbc05', '#ea4335',
 ]);
@@ -66,8 +67,9 @@ const STATUS_CHIP_COLORS = new Set([
 // 5. User avatar palette colors
 const AVATAR_PALETTE_COLORS = new Set([
   '#e57373', '#f06292', '#ba68c8', '#9575cd', '#7986cb', '#64b5f6',
-  '#4fc3f7', '#4dd0e1', '#4db6ac', '#81c784', '#aed581', '#ffb74d',
+  '#4fc3f7', '#4dd0e1', '#4dd6ac', '#81c784', '#aed581', '#ffb74d',
   '#ff8a65', '#a1887f', '#90a4ae', '#17a2b8', '#7048e8', '#f03e3e',
+  '#c2410c', '#7c3aed', '#0f766e', '#b45309', '#0e7490', '#6d28d9',
 ]);
 
 // 6. Spreadsheet cell & text color pickers and FortuneSheet internal overrides
@@ -75,6 +77,13 @@ const SPREADSHEET_PICKER_COLORS = new Set([
   '#f8f9fa', '#e9ecef', '#dee2e6', '#ced4da', '#adb5bd', '#6c757d', '#495057', '#343a40', '#212529',
   '#dbeafe', '#bfdbfe', '#93c5fd', '#dcfce7', '#bbf7d0', '#86efac', '#fef3c7', '#fde68a', '#fcd34d',
   '#fee2e2', '#fecaca', '#fca5a5', '#f3e8ff', '#e9d5ff', '#d8b4fe',
+]);
+
+// 7. Card shape mini previews (11-card-shapes.svg exact colors)
+const CARD_SHAPES_COLORS = new Set([
+  '#1b1c20', '#3a3c44', '#f4f2ee', '#2b2b2b', '#c9c4ba',
+  '#3d5a80', '#e0c3a3', '#f2b134', '#5b3a29', '#f1d3b3',
+  '#e76f51', '#264653', '#e9c46a', '#2a9d8f',
 ]);
 
 const ALL_EXCEPTIONS = new Set([
@@ -85,9 +94,10 @@ const ALL_EXCEPTIONS = new Set([
   ...STATUS_CHIP_COLORS,
   ...AVATAR_PALETTE_COLORS,
   ...SPREADSHEET_PICKER_COLORS,
+  ...CARD_SHAPES_COLORS,
 ]);
 
-// Files exempted from hex check (pure user content drawing / sheets / avatars)
+// Files exempted from hex check (pure user content drawing / sheets / avatars / documented tokens)
 const EXEMPTED_FILE_PATTERNS = [
   'drawing-overlay.tsx',
   'drawing-canvas.tsx',
@@ -95,7 +105,15 @@ const EXEMPTED_FILE_PATTERNS = [
   'spreadsheet-editor.tsx',
   'video-card.tsx',
   'avatar.tsx',
+  'design-tokens.ts',
 ];
+
+// Allowed text pixel sizes: only 12, 13, 14, 16, 20, 28
+const ALLOWED_TEXT_PX = new Set([12, 13, 14, 16, 20, 28]);
+
+// Allowed radius pixel sizes: only 6, 8, 10, 12, 16, full
+const ALLOWED_RADIUS_PX = new Set([6, 8, 10, 12, 16]);
+const ALLOWED_RADIUS_NAMES = new Set(['none', 'sm', 'DEFAULT', 'md', 'lg', 'xl', '2xl', 'full']);
 
 function checkDirectory(dir, results) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -110,32 +128,51 @@ function checkDirectory(dir, results) {
       const isExempt = EXEMPTED_FILE_PATTERNS.some(p => relPath.includes(p));
       const content = fs.readFileSync(fullPath, 'utf8');
 
-      // 1. text-[9px] and text-[10px]
+      // 1. Text sizes: check arbitrary text-[...px]
+      const textPxMatches = content.matchAll(/\btext-\[(\d+)px\]/g);
+      for (const m of textPxMatches) {
+        const px = parseInt(m[1], 10);
+        if (!ALLOWED_TEXT_PX.has(px)) {
+          results.invalidTextSizes.push({ file: relPath, size: `${px}px` });
+        }
+      }
+
+      // Also check standard text-[9px]/[10px]
       const text910Matches = content.match(/text-\[(?:9|10)px\]/g);
       if (text910Matches) {
         results.text910Count += text910Matches.length;
-        results.text910Files.push({ file: relPath, count: text910Matches.length });
       }
 
       // 2. shadow-2xl
       const shadow2xlMatches = content.match(/shadow-2xl/g);
       if (shadow2xlMatches) {
         results.shadow2xlCount += shadow2xlMatches.length;
-        results.shadow2xlFiles.push({ file: relPath, count: shadow2xlMatches.length });
       }
 
-      // 3. uppercase (excluding tiny chips with text-[11px] or text-chip)
+      // 3. uppercase (no exceptions)
       const lines = content.split('\n');
       lines.forEach((line, idx) => {
         if (/\buppercase\b/.test(line)) {
-          // Check if it's on a chip line
-          if (!line.includes('text-[11px]') && !line.includes('text-chip') && !line.includes('avatar') && !line.includes('Avatar')) {
-            results.uppercaseCount++;
-          }
+          results.uppercaseCount++;
+          results.uppercaseOccurrences.push({ file: relPath, line: idx + 1 });
         }
       });
 
-      // 4. Hex colors
+      // 4. Gradients: bg-gradient-
+      const gradMatches = content.match(/bg-gradient-[a-z]+/g);
+      if (gradMatches) {
+        results.gradientCount += gradMatches.length;
+        results.gradientOccurrences.push({ file: relPath, matches: gradMatches });
+      }
+
+      // 5. Exaggerated hover scales: scale-105/110/125
+      const scaleMatches = content.match(/(?:hover:|group-hover:)?scale-(?:105|110|125)\b/g);
+      if (scaleMatches) {
+        results.scaleCount += scaleMatches.length;
+        results.scaleOccurrences.push({ file: relPath, matches: scaleMatches });
+      }
+
+      // 6. Hex colors
       const hexMatches = content.match(/#[0-9a-fA-F]{3,8}\b/g);
       if (hexMatches) {
         hexMatches.forEach(hex => {
@@ -148,10 +185,21 @@ function checkDirectory(dir, results) {
         });
       }
 
-      // 5. Radius values
-      const radiusMatches = content.matchAll(/\brounded-(?:\[(\d+px)\]|(none|sm|DEFAULT|md|lg|xl|2xl|3xl|full))\b/g);
+      // 7. Radius values
+      const radiusMatches = content.matchAll(/\brounded-(?:\[(\d+)px\]|(none|sm|DEFAULT|md|lg|xl|2xl|3xl|full))\b/g);
       for (const m of radiusMatches) {
-        results.radiusValues.add(m[1] || m[2]);
+        if (m[1]) {
+          const px = parseInt(m[1], 10);
+          results.radiusValues.add(`${px}px`);
+          if (!ALLOWED_RADIUS_PX.has(px)) {
+            results.invalidRadius.push({ file: relPath, radius: `${px}px` });
+          }
+        } else if (m[2]) {
+          results.radiusValues.add(m[2]);
+          if (!ALLOWED_RADIUS_NAMES.has(m[2])) {
+            results.invalidRadius.push({ file: relPath, radius: m[2] });
+          }
+        }
       }
     }
   }
@@ -160,30 +208,53 @@ function checkDirectory(dir, results) {
 function runAudit() {
   const results = {
     text910Count: 0,
-    text910Files: [],
+    invalidTextSizes: [],
     shadow2xlCount: 0,
-    shadow2xlFiles: [],
     uppercaseCount: 0,
+    uppercaseOccurrences: [],
+    gradientCount: 0,
+    gradientOccurrences: [],
+    scaleCount: 0,
+    scaleOccurrences: [],
     allHexColors: new Set(),
     invalidHexColors: new Set(),
     invalidHexOccurrences: [],
     radiusValues: new Set(),
+    invalidRadius: [],
   };
 
   checkDirectory(SRC_DIR, results);
 
   console.log('================ DESIGN SYSTEM AUDIT ================');
-  console.log(`text-[9px]/[10px] uses: ${results.text910Count}`);
-  console.log(`uppercase non-chip uses: ${results.uppercaseCount}`);
+  console.log(`Off-scale text sizes: ${results.invalidTextSizes.length}`);
+  console.log(`Uppercase class uses: ${results.uppercaseCount}`);
+  console.log(`Gradient uses: ${results.gradientCount}`);
+  console.log(`Hover scale uses (105/110/125): ${results.scaleCount}`);
   console.log(`shadow-2xl uses: ${results.shadow2xlCount}`);
   console.log(`Unique hex colors total: ${results.allHexColors.size}`);
   console.log(`Invalid hex colors (non-token, non-exception): ${results.invalidHexColors.size}`);
+  console.log(`Invalid radius values: ${results.invalidRadius.length}`);
   console.log(`Radius values in use: ${JSON.stringify(Array.from(results.radiusValues).sort())}`);
   console.log('====================================================');
 
   if (process.argv.includes('--strict')) {
-    if (results.text910Count > 0 || results.shadow2xlCount > 0 || results.invalidHexColors.size > 0) {
+    const hasViolations = 
+      results.invalidTextSizes.length > 0 ||
+      results.uppercaseCount > 0 ||
+      results.gradientCount > 0 ||
+      results.scaleCount > 0 ||
+      results.shadow2xlCount > 0 ||
+      results.invalidHexColors.size > 0 ||
+      results.invalidRadius.length > 0;
+
+    if (hasViolations) {
       console.error('Audit failed strict compliance check.');
+      if (results.invalidTextSizes.length) console.error('Off-scale text:', results.invalidTextSizes.slice(0, 10));
+      if (results.uppercaseOccurrences.length) console.error('Uppercase uses:', results.uppercaseOccurrences.slice(0, 10));
+      if (results.gradientOccurrences.length) console.error('Gradients:', results.gradientOccurrences);
+      if (results.scaleOccurrences.length) console.error('Scales:', results.scaleOccurrences);
+      if (results.invalidHexOccurrences.length) console.error('Invalid hex:', results.invalidHexOccurrences.slice(0, 10));
+      if (results.invalidRadius.length) console.error('Invalid radius:', results.invalidRadius.slice(0, 10));
       process.exit(1);
     }
   }

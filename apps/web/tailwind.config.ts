@@ -74,12 +74,10 @@ const config: Config = {
         },
       },
       fontSize: {
-        chip: ["11px", { lineHeight: "14px" }],
         xs: ["12px", { lineHeight: "16px" }],
         secondary: ["13px", { lineHeight: "18px" }],
         sm: ["14px", { lineHeight: "20px" }],
         base: ["16px", { lineHeight: "24px" }],
-        lg: ["18px", { lineHeight: "26px" }],
         xl: ["20px", { lineHeight: "28px" }],
         "2xl": ["28px", { lineHeight: "36px" }],
       },
@@ -91,14 +89,14 @@ const config: Config = {
       borderRadius: {
         sm: "6px",
         md: "8px",
-        DEFAULT: "10px",
-        lg: "12px",
-        xl: "16px",
-        "2xl": "16px", // Map 2xl to 16px to prevent accidental 24px
+        DEFAULT: "8px",
+        lg: "10px",
+        xl: "12px",
+        "2xl": "16px",
         full: "9999px",
-        btn: "10px",
+        btn: "8px",
         card: "12px",
-        action: "12px",
+        dialog: "16px",
       },
       boxShadow: {
         overlay: "0 8px 24px rgba(0, 0, 0, 0.35)",

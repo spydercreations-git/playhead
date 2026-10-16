@@ -115,7 +115,7 @@ export default function SharedWithMePage() {
                             {isProject ? "Project" : item.kind || "File"}
                           </span>
                         </div>
-                        <span className="px-2 py-0.5 text-[11px] bg-[#212121] text-emerald-400 rounded-md font-medium uppercase">
+                        <span className="px-2 py-0.5 text-xs bg-[#212121] text-emerald-400 rounded-md font-medium ">
                           {item.grant_level || "Viewer"}
                         </span>
                       </div>
@@ -128,7 +128,7 @@ export default function SharedWithMePage() {
                       </p>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-[#212121] flex items-center justify-between text-[11px] text-[#A3A6AD]">
+                    <div className="mt-4 pt-3 border-t border-[#212121] flex items-center justify-between text-xs text-[#A3A6AD]">
                       <span>{item.can_download ? "Downloads enabled" : "Downloads off"}</span>
                       <span className="flex items-center gap-1 group-hover:text-white transition-colors">
                         Open <ArrowRight className="w-3.5 h-3.5" />

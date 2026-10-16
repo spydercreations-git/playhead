@@ -35,7 +35,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full">
         {submitted ? (
           <div>
-            <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-3">
+            <h1 className="text-[28px] font-bold text-white tracking-tight leading-none mb-3">
               Check your email
             </h1>
             <p className="text-sm text-[#A3A6AD] mb-8 leading-relaxed">
@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
           </div>
         ) : (
           <div>
-            <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-2">
+            <h1 className="text-[28px] font-bold text-white tracking-tight leading-none mb-2">
               Reset password
             </h1>
             <p className="text-sm text-[#A3A6AD] mb-8">

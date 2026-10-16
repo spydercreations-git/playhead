@@ -740,7 +740,7 @@ export function DocumentEditor({
               {activeUsers.slice(0, 4).map((u, i) => (
                 <div
                   key={i}
-                  className="w-7 h-7 rounded-full border-2 border-card bg-muted text-[11px] font-semibold flex items-center justify-center text-foreground uppercase shadow-sm"
+                  className="w-7 h-7 rounded-full border-2 border-card bg-muted text-xs font-semibold flex items-center justify-center text-foreground  shadow-sm"
                   style={{ borderColor: u.color }}
                   title={u.name}
                 >
@@ -1161,7 +1161,7 @@ export function DocumentEditor({
                         ? "font-semibold text-foreground pl-1"
                         : item.level === 2
                         ? "text-muted-foreground pl-3"
-                        : "text-muted-foreground/80 pl-5 text-[11px]"
+                        : "text-muted-foreground/80 pl-5 text-xs"
                     }`}
                   >
                     {item.text}
@@ -1255,7 +1255,7 @@ export function DocumentEditor({
       {/* ------------------------------------------------------------- */}
       {/* 5. Footer Stats                                              */}
       {/* ------------------------------------------------------------- */}
-      <footer className="h-8 border-t border-border bg-card/60 px-4 flex items-center justify-between text-[11px] text-muted-foreground shrink-0 z-20">
+      <footer className="h-8 border-t border-border bg-card/60 px-4 flex items-center justify-between text-xs text-muted-foreground shrink-0 z-20">
         <div className="flex items-center gap-4">
           <span>{words} words</span>
           <span>{characters} characters</span>

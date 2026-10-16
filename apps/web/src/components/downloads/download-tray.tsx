@@ -122,7 +122,7 @@ export function DownloadTray({
           {session.status === "completed" && (
             <button
               onClick={onClose}
-              className="text-[11px] text-[#A3A6AD] hover:text-white px-1.5 py-0.5 rounded hover:bg-[#2E2F34]"
+              className="text-xs text-[#A3A6AD] hover:text-white px-1.5 py-0.5 rounded hover:bg-[#2E2F34]"
             >
               Close
             </button>
@@ -141,7 +141,7 @@ export function DownloadTray({
         <div className="p-3 space-y-3">
           {/* Overall Progress Bar */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[11px]">
+            <div className="flex items-center justify-between text-xs">
               <span className="text-white font-medium">
                 {formatBytes(session.downloadedBytes)} of {formatBytes(session.totalBytes)} ({progressPercent}%)
               </span>
@@ -175,7 +175,7 @@ export function DownloadTray({
                 {session.status === "downloading" ? (
                   <button
                     onClick={onPause}
-                    className="flex items-center gap-1 rounded bg-[#2E2F34] px-2 py-1 text-[11px] text-neutral-300 hover:text-white"
+                    className="flex items-center gap-1 rounded bg-[#2E2F34] px-2 py-1 text-xs text-neutral-300 hover:text-white"
                   >
                     <Pause className="h-3 w-3" />
                     Pause
@@ -183,7 +183,7 @@ export function DownloadTray({
                 ) : session.status === "paused" ? (
                   <button
                     onClick={onResume}
-                    className="flex items-center gap-1 rounded bg-[#4876F3] px-2 py-1 text-[11px] text-white hover:bg-[#3B67E0]"
+                    className="flex items-center gap-1 rounded bg-[#4876F3] px-2 py-1 text-xs text-white hover:bg-[#3B67E0]"
                   >
                     <Play className="h-3 w-3" />
                     Resume
@@ -191,7 +191,7 @@ export function DownloadTray({
                 ) : null}
                 <button
                   onClick={onCancel}
-                  className="flex items-center gap-1 rounded bg-red-500/10 px-2 py-1 text-[11px] text-red-400 hover:bg-red-500/20"
+                  className="flex items-center gap-1 rounded bg-red-500/10 px-2 py-1 text-xs text-red-400 hover:bg-red-500/20"
                 >
                   <X className="h-3 w-3" />
                   Cancel

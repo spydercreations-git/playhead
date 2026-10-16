@@ -200,7 +200,7 @@ export default function ClientsPage() {
                       <div className="flex flex-col">
                         <span>{client.name}</span>
                         {client.website?.Valid && (
-                          <span className="text-[11px] text-[#A3A6AD] hover:underline">
+                          <span className="text-xs text-[#A3A6AD] hover:underline">
                             {client.website.String}
                           </span>
                         )}

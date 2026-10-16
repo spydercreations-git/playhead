@@ -126,7 +126,7 @@ export function ManageAccessDialog({
             </div>
             <div>
               <h3 className="text-sm font-bold text-white">Add to {targetName}</h3>
-              <p className="text-[11px] text-[#A3A6AD]">Manage access and permissions</p>
+              <p className="text-xs text-[#A3A6AD]">Manage access and permissions</p>
             </div>
           </div>
           <button
@@ -148,7 +148,7 @@ export function ManageAccessDialog({
               </div>
               <div>
                 <p className="text-xs font-semibold text-white">Restricted access</p>
-                <p className="text-[11px] text-[#A3A6AD] mt-0.5 leading-snug">
+                <p className="text-xs text-[#A3A6AD] mt-0.5 leading-snug">
                   Only people added here and Admins can see this
                 </p>
               </div>
@@ -211,7 +211,7 @@ export function ManageAccessDialog({
             </div>
 
             {/* Hint + Can Download switch */}
-            <div className="flex items-center justify-between text-[11px] text-[#A3A6AD] px-1">
+            <div className="flex items-center justify-between text-xs text-[#A3A6AD] px-1">
               <span>Add a new or existing member</span>
               <label className="flex items-center gap-1.5 cursor-pointer select-none">
                 <input
@@ -228,7 +228,7 @@ export function ManageAccessDialog({
           {/* Suggested List (team and client contacts) */}
           {filteredSuggested.length > 0 && !selectedContact && (
             <div className="space-y-1.5">
-              <span className="text-[11px] font-semibold  text-[#7C7F87]">
+              <span className="text-xs font-semibold  text-[#7C7F87]">
                 Suggested
               </span>
               <div className="space-y-1 max-h-32 overflow-y-auto rounded-xl border border-[#2E2F34] bg-[#181818] p-1.5">
@@ -288,7 +288,7 @@ export function ManageAccessDialog({
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-[#A3A6AD]">
+                  <p className="text-xs text-[#A3A6AD]">
                     Only invited members and Admins can access
                   </p>
                 </div>
@@ -320,7 +320,7 @@ export function ManageAccessDialog({
                     {members.filter((m) => !!m.inherited_from).length === 1 ? "person" : "people"} will lose access
                   </span>
                 </div>
-                <p className="text-[11px] text-amber-200/80 leading-relaxed">
+                <p className="text-xs text-amber-200/80 leading-relaxed">
                   Inherited company and client members will no longer have access. Only Admins and explicitly invited people can view this.
                 </p>
                 <div className="flex items-center gap-1.5 pt-1 overflow-x-auto">
@@ -352,7 +352,7 @@ export function ManageAccessDialog({
                   {members.length} {members.length === 1 ? "member" : "members"}
                 </span>
               </div>
-              <span className="text-[11px] font-semibold text-[#4876F3] hover:underline">
+              <span className="text-xs font-semibold text-[#4876F3] hover:underline">
                 {isManagingMembers ? "Collapse" : "Manage"}
               </span>
             </div>
@@ -361,7 +361,7 @@ export function ManageAccessDialog({
             {isManagingMembers && (
               <div className="space-y-2 pt-2 border-t border-[#2E2F34]">
                 {members.length === 0 ? (
-                  <p className="text-[11px] text-[#7C7F87] text-center py-2">
+                  <p className="text-xs text-[#7C7F87] text-center py-2">
                     No individual members added.
                   </p>
                 ) : (
@@ -392,7 +392,7 @@ export function ManageAccessDialog({
 
                         <div className="flex items-center gap-2 shrink-0">
                           {isInherited ? (
-                            <span className="text-[11px] text-[#A3A6AD] capitalize px-2">
+                            <span className="text-xs text-[#A3A6AD] capitalize px-2">
                               {m.level}
                             </span>
                           ) : (
@@ -402,7 +402,7 @@ export function ManageAccessDialog({
                                 onChange={(e) =>
                                   onUpdateMemberLevel?.(m.id, e.target.value)
                                 }
-                                className="h-7 rounded-lg bg-[#212121] border border-[#2E2F34] px-2 text-[11px] text-white focus:outline-none"
+                                className="h-7 rounded-lg bg-[#212121] border border-[#2E2F34] px-2 text-xs text-white focus:outline-none"
                               >
                                 <option value="full">Full access</option>
                                 <option value="uploader">Uploader</option>

@@ -8,7 +8,7 @@ export default function SignupPage() {
   return (
     <AuthContainer>
       <div className="w-full">
-        <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-2">
+        <h1 className="text-[28px] font-bold text-white tracking-tight leading-none mb-2">
           Private workspace
         </h1>
         <p className="text-sm text-[#A3A6AD] mb-8 leading-relaxed">

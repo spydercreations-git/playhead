@@ -38,7 +38,7 @@ export function Avatar({
   ...props
 }: AvatarProps) {
   const sizeClasses = {
-    sm: "h-6 w-6 text-[11px]",
+    sm: "h-6 w-6 text-xs",
     md: "h-8 w-8 text-xs",
     lg: "h-9 w-9 text-xs",
     xl: "h-10 w-10 text-sm",

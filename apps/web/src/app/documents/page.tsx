@@ -88,7 +88,7 @@ export default function DocumentsPage() {
     return documents.filter((d) => {
       const matchesSearch =
         d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.project_name.toLowerCase().includes(searchQuery.toLowerCase());
+        (d.project_name || "").toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesClient =
         selectedClientId === "all" || d.client_id === selectedClientId;
@@ -147,7 +147,7 @@ export default function DocumentsPage() {
                 }`}
               >
                 <span>All clients</span>
-                <span className="opacity-80 font-mono text-[11px]">
+                <span className="opacity-80 font-mono text-xs">
                   ({documents.length})
                 </span>
               </button>
@@ -165,7 +165,7 @@ export default function DocumentsPage() {
                 >
                   <Building2 className="w-3 h-3 opacity-70" />
                   <span>{c.name}</span>
-                  <span className="opacity-80 font-mono text-[11px]">
+                  <span className="opacity-80 font-mono text-xs">
                     ({c.count})
                   </span>
                 </button>

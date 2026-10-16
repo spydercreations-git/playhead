@@ -289,7 +289,7 @@ export function PdfExportDialog({
               <label className="block text-xs font-semibold text-[#A3A6AD]  mb-1">
                 Theme Color
               </label>
-              <p className="text-[11px] text-[#A3A6AD] mb-2.5">
+              <p className="text-xs text-[#A3A6AD] mb-2.5">
                 Headings, links, and table headers
               </p>
               <div className="flex flex-wrap gap-2">
@@ -301,8 +301,8 @@ export function PdfExportDialog({
                     title={t.label}
                     className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                       themeColor.toLowerCase() === t.hex.toLowerCase()
-                        ? "ring-2 ring-[#4876F3] ring-offset-2 ring-offset-[#181818] scale-110"
-                        : "hover:scale-105"
+                        ? "ring-2 ring-[#4876F3] ring-offset-2 ring-offset-[#181818] scale-[1.015]"
+                        : "hover:scale-[1.015]"
                     }`}
                     style={{ backgroundColor: t.hex }}
                   >
@@ -445,7 +445,7 @@ export function PdfExportDialog({
                     <span className="text-xs font-medium text-white block">
                       Include team notes
                     </span>
-                    <span className="text-[11px] text-[#A3A6AD] leading-tight block mt-0.5">
+                    <span className="text-xs text-[#A3A6AD] leading-tight block mt-0.5">
                       Renders internal team note callouts (hidden from clients)
                     </span>
                   </div>

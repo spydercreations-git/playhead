@@ -129,7 +129,7 @@ function VideoCardView(props: NodeViewProps) {
             <Film className="w-6 h-6 text-muted-foreground" />
           )}
           <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-            <div className="w-7 h-7 rounded-full bg-primary/90 text-primary-foreground flex items-center justify-center shadow-md transform group-hover:scale-110 transition-transform">
+            <div className="w-7 h-7 rounded-full bg-primary/90 text-primary-foreground flex items-center justify-center shadow-md transform group-hover:scale-[1.015] transition-transform">
               <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
             </div>
           </div>
@@ -146,14 +146,14 @@ function VideoCardView(props: NodeViewProps) {
 
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             {data.version_number && (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono font-medium bg-muted text-muted-foreground border border-border">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-medium bg-muted text-muted-foreground border border-border">
                 v{data.version_number}
               </span>
             )}
 
             {data.review_status && statusLabel[data.review_status] && (
               <span
-                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
                   statusColors[data.review_status] || "bg-muted text-muted-foreground"
                 }`}
               >

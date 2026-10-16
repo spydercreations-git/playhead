@@ -359,7 +359,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Storage Used for Admins (Spec Section 5.1) */}
         {!isClient && hasPermission("admin.storage") && storageStats && (
           <div className="px-5 py-3 border-t border-[#2E2F34] bg-[#181818]">
-            <div className="flex items-center justify-between text-[11px] mb-1.5">
+            <div className="flex items-center justify-between text-xs mb-1.5">
               <span className="text-[#A3A6AD] font-medium flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5 text-amber-400" />
                 <span>Storage</span>

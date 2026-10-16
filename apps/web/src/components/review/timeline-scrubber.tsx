@@ -191,7 +191,7 @@ export function TimelineScrubber({
                   onSeek(c.timecode_start_ms!);
                   if (onSelectComment) onSelectComment(c.id);
                 }}
-                className="absolute -top-1.5 -translate-x-1/2 z-20 flex flex-col items-center group/marker hover:scale-125 transition-transform"
+                className="absolute -top-1.5 -translate-x-1/2 z-20 flex flex-col items-center group/marker hover:scale-[1.015] transition-transform"
                 style={{ left: `${markerPct}%` }}
                 title={`${c.author_name} (${isTeam ? "Team only" : "Everyone"}): ${c.body.substring(0, 40)}`}
               >
@@ -238,7 +238,7 @@ export function TimelineScrubber({
           )}
 
           {/* Timecode badge */}
-          <div className="bg-[#181818]/95 text-white text-[11px] font-mono tabular-nums px-2 py-0.5 rounded shadow border border-[#424344]">
+          <div className="bg-[#181818]/95 text-white text-xs font-mono tabular-nums px-2 py-0.5 rounded shadow border border-[#424344]">
             {formatTimecode(hoverTimeMs, timecodeFormat, fps)}
           </div>
         </div>

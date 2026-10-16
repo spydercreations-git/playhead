@@ -124,7 +124,7 @@ export function MoveCopyPanel({
       </div>
 
       {/* Current Client / Project Location */}
-      <div className="px-4 py-2 border-b border-[#2E2F34] bg-[#181818] flex items-center gap-2 text-[11px] text-[#A3A6AD]">
+      <div className="px-4 py-2 border-b border-[#2E2F34] bg-[#181818] flex items-center gap-2 text-xs text-[#A3A6AD]">
         <ArrowLeft className="w-3 h-3 text-[#7C7F87]" />
         <span className="truncate text-white font-medium">
           {clientName} / {projectName}

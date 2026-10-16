@@ -96,7 +96,7 @@ export function UploadTray({
           {completedCount > 0 && activeCount === 0 && (
             <button
               onClick={onClearCompleted}
-              className="text-[11px] text-[#A3A6AD] hover:text-white transition-colors"
+              className="text-xs text-[#A3A6AD] hover:text-white transition-colors"
             >
               Clear
             </button>
@@ -124,7 +124,7 @@ export function UploadTray({
                     <p className="font-medium text-white truncate" title={item.filename}>
                       {item.filename}
                     </p>
-                    <p className="text-[11px] text-[#A3A6AD] mt-0.5">
+                    <p className="text-xs text-[#A3A6AD] mt-0.5">
                       {formatBytes(bytesUploaded)} of {formatBytes(item.sizeBytes)} •{" "}
                       {item.status === "uploading" && (
                         <>
@@ -150,7 +150,7 @@ export function UploadTray({
 
                   <div className="flex items-center gap-1.5 shrink-0">
                     {!item.file && item.status !== "completed" ? (
-                      <label className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#4876F3] text-white text-[11px] font-semibold hover:bg-[#3B67E0] transition-colors shrink-0">
+                      <label className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#4876F3] text-white text-xs font-semibold hover:bg-[#3B67E0] transition-colors shrink-0">
                         <span>Select file to resume</span>
                         <input
                           type="file"

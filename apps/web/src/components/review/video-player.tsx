@@ -441,7 +441,7 @@ export function VideoPlayer({
           {/* Play / Pause button */}
           <button
             onClick={togglePlay}
-            className="flex items-center justify-center w-9 h-9 rounded-full bg-[#FFBB56] hover:bg-[#FFBB56] text-white shadow transition-all hover:scale-105"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-[#FFBB56] hover:bg-[#FFBB56] text-white shadow transition-all hover:scale-[1.015]"
             title={isPlaying ? "Pause (Space/K)" : "Play (Space/K)"}
           >
             {isPlaying ? <Pause className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 fill-white ml-0.5" />}
@@ -658,7 +658,7 @@ export function VideoPlayer({
       </div>
 
       {/* Metadata Strip directly beneath controls */}
-      <div className="flex items-center justify-between px-6 py-2 bg-[#181818] border-t border-[#181818] text-[11px] text-[#A3A6AD] font-mono">
+      <div className="flex items-center justify-between px-6 py-2 bg-[#181818] border-t border-[#181818] text-xs text-[#A3A6AD] font-mono">
         <div className="flex items-center gap-3">
           <span className="rounded bg-[#212121] px-1.5 py-0.5 font-bold text-white">v{versionNumber}</span>
           {uploaderName && <span>Uploaded by {uploaderName}</span>}

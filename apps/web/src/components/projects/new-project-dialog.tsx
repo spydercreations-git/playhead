@@ -185,7 +185,7 @@ export function NewProjectDialog({
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-[#2E2F34] bg-[#212121]">
-            <h2 className="text-[18px] font-semibold text-white tracking-tight">
+            <h2 className="text-base font-semibold text-white tracking-tight">
               New project
             </h2>
             {setupStep === "form" && (
@@ -278,7 +278,7 @@ export function NewProjectDialog({
                           <div className="w-7 h-7 rounded-lg bg-[#212121] border border-[#2E2F34] flex items-center justify-center shrink-0">
                             <Film className="w-3.5 h-3.5 text-[#4876F3]" />
                           </div>
-                          <span className="text-[15px] font-semibold text-white">
+                          <span className="text-sm font-semibold text-white">
                             Video project
                           </span>
                         </div>
@@ -297,7 +297,7 @@ export function NewProjectDialog({
                         {["Briefs", "Raw footage", "Edits", "Deliverables"].map((f) => (
                           <span
                             key={f}
-                            className="inline-flex items-center gap-1 rounded bg-[#212121] px-2 py-0.5 text-[11px] text-[#A3A6AD] border border-[#2E2F34]"
+                            className="inline-flex items-center gap-1 rounded bg-[#212121] px-2 py-0.5 text-xs text-[#A3A6AD] border border-[#2E2F34]"
                           >
                             <Folder className="w-2.5 h-2.5 text-[#4876F3]" />
                             {f}
@@ -320,7 +320,7 @@ export function NewProjectDialog({
                           <div className="w-7 h-7 rounded-lg bg-[#212121] border border-[#2E2F34] flex items-center justify-center shrink-0">
                             <Folder className="w-3.5 h-3.5 text-zinc-400" />
                           </div>
-                          <span className="text-[15px] font-semibold text-white">
+                          <span className="text-sm font-semibold text-white">
                             Blank project
                           </span>
                         </div>
@@ -358,7 +358,7 @@ export function NewProjectDialog({
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Project name"
-                        className="w-full bg-transparent border-0 p-0 text-[17px] font-medium text-white placeholder-[#7C7F87] focus:outline-none focus:ring-0 transition-colors"
+                        className="w-full bg-transparent border-0 p-0 text-base font-medium text-white placeholder-[#7C7F87] focus:outline-none focus:ring-0 transition-colors"
                       />
                     </div>
                   </div>

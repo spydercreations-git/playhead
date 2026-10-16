@@ -211,7 +211,7 @@ export function ShareModal({
                 You currently have <span className="text-white capitalize">{userAccessLevel}</span> access to <span className="text-white font-medium">{targetName}</span>. To share or manage collaborators, you need Full access.
               </p>
               <div>
-                <label className="text-[11px] font-medium text-[#A3A6AD]  block mb-1">
+                <label className="text-xs font-medium text-[#A3A6AD]  block mb-1">
                   Reason (optional)
                 </label>
                 <textarea
@@ -417,7 +417,7 @@ export function ShareModal({
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-[#A3A6AD] block mb-1">
+                    <label className="text-xs font-medium text-[#A3A6AD] block mb-1">
                       Link Name
                     </label>
                     <input
@@ -431,7 +431,7 @@ export function ShareModal({
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[11px] font-medium text-[#A3A6AD] block mb-1">
+                      <label className="text-xs font-medium text-[#A3A6AD] block mb-1">
                         Visitor Access
                       </label>
                       <select
@@ -448,7 +448,7 @@ export function ShareModal({
 
                     {(linkAccess === "upload" || linkAccess === "comment_upload") && (
                       <div>
-                        <label className="text-[11px] font-medium text-[#A3A6AD] block mb-1">
+                        <label className="text-xs font-medium text-[#A3A6AD] block mb-1">
                           Max Upload Limit (MB)
                         </label>
                         <input
@@ -592,7 +592,7 @@ export function ShareModal({
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-semibold text-white">{link.name}</span>
-                            <span className="px-2 py-0.5 text-[11px] bg-[#212121] text-blue-400 rounded-md uppercase font-medium">
+                            <span className="px-2 py-0.5 text-xs bg-[#212121] text-blue-400 rounded-md  font-medium">
                               {link.access}
                             </span>
                             {link.has_password && (

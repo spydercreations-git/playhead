@@ -14,10 +14,10 @@ export function AuthShowcase() {
     >
       {/* Top Titles */}
       <div className="z-10 mb-6">
-        <h2 className="text-[32px] xl:text-[34px] font-bold text-white tracking-tight leading-tight">
+        <h2 className="text-[28px] xl:text-[28px] font-bold text-white tracking-tight leading-tight">
           Review , share and deliver .
         </h2>
-        <p className="mt-1.5 text-[18px] xl:text-[20px] text-[#A3A6AD] font-normal">
+        <p className="mt-1.5 text-base xl:text-[20px] text-[#A3A6AD] font-normal">
           Every client, file and comment in one place.
         </p>
       </div>
@@ -95,7 +95,7 @@ export function AuthShowcase() {
             </div>
 
             {/* Timecodes and Play Button */}
-            <div className="mt-4 flex items-center justify-between text-[11px] font-mono text-[#A3A6AD]">
+            <div className="mt-4 flex items-center justify-between text-xs font-mono text-[#A3A6AD]">
               <span>00:00:08:12</span>
               <button
                 type="button"

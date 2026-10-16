@@ -107,7 +107,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
 
         {isHome ? (
           <div>
-            <span className="text-[11px] font-medium text-[#7C7F87] block leading-none mb-1">
+            <span className="text-xs font-medium text-[#7C7F87] block leading-none mb-1">
               Welcome back, {firstName}
             </span>
             <h1 className="text-xl font-bold tracking-tight text-white leading-tight">

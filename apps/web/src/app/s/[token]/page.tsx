@@ -269,7 +269,7 @@ export default function PublicSharePage() {
         </div>
 
         <div className="my-auto w-full max-w-[400px] mx-auto py-8">
-          <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-2">
+          <h1 className="text-[28px] font-bold text-white tracking-tight leading-none mb-2">
             Protected link
           </h1>
           <p className="text-sm text-[#A3A6AD] mb-8">
@@ -336,7 +336,7 @@ export default function PublicSharePage() {
 
           <div className="space-y-3">
             <div>
-              <label className="text-[11px] font-medium text-[#A3A6AD] block mb-1">Your Name</label>
+              <label className="text-xs font-medium text-[#A3A6AD] block mb-1">Your Name</label>
               <input
                 type="text"
                 value={visitorName}
@@ -347,7 +347,7 @@ export default function PublicSharePage() {
               />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-[#A3A6AD] block mb-1">Your Email</label>
+              <label className="text-xs font-medium text-[#A3A6AD] block mb-1">Your Email</label>
               <input
                 type="email"
                 value={visitorEmail}
@@ -448,7 +448,7 @@ export default function PublicSharePage() {
                     {item.kind === "folder" ? (
                       <Folder className="w-10 h-10 text-[#4876F3]" />
                     ) : isVideo ? (
-                      <Film className="w-10 h-10 text-violet-400 group-hover:scale-110 transition-transform" />
+                      <Film className="w-10 h-10 text-violet-400 group-hover:scale-[1.015] transition-transform" />
                     ) : isAudio ? (
                       <Music className="w-10 h-10 text-emerald-400" />
                     ) : (

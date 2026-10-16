@@ -437,7 +437,7 @@ export function ReviewWorkspace({
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
             )}
-            <span className="font-mono text-[11px]">{positionText}</span>
+            <span className="font-mono text-xs">{positionText}</span>
             {onSelectNext && (
               <button onClick={onSelectNext} className="hover:text-white transition-colors" title="Next item">
                 <ChevronRight className="w-3.5 h-3.5" />

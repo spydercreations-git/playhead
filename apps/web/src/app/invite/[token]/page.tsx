@@ -98,7 +98,7 @@ export default function InviteAcceptPage({
           </div>
         ) : error ? (
           <div>
-            <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-3">
+            <h1 className="text-[28px] font-bold text-white tracking-tight leading-none mb-3">
               Invitation invalid
             </h1>
             <p className="text-sm text-[#A3A6AD] mb-8">{error}</p>
@@ -111,7 +111,7 @@ export default function InviteAcceptPage({
           </div>
         ) : invite ? (
           <div>
-            <h1 className="text-[34px] font-bold text-white tracking-tight leading-tight mb-2">
+            <h1 className="text-[28px] font-bold text-white tracking-tight leading-tight mb-2">
               Join {invite.company_name}
             </h1>
             <p className="text-sm text-[#A3A6AD] mb-8">

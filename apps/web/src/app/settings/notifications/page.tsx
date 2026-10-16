@@ -174,7 +174,7 @@ export default function NotificationSettingsPage() {
                 />
                 <div>
                   <p className="text-xs font-semibold text-white">Send right away</p>
-                  <p className="text-[11px] text-[#A3A6AD] mt-0.5">
+                  <p className="text-xs text-[#A3A6AD] mt-0.5">
                     Receive an email immediately when events occur
                   </p>
                 </div>
@@ -197,7 +197,7 @@ export default function NotificationSettingsPage() {
                 />
                 <div>
                   <p className="text-xs font-semibold text-white">Daily summary</p>
-                  <p className="text-[11px] text-[#A3A6AD] mt-0.5">
+                  <p className="text-xs text-[#A3A6AD] mt-0.5">
                     A single digest sent every morning at 9:00 AM
                   </p>
                 </div>
@@ -221,7 +221,7 @@ export default function NotificationSettingsPage() {
                   <div key={evt.type} className="p-5 flex items-center justify-between gap-4">
                     <div className="space-y-0.5 max-w-lg">
                       <p className="text-xs font-medium text-white">{evt.label}</p>
-                      <p className="text-[11px] text-[#A3A6AD]">{evt.desc}</p>
+                      <p className="text-xs text-[#A3A6AD]">{evt.desc}</p>
                     </div>
 
                     <div className="flex items-center gap-6 shrink-0">

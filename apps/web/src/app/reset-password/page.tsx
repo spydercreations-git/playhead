@@ -56,7 +56,7 @@ function ResetPasswordForm() {
     <div className="w-full">
       {success ? (
         <div>
-          <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-3">
+          <h1 className="text-[28px] font-bold text-white tracking-tight leading-none mb-3">
             Password updated
           </h1>
           <p className="text-sm text-[#A3A6AD] mb-8 leading-relaxed">
@@ -71,7 +71,7 @@ function ResetPasswordForm() {
         </div>
       ) : (
         <div>
-          <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-2">
+          <h1 className="text-[28px] font-bold text-white tracking-tight leading-none mb-2">
             Create new password
           </h1>
           <p className="text-sm text-[#A3A6AD] mb-8">

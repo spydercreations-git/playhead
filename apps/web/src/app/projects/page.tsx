@@ -224,7 +224,7 @@ export default function ProjectsPage() {
                 }}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
                   isDropTarget
-                    ? "ring-2 ring-[#4876F3] bg-[#4876F3]/30 text-white font-semibold scale-105"
+                    ? "ring-2 ring-[#4876F3] bg-[#4876F3]/30 text-white font-semibold scale-[1.015]"
                     : isSelected
                     ? "bg-[#4876F3] text-white font-semibold shadow-sm"
                     : "bg-[#212121] border border-[#2E2F34] text-[#A3A6AD] hover:text-white hover:border-[#424344]"
@@ -335,7 +335,7 @@ export default function ProjectsPage() {
                   </td>
                   <td className="py-3.5 px-4">
                     <span
-                      className={`text-[11px] px-1.5 py-0.5 rounded uppercase font-bold ${
+                      className={`text-xs px-1.5 py-0.5 rounded  font-bold ${
                         project.status === "archived"
                           ? "bg-[#424344] text-[#A3A6AD]"
                           : "bg-green-500/20 text-green-400"

@@ -14,7 +14,7 @@ export function Badge({
 }: BadgeProps) {
   // 12px minimum for badges, 11px only for tiny chips per type scale
   const sizeClasses = size === "tiny" || variant === "chip"
-    ? "text-[11px] px-2 py-0.5 rounded-[6px] font-medium"
+    ? "text-xs px-2 py-0.5 rounded-[6px] font-medium"
     : "text-xs px-2.5 py-1 rounded-[8px] font-medium";
 
   const variantClasses = {

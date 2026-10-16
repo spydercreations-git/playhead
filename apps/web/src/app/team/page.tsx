@@ -360,7 +360,7 @@ export default function TeamPage() {
                               <div className="font-semibold text-white">
                                 {m.name || "Anonymous"} {isSelf && "(You)"}
                               </div>
-                              <div className="text-[11px] text-[#A3A6AD]">{m.email}</div>
+                              <div className="text-xs text-[#A3A6AD]">{m.email}</div>
                             </div>
                           </div>
                         </td>
@@ -447,7 +447,7 @@ export default function TeamPage() {
 
                   {/* Permissions count or list */}
                   <div className="mt-4 pt-3 border-t border-[#424344]/50">
-                    <p className="text-[11px] font-medium text-[#A3A6AD]  mb-2">
+                    <p className="text-xs font-medium text-[#A3A6AD]  mb-2">
                       Permissions ({role.permissions?.length || 0})
                     </p>
                     <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
@@ -461,7 +461,7 @@ export default function TeamPage() {
                           </span>
                         ))
                       ) : (
-                        <span className="text-[11px] text-[#A3A6AD]">No elevated permissions</span>
+                        <span className="text-xs text-[#A3A6AD]">No elevated permissions</span>
                       )}
                     </div>
                   </div>
@@ -528,7 +528,7 @@ export default function TeamPage() {
                         key={c}
                         onClick={() => setRoleColor(c)}
                         className={`w-7 h-7 rounded-full transition-transform ${
-                          roleColor === c ? "scale-125 ring-2 ring-white" : "opacity-70 hover:opacity-100"
+                          roleColor === c ? "scale-[1.015] ring-2 ring-white" : "opacity-70 hover:opacity-100"
                         }`}
                         style={{ backgroundColor: c }}
                       />

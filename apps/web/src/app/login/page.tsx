@@ -209,7 +209,7 @@ export default function LoginPage() {
       {/* SCREEN: 6-DIGIT CODE */}
       {screen === "code" && (
         <div className="w-full">
-          <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-3">
+          <h1 className="text-[28px] font-bold text-white tracking-tight leading-none mb-3">
             Check your email
           </h1>
           <div className="flex items-center gap-1.5 text-sm text-[#A3A6AD] mb-8">
@@ -302,7 +302,7 @@ export default function LoginPage() {
                 </button>
               )}
             </p>
-            <p className="text-[11px] text-[#7C7F87]">
+            <p className="text-xs text-[#7C7F87]">
               The code works for 10 minutes.
             </p>
           </div>
@@ -312,7 +312,7 @@ export default function LoginPage() {
       {/* SCREEN: EMAIL CODE OR PASSWORD */}
       {screen !== "code" && (
         <div className="w-full">
-          <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-2">
+          <h1 className="text-[28px] font-bold text-white tracking-tight leading-none mb-2">
             Sign in to Playhead
           </h1>
           <p className="text-sm text-[#A3A6AD] mb-8">
@@ -322,7 +322,7 @@ export default function LoginPage() {
           {/* Continue with Google Button */}
           <a
             href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1"}/auth/google/url`}
-            className="w-full h-[50px] rounded-[10px] bg-white hover:bg-neutral-100 text-[#181818] font-medium text-[15px] transition flex items-center justify-center gap-3 shadow-sm"
+            className="w-full h-[50px] rounded-[10px] bg-white hover:bg-neutral-100 text-[#181818] font-medium text-sm transition flex items-center justify-center gap-3 shadow-sm"
           >
             {/* Google Icon */}
             <svg width="18" height="18" viewBox="0 0 24 24">

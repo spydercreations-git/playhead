@@ -281,7 +281,7 @@ export function DrawingOverlay({
                   if (onColorChange) onColorChange(c);
                 }}
                 className={`w-5 h-5 rounded-full border transition-transform ${
-                  color === c ? "scale-125 border-white ring-2 ring-white/20" : "border-transparent hover:scale-110"
+                  color === c ? "scale-[1.015] border-white ring-2 ring-white/20" : "border-transparent hover:scale-[1.015]"
                 }`}
                 style={{ backgroundColor: c }}
               />

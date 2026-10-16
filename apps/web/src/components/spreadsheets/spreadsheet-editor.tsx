@@ -735,7 +735,7 @@ export function SpreadsheetEditor({
             />
           </div>
 
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#1A1A1E] border border-[#2D2F34] text-[11px] text-[#8E8F90]">
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#1A1A1E] border border-[#2D2F34] text-xs text-[#8E8F90]">
             <span
               className={`h-1.5 w-1.5 rounded-full ${
                 statusText.includes("Saved") || statusText.includes("Live")
@@ -1146,7 +1146,7 @@ export function SpreadsheetEditor({
                 key={comm.id}
                 className="p-3 rounded-xl bg-[#2A2B30] border border-[#34353B] space-y-1"
               >
-                <div className="flex items-center justify-between text-[11px]">
+                <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-white">
                     {comm.author_name || "Collaborator"}
                   </span>

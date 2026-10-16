@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect } from "react";
-import { Folder, MoreHorizontal, Check, Lock } from "lucide-react";
+import { Folder, MoreHorizontal, Check, Lock } from "@/components/ui/icon";
 
 interface FolderCardProps {
   id: string;
@@ -32,7 +32,7 @@ function formatBytes(bytes?: number): string {
 }
 
 export function FolderCard({
-  id,
+  id: _id,
   name,
   itemCount,
   totalBytes = 0,
@@ -59,7 +59,11 @@ export function FolderCard({
     }
   }, [isRenaming]);
 
-  const isEmpty = itemCount === 0 && thumbnails.length === 0;
+  const borderColor = isDropTarget || isSelected
+    ? "#4876F3"
+    : "#2E2F34";
+
+  const borderWidth = isDropTarget ? 2 : 1;
 
   return (
     <div
@@ -71,108 +75,110 @@ export function FolderCard({
         onToggleSelect();
       }}
       onContextMenu={onContextMenu}
-      className="group relative pt-3.5 select-none cursor-pointer"
+      className={`group relative h-[290px] w-full select-none cursor-pointer transition-transform duration-150 hover:scale-[1.015] ${
+        isSelected ? "scale-[1.015]" : ""
+      }`}
     >
-      {/* Top Left Folder Tab */}
-      <div
-        className={`absolute top-0 left-0 h-4 w-28 rounded-t-[8px] border-t border-l border-r transition-all z-10 ${
-          isDropTarget
-            ? "bg-[#212121] border-[#4876F3] border-t-2 border-l-2 border-r-2"
-            : isSelected
-            ? "bg-[#212121] border-[#4876F3]"
-            : "bg-[#212121] border-[#2E2F34] group-hover:border-[#424344]"
-        }`}
+      {/* SVG Background (shape-project-folder.svg: Tab stays fixed at top left, body stretches with card width) */}
+      <svg
+        className="absolute top-0 left-0 w-full h-[290px] pointer-events-none overflow-visible"
+        fill="none"
       >
-        <div className="absolute -bottom-0.5 left-0 right-0 h-1 bg-[#212121]" />
-      </div>
+        <path
+          d="M0 22 V12 q0 -10 10 -10 h80 q8 0 13 5 l6 6 q4 4 10 4 h171 q10 0 10 10 V22z"
+          fill="#26272C"
+          stroke={borderColor}
+          strokeWidth={borderWidth}
+          className="transition-colors group-hover:stroke-[#424344]"
+        />
+        <rect
+          x="0"
+          y="18"
+          width="100%"
+          height="272"
+          rx="12"
+          fill="#212121"
+          stroke={borderColor}
+          strokeWidth={borderWidth}
+          className="transition-colors group-hover:stroke-[#424344]"
+        />
+      </svg>
 
-      {/* Main Folder Body */}
-      <div
-        className={`relative rounded-[12px] rounded-tl-none border p-3 transition-all ${
-          isDropTarget
-            ? "border-2 border-[#4876F3] bg-[#4876F3]/10 shadow-lg ring-2 ring-[#4876F3]/30"
-            : isSelected
-            ? "bg-[#212121] border-[#4876F3] shadow-md ring-1 ring-[#4876F3]/50"
-            : "bg-[#212121] border-[#2E2F34] group-hover:border-[#424344]"
-        }`}
-      >
-        {/* Preview Container: 1 large + 2 small slots (Empty slots: #2E2F34 box with grey folder icon) */}
-        <div className="relative h-32 w-full rounded-[8px] bg-[#181818] p-1.5 flex gap-1.5 overflow-hidden mb-3">
-          {isEmpty ? (
-            /* Plain body for empty folder */
-            <div className="w-full h-full rounded-[6px] bg-[#212121] flex items-center justify-center">
-              <Folder className="w-8 h-8 text-[#2E2F34]" />
-            </div>
-          ) : (
-            <>
-              {/* Left Slot: 1 Large Thumbnail */}
-              <div className="flex-1 h-full rounded-[6px] bg-[#2E2F34] overflow-hidden flex items-center justify-center relative">
-                {thumbnails[0] ? (
-                  <img
-                    src={thumbnails[0]}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <Folder className="w-7 h-7 text-[#7C7F87]" />
-                )}
+      <div className="relative z-10 h-full w-full pt-[28px] px-3 pb-3 flex flex-col justify-between">
+        {/* Preview Container: 1 big + 2 small slots, 6px gap, radius 8, height 150px */}
+        <div className="relative h-[150px] w-full flex gap-1.5">
+          {/* Big Slot */}
+          <div className="flex-1 h-[150px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
+            {thumbnails[0] ? (
+              <img
+                src={thumbnails[0]}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-[#181818] flex items-center justify-center">
+                <Folder size={24} className="text-[#2E2F34]" />
               </div>
+            )}
+          </div>
 
-              {/* Right Column: 2 Small Thumbnails */}
-              <div className="w-[34%] h-full flex flex-col gap-1.5">
-                <div className="flex-1 rounded-[6px] bg-[#2E2F34] overflow-hidden flex items-center justify-center relative">
-                  {thumbnails[1] ? (
-                    <img
-                      src={thumbnails[1]}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Folder className="w-4 h-4 text-[#7C7F87]" />
-                  )}
+          {/* Small Slots */}
+          <div className="w-[36%] h-[150px] flex flex-col gap-1.5">
+            <div className="h-[72px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
+              {thumbnails[1] ? (
+                <img
+                  src={thumbnails[1]}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-[#181818] flex items-center justify-center">
+                  <Folder size={18} className="text-[#2E2F34]" />
                 </div>
-                <div className="flex-1 rounded-[6px] bg-[#2E2F34] overflow-hidden flex items-center justify-center relative">
-                  {thumbnails[2] ? (
-                    <img
-                      src={thumbnails[2]}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Folder className="w-4 h-4 text-[#7C7F87]" />
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Badges on preview: Restricted Lock badge */}
-          {isRestricted && (
-            <div className="absolute top-2.5 right-2.5 flex items-center gap-1 rounded-md bg-black/60 backdrop-blur-sm px-1.5 py-0.5 border border-amber-500/30 text-amber-400 text-xs font-semibold z-20">
-              <Lock className="w-3 h-3" />
-              <span>Restricted</span>
+              )}
             </div>
-          )}
+            <div className="h-[72px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
+              {thumbnails[2] ? (
+                <img
+                  src={thumbnails[2]}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-[#181818] flex items-center justify-center">
+                  <Folder size={18} className="text-[#2E2F34]" />
+                </div>
+              )}
+            </div>
+          </div>
 
-          {/* Checkbox at top-left of the preview */}
+          {/* Selection Checkbox (Top-left of preview) */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onToggleSelect();
             }}
-            className={`folder-checkbox absolute top-2.5 left-2.5 h-4.5 w-4.5 rounded-[5px] flex items-center justify-center transition-all z-20 ${
+            className={`folder-checkbox absolute top-2 left-2 h-5 w-5 rounded-[6px] flex items-center justify-center transition-all z-20 ${
               isSelected
                 ? "bg-[#4876F3] border border-[#4876F3] text-white opacity-100"
-                : "border border-[#7C7F87]/60 bg-black/40 hover:border-white text-transparent opacity-0 group-hover:opacity-100"
+                : "border border-[#7C7F87]/60 bg-black/60 hover:border-white text-transparent opacity-0 group-hover:opacity-100"
             }`}
           >
-            <Check className="w-3 h-3 text-white" strokeWidth={3} />
+            <Check size={14} className="text-white" />
           </button>
+
+          {/* Restricted Badge (Top-right of preview) */}
+          {isRestricted && (
+            <div className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-black/70 backdrop-blur-sm px-1.5 py-0.5 border border-[#FFBB56]/30 text-[#FFBB56] text-xs font-semibold z-20">
+              <Lock size={12} />
+              <span>Restricted</span>
+            </div>
+          )}
         </div>
 
-        {/* Folder Meta / Rename */}
-        <div className="flex items-center justify-between min-h-[36px]">
+        {/* Folder Footer */}
+        <div className="pt-3 px-0.5 flex items-center justify-between min-h-[44px]">
           <div className="min-w-0 flex-1 pr-2">
             {isRenaming ? (
               <input
@@ -192,29 +198,27 @@ export function FolderCard({
                 onBlur={() => {
                   if (onRenameSubmit) onRenameSubmit();
                 }}
-                className="w-full h-7 rounded-lg bg-[#2A2B30] border border-[#4876F3] px-2 text-xs text-white focus:outline-none"
+                className="w-full h-7 rounded-[8px] bg-[#2A2B30] border border-[#4876F3] px-2 text-xs text-white focus:outline-none"
               />
             ) : (
               <>
-                <p className="text-xs font-semibold text-white truncate leading-tight flex items-center gap-1.5">
+                <p className="text-base font-semibold text-white truncate group-hover:text-[#4876F3] transition-colors leading-tight flex items-center gap-1.5">
                   <span className="truncate">{name}</span>
-                  {isRestricted && <Lock className="w-3 h-3 text-amber-400 shrink-0" />}
                 </p>
                 {isDropTarget ? (
-                  <p className="text-[11px] font-medium text-[#4876F3] truncate mt-0.5 animate-pulse">
+                  <p className="text-[13px] font-medium text-[#4876F3] truncate mt-0.5 animate-pulse">
                     {dropLabel || "Move to folder"}
                   </p>
                 ) : (
-                  <p className="text-[11px] text-[#A3A6AD] truncate mt-0.5">
-                    {itemCount} {itemCount === 1 ? "item" : "items"}
-                    {totalBytes > 0 && ` · ${formatBytes(totalBytes)}`}
+                  <p className="text-[13px] text-[#7C7F87] truncate mt-0.5">
+                    {itemCount} {itemCount === 1 ? "file" : "files"}
+                    {totalBytes > 0 && `  ·  ${formatBytes(totalBytes)}`}
                   </p>
                 )}
               </>
             )}
           </div>
 
-          {/* ⋯ button bottom right */}
           {!isRenaming && (
             <button
               type="button"
@@ -222,9 +226,9 @@ export function FolderCard({
                 e.stopPropagation();
                 onContextMenu(e);
               }}
-              className="folder-menu-btn flex h-7 w-7 items-center justify-center rounded-lg text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white transition-colors shrink-0"
+              className="folder-menu-btn flex h-7 w-7 items-center justify-center rounded-md text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white transition-colors shrink-0"
             >
-              <MoreHorizontal className="w-4 h-4" />
+              <MoreHorizontal size={18} />
             </button>
           )}
         </div>

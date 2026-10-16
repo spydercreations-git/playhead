@@ -189,7 +189,7 @@ export function VersionHistoryDrawer({
                         `Version snapshot ${versions.length - idx}`
                       )}
                     </span>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {formattedDate}
                     </span>
                   </div>
@@ -198,7 +198,7 @@ export function VersionHistoryDrawer({
                     <User className="w-3 h-3" />
                     <span className="truncate">{ver.creator_name || "Team member"}</span>
                     {ver.word_count !== undefined && (
-                      <span className="text-[11px] ml-auto">
+                      <span className="text-xs ml-auto">
                         {ver.word_count} words
                       </span>
                     )}
@@ -242,7 +242,7 @@ export function VersionHistoryDrawer({
                           setNamingVersionId(ver.id);
                           setVersionNameInput("");
                         }}
-                        className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1"
+                        className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
                       >
                         <Tag className="w-3 h-3" />
                         <span>Name version</span>
@@ -256,7 +256,7 @@ export function VersionHistoryDrawer({
                           e.stopPropagation();
                           setRestoreTargetVersion(ver);
                         }}
-                        className="ml-auto text-[11px] text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+                        className="ml-auto text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
                       >
                         <RotateCcw className="w-3 h-3" />
                         <span>Restore</span>

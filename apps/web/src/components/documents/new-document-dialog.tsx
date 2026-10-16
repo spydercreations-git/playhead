@@ -256,7 +256,7 @@ export function NewDocumentDialog({
                       <div className="text-xs font-semibold text-white">
                         {tmpl.title}
                       </div>
-                      <div className="text-[11px] text-[#7C7F87] line-clamp-1 mt-0.5">
+                      <div className="text-xs text-[#7C7F87] line-clamp-1 mt-0.5">
                         {tmpl.desc}
                       </div>
                     </div>

@@ -23,6 +23,7 @@ import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { ProjectSelect } from "@/components/ui/project-select";
 import { toast } from "@/lib/toast";
+import { SpreadsheetCard } from "@/components/spreadsheets/spreadsheet-card";
 
 interface SpreadsheetItem {
   id: string;
@@ -360,82 +361,19 @@ export default function SpreadsheetsPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredSpreadsheets.map((sheet) => {
-            const isNew = sheet.id === newlyCreatedSheetId;
-            return (
-              <motion.div
-                layout
-                key={sheet.id}
-                initial={isNew && !shouldReduceMotion ? { opacity: 0, scale: 0.96 } : false}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                className={`rounded-xl transition-all duration-1000 ${
-                  isNew
-                    ? "ring-2 ring-[#4876F3] shadow-[0_0_24px_rgba(72,118,243,0.35)]"
-                    : ""
-                }`}
-              >
-                <Link
-                  href={`/sheet/${sheet.id}`}
-                  className="group flex flex-col justify-between p-5 rounded-xl bg-[#212121] border border-[#2E2F34] hover:border-[#4876F3]/50 hover:bg-[#212121] transition-all duration-150 h-full"
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="p-2 rounded-lg bg-[#4876F3]/10 text-[#4876F3] border border-[#4876F3]/20">
-                          <FileSpreadsheet className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-semibold text-white group-hover:text-[#4876F3] transition-colors line-clamp-1">
-                            {sheet.title}
-                          </h4>
-                          <div className="flex items-center gap-1.5 text-[11px] text-[#A3A6AD] mt-0.5">
-                            <FolderOpen className="h-3 w-3" />
-                            <span className="truncate">{sheet.project_name}</span>
-                            {sheet.client_name && (
-                              <>
-                                <span>•</span>
-                                <span className="text-[#A3A6AD] truncate">
-                                  {sheet.client_name}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 my-4 py-3 border-y border-[#2E2F34]/80 text-[11px]">
-                      <div className="flex items-center gap-1.5 text-[#A3A6AD]">
-                        <Layers className="h-3.5 w-3.5 text-[#7C7F87]" />
-                        <span>{sheet.row_count} rows × {sheet.col_count} cols</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[#A3A6AD] justify-end">
-                        <Calendar className="h-3.5 w-3.5 text-[#7C7F87]" />
-                        <span suppressHydrationWarning>
-                          {sheet.updated_at
-                            ? new Date(sheet.updated_at).toLocaleDateString()
-                            : "Recently"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px] text-[#A3A6AD] pt-1">
-                    <span className="text-emerald-400 font-medium flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                      Live Sync
-                    </span>
-                    <span className="flex items-center gap-1 text-[#4876F3] font-medium group-hover:translate-x-0.5 transition-transform">
-                      <span>Open Sheet</span>
-                      <ArrowRight className="h-3 w-3" />
-                    </span>
-                  </div>
-                </Link>
-              </motion.div>
-            );
-          })}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {filteredSpreadsheets.map((sheet) => (
+            <SpreadsheetCard
+              key={sheet.id}
+              sheet={{
+                id: sheet.id,
+                title: sheet.title,
+                project_name: sheet.project_name,
+                client_name: sheet.client_name,
+                updated_at: sheet.updated_at,
+              }}
+            />
+          ))}
         </div>
       )}
 

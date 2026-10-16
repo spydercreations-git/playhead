@@ -12,7 +12,7 @@ import {
   Shield,
   Trash2,
   Sparkles,
-} from "lucide-react";
+} from "@/components/ui/icon";
 
 interface MemberAccess {
   id: string;

@@ -21,7 +21,7 @@ import {
   FloatingFocusManager,
 } from "@floating-ui/react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { X } from "lucide-react";
+import { X } from "@/components/ui/icon";
 
 export interface MenuItem {
   id?: string;

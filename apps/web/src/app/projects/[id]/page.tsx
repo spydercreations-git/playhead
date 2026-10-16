@@ -81,7 +81,7 @@ import {
   List,
   ArrowUpDown,
   Search,
-} from "lucide-react";
+} from "@/components/ui/icon";
 
 function formatBytes(bytes: number): string {
   if (!bytes || bytes === 0) return "0 B";

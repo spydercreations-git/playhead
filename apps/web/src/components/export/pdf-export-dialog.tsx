@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Download, Loader2, Check, FileText, Table, Eye, X } from "lucide-react";
+import { Download, Loader2, Check, FileText, Table, Eye, X } from "@/components/ui/icon";
 import { toast } from "@/lib/toast";
 import { apiRequest } from "@/lib/api";
 

@@ -14,7 +14,7 @@ import {
   Loader2,
   Building2,
   FolderOpen,
-} from "lucide-react";
+} from "@/components/ui/icon";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 

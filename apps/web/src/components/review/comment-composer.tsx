@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Pen, AtSign, Lock, Users, Send, X, Clock } from "lucide-react";
+import { Pen, AtSign, Lock, Users, Send, X, Clock } from "@/components/ui/icon";
 import { formatTimecode, TimecodeFormat } from "./timecode";
 
 interface MentionPerson {

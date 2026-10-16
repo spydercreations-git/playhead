@@ -1,5 +1,6 @@
 import React from "react";
-import { LucideIcon } from "lucide-react";
+import { LucideIcon } from "@/components/ui/icon";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface EmptyStateProps {
@@ -9,10 +10,19 @@ interface EmptyStateProps {
   action?: {
     label: string;
     onClick?: () => void;
+    icon?: React.ReactNode;
   };
   className?: string;
 }
 
+/**
+ * Playhead Standard Empty State Component
+ * Boards/02 Components:
+ * - Container: rx 12, fill #212121, border #2E2F34
+ * - Icon: 64x64, rx 16, fill #2C2D33, icon in #A3A6AD
+ * - Title: 16 SemiBold #FFFFFF
+ * - Description: 14 Regular #A3A6AD
+ */
 export function EmptyState({
   icon: Icon,
   title,
@@ -23,25 +33,26 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center rounded-xl border border-dashed border-border p-8 text-center",
+        "flex flex-col items-center justify-center rounded-[12px] border border-[#2E2F34] bg-[#212121] p-10 text-center select-none",
         className
       )}
     >
       {Icon && (
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-card border border-border text-sidebar-foreground">
-          <Icon className="h-6 w-6" />
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[16px] bg-[#2C2D33] text-[#A3A6AD]">
+          <Icon size={32} />
         </div>
       )}
-      <h3 className="text-base font-semibold text-foreground">{title}</h3>
-      <p className="mt-1 text-sm text-muted-foreground max-w-sm">{description}</p>
+      <h3 className="text-base font-semibold text-white">{title}</h3>
+      <p className="mt-1.5 text-sm text-[#A3A6AD] max-w-sm">{description}</p>
       {action && (
-        <button
-          onClick={action.onClick}
-          className="mt-5 inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background transition-colors"
-        >
-          {action.label}
-        </button>
+        <div className="mt-5">
+          <Button variant="primary" size="md" onClick={action.onClick}>
+            {action.icon}
+            <span>{action.label}</span>
+          </Button>
+        </div>
       )}
     </div>
   );
 }
+

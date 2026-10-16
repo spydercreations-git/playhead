@@ -11,7 +11,7 @@ import {
   Clock,
   Shield,
   ArrowLeft,
-} from "lucide-react";
+} from "@/components/ui/icon";
 import Link from "next/link";
 
 interface PrefRow {

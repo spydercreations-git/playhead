@@ -18,7 +18,7 @@ import {
   Sparkles,
   X,
   AlertCircle,
-} from "lucide-react";
+} from "@/components/ui/icon";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { ProjectSelect } from "@/components/ui/project-select";

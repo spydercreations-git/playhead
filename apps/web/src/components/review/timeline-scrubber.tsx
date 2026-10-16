@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useCallback } from "react";
-import { Lock } from "lucide-react";
+import { Lock } from "@/components/ui/icon";
 import { formatTimecode, TimecodeFormat } from "./timecode";
 
 export interface ReviewCommentMarker {

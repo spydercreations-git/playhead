@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/use-auth";
-import { Settings as SettingsIcon, Bell, Database, Building2, User, Shield } from "lucide-react";
+import { Settings as SettingsIcon, Bell, Database, Building2, User, Shield } from "@/components/ui/icon";
 
 export default function SettingsPage() {
   const { user, company, role, hasPermission, isClient } = useAuth();

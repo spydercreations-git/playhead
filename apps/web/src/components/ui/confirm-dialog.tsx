@@ -3,7 +3,7 @@
 import React from "react";
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./dialog";
 import { Button } from "./button";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle } from "@/components/ui/icon";
 
 export interface ConfirmDialogProps {
   open: boolean;

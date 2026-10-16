@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { apiRequest } from "@/lib/api";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, X } from "@/components/ui/icon";
 
 interface NewClientDialogProps {
   isOpen: boolean;

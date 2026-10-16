@@ -12,7 +12,7 @@ import {
   AlertCircle,
   Clock,
   Sparkles,
-} from "lucide-react";
+} from "@/components/ui/icon";
 import { toast } from "@/lib/toast";
 import { VideoPlayer } from "./video-player";
 import { CommentsPanel, CommentItem, ReviewHistoryItem, VersionInfoItem } from "./comments-panel";

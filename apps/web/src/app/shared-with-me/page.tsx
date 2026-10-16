@@ -14,7 +14,7 @@ import {
   User,
   ArrowRight,
   ExternalLink,
-} from "lucide-react";
+} from "@/components/ui/icon";
 
 export default function SharedWithMePage() {
   const [filter, setFilter] = useState<"all" | "projects" | "files">("all");

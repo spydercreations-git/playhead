@@ -9,7 +9,7 @@ import { toast } from "@/lib/toast";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
 import { ProjectCard } from "@/components/cards/project-card";
-import { Folder, ChevronDown, Lock } from "lucide-react";
+import { Folder, ChevronDown, Lock } from "@/components/ui/icon";
 
 interface ProjectItem {
   id: string;

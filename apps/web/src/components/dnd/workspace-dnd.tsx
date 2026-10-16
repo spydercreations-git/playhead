@@ -6,7 +6,7 @@ import {
   useDroppable,
   DragOverlay,
 } from "@dnd-kit/core";
-import { Folder, Film, FileText, Music, Image as ImageIcon, FileSpreadsheet } from "lucide-react";
+import { Folder, Film, FileText, Music, Image as ImageIcon, FileSpreadsheet } from "@/components/ui/icon";
 
 export interface WorkspaceDragData {
   type: "folder" | "file";

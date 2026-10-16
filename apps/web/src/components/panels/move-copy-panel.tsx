@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ArrowLeft, Folder, ChevronRight, ChevronDown, Check } from "lucide-react";
+import { X, ArrowLeft, Folder, ChevronRight, ChevronDown, Check } from "@/components/ui/icon";
 
 interface FolderItem {
   id: string;

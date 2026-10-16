@@ -18,7 +18,7 @@ import {
   UserCheck,
   Trash2,
   AlertCircle,
-} from "lucide-react";
+} from "@/components/ui/icon";
 
 interface ShareModalProps {
   isOpen: boolean;

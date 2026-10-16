@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronDown, Check, Minus } from "lucide-react";
+import { ChevronDown, Check, Minus } from "@/components/ui/icon";
 
 interface SectionHeaderProps {
   title?: string;

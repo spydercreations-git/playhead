@@ -10,7 +10,7 @@ import {
   Clock,
   User,
   ChevronRight,
-} from "lucide-react";
+} from "@/components/ui/icon";
 import { toast } from "@/lib/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { apiRequest } from "@/lib/api";

@@ -11,7 +11,7 @@ import {
   Copy,
   Edit3,
   Trash2,
-} from "lucide-react";
+} from "@/components/ui/icon";
 import { MenuGroup } from "@/components/ui/menu";
 
 export interface UnifiedItemMenuOptions {

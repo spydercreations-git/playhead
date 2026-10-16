@@ -14,7 +14,7 @@ import {
   Loader2,
   ChevronDown,
   Image as ImageIcon,
-} from "lucide-react";
+} from "@/components/ui/icon";
 import { Select } from "@/components/ui/select";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
 

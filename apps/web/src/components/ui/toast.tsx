@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useToastStore, ToastItem } from "@/lib/toast";
-import { CheckCircle2, AlertCircle, Info, X, RotateCcw } from "lucide-react";
+import { CheckCircle2, AlertCircle, Info, X, RotateCcw } from "@/components/ui/icon";
 
 function SingleToast({ toast }: { toast: ToastItem }) {
   const dismiss = useToastStore((state) => state.dismissToast);

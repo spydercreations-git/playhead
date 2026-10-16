@@ -19,7 +19,7 @@ import {
   Clock,
   Sparkles,
   User,
-} from "lucide-react";
+} from "@/components/ui/icon";
 import { formatTimecode, TimecodeFormat } from "./timecode";
 
 export interface CommentItem {

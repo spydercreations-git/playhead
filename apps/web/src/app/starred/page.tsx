@@ -14,7 +14,7 @@ import {
   File,
   ExternalLink,
   Search,
-} from "lucide-react";
+} from "@/components/ui/icon";
 
 interface StarredItem {
   id: string;

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/use-auth";
 import { apiRequest } from "@/lib/api";
 import { DocumentEditor } from "@/components/documents/document-editor";
-import { Loader2, FileQuestion, ArrowLeft } from "lucide-react";
+import { Loader2, FileQuestion, ArrowLeft } from "@/components/ui/icon";
 import Link from "next/link";
 
 interface DocumentDetail {

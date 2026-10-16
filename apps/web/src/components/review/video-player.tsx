@@ -17,7 +17,7 @@ import {
   Columns,
   MessageSquare,
   Music,
-} from "lucide-react";
+} from "@/components/ui/icon";
 import { formatTimecode, TimecodeFormat } from "./timecode";
 import { TimelineScrubber, ReviewCommentMarker } from "./timeline-scrubber";
 import { DrawingOverlay, DrawingData } from "./drawing-overlay";

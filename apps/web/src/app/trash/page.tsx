@@ -14,7 +14,7 @@ import {
   RotateCcw,
   AlertTriangle,
   Search,
-} from "lucide-react";
+} from "@/components/ui/icon";
 
 interface TrashItem {
   id: string;

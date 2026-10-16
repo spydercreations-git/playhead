@@ -11,7 +11,7 @@ import {
   FolderInput,
   Copy,
   FolderOutput,
-} from "lucide-react";
+} from "@/components/ui/icon";
 
 interface SelectionBarProps {
   selectedCount: number;

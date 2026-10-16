@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import { X } from "@/components/ui/icon";
 import { toast } from "@/lib/toast";
 
 export interface UploadItem {

@@ -10,7 +10,7 @@ import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ProjectCard } from "@/components/cards/project-card";
-import { ChevronDown, X, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { ChevronDown, X, MoreHorizontal, Edit, Trash2 } from "@/components/ui/icon";
 
 export default function ClientDetailPage() {
   const params = useParams();

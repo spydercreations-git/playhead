@@ -14,7 +14,7 @@ import {
   Settings,
   LogOut,
   X,
-} from "lucide-react";
+} from "@/components/ui/icon";
 
 interface ProjectIconRailProps {
   activeUploadsCount?: number;

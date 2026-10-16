@@ -15,7 +15,7 @@ import {
   FloatingFocusManager,
 } from "@floating-ui/react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { ChevronDown, Check, Search, X } from "lucide-react";
+import { ChevronDown, Check, Search, X } from "@/components/ui/icon";
 
 export interface SelectOption {
   value: string;

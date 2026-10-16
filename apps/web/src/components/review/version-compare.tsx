@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import Hls from "hls.js";
-import { Play, Pause, X } from "lucide-react";
+import { Play, Pause, X } from "@/components/ui/icon";
 import { formatTimecode } from "./timecode";
 
 interface VersionItem {

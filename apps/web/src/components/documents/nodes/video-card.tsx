@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewProps } from "@tiptap/react";
-import { Lock, Play, Film, AlertCircle, ExternalLink } from "lucide-react";
+import { Lock, Play, Film, AlertCircle, ExternalLink } from "@/components/ui/icon";
 import { apiRequest } from "@/lib/api";
 
 interface VideoCardData {

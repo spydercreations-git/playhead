@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Link as LinkIcon, Download, Music, FileText, X } from "lucide-react";
+import { Link as LinkIcon, Download, Music, FileText, X } from "@/components/ui/icon";
 import { ReviewWorkspace } from "@/components/review/review-workspace";
 
 export interface ViewerItem {

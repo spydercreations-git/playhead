@@ -2,34 +2,42 @@
 
 import React, { useMemo } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Menu,
-  Bell,
-  UploadCloud,
-  ChevronRight,
   Search,
-} from "lucide-react";
+  Help,
+  ChevronRight,
+} from "@/components/ui/icon";
+import { Avatar } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/use-auth";
 
 interface HeaderProps {
   onOpenSidebar: () => void;
 }
 
+/**
+ * Playhead Top Bar Component
+ * P03 Home & Foundations:
+ * - Height: 56px (h-14)
+ * - Background: #181818, border-b #2E2F34
+ * - Left: Page title 14 SemiBold
+ * - Right: 320px search input with ⌘K badge, help icon, user avatar
+ */
 export function Header({ onOpenSidebar }: HeaderProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user } = useAuth();
 
   const isHome = pathname === "/";
 
   // Build breadcrumb segments based on pathname
-  const breadcrumbs = useMemo(() => {
-    if (pathname === "/") return [{ label: "Home", href: "/" }];
+  const pageTitle = useMemo(() => {
+    if (pathname === "/") return "Home";
 
     const segments = pathname.split("/").filter(Boolean);
-    const crumbs: { label: string; href?: string }[] = [];
-
     const labelMap: Record<string, string> = {
+      "my-drive": "My Drive",
       clients: "Clients",
       projects: "Projects",
       documents: "Documents",
@@ -42,146 +50,78 @@ export function Header({ onOpenSidebar }: HeaderProps) {
       settings: "Settings",
       storage: "Storage",
       notifications: "Notifications",
-      sheet: "Spreadsheets",
-      doc: "Documents",
+      sheet: "Spreadsheet",
+      d: "Document",
       review: "Review",
     };
 
-    let accumulatedPath = "";
-    segments.forEach((seg, idx) => {
-      accumulatedPath += `/${seg}`;
-      const isLast = idx === segments.length - 1;
-      const mapped = labelMap[seg.toLowerCase()];
+    if (segments.length === 1) {
+      return labelMap[segments[0].toLowerCase()] || segments[0];
+    }
 
-      if (mapped) {
-        crumbs.push({
-          label: mapped,
-          href: isLast ? undefined : accumulatedPath,
-        });
-      } else {
-        // ID or sub-resource
-        crumbs.push({
-          label: isLast ? "Details" : seg,
-          href: isLast ? undefined : accumulatedPath,
-        });
-      }
-    });
-
-    return crumbs.length > 0 ? crumbs : [{ label: "Overview", href: "/" }];
+    const first = labelMap[segments[0].toLowerCase()] || segments[0];
+    return `${first} / Details`;
   }, [pathname]);
 
-  const initials = useMemo(() => {
-    if (user?.name && user.name.trim()) {
-      const parts = user.name.trim().split(/\s+/);
-      if (parts.length >= 2) {
-        return (parts[0][0] + parts[1][0]).toUpperCase();
-      }
-      return user.name.slice(0, 2).toUpperCase();
-    }
-    if (user?.email) {
-      return user.email.slice(0, 2).toUpperCase();
-    }
-    return "";
-  }, [user]);
-
-  const firstName = useMemo(() => {
-    if (user?.name && user.name.trim()) {
-      return user.name.trim().split(" ")[0];
-    }
-    if (user?.email) {
-      return user.email.split("@")[0];
-    }
-    return "";
+  const displayName = useMemo(() => {
+    if (user?.name && user.name.trim()) return user.name;
+    if (user?.email) return user.email.split("@")[0];
+    return "User";
   }, [user]);
 
   return (
-    <header className="flex h-16 w-full items-center justify-between px-6 md:px-8 border-b border-[#2E2F34] bg-[#181818] shrink-0">
-      <div className="flex items-center gap-4 min-w-0">
+    <header className="flex h-14 w-full items-center justify-between px-6 border-b border-[#2E2F34] bg-[#181818] shrink-0 select-none">
+      {/* Left side: Hamburger (mobile) + Page Title */}
+      <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={onOpenSidebar}
-          className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#2E2F34] bg-[#212121] text-[#A3A6AD] hover:text-white md:hidden shrink-0"
+          className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[#A3A6AD] hover:bg-[#2C2D33] hover:text-white md:hidden shrink-0"
           title="Open menu"
         >
-          <Menu className="w-4 h-4" />
+          <Menu size={18} />
         </button>
 
-        {isHome ? (
-          <div>
-            <span className="text-xs font-medium text-[#7C7F87] block leading-none mb-1">
-              Welcome back, {firstName}
-            </span>
-            <h1 className="text-xl font-bold tracking-tight text-white leading-tight">
-              Home
-            </h1>
-          </div>
-        ) : (
-          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs min-w-0">
-            {breadcrumbs.map((crumb, idx) => {
-              const isLast = idx === breadcrumbs.length - 1;
-              return (
-                <React.Fragment key={idx}>
-                  {idx > 0 && (
-                    <ChevronRight className="w-3.5 h-3.5 text-[#7C7F87] shrink-0" />
-                  )}
-                  {isLast ? (
-                    <span className="font-semibold text-white truncate max-w-[200px] sm:max-w-xs">
-                      {crumb.label}
-                    </span>
-                  ) : crumb.href ? (
-                    <Link
-                      href={crumb.href}
-                      className="text-[#A3A6AD] hover:text-white transition-colors truncate max-w-[140px]"
-                    >
-                      {crumb.label}
-                    </Link>
-                  ) : (
-                    <span className="text-[#A3A6AD] truncate max-w-[140px]">
-                      {crumb.label}
-                    </span>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </nav>
-        )}
+        <h1 className="text-sm font-semibold text-white truncate">
+          {pageTitle}
+        </h1>
       </div>
 
-      <div className="flex items-center gap-3 shrink-0">
-        {/* Quick Search */}
-        <div className="hidden sm:flex h-9 items-center gap-2 rounded-[10px] border border-[#2E2F34] bg-[#2A2B30] px-3 text-xs text-[#7C7F87] focus-within:border-[#4876F3] transition-colors">
-          <Search className="w-3.5 h-3.5 text-[#7C7F87]" />
-          <input
-            type="text"
-            placeholder="Search projects, cuts..."
-            className="w-36 md:w-48 bg-transparent text-white placeholder-[#7C7F87] focus:outline-none text-xs"
-          />
+      {/* Right side: 320px Search Input with ⌘K badge, Help icon, Avatar */}
+      <div className="flex items-center gap-3.5 shrink-0">
+        {/* Search Input matching P03 Top Bar (x=976, w=320, h=36, rx=8, bg=#2A2B30) */}
+        <div
+          onClick={() => router.push("/search")}
+          className="hidden sm:flex h-9 w-[320px] items-center justify-between rounded-[8px] bg-[#2A2B30] px-3 text-[#7C7F87] cursor-pointer hover:border-[#424344] border border-transparent transition-all"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Search size={18} className="text-[#7C7F87] shrink-0" />
+            <span className="text-sm text-[#7C7F87] truncate">
+              Search files, projects, clients
+            </span>
+          </div>
+
+          <kbd className="flex items-center justify-center h-[22px] px-2 rounded-[6px] bg-[#212121] text-xs font-medium text-[#7C7F87] shrink-0">
+            ⌘K
+          </kbd>
         </div>
 
-        {/* Upload Progress Icon */}
+        {/* Help button (x=1316) */}
         <button
           type="button"
-          title="Upload progress (idle)"
-          className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#2E2F34] bg-[#212121] text-[#A3A6AD] hover:text-white hover:border-[#424344] transition-colors relative"
+          title="Help & documentation"
+          onClick={() => window.open("https://github.com/spydercreations-git/playhead", "_blank")}
+          className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[#A3A6AD] hover:bg-[#2C2D33] hover:text-white transition-colors shrink-0"
         >
-          <UploadCloud className="w-4 h-4" />
+          <Help size={20} />
         </button>
 
-        {/* Notification Bell */}
-        <button
-          type="button"
-          title="Notifications"
-          className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#2E2F34] bg-[#212121] text-[#A3A6AD] hover:text-white hover:border-[#424344] transition-colors relative"
-        >
-          <Bell className="w-4 h-4" />
-        </button>
-
-        {/* Profile Picture */}
+        {/* User Avatar */}
         <Link
           href="/settings"
-          title={user?.name || "Settings"}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-[#4876F3] text-xs font-bold text-white shadow-sm hover:ring-2 hover:ring-[#4876F3]/50 transition-all  shrink-0"
+          title={displayName}
+          className="shrink-0 hover:scale-[1.015] active:scale-[0.98] transition-transform duration-150"
         >
-          {initials}
+          <Avatar name={displayName} size="md" />
         </Link>
       </div>
     </header>

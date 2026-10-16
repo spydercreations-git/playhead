@@ -3,7 +3,7 @@
 import React, { useRef, useState } from "react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewProps } from "@tiptap/react";
-import { AlignLeft, AlignCenter, AlignRight, Trash2 } from "lucide-react";
+import { AlignLeft, AlignCenter, AlignRight, Trash2 } from "@/components/ui/icon";
 
 function ResizableImageView(props: NodeViewProps) {
   const { node, updateAttributes, deleteNode, selected } = props;

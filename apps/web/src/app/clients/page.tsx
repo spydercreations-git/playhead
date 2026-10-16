@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
-import { Building2 } from "lucide-react";
+import { Building2 } from "@/components/ui/icon";
 
 interface ClientListItem {
   id: string;

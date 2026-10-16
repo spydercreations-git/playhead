@@ -14,7 +14,7 @@ import {
   Clock,
   ArrowRight,
   Folder,
-} from "lucide-react";
+} from "@/components/ui/icon";
 import { ReviewWorkspace } from "@/components/review/review-workspace";
 import { toast } from "@/lib/toast";
 

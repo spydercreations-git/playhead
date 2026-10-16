@@ -12,7 +12,7 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
-} from "lucide-react";
+} from "@/components/ui/icon";
 
 export interface DownloadFile {
   id: string;

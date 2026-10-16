@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { apiRequest, ApiError } from "@/lib/api";
-import { Shield, Plus, Trash2, Check, AlertCircle, X, Users, ChevronDown } from "lucide-react";
+import { Shield, Plus, Trash2, Check, AlertCircle, X, Users, ChevronDown } from "@/components/ui/icon";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/lib/toast";
 

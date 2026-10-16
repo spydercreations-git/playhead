@@ -4,7 +4,7 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useAuth } from "@/lib/use-auth";
-import { Check } from "lucide-react";
+import { Check } from "@/components/ui/icon";
 
 interface StorageStats {
   plan: string;

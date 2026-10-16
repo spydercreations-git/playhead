@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import { Pen, MoveRight, Square, RotateCcw, X, Check } from "lucide-react";
+import { Pen, MoveRight, Square, RotateCcw, X, Check } from "@/components/ui/icon";
 
 export type DrawingTool = "pen" | "arrow" | "rect";
 

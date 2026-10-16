@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { X } from "lucide-react";
+import { X } from "@/components/ui/icon";
 
 export interface DialogProps {
   open: boolean;
@@ -48,7 +48,7 @@ export function Dialog({
       <div
         role="dialog"
         aria-modal="true"
-        className={`relative z-10 w-full ${maxWidth} rounded-xl border border-[#2E2F34] bg-[#212121] p-6 shadow-overlay text-white ${className}`}
+        className={`relative z-10 w-full ${maxWidth} rounded-xl border border-[#2E2F34] bg-[#212121] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.35)] text-white animate-in fade-in-0 zoom-in-[0.98] duration-160 ease-out motion-reduce:animate-none ${className}`}
       >
         {children}
       </div>

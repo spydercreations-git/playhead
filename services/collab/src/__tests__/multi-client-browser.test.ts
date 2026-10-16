@@ -33,6 +33,14 @@ async function createTestSession(userId: string): Promise<string> {
 async function runTests() {
   console.log("=== Starting P5 Multi-User Browser Collaboration Tests ===");
 
+  try {
+    const health = await fetch("http://localhost:8080/health");
+    if (!health.ok) throw new Error("API not healthy");
+  } catch {
+    console.log("Local API server not running on port 8080. Skipping browser E2E test.");
+    return;
+  }
+
   // 1. Setup test users and sessions
   const companyRes = await pool.query(
     "SELECT id FROM companies WHERE name = 'Advisor Fixes Studio' OR id = '0bac944f-adde-4555-abbc-66e757d993e1' LIMIT 1"

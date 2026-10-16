@@ -97,7 +97,7 @@ import {
   Moon,
   Loader2,
   Upload,
-} from "lucide-react";
+} from "@/components/ui/icon";
 
 import { TeamNotes } from "./nodes/team-notes";
 import { PlayheadVideoCard } from "./nodes/video-card";

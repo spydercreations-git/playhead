@@ -6,7 +6,7 @@ import {
   FileSpreadsheet,
   X,
   Loader2,
-} from "lucide-react";
+} from "@/components/ui/icon";
 import { apiRequest } from "@/lib/api";
 import { ProjectSelect, ProjectOption } from "@/components/ui/project-select";
 

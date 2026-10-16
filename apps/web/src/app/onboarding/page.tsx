@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PlayheadLogoWithText } from "@/components/icons";
 import { apiRequest, ApiError } from "@/lib/api";
-import { Check, X } from "lucide-react";
+import { Check, X } from "@/components/ui/icon";
 
 interface InviteRow {
   email: string;

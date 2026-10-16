@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronDown, Folder, Search, Check } from "lucide-react";
+import { ChevronDown, Folder, Search, Check } from "@/components/ui/icon";
 
 export interface ProjectOption {
   id: string;

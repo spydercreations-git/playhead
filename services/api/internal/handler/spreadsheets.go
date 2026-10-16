@@ -51,9 +51,11 @@ func canEditSheet(access authz.AccessResult) bool {
 // ---------------------------------------------------------
 
 type CreateSpreadsheetRequest struct {
-	Title    string `json:"title"`
-	ParentID string `json:"parent_id,omitempty"`
-	Template string `json:"template,omitempty"` // tracker, creator_payments, production_budget, shot_schedule, blank
+	Title     string `json:"title,omitempty"`
+	Name      string `json:"name,omitempty"`
+	ProjectID string `json:"project_id,omitempty"`
+	ParentID  string `json:"parent_id,omitempty"`
+	Template  string `json:"template,omitempty"` // tracker, creator_payments, production_budget, shot_schedule, blank
 }
 
 type SetCellValueRequest struct {
@@ -282,33 +284,45 @@ func (h *SpreadsheetsHandler) CreateSpreadsheet(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	projectIDStr := chi.URLParam(r, "projectId")
-	projectUUID, err := uuid.Parse(projectIDStr)
-	if err != nil {
-		renderJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_project_id"})
-		return
-	}
-
 	var req CreateSpreadsheetRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		renderJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request_body"})
 		return
 	}
 
+	projectIDStr := chi.URLParam(r, "projectId")
+	if projectIDStr == "" && req.ProjectID != "" {
+		projectIDStr = req.ProjectID
+	}
+
+	var projectUUID uuid.UUID
+	var projectPgUUID pgtype.UUID
+	if projectIDStr != "" && projectIDStr != "unprojected" {
+		var pErr error
+		projectUUID, pErr = uuid.Parse(projectIDStr)
+		if pErr != nil {
+			renderJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_project_id"})
+			return
+		}
+		projectPgUUID = pgtype.UUID{Bytes: projectUUID, Valid: true}
+
+		projTarget := authz.ProjectTarget{
+			ID:        projectUUID,
+			CompanyID: caller.CompanyID,
+		}
+
+		access, err := authz.Access(ctx, h.q, *caller, projTarget)
+		if err != nil || (!access.CanUpload() && access.Level != authz.LevelFull) {
+			renderJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You cannot create spreadsheets in this project"})
+			return
+		}
+	}
 	title := strings.TrimSpace(req.Title)
 	if title == "" {
+		title = strings.TrimSpace(req.Name)
+	}
+	if title == "" {
 		title = "Untitled Spreadsheet"
-	}
-
-	projTarget := authz.ProjectTarget{
-		ID:        projectUUID,
-		CompanyID: caller.CompanyID,
-	}
-
-	access, err := authz.Access(ctx, h.q, *caller, projTarget)
-	if err != nil || (!access.CanUpload() && access.Level != authz.LevelFull) {
-		renderJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You cannot create spreadsheets in this project"})
-		return
 	}
 
 	var parentUUID pgtype.UUID
@@ -323,7 +337,7 @@ func (h *SpreadsheetsHandler) CreateSpreadsheet(w http.ResponseWriter, r *http.R
 	_ = pos.Scan("1")
 	item, err := h.q.CreateItem(ctx, db.CreateItemParams{
 		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
-		ProjectID: pgtype.UUID{Bytes: projectUUID, Valid: true},
+		ProjectID: projectPgUUID,
 		ParentID:  parentUUID,
 		Kind:      "spreadsheet",
 		Name:      title,
@@ -364,10 +378,15 @@ func (h *SpreadsheetsHandler) CreateSpreadsheet(w http.ResponseWriter, r *http.R
 		"sheets_data":    templateData,
 	})
 
+	var projIDOutput string
+	if item.ProjectID.Valid {
+		projIDOutput = uuid.UUID(item.ProjectID.Bytes).String()
+	}
+
 	renderJSON(w, http.StatusCreated, map[string]interface{}{
 		"id":         uuid.UUID(sheetUUID).String(),
 		"title":      item.Name,
-		"project_id": projectUUID.String(),
+		"project_id": projIDOutput,
 		"row_count":  spreadsheet.RowCount,
 		"col_count":  spreadsheet.ColCount,
 		"created_at": spreadsheet.CreatedAt.Time,
@@ -437,12 +456,21 @@ func (h *SpreadsheetsHandler) GetSpreadsheet(w http.ResponseWriter, r *http.Requ
 	var contentData interface{}
 	_ = json.Unmarshal(sheetRow.ContentJson, &contentData)
 
+	var projIDOutput string
+	if sheetRow.ProjectID.Valid && sheetRow.ProjectID.Bytes != uuid.Nil {
+		projIDOutput = uuid.UUID(sheetRow.ProjectID.Bytes).String()
+	}
+	var clientIDOutput string
+	if sheetRow.ClientID.Valid && sheetRow.ClientID.Bytes != uuid.Nil {
+		clientIDOutput = uuid.UUID(sheetRow.ClientID.Bytes).String()
+	}
+
 	renderJSON(w, http.StatusOK, map[string]interface{}{
 		"id":             uuid.UUID(sheetUUID).String(),
 		"title":          sheetRow.Title,
-		"project_id":     uuid.UUID(sheetRow.ProjectID.Bytes).String(),
+		"project_id":     projIDOutput,
 		"project_name":   sheetRow.ProjectName,
-		"client_id":      uuid.UUID(sheetRow.ClientID.Bytes).String(),
+		"client_id":      clientIDOutput,
 		"client_name":    sheetRow.ClientName,
 		"can_edit":       canEditSheet(access),
 		"is_team_member": true,
@@ -550,12 +578,20 @@ func (h *SpreadsheetsHandler) GetSpreadsheetView(w http.ResponseWriter, r *http.
 			}
 		}
 
+		var pIDOut, cIDOut string
+		if sheetRow.ProjectID.Valid && sheetRow.ProjectID.Bytes != uuid.Nil {
+			pIDOut = uuid.UUID(sheetRow.ProjectID.Bytes).String()
+		}
+		if sheetRow.ClientID.Valid && sheetRow.ClientID.Bytes != uuid.Nil {
+			cIDOut = uuid.UUID(sheetRow.ClientID.Bytes).String()
+		}
+
 		renderJSON(w, http.StatusOK, map[string]interface{}{
 			"id":             uuid.UUID(sheetUUID).String(),
 			"title":          sheetRow.Title,
-			"project_id":     uuid.UUID(sheetRow.ProjectID.Bytes).String(),
+			"project_id":     pIDOut,
 			"project_name":   sheetRow.ProjectName,
-			"client_id":      uuid.UUID(sheetRow.ClientID.Bytes).String(),
+			"client_id":      cIDOut,
 			"client_name":    sheetRow.ClientName,
 			"can_edit":       canEditSheet(access),
 			"is_team_member": isTeamMember,
@@ -570,12 +606,20 @@ func (h *SpreadsheetsHandler) GetSpreadsheetView(w http.ResponseWriter, r *http.
 	}
 	_ = json.Unmarshal(respBody, &collabView)
 
+	var pIDOut, cIDOut string
+	if sheetRow.ProjectID.Valid && sheetRow.ProjectID.Bytes != uuid.Nil {
+		pIDOut = uuid.UUID(sheetRow.ProjectID.Bytes).String()
+	}
+	if sheetRow.ClientID.Valid && sheetRow.ClientID.Bytes != uuid.Nil {
+		cIDOut = uuid.UUID(sheetRow.ClientID.Bytes).String()
+	}
+
 	renderJSON(w, http.StatusOK, map[string]interface{}{
 		"id":             uuid.UUID(sheetUUID).String(),
 		"title":          sheetRow.Title,
-		"project_id":     uuid.UUID(sheetRow.ProjectID.Bytes).String(),
+		"project_id":     pIDOut,
 		"project_name":   sheetRow.ProjectName,
-		"client_id":      uuid.UUID(sheetRow.ClientID.Bytes).String(),
+		"client_id":      cIDOut,
 		"client_name":    sheetRow.ClientName,
 		"can_edit":       canEditSheet(access),
 		"is_team_member": isTeamMember,
@@ -1086,12 +1130,20 @@ func (h *SpreadsheetsHandler) ListSpreadsheets(w http.ResponseWriter, r *http.Re
 			continue
 		}
 
+		var pIDStr, clientIDStr string
+		if s.ProjectID.Valid && s.ProjectID.Bytes != uuid.Nil {
+			pIDStr = uuid.UUID(s.ProjectID.Bytes).String()
+		}
+		if s.ClientID.Valid && s.ClientID.Bytes != uuid.Nil {
+			clientIDStr = uuid.UUID(s.ClientID.Bytes).String()
+		}
+
 		items = append(items, SheetItem{
 			ID:          uuid.UUID(s.ID.Bytes).String(),
 			Title:       s.Title,
-			ProjectID:   uuid.UUID(s.ProjectID.Bytes).String(),
+			ProjectID:   pIDStr,
 			ProjectName: s.ProjectName,
-			ClientID:    uuid.UUID(s.ClientID.Bytes).String(),
+			ClientID:    clientIDStr,
 			ClientName:  s.ClientName,
 			RowCount:    s.RowCount,
 			ColCount:    s.ColCount,

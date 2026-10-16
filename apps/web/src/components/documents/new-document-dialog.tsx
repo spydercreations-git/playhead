@@ -80,9 +80,6 @@ export function NewDocumentDialog({
         const res = await apiRequest<{ projects: ProjectOption[] }>("/projects");
         if (res && res.projects) {
           setProjects(res.projects);
-          if (!selectedProjectId && res.projects.length > 0) {
-            setSelectedProjectId(res.projects[0].id);
-          }
         }
       } catch (e) {
         console.warn("Failed to load projects", e);
@@ -91,23 +88,23 @@ export function NewDocumentDialog({
       }
     }
     loadProjects();
-  }, [isOpen, selectedProjectId]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedProjectId) {
-      setError("Please select a project.");
-      return;
-    }
 
     try {
       setIsSubmitting(true);
       setError(null);
 
+      const endpoint = selectedProjectId
+        ? `/projects/${selectedProjectId}/documents`
+        : `/documents`;
+
       const res = await apiRequest<{ id: string; title?: string }>(
-        `/projects/${selectedProjectId}/documents`,
+        endpoint,
         {
           method: "POST",
           body: JSON.stringify({
@@ -124,8 +121,8 @@ export function NewDocumentDialog({
           onDocumentCreated({
             id: res.id,
             title: title.trim() || "Untitled Document",
-            project_id: selectedProjectId,
-            project_name: selectedProj?.name || "Project",
+            project_id: selectedProjectId || "",
+            project_name: selectedProj?.name || "My documents",
             word_count: 0,
             character_count: 0,
             reading_time_seconds: 0,
@@ -187,7 +184,7 @@ export function NewDocumentDialog({
           Create new document
         </h2>
         <p className="text-xs text-[#9A9DA0] mb-5">
-          Select a template and choose which project this document belongs to.
+          Select a template and choose where to save this document.
         </p>
 
         {error && (
@@ -212,17 +209,18 @@ export function NewDocumentDialog({
             />
           </div>
 
-          {/* Project Selector */}
+          {/* Location Selector */}
           <div>
             <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
-              Project
+              Location (optional)
             </label>
             <ProjectSelect
               projects={projects}
               value={selectedProjectId}
               onChange={(id) => setSelectedProjectId(id)}
               disabled={loadingProjects}
-              required
+              allowMyDocuments
+              placeholder="My documents (private to me)"
             />
           </div>
 
@@ -279,8 +277,8 @@ export function NewDocumentDialog({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !selectedProjectId}
-              className="px-5 py-2 rounded-[10px] text-xs font-semibold bg-[#4876F3] text-white hover:bg-[#3B66D6] disabled:opacity-50 flex items-center gap-1.5 shadow transition-colors"
+              disabled={isSubmitting}
+              className="px-5 py-2 rounded-[10px] text-xs font-semibold bg-[#3B67E0] text-white hover:bg-[#3258c7] disabled:opacity-50 flex items-center gap-1.5 shadow transition-colors"
             >
               {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               <span>Create Document</span>

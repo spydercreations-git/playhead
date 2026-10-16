@@ -18,6 +18,7 @@ interface ProjectSelectProps {
   disabled?: boolean;
   required?: boolean;
   className?: string;
+  allowMyDocuments?: boolean;
 }
 
 export function ProjectSelect({
@@ -27,6 +28,7 @@ export function ProjectSelect({
   placeholder = "Select a project...",
   disabled = false,
   className = "",
+  allowMyDocuments = false,
 }: ProjectSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -98,7 +100,7 @@ export function ProjectSelect({
         } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       >
         <div className="flex items-center gap-2 truncate">
-          <Folder className="w-3.5 h-3.5 text-[#7C7F87] shrink-0" />
+          <Folder className={`w-3.5 h-3.5 shrink-0 ${allowMyDocuments && !value ? "text-[#4876F3]" : "text-[#7C7F87]"}`} />
           {selectedProject ? (
             <span className="truncate text-white">
               {selectedProject.name}{" "}
@@ -108,6 +110,8 @@ export function ProjectSelect({
                 </span>
               ) : null}
             </span>
+          ) : allowMyDocuments && !value ? (
+            <span className="truncate text-white font-medium">My documents (private to me)</span>
           ) : (
             <span className="text-[#7C7F87]">{placeholder}</span>
           )}
@@ -141,6 +145,26 @@ export function ProjectSelect({
 
           {/* Grouped Options List */}
           <div className="overflow-y-auto flex-1 py-1">
+            {allowMyDocuments && (!searchQuery || "my documents".includes(searchQuery.toLowerCase())) && (
+              <div className="px-2 pb-1 mb-1 border-b border-[#2E2F34]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange("");
+                    setIsOpen(false);
+                  }}
+                  className={`w-full px-2.5 py-1.5 rounded-[6px] text-left text-xs flex items-center justify-between hover:bg-[#2A2B30] transition-colors ${
+                    !value ? "bg-[#4876F3]/10 text-white font-medium" : "text-[#D1D2D4]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <Folder className="w-3.5 h-3.5 text-[#4876F3] shrink-0" />
+                    <span className="truncate">My documents (private to me)</span>
+                  </div>
+                  {!value && <Check className="w-3.5 h-3.5 text-[#4876F3] shrink-0" />}
+                </button>
+              </div>
+            )}
             {groupedProjects.length === 0 ? (
               <div className="px-3 py-4 text-center text-xs text-[#7C7F87]">
                 No projects found

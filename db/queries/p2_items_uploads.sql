@@ -64,7 +64,7 @@ INSERT INTO items (
     file_count, folder_count, video_count, total_bytes, review_status, locked
 )
 VALUES (
-    @company_id, @project_id, sqlc.narg('parent_id'), @kind, @name, @position, @created_by,
+    @company_id, sqlc.narg('project_id'), sqlc.narg('parent_id'), @kind, @name, @position, @created_by,
     0, 0, 0, 0, 'none', FALSE
 )
 RETURNING *;

@@ -14,20 +14,22 @@ interface NewSpreadsheetDialogProps {
   isOpen: boolean;
   onClose: () => void;
   defaultProjectId?: string;
+  onSpreadsheetCreated?: (newSheet: any) => void;
 }
 
 const TEMPLATES = [
-  { id: "blank", name: "Blank Sheet" },
-  { id: "tracker", name: "Video Tracker" },
-  { id: "creator_payments", name: "Creator Payments" },
-  { id: "production_budget", name: "Production Budget" },
-  { id: "shot_schedule", name: "Shot Schedule" },
+  { id: "blank", name: "Blank" },
+  { id: "tracker", name: "Tracker" },
+  { id: "creator_payments", name: "Creator payments" },
+  { id: "production_budget", name: "Budget" },
+  { id: "shot_schedule", name: "Shot schedule" },
 ];
 
 export function NewSpreadsheetDialog({
   isOpen,
   onClose,
   defaultProjectId,
+  onSpreadsheetCreated,
 }: NewSpreadsheetDialogProps) {
   const router = useRouter();
 
@@ -47,9 +49,6 @@ export function NewSpreadsheetDialog({
         const res = await apiRequest<{ projects: ProjectOption[] }>("/projects");
         if (res && res.projects) {
           setProjects(res.projects);
-          if (!selectedProjectId && res.projects.length > 0) {
-            setSelectedProjectId(res.projects[0].id);
-          }
         }
       } catch (e) {
         console.warn("Failed to load projects", e);
@@ -58,23 +57,23 @@ export function NewSpreadsheetDialog({
       }
     }
     loadProjects();
-  }, [isOpen, selectedProjectId]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedProjectId) {
-      setError("Please select a project.");
-      return;
-    }
 
     try {
       setIsSubmitting(true);
       setError(null);
 
+      const endpoint = selectedProjectId
+        ? `/projects/${selectedProjectId}/spreadsheets`
+        : `/spreadsheets`;
+
       const res = await apiRequest<{ id: string }>(
-        `/projects/${selectedProjectId}/spreadsheets`,
+        endpoint,
         {
           method: "POST",
           body: JSON.stringify({
@@ -86,7 +85,22 @@ export function NewSpreadsheetDialog({
 
       if (res && res.id) {
         onClose();
-        router.push(`/sheet/${res.id}`);
+        if (onSpreadsheetCreated) {
+          const selectedProj = projects.find((p) => p.id === selectedProjectId);
+          onSpreadsheetCreated({
+            id: res.id,
+            title: title.trim() || "Untitled Spreadsheet",
+            project_id: selectedProjectId || "",
+            project_name: selectedProj?.name || "My documents",
+            row_count: 30,
+            col_count: 7,
+            cell_count: 0,
+            updated_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          });
+        } else {
+          router.push(`/sheet/${res.id}?new=1`);
+        }
       } else {
         throw new Error("Invalid response from server");
       }
@@ -114,7 +128,7 @@ export function NewSpreadsheetDialog({
           Create new spreadsheet
         </h2>
         <p className="text-xs text-[#9A9DA0] mb-5">
-          Select a template and choose which project this spreadsheet belongs to.
+          Select a template and choose where to save this spreadsheet.
         </p>
 
         {error && (
@@ -126,19 +140,6 @@ export function NewSpreadsheetDialog({
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
-              Project
-            </label>
-            <ProjectSelect
-              projects={projects}
-              value={selectedProjectId}
-              onChange={(id) => setSelectedProjectId(id)}
-              disabled={loadingProjects}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
               Spreadsheet title
             </label>
             <input
@@ -148,6 +149,20 @@ export function NewSpreadsheetDialog({
               onChange={(e) => setTitle(e.target.value)}
               className="w-full h-10 bg-[#2A2B30] border border-[#2E2F34] rounded-[10px] px-3 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
               autoFocus
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
+              Location (optional)
+            </label>
+            <ProjectSelect
+              projects={projects}
+              value={selectedProjectId}
+              onChange={(id) => setSelectedProjectId(id)}
+              disabled={loadingProjects}
+              allowMyDocuments
+              placeholder="My documents (private to me)"
             />
           </div>
 
@@ -166,7 +181,7 @@ export function NewSpreadsheetDialog({
                     className={`p-2.5 rounded-[10px] text-left border text-xs transition-colors ${
                       isSelected
                         ? "bg-[#4876F3]/10 border-[#4876F3] text-white font-medium"
-                        : "bg-[#2A2B30] border-[#2E2F34] text-[#9A9DA0] hover:text-white hover:border-[#424344]"
+                        : "border-[#2E2F34] bg-[#2A2B30] text-[#9A9DA0] hover:text-white hover:border-[#424344]"
                     }`}
                   >
                     {tmpl.name}
@@ -186,8 +201,8 @@ export function NewSpreadsheetDialog({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !selectedProjectId}
-              className="px-5 py-2 rounded-[10px] text-xs font-semibold bg-[#4876F3] text-white hover:bg-[#3B66D6] disabled:opacity-50 flex items-center gap-1.5 shadow transition-colors"
+              disabled={isSubmitting}
+              className="px-5 py-2 rounded-[10px] text-xs font-semibold bg-[#3B67E0] text-white hover:bg-[#3258c7] disabled:opacity-50 flex items-center gap-1.5 shadow transition-colors"
             >
               {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               <span>Create Spreadsheet</span>

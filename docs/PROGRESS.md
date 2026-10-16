@@ -565,6 +565,42 @@ Google Login is built into the backend and UI, but hidden until configured. When
 
 ---
 
+## Two Fixes: Frame.io Parity Pass
+
+### Status: Completed ✅ (Verified end-to-end in browser and tests)
+
+### What was built:
+1. **PART 1: Redesigned New Project Dialog (`08-new-project.png` Frame.io Look)**:
+   - **Header**: Clean "New project" title (18px, 600 weight) with close X. Removed sparkle icon and uppercase headings/descriptions.
+   - **Calm Typography & Disabled State**: Labels 13px `#A3A6AD`, body 14px, card titles 15px. No red asterisks. Create project button disabled with 40% opacity until both project name and client are provided.
+   - **Left Column ("Start with")**:
+     - Video project card (selected by default, `#4876F3` border, light blue tint, check circle, 4 folder chips: "Briefs", "Raw footage", "Edits", "Deliverables").
+     - Blank project card with clean icon tile and description.
+   - **Right Column (Preview Card & People)**:
+     - Preview card (`#181818`, border `#2E2F34`, 12px radius) with dashed "Add cover (optional)" area on top and 17px project name input inside the card under it with autofocus.
+     - Searchable Client dropdown with client letter initial badges and "+ Create new client" action button.
+     - People section with email search/add input. When none added, shows no empty box, only calm grey line: *"Admins and Managers always have access."*
+   - **Footer**:
+     - Left hint: *"Creates 4 folders and a Tracker sheet"* (for Video project) or blank.
+     - Right: Cancel button and Create project button (`#3B67E0`, disabled = 40% opacity).
+
+2. **PART 2: Documents and Spreadsheets Never Need a Project (Unprojected Items)**:
+   - **Database & Architecture**:
+     - Migration `00011_unprojected_items.sql` making `items.project_id` nullable.
+     - Unprojected items stored with `project_id IS NULL`, displaying under `"My documents"`.
+   - **Privacy & Security**:
+     - Unprojected documents and spreadsheets are strictly private to the creator.
+     - Enforced in `authz.AccessItem`: creator gets `LevelFull`; explicit item grants are checked; admins/owners and other team members are refused with 403/404 unless explicitly granted access.
+     - Tested in `services/api/internal/handler/unprojected_items_test.go` proving creator access, admin denial, and explicit grant sharing.
+   - **Unified Location Picker**:
+     - Replaced required "Project" field with optional "Location" picker in `<NewDocumentDialog />`, `<NewSpreadsheetDialog />`, Documents library page, and Spreadsheets library page.
+     - Defaults to `"My documents (private to me)"` when created globally or from the `+ New` sidebar menu; preselects the active project when opened from within a project workspace.
+   - **Standardized Templates**:
+     - Documents: Blank, Brief, Script, Shot list, Creator notes.
+     - Spreadsheets: Blank, Tracker, Creator payments, Budget, Shot schedule.
+
+---
+
 ## Upcoming Milestones (Version 2: P7)
 
 - **Milestone P7: Search, notifications, polish**

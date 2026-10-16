@@ -223,7 +223,7 @@ WHERE id = @id;
 -- Items (Folders for template)
 -- name: CreateItem :one
 INSERT INTO items (company_id, project_id, parent_id, kind, name, position, created_by)
-VALUES (@company_id, @project_id, @parent_id, @kind, @name, @position, @created_by)
+VALUES (@company_id, sqlc.narg('project_id'), @parent_id, @kind, @name, @position, @created_by)
 RETURNING *;
 
 -- name: ListItemsByProjectAndParent :many

@@ -257,8 +257,23 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
 
 ## 40. Frame.io Parity Pass: Phase 1 — Global Inter Typography & Tabular Numerals
 - **Decision**: Standardized entire application font across Next.js app, transactional emails (`mailer.go`), share pages, and PDF generators to Google Font `Inter` (`next/font/google`, weights 400, 500, 600, 700). Plus Jakarta Sans completely removed. Enforced `font-variant-numeric: tabular-nums` (`font-feature-settings: "tnum"`) across video player timecodes, timeline scrubbers, comment composer/cards, version compare, and collaborative spreadsheets to prevent character jitter during scrubbing and calculations.
-- **Reason**: Matches Frame.io and Google Drive high-density precision layout.
-- **Reason**: Guarantees zero data loss, bidirectional live collaboration, and strict compliance with Playhead spec section 6.11.
+## 41. Frame.io Parity Pass: Redesigned New Project Dialog (`08-new-project.png`)
+- **Decision**: Redesigned `<NewProjectDialog />` to match Frame.io parity design:
+  - Header: Clean "New project" (18px, 600 weight) with close X. Removed sparkle icon and uppercase headings/descriptions.
+  - Typography & States: Labels 13px `#A3A6AD`, body 14px, card titles 15px. Removed red asterisks; disabled "Create project" (`#3B67E0`, 40% opacity) until project name and client are chosen.
+  - Left Column: "Start with" section with Video project (selected by default with 4 folder chips: "Briefs", "Raw footage", "Edits", "Deliverables", `#4876F3` border, light blue tint, check circle) and Blank project.
+  - Right Column: Preview card (`#181818`, border `#2E2F34`, 12px radius) with dashed "Add cover (optional)" area on top and 17px project name input inside the card.
+  - Under Card: Client dropdown with client letter initial badges and "+ Create new client", plus People section with email search/add input and fallback grey note: *"Admins and Managers always have access."*
+- **Reason**: Aligns with Frame.io project creation layout and provides calm, frictionless project setup.
+
+## 42. Unprojected Documents & Spreadsheets (Standalone Creation in "My documents")
+- **Decision**: Removed project requirement when creating documents or spreadsheets:
+  - Database schema updated in `00011_unprojected_items.sql` (`ALTER TABLE items ALTER COLUMN project_id DROP NOT NULL`).
+  - Unprojected items default to `"My documents"` and are strictly private to the creator (`authz.AccessItem` returns `LevelFull` for creator, checks explicit grants, and returns `LevelNone` for all others, including admins unless explicitly granted).
+  - Creation dialogs show optional "Location" field instead of "Project" (defaulting to "My documents", preselected if opened from inside a project).
+  - Locked templates: Documents (`Blank`, `Brief`, `Script`, `Shot list`, `Creator notes`) and Spreadsheets (`Blank`, `Tracker`, `Creator payments`, `Budget`, `Shot schedule`).
+- **Reason**: Enables rapid note-taking, script drafts, and private budgets without forcing dummy project creation.
+
 
 
 

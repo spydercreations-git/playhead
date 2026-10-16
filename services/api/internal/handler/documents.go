@@ -484,9 +484,11 @@ func (h *DocumentsHandler) IssueCollabTicket(w http.ResponseWriter, r *http.Requ
 // ---------------------------------------------------------
 
 type CreateDocumentRequest struct {
-	Name     string `json:"name"`
-	ParentID string `json:"parent_id,omitempty"`
-	Template string `json:"template,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Title     string `json:"title,omitempty"`
+	ProjectID string `json:"project_id,omitempty"`
+	ParentID  string `json:"parent_id,omitempty"`
+	Template  string `json:"template,omitempty"`
 }
 
 func (h *DocumentsHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -497,33 +499,38 @@ func (h *DocumentsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projIDStr := chi.URLParam(r, "id")
-	projUUID, err := uuid.Parse(projIDStr)
-	if err != nil {
-		http.Error(w, "Invalid project ID", http.StatusBadRequest)
-		return
-	}
-
 	var req CreateDocumentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid payload", http.StatusBadRequest)
 		return
 	}
 
-	docName := strings.TrimSpace(req.Name)
-	if docName == "" {
-		docName = "Untitled Document"
+	projIDStr := chi.URLParam(r, "id")
+	if projIDStr == "" && req.ProjectID != "" {
+		projIDStr = req.ProjectID
 	}
 
-	projTarget := authz.ProjectTarget{
-		ID:        projUUID,
-		CompanyID: caller.CompanyID,
-	}
+	var projUUID uuid.UUID
+	var projPgUUID pgtype.UUID
+	if projIDStr != "" && projIDStr != "unprojected" {
+		var pErr error
+		projUUID, pErr = uuid.Parse(projIDStr)
+		if pErr != nil {
+			http.Error(w, "Invalid project ID", http.StatusBadRequest)
+			return
+		}
+		projPgUUID = pgtype.UUID{Bytes: projUUID, Valid: true}
 
-	access, err := authz.Access(ctx, h.q, *caller, projTarget)
-	if err != nil || (!access.CanUpload() && access.Level != authz.LevelFull) {
-		http.Error(w, "Forbidden: Cannot create documents in this project", http.StatusForbidden)
-		return
+		projTarget := authz.ProjectTarget{
+			ID:        projUUID,
+			CompanyID: caller.CompanyID,
+		}
+
+		access, err := authz.Access(ctx, h.q, *caller, projTarget)
+		if err != nil || (!access.CanUpload() && access.Level != authz.LevelFull) {
+			http.Error(w, "Forbidden: Cannot create documents in this project", http.StatusForbidden)
+			return
+		}
 	}
 
 	var parentUUID pgtype.UUID
@@ -531,6 +538,14 @@ func (h *DocumentsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		if pID, pErr := uuid.Parse(req.ParentID); pErr == nil {
 			parentUUID = pgtype.UUID{Bytes: pID, Valid: true}
 		}
+	}
+
+	docName := strings.TrimSpace(req.Name)
+	if docName == "" {
+		docName = strings.TrimSpace(req.Title)
+	}
+	if docName == "" {
+		docName = "Untitled Document"
 	}
 
 	templateContent, templateText, publicText := getTemplateContent(req.Template, docName)
@@ -549,7 +564,7 @@ func (h *DocumentsHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	item, err := qtx.CreateItem(ctx, db.CreateItemParams{
 		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
-		ProjectID: pgtype.UUID{Bytes: projUUID, Valid: true},
+		ProjectID: projPgUUID,
 		ParentID:  parentUUID,
 		Kind:      "document",
 		Name:      docName,
@@ -596,9 +611,14 @@ func (h *DocumentsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("[callCollabInitDocument ERROR]: %v\n", initErr)
 	}
 
+	var projIDOutput string
+	if item.ProjectID.Valid {
+		projIDOutput = uuid.UUID(item.ProjectID.Bytes).String()
+	}
+
 	renderJSON(w, http.StatusCreated, map[string]interface{}{
 		"id":         uuid.UUID(doc.ID.Bytes).String(),
-		"project_id": uuid.UUID(item.ProjectID.Bytes).String(),
+		"project_id": projIDOutput,
 		"name":       item.Name,
 		"kind":       "document",
 		"created_at": item.CreatedAt.Time,
@@ -735,12 +755,20 @@ func (h *DocumentsHandler) List(w http.ResponseWriter, r *http.Request) {
 			lastEditor = d.CreatedByName.String
 		}
 
+		var pIDStr, clientIDStr string
+		if d.ProjectID.Valid && d.ProjectID.Bytes != uuid.Nil {
+			pIDStr = uuid.UUID(d.ProjectID.Bytes).String()
+		}
+		if d.ClientID.Valid && d.ClientID.Bytes != uuid.Nil {
+			clientIDStr = uuid.UUID(d.ClientID.Bytes).String()
+		}
+
 		filteredDocs = append(filteredDocs, DocItem{
 			ID:                 uuid.UUID(d.ID.Bytes).String(),
 			Title:              d.Title,
-			ProjectID:          uuid.UUID(d.ProjectID.Bytes).String(),
+			ProjectID:          pIDStr,
 			ProjectName:        d.ProjectName,
-			ClientID:           cIDStr,
+			ClientID:           clientIDStr,
 			ClientName:         d.ClientName,
 			LastEditor:         lastEditor,
 			UpdatedAt:          d.UpdatedAt.Time,
@@ -816,12 +844,20 @@ func (h *DocumentsHandler) Get(w http.ResponseWriter, r *http.Request) {
 	})
 	isTeamMember := (membership.Role != "")
 
+	var pIDStr, clientIDStr string
+	if doc.ProjectID.Valid && doc.ProjectID.Bytes != uuid.Nil {
+		pIDStr = uuid.UUID(doc.ProjectID.Bytes).String()
+	}
+	if doc.ClientID.Valid && doc.ClientID.Bytes != uuid.Nil {
+		clientIDStr = uuid.UUID(doc.ClientID.Bytes).String()
+	}
+
 	renderJSON(w, http.StatusOK, map[string]interface{}{
 		"id":                   uuid.UUID(doc.ID.Bytes).String(),
 		"title":                doc.Title,
-		"project_id":           uuid.UUID(doc.ProjectID.Bytes).String(),
+		"project_id":           pIDStr,
 		"project_name":         doc.ProjectName,
-		"client_id":            uuid.UUID(doc.ClientID.Bytes).String(),
+		"client_id":            clientIDStr,
 		"client_name":          doc.ClientName,
 		"word_count":           doc.WordCount,
 		"character_count":      doc.CharacterCount,

@@ -462,6 +462,27 @@ func AccessFolder(ctx context.Context, q *db.Queries, person Person, project Pro
 
 // AccessItem evaluates permissions on an item by resolving its parent folder access.
 func AccessItem(ctx context.Context, q *db.Queries, person Person, project ProjectTarget, item ItemTarget) (AccessResult, error) {
+	// Unprojected items ("My documents" / unprojected spreadsheets):
+	// Visible ONLY to creator and people with explicit grants.
+	// Admins cannot see others' private docs unless explicitly granted.
+	if item.ProjectID == uuid.Nil {
+		if person.UserID != uuid.Nil && item.CreatedBy != uuid.Nil && person.UserID == item.CreatedBy {
+			return AccessResult{Level: LevelFull, CanDownload: true}, nil
+		}
+		if q != nil {
+			normEmail := NormalizeEmail(person.Email)
+			grant, gErr := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
+				TargetType: "item",
+				TargetID:   pgtype.UUID{Bytes: item.ID, Valid: true},
+				Email:      normEmail,
+			})
+			if gErr == nil && grant.Level != LevelNone && grant.Level != "" {
+				return AccessResult{Level: grant.Level, CanDownload: grant.CanDownload}, nil
+			}
+		}
+		return AccessResult{Level: LevelNone, CanDownload: false}, nil
+	}
+
 	isAdminOrOwner := strings.ToLower(person.Role) == RoleAdmin || strings.ToLower(person.Role) == RoleOwner
 
 	folderAccess, err := AccessFolder(ctx, q, person, project, item.ID)

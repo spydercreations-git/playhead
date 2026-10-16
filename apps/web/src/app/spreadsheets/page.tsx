@@ -85,9 +85,6 @@ export default function SpreadsheetsPage() {
       const projRes = await apiRequest<{ projects: any[] }>("/projects");
       if (projRes && projRes.projects) {
         setProjects(projRes.projects);
-        if (projRes.projects.length > 0 && !selectedProjectId) {
-          setSelectedProjectId(projRes.projects[0].id);
-        }
       }
     } catch (err: any) {
       console.error("Failed to load spreadsheets", err);
@@ -95,7 +92,7 @@ export default function SpreadsheetsPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, authLoading, selectedProjectId]);
+  }, [user, authLoading]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -138,12 +135,15 @@ export default function SpreadsheetsPage() {
 
   const handleCreateSpreadsheet = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProjectId) return;
 
     try {
       setCreating(true);
+      const endpoint = selectedProjectId
+        ? `/projects/${selectedProjectId}/spreadsheets`
+        : `/spreadsheets`;
+
       const res = await apiRequest<{ id: string }>(
-        `/projects/${selectedProjectId}/spreadsheets`,
+        endpoint,
         {
           method: "POST",
           body: JSON.stringify({
@@ -159,8 +159,8 @@ export default function SpreadsheetsPage() {
         const newSheetItem: SpreadsheetItem = {
           id: res.id,
           title: newTitle.trim() || "Untitled Spreadsheet",
-          project_id: selectedProjectId,
-          project_name: selectedProj?.name || "Project",
+          project_id: selectedProjectId || "",
+          project_name: selectedProj?.name || "My documents",
           client_id: selectedProj?.client_id || "",
           client_name: selectedProj?.client_name || "",
           row_count: 30,
@@ -474,13 +474,14 @@ export default function SpreadsheetsPage() {
             <form onSubmit={handleCreateSpreadsheet} className="mt-4 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
-                  Project
+                  Location (optional)
                 </label>
                 <ProjectSelect
                   projects={projects}
                   value={selectedProjectId}
                   onChange={(id) => setSelectedProjectId(id)}
-                  required
+                  allowMyDocuments
+                  placeholder="My documents (private to me)"
                 />
               </div>
 
@@ -503,11 +504,11 @@ export default function SpreadsheetsPage() {
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { id: "blank", name: "Blank Sheet" },
-                    { id: "tracker", name: "Video Tracker" },
-                    { id: "creator_payments", name: "Creator Payments" },
-                    { id: "production_budget", name: "Production Budget" },
-                    { id: "shot_schedule", name: "Shot Schedule" },
+                    { id: "blank", name: "Blank" },
+                    { id: "tracker", name: "Tracker" },
+                    { id: "creator_payments", name: "Creator payments" },
+                    { id: "production_budget", name: "Budget" },
+                    { id: "shot_schedule", name: "Shot schedule" },
                   ].map((tpl) => (
                     <button
                       key={tpl.id}
@@ -535,8 +536,8 @@ export default function SpreadsheetsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={creating || !selectedProjectId}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-[10px] bg-[#4876F3] hover:bg-[#3B66D6] text-xs font-semibold text-white transition-colors disabled:opacity-50"
+                  disabled={creating}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-[10px] bg-[#3B67E0] hover:bg-[#3258c7] text-xs font-semibold text-white transition-colors disabled:opacity-50"
                 >
                   {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   <span>Create & Open</span>

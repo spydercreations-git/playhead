@@ -319,6 +319,7 @@ func main() {
 
 			// Documents (P5)
 			protected.Get("/documents", documentsHandler.List)
+			protected.Post("/documents", documentsHandler.Create)
 			protected.Post("/projects/{id}/documents", documentsHandler.Create)
 			protected.Get("/documents/{id}", documentsHandler.Get)
 			protected.Get("/documents/{id}/view", documentsHandler.GetSanitizedView)
@@ -338,6 +339,7 @@ func main() {
 
 			// Spreadsheets (Milestone P6)
 			protected.Get("/spreadsheets", spreadsheetsHandler.ListSpreadsheets)
+			protected.Post("/spreadsheets", spreadsheetsHandler.CreateSpreadsheet)
 			protected.Post("/projects/{projectId}/spreadsheets", spreadsheetsHandler.CreateSpreadsheet)
 			protected.Get("/projects/{projectId}/spreadsheets", spreadsheetsHandler.ListSpreadsheets)
 			protected.Get("/spreadsheets/{id}", spreadsheetsHandler.GetSpreadsheet)

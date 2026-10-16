@@ -167,15 +167,15 @@ SELECT s.id, s.company_id, s.content_state, s.content_json, s.plain_text, s.publ
        i.created_by, 
        i.created_at AS item_created_at, 
        i.updated_at AS item_updated_at,
-       p.name AS project_name, 
+       COALESCE(p.name, 'My documents') AS project_name, 
        p.client_id, 
-       c.name AS client_name,
+       COALESCE(c.name, '') AS client_name,
        u.name AS created_by_name, 
        u.email AS created_by_email
 FROM spreadsheets s
 JOIN items i ON i.id = s.id
-JOIN projects p ON p.id = i.project_id
-JOIN clients c ON c.id = p.client_id
+LEFT JOIN projects p ON p.id = i.project_id
+LEFT JOIN clients c ON c.id = p.client_id
 LEFT JOIN users u ON u.id = i.created_by
 WHERE s.id = $1 AND s.company_id = $2 AND i.deleted_at IS NULL
 `
@@ -441,9 +441,9 @@ SELECT s.id,
        i.parent_id, 
        i.created_by, 
        i.created_at,
-       p.name AS project_name, 
+       COALESCE(p.name, 'My documents') AS project_name, 
        p.client_id, 
-       c.name AS client_name,
+       COALESCE(c.name, '') AS client_name,
        u.name AS created_by_name, 
        u.email AS created_by_email,
        EXISTS (
@@ -451,13 +451,17 @@ SELECT s.id,
        ) AS is_starred
 FROM spreadsheets s
 JOIN items i ON i.id = s.id
-JOIN projects p ON p.id = i.project_id
-JOIN clients c ON c.id = p.client_id
+LEFT JOIN projects p ON p.id = i.project_id
+LEFT JOIN clients c ON c.id = p.client_id
 LEFT JOIN users u ON u.id = i.created_by
 WHERE s.company_id = $2
   AND i.deleted_at IS NULL
   AND ($3::uuid IS NULL OR p.client_id = $3)
   AND ($4::uuid IS NULL OR i.project_id = $4)
+  AND (
+    i.project_id IS NOT NULL
+    OR i.created_by = $1
+  )
 ORDER BY s.updated_at DESC
 `
 

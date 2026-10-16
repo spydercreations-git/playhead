@@ -127,7 +127,7 @@ export function ProjectSelect({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[10px] bg-[#212121] border border-[#2E2F34] shadow-2xl py-2 max-h-64 flex flex-col">
+        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[10px] bg-[#212121] border border-[#2E2F34] shadow-overlay py-2 max-h-64 flex flex-col">
           {/* Search Input */}
           <div className="px-2 pb-2 border-b border-[#2E2F34]">
             <div className="relative">
@@ -153,8 +153,8 @@ export function ProjectSelect({
                     onChange("");
                     setIsOpen(false);
                   }}
-                  className={`w-full px-2.5 py-1.5 rounded-[6px] text-left text-xs flex items-center justify-between hover:bg-[#2A2B30] transition-colors ${
-                    !value ? "bg-[#4876F3]/10 text-white font-medium" : "text-[#D1D2D4]"
+                  className={`w-full px-2.5 py-1.5 rounded-[6px] text-left text-xs flex items-center justify-between hover:bg-[#2C2D33] transition-colors ${
+                    !value ? "bg-[#4876F3]/10 text-white font-medium" : "text-[#A3A6AD]"
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
@@ -172,7 +172,7 @@ export function ProjectSelect({
             ) : (
               groupedProjects.map((group) => (
                 <div key={group.clientName} className="mb-2 last:mb-0">
-                  <div className="px-3 py-1 text-[10px] font-semibold tracking-wider text-[#7C7F87] uppercase">
+                  <div className="px-3 py-1 text-[13px] font-medium text-[#A3A6AD]">
                     {group.clientName}
                   </div>
                   {group.items.map((project) => {
@@ -185,8 +185,8 @@ export function ProjectSelect({
                           onChange(project.id);
                           setIsOpen(false);
                         }}
-                        className={`w-full px-3 py-1.5 text-left text-xs flex items-center justify-between hover:bg-[#2A2B30] transition-colors ${
-                          isSelected ? "bg-[#4876F3]/10 text-white font-medium" : "text-[#9A9DA0]"
+                        className={`w-full px-3 py-1.5 text-left text-xs flex items-center justify-between hover:bg-[#2C2D33] transition-colors ${
+                          isSelected ? "bg-[#4876F3]/10 text-white font-medium" : "text-[#A3A6AD]"
                         }`}
                       >
                         <span className="truncate">{project.name}</span>

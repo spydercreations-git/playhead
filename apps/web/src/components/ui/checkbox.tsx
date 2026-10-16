@@ -28,7 +28,7 @@ export function Checkbox({
       className={`flex h-5 w-5 items-center justify-center rounded-[4px] transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4876F3]/50 ${
         checked
           ? "bg-[#4876F3] text-white"
-          : "border border-[#424344] bg-transparent hover:border-[#9A9DA0]"
+          : "border border-[#424344] bg-transparent hover:border-[#A3A6AD]"
       } ${className}`}
     >
       {checked && (

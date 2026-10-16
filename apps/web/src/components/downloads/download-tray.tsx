@@ -96,7 +96,7 @@ export function DownloadTray({
   const completedCount = session.files.filter((f) => f.status === "completed").length;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-96 rounded-xl border border-[#424344] bg-[#212121] shadow-2xl overflow-hidden font-sans">
+    <div className="fixed bottom-6 right-6 z-50 w-96 rounded-xl border border-[#424344] bg-[#212121] shadow-overlay overflow-hidden font-sans">
       {/* Header Bar */}
       <div className="flex items-center justify-between px-4 py-3 bg-[#181818] border-b border-[#424344]/60">
         <div className="flex items-center gap-2 min-w-0">
@@ -122,14 +122,14 @@ export function DownloadTray({
           {session.status === "completed" && (
             <button
               onClick={onClose}
-              className="text-[11px] text-[#9A9DA0] hover:text-white px-1.5 py-0.5 rounded hover:bg-[#2E2F34]"
+              className="text-[11px] text-[#A3A6AD] hover:text-white px-1.5 py-0.5 rounded hover:bg-[#2E2F34]"
             >
               Close
             </button>
           )}
           <button
             onClick={() => setMinimized(!minimized)}
-            className="text-[#9A9DA0] hover:text-white p-1"
+            className="text-[#A3A6AD] hover:text-white p-1"
           >
             {minimized ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
@@ -168,7 +168,7 @@ export function DownloadTray({
           {/* Action buttons */}
           {session.status !== "completed" && (
             <div className="flex items-center justify-between pt-1 border-t border-[#424344]/40">
-              <span className="text-[10px] text-[#9A9DA0]">
+              <span className="text-xs text-[#A3A6AD]">
                 {session.mode === "folder" ? "Saving directly into folder" : "Streaming zip directly to disk"}
               </span>
               <div className="flex items-center gap-2">
@@ -183,7 +183,7 @@ export function DownloadTray({
                 ) : session.status === "paused" ? (
                   <button
                     onClick={onResume}
-                    className="flex items-center gap-1 rounded bg-[#4876F3] px-2 py-1 text-[11px] text-white hover:bg-[#3b66df]"
+                    className="flex items-center gap-1 rounded bg-[#4876F3] px-2 py-1 text-[11px] text-white hover:bg-[#3B67E0]"
                   >
                     <Play className="h-3 w-3" />
                     Resume
@@ -216,7 +216,7 @@ export function DownloadTray({
                     <span className="truncate text-neutral-300 font-medium" title={file.path}>
                       {file.name}
                     </span>
-                    <span className="shrink-0 text-[10px] text-[#9A9DA0]">
+                    <span className="shrink-0 text-xs text-[#A3A6AD]">
                       {file.status === "completed" ? (
                         <span className="text-emerald-400">Done</span>
                       ) : file.status === "downloading" ? (

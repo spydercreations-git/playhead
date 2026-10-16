@@ -99,7 +99,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
       <div className="flex items-center gap-4 min-w-0">
         <button
           onClick={onOpenSidebar}
-          className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#2E2F34] bg-[#212121] text-[#9A9DA0] hover:text-white md:hidden shrink-0"
+          className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#2E2F34] bg-[#212121] text-[#A3A6AD] hover:text-white md:hidden shrink-0"
           title="Open menu"
         >
           <Menu className="w-4 h-4" />
@@ -130,12 +130,12 @@ export function Header({ onOpenSidebar }: HeaderProps) {
                   ) : crumb.href ? (
                     <Link
                       href={crumb.href}
-                      className="text-[#9A9DA0] hover:text-white transition-colors truncate max-w-[140px]"
+                      className="text-[#A3A6AD] hover:text-white transition-colors truncate max-w-[140px]"
                     >
                       {crumb.label}
                     </Link>
                   ) : (
-                    <span className="text-[#9A9DA0] truncate max-w-[140px]">
+                    <span className="text-[#A3A6AD] truncate max-w-[140px]">
                       {crumb.label}
                     </span>
                   )}
@@ -161,7 +161,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
         <button
           type="button"
           title="Upload progress (idle)"
-          className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#2E2F34] bg-[#212121] text-[#9A9DA0] hover:text-white hover:border-[#424344] transition-colors relative"
+          className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#2E2F34] bg-[#212121] text-[#A3A6AD] hover:text-white hover:border-[#424344] transition-colors relative"
         >
           <UploadCloud className="w-4 h-4" />
         </button>
@@ -170,7 +170,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
         <button
           type="button"
           title="Notifications"
-          className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#2E2F34] bg-[#212121] text-[#9A9DA0] hover:text-white hover:border-[#424344] transition-colors relative"
+          className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#2E2F34] bg-[#212121] text-[#A3A6AD] hover:text-white hover:border-[#424344] transition-colors relative"
         >
           <Bell className="w-4 h-4" />
         </button>
@@ -179,7 +179,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
         <Link
           href="/settings"
           title={user?.name || "Settings"}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-[#4876F3] text-xs font-bold text-white shadow-sm hover:ring-2 hover:ring-[#4876F3]/50 transition-all uppercase shrink-0"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-[#4876F3] text-xs font-bold text-white shadow-sm hover:ring-2 hover:ring-[#4876F3]/50 transition-all  shrink-0"
         >
           {initials}
         </Link>

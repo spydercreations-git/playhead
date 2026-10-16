@@ -26,9 +26,9 @@ const COLLAB_COLORS = [
   "#f59e0b", // Amber
   "#8b5cf6", // Purple
   "#ec4899", // Pink
-  "#06b6d4", // Cyan
-  "#f97316", // Orange
-  "#6366f1", // Indigo
+  "#4876F3", // Cyan
+  "#FFBB56", // Orange
+  "#9787FF", // Indigo
 ];
 
 function pickColor(str: string): string {

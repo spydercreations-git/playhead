@@ -128,7 +128,7 @@ export default function TrashPage() {
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="h-16 animate-pulse rounded-xl border border-[#383838] bg-[#1a1a1a]"
+              className="h-16 animate-pulse rounded-xl border border-[#2E2F34] bg-[#181818]"
             />
           ))}
         </div>
@@ -137,8 +137,8 @@ export default function TrashPage() {
           <p className="text-sm font-medium text-red-400">Failed to load trash items.</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#383838] bg-[#141414] py-16 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-800 text-neutral-400 mb-4">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#2E2F34] bg-[#181818] py-16 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-800 text-neutral-400 mb-4">
             <Trash2 className="h-7 w-7" />
           </div>
           <h3 className="text-base font-semibold text-white">
@@ -151,18 +151,18 @@ export default function TrashPage() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#141414]">
-          <div className="grid grid-cols-12 border-b border-[#2a2a2a] px-4 py-3 text-xs font-medium uppercase tracking-wider text-neutral-400">
+        <div className="overflow-hidden rounded-xl border border-[#212121] bg-[#181818]">
+          <div className="grid grid-cols-12 border-b border-[#212121] px-4 py-3 text-xs font-medium  text-neutral-400">
             <div className="col-span-5 sm:col-span-5">Name</div>
             <div className="hidden col-span-2 sm:block">Size</div>
             <div className="col-span-4 sm:col-span-3">Deleted</div>
             <div className="col-span-3 sm:col-span-2 text-right">Actions</div>
           </div>
-          <div className="divide-y divide-[#222]">
+          <div className="divide-y divide-[#212121]">
             {filtered.map((item) => (
               <div
                 key={item.id}
-                className="grid grid-cols-12 items-center px-4 py-3 hover:bg-[#1a1a1a] transition-colors group"
+                className="grid grid-cols-12 items-center px-4 py-3 hover:bg-[#181818] transition-colors group"
               >
                 <div className="col-span-5 flex items-center gap-3 min-w-0 pr-2">
                   {getItemIcon(item.type, item.name)}
@@ -178,7 +178,7 @@ export default function TrashPage() {
                   <button
                     onClick={() => restoreMutation.mutate(item.id)}
                     disabled={restoreMutation.isPending}
-                    className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-white hover:bg-[#252525] transition-colors"
+                    className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-white hover:bg-[#212121] transition-colors"
                     title="Restore item"
                   >
                     <RotateCcw className="h-3.5 w-3.5 text-neutral-300" />
@@ -202,7 +202,7 @@ export default function TrashPage() {
       {/* Permanent Delete Confirmation Modal */}
       {deletingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-[#383838] bg-[#1a1a1a] p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-xl border border-[#2E2F34] bg-[#181818] p-6 shadow-overlay">
             <div className="flex items-center gap-3 text-red-400 mb-4">
               <AlertTriangle className="h-6 w-6" />
               <h3 className="text-lg font-bold text-white">Permanently delete?</h3>
@@ -213,7 +213,7 @@ export default function TrashPage() {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeletingId(null)}
-                className="rounded-lg border border-[#383838] px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-[#252525]"
+                className="rounded-lg border border-[#2E2F34] px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-[#212121]"
               >
                 Cancel
               </button>

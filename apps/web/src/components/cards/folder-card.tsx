@@ -96,7 +96,7 @@ export function FolderCard({
             : "bg-[#212121] border-[#2E2F34] group-hover:border-[#424344]"
         }`}
       >
-        {/* Preview Container: 1 large + 2 small slots (Empty slots: #2E2F35 box with grey folder icon) */}
+        {/* Preview Container: 1 large + 2 small slots (Empty slots: #2E2F34 box with grey folder icon) */}
         <div className="relative h-32 w-full rounded-[8px] bg-[#181818] p-1.5 flex gap-1.5 overflow-hidden mb-3">
           {isEmpty ? (
             /* Plain body for empty folder */
@@ -106,7 +106,7 @@ export function FolderCard({
           ) : (
             <>
               {/* Left Slot: 1 Large Thumbnail */}
-              <div className="flex-1 h-full rounded-[6px] bg-[#2E2F35] overflow-hidden flex items-center justify-center relative">
+              <div className="flex-1 h-full rounded-[6px] bg-[#2E2F34] overflow-hidden flex items-center justify-center relative">
                 {thumbnails[0] ? (
                   <img
                     src={thumbnails[0]}
@@ -120,7 +120,7 @@ export function FolderCard({
 
               {/* Right Column: 2 Small Thumbnails */}
               <div className="w-[34%] h-full flex flex-col gap-1.5">
-                <div className="flex-1 rounded-[6px] bg-[#2E2F35] overflow-hidden flex items-center justify-center relative">
+                <div className="flex-1 rounded-[6px] bg-[#2E2F34] overflow-hidden flex items-center justify-center relative">
                   {thumbnails[1] ? (
                     <img
                       src={thumbnails[1]}
@@ -131,7 +131,7 @@ export function FolderCard({
                     <Folder className="w-4 h-4 text-[#7C7F87]" />
                   )}
                 </div>
-                <div className="flex-1 rounded-[6px] bg-[#2E2F35] overflow-hidden flex items-center justify-center relative">
+                <div className="flex-1 rounded-[6px] bg-[#2E2F34] overflow-hidden flex items-center justify-center relative">
                   {thumbnails[2] ? (
                     <img
                       src={thumbnails[2]}
@@ -148,7 +148,7 @@ export function FolderCard({
 
           {/* Badges on preview: Restricted Lock badge */}
           {isRestricted && (
-            <div className="absolute top-2.5 right-2.5 flex items-center gap-1 rounded-md bg-black/60 backdrop-blur-sm px-1.5 py-0.5 border border-amber-500/30 text-amber-400 text-[10px] font-semibold z-20">
+            <div className="absolute top-2.5 right-2.5 flex items-center gap-1 rounded-md bg-black/60 backdrop-blur-sm px-1.5 py-0.5 border border-amber-500/30 text-amber-400 text-xs font-semibold z-20">
               <Lock className="w-3 h-3" />
               <span>Restricted</span>
             </div>
@@ -205,7 +205,7 @@ export function FolderCard({
                     {dropLabel || "Move to folder"}
                   </p>
                 ) : (
-                  <p className="text-[11px] text-[#9A9DA0] truncate mt-0.5">
+                  <p className="text-[11px] text-[#A3A6AD] truncate mt-0.5">
                     {itemCount} {itemCount === 1 ? "item" : "items"}
                     {totalBytes > 0 && ` · ${formatBytes(totalBytes)}`}
                   </p>
@@ -222,7 +222,7 @@ export function FolderCard({
                 e.stopPropagation();
                 onContextMenu(e);
               }}
-              className="folder-menu-btn flex h-7 w-7 items-center justify-center rounded-lg text-[#9A9DA0] hover:bg-[#2A2B30] hover:text-white transition-colors shrink-0"
+              className="folder-menu-btn flex h-7 w-7 items-center justify-center rounded-lg text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white transition-colors shrink-0"
             >
               <MoreHorizontal className="w-4 h-4" />
             </button>

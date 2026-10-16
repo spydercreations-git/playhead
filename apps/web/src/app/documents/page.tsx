@@ -192,7 +192,7 @@ export default function DocumentsPage() {
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="h-64 rounded-2xl border border-border bg-card/40 p-5 animate-pulse space-y-4"
+                className="h-64 rounded-xl border border-border bg-card/40 p-5 animate-pulse space-y-4"
               >
                 <div className="flex items-center justify-between">
                   <div className="w-12 h-5 bg-muted rounded" />
@@ -208,8 +208,8 @@ export default function DocumentsPage() {
             ))}
           </div>
         ) : filteredDocuments.length === 0 ? (
-          <div className="text-center py-20 rounded-2xl border border-dashed border-border/80 bg-card/30 p-8">
-            <div className="w-14 h-14 rounded-2xl bg-muted/60 text-muted-foreground flex items-center justify-center mx-auto mb-4">
+          <div className="text-center py-20 rounded-xl border border-dashed border-border/80 bg-card/30 p-8">
+            <div className="w-14 h-14 rounded-xl bg-muted/60 text-muted-foreground flex items-center justify-center mx-auto mb-4">
               <FileText className="w-7 h-7 opacity-60" />
             </div>
             <h3 className="text-sm font-semibold text-foreground mb-1">

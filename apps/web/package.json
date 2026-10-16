@@ -6,7 +6,8 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "next lint",
+    "lint": "node scripts/check-design-tokens.js --strict",
+    "lint:design": "node scripts/check-design-tokens.js --strict",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

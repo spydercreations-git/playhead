@@ -253,7 +253,7 @@ export default function SpreadsheetsPage() {
               <h1 className="text-2xl font-bold tracking-tight text-white">
                 Spreadsheets & Trackers
               </h1>
-              <p className="text-xs text-[#9A9DA0] mt-0.5">
+              <p className="text-xs text-[#A3A6AD] mt-0.5">
                 Real-time multi-sheet workbooks, video production budgets, and deliverables tracking.
               </p>
             </div>
@@ -265,14 +265,14 @@ export default function SpreadsheetsPage() {
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-2 h-9 px-3.5 rounded-[10px] bg-[#2A2B30] hover:bg-[#34353B] text-xs font-medium text-white border border-[#2E2F34] transition-colors"
+              className="flex items-center gap-2 h-9 px-3.5 rounded-[10px] bg-[#2A2B30] hover:bg-[#2E2F34] text-xs font-medium text-white border border-[#2E2F34] transition-colors"
             >
               <Upload className="h-3.5 w-3.5 text-[#7C7F87]" />
               <span>Import (.xlsx, .csv)</span>
             </button>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 h-9 px-4 rounded-[10px] bg-[#4876F3] hover:bg-[#3B66D6] text-xs font-semibold text-white shadow transition-colors"
+              className="flex items-center gap-2 h-9 px-4 rounded-[10px] bg-[#4876F3] hover:bg-[#3560D6] text-xs font-semibold text-white shadow transition-colors"
             >
               <Plus className="h-4 w-4" />
               <span>New Spreadsheet</span>
@@ -290,7 +290,7 @@ export default function SpreadsheetsPage() {
             className={`h-8 px-3 rounded-[8px] text-xs font-medium transition-colors shrink-0 ${
               selectedClientId === "all"
                 ? "bg-[#4876F3] text-white"
-                : "bg-[#2A2B30] text-[#9A9DA0] hover:text-white border border-[#2E2F34]"
+                : "bg-[#2A2B30] text-[#A3A6AD] hover:text-white border border-[#2E2F34]"
             }`}
           >
             All Clients ({spreadsheets.length})
@@ -302,7 +302,7 @@ export default function SpreadsheetsPage() {
               className={`h-8 px-3 rounded-[8px] text-xs font-medium transition-colors shrink-0 ${
                 selectedClientId === chip.id
                   ? "bg-[#4876F3] text-white"
-                  : "bg-[#2A2B30] text-[#9A9DA0] hover:text-white border border-[#2E2F34]"
+                  : "bg-[#2A2B30] text-[#A3A6AD] hover:text-white border border-[#2E2F34]"
               }`}
             >
               {chip.name} ({chip.count})
@@ -324,37 +324,37 @@ export default function SpreadsheetsPage() {
 
       {/* Spreadsheets List Grid / Loading / Error / Empty States */}
       {error ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border border-[#2E2F34] bg-[#212121] p-8">
+        <div className="flex flex-col items-center justify-center py-20 text-center rounded-xl border border-[#2E2F34] bg-[#212121] p-8">
           <div className="h-12 w-12 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center mb-3">
             <AlertCircle className="h-6 w-6" />
           </div>
           <h3 className="text-sm font-semibold text-white mb-1">Failed to load spreadsheets</h3>
-          <p className="text-xs text-[#9A9DA0] max-w-sm mb-6">{error}</p>
+          <p className="text-xs text-[#A3A6AD] max-w-sm mb-6">{error}</p>
           <button
             onClick={() => loadData()}
-            className="flex items-center gap-2 h-9 px-4 rounded-[10px] bg-[#4876F3] hover:bg-[#3B66D6] text-xs font-semibold text-white transition-colors"
+            className="flex items-center gap-2 h-9 px-4 rounded-[10px] bg-[#4876F3] hover:bg-[#3560D6] text-xs font-semibold text-white transition-colors"
           >
             <span>Try again</span>
           </button>
         </div>
       ) : loading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-[#9A9DA0]">
+        <div className="flex flex-col items-center justify-center py-20 text-[#A3A6AD]">
           <Loader2 className="h-7 w-7 animate-spin text-[#4876F3] mb-3" />
           <span className="text-xs">Loading spreadsheets...</span>
         </div>
       ) : filteredSpreadsheets.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border border-[#2E2F34] bg-[#212121] p-8">
-          <div className="h-12 w-12 rounded-xl bg-[#2A2B30] text-[#9A9DA0] flex items-center justify-center mb-3">
+        <div className="flex flex-col items-center justify-center py-20 text-center rounded-xl border border-[#2E2F34] bg-[#212121] p-8">
+          <div className="h-12 w-12 rounded-xl bg-[#2A2B30] text-[#A3A6AD] flex items-center justify-center mb-3">
             <FileSpreadsheet className="h-6 w-6" />
           </div>
           <h3 className="text-sm font-semibold text-white mb-1">No spreadsheets found</h3>
-          <p className="text-xs text-[#9A9DA0] max-w-sm mb-6">
+          <p className="text-xs text-[#A3A6AD] max-w-sm mb-6">
             Create a new spreadsheet or video tracker to manage deliverables, calculate budgets, and track reviews.
           </p>
           {!isClient && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 h-9 px-4 rounded-[10px] bg-[#4876F3] hover:bg-[#3B66D6] text-xs font-semibold text-white transition-colors"
+              className="flex items-center gap-2 h-9 px-4 rounded-[10px] bg-[#4876F3] hover:bg-[#3560D6] text-xs font-semibold text-white transition-colors"
             >
               <Plus className="h-4 w-4" />
               <span>Create Spreadsheet</span>
@@ -372,7 +372,7 @@ export default function SpreadsheetsPage() {
                 initial={isNew && !shouldReduceMotion ? { opacity: 0, scale: 0.96 } : false}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                className={`rounded-2xl transition-all duration-1000 ${
+                className={`rounded-xl transition-all duration-1000 ${
                   isNew
                     ? "ring-2 ring-[#4876F3] shadow-[0_0_24px_rgba(72,118,243,0.35)]"
                     : ""
@@ -380,7 +380,7 @@ export default function SpreadsheetsPage() {
               >
                 <Link
                   href={`/sheet/${sheet.id}`}
-                  className="group flex flex-col justify-between p-5 rounded-2xl bg-[#212121] border border-[#2E2F34] hover:border-[#4876F3]/50 hover:bg-[#262629] transition-all duration-150 h-full"
+                  className="group flex flex-col justify-between p-5 rounded-xl bg-[#212121] border border-[#2E2F34] hover:border-[#4876F3]/50 hover:bg-[#212121] transition-all duration-150 h-full"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2 mb-3">
@@ -392,13 +392,13 @@ export default function SpreadsheetsPage() {
                           <h4 className="text-sm font-semibold text-white group-hover:text-[#4876F3] transition-colors line-clamp-1">
                             {sheet.title}
                           </h4>
-                          <div className="flex items-center gap-1.5 text-[11px] text-[#9A9DA0] mt-0.5">
+                          <div className="flex items-center gap-1.5 text-[11px] text-[#A3A6AD] mt-0.5">
                             <FolderOpen className="h-3 w-3" />
                             <span className="truncate">{sheet.project_name}</span>
                             {sheet.client_name && (
                               <>
                                 <span>•</span>
-                                <span className="text-[#9A9DA0] truncate">
+                                <span className="text-[#A3A6AD] truncate">
                                   {sheet.client_name}
                                 </span>
                               </>
@@ -409,11 +409,11 @@ export default function SpreadsheetsPage() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 my-4 py-3 border-y border-[#2E2F34]/80 text-[11px]">
-                      <div className="flex items-center gap-1.5 text-[#9A9DA0]">
+                      <div className="flex items-center gap-1.5 text-[#A3A6AD]">
                         <Layers className="h-3.5 w-3.5 text-[#7C7F87]" />
                         <span>{sheet.row_count} rows × {sheet.col_count} cols</span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-[#9A9DA0] justify-end">
+                      <div className="flex items-center gap-1.5 text-[#A3A6AD] justify-end">
                         <Calendar className="h-3.5 w-3.5 text-[#7C7F87]" />
                         <span>
                           {sheet.updated_at
@@ -424,7 +424,7 @@ export default function SpreadsheetsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] text-[#9A9DA0] pt-1">
+                  <div className="flex items-center justify-between text-[11px] text-[#A3A6AD] pt-1">
                     <span className="text-emerald-400 font-medium flex items-center gap-1">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                       Live Sync
@@ -458,7 +458,7 @@ export default function SpreadsheetsPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: 4 }}
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-              className="relative z-10 w-full max-w-md rounded-2xl border border-[#2E2F34] bg-[#212121] p-6 shadow-2xl"
+              className="relative z-10 w-full max-w-md rounded-xl border border-[#2E2F34] bg-[#212121] p-6 shadow-overlay"
             >
             <div className="flex items-center justify-between pb-4 border-b border-[#2E2F34]">
               <h3 className="text-sm font-semibold text-white">Create New Spreadsheet</h3>
@@ -473,7 +473,7 @@ export default function SpreadsheetsPage() {
 
             <form onSubmit={handleCreateSpreadsheet} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
+                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
                   Location (optional)
                 </label>
                 <ProjectSelect
@@ -486,7 +486,7 @@ export default function SpreadsheetsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
+                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
                   Spreadsheet Name
                 </label>
                 <input
@@ -499,7 +499,7 @@ export default function SpreadsheetsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
+                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
                   Template
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -517,7 +517,7 @@ export default function SpreadsheetsPage() {
                       className={`p-2.5 rounded-[10px] text-left border text-xs transition-colors ${
                         selectedTemplate === tpl.id
                           ? "border-[#4876F3] bg-[#4876F3]/10 text-white font-medium"
-                          : "border-[#2E2F34] bg-[#2A2B30] text-[#9A9DA0] hover:text-white hover:border-[#424344]"
+                          : "border-[#2E2F34] bg-[#2A2B30] text-[#A3A6AD] hover:text-white hover:border-[#424344]"
                       }`}
                     >
                       {tpl.name}
@@ -530,14 +530,14 @@ export default function SpreadsheetsPage() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-3.5 py-2 rounded-[10px] text-xs font-medium text-[#9A9DA0] hover:text-white"
+                  className="px-3.5 py-2 rounded-[10px] text-xs font-medium text-[#A3A6AD] hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-[10px] bg-[#3B67E0] hover:bg-[#3258c7] text-xs font-semibold text-white transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-[10px] bg-[#3B67E0] hover:bg-[#3B67E0] text-xs font-semibold text-white transition-colors disabled:opacity-50"
                 >
                   {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   <span>Create & Open</span>
@@ -552,7 +552,7 @@ export default function SpreadsheetsPage() {
       {/* Import Modal */}
       {showImportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-[#2E2F34] bg-[#212121] p-6 shadow-2xl relative">
+          <div className="w-full max-w-md rounded-xl border border-[#2E2F34] bg-[#212121] p-6 shadow-overlay relative">
             <div className="flex items-center justify-between pb-4 border-b border-[#2E2F34]">
               <h3 className="text-sm font-semibold text-white">Import Spreadsheet</h3>
               <button
@@ -566,7 +566,7 @@ export default function SpreadsheetsPage() {
 
             <form onSubmit={handleImportSubmit} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
+                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
                   Target Project
                 </label>
                 <ProjectSelect
@@ -578,7 +578,7 @@ export default function SpreadsheetsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
+                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
                   Excel or CSV file (Max 25MB)
                 </label>
                 <input
@@ -595,7 +595,7 @@ export default function SpreadsheetsPage() {
                       setImportFile(file);
                     }
                   }}
-                  className="w-full p-2 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] text-xs text-white file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#4876F3] file:text-white hover:file:bg-[#3B66D6]"
+                  className="w-full p-2 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] text-xs text-white file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#4876F3] file:text-white hover:file:bg-[#3560D6]"
                 />
               </div>
 
@@ -603,14 +603,14 @@ export default function SpreadsheetsPage() {
                 <button
                   type="button"
                   onClick={() => setShowImportModal(false)}
-                  className="px-3.5 py-2 rounded-[10px] text-xs font-medium text-[#9A9DA0] hover:text-white"
+                  className="px-3.5 py-2 rounded-[10px] text-xs font-medium text-[#A3A6AD] hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={importing || !importFile || !selectedProjectId}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-[10px] bg-[#4876F3] hover:bg-[#3B66D6] text-xs font-semibold text-white transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-[10px] bg-[#4876F3] hover:bg-[#3560D6] text-xs font-semibold text-white transition-colors disabled:opacity-50"
                 >
                   {importing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   <span>Import File</span>

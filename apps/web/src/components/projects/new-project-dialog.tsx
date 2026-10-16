@@ -181,7 +181,7 @@ export function NewProjectDialog({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.98, y: 4 }}
           transition={dialogTransition}
-          className="relative z-10 w-full max-w-3xl rounded-2xl border border-[#2E2F34] bg-[#212121] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+          className="relative z-10 w-full max-w-3xl rounded-xl border border-[#2E2F34] bg-[#212121] shadow-overlay overflow-hidden flex flex-col max-h-[90vh]"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-[#2E2F34] bg-[#212121]">
@@ -208,7 +208,7 @@ export function NewProjectDialog({
           {/* Setup Animation Screen */}
           {setupStep === "setting_up" ? (
             <div className="py-16 px-8 flex flex-col items-center justify-center space-y-6">
-              <div className="w-12 h-12 rounded-2xl bg-[#4876F3]/10 border border-[#4876F3]/20 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-[#4876F3]/10 border border-[#4876F3]/20 flex items-center justify-center">
                 <Loader2 className="w-6 h-6 text-[#4876F3] animate-spin" />
               </div>
 
@@ -216,7 +216,7 @@ export function NewProjectDialog({
                 <h3 className="text-sm font-semibold text-white">
                   Setting up &ldquo;{name}&rdquo;
                 </h3>
-                <p className="text-xs text-[#9A9DA0]">
+                <p className="text-xs text-[#A3A6AD]">
                   Configuring project structure and real-time collaboration tracker
                 </p>
               </div>
@@ -224,7 +224,7 @@ export function NewProjectDialog({
               <div className="w-full max-w-sm rounded-xl border border-[#2E2F34] bg-[#2A2B30] p-4 space-y-3">
                 {template === "video_project" && (
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#D1D2D4] flex items-center gap-2">
+                    <span className="text-[#A3A6AD] flex items-center gap-2">
                       <Folder className="w-3.5 h-3.5 text-[#4876F3]" />
                       <span>Creating folders (Briefs, Raw, Edits, Deliverables)</span>
                     </span>
@@ -233,13 +233,13 @@ export function NewProjectDialog({
                         <Check className="w-3 h-3" />
                       </span>
                     ) : (
-                      <Loader2 className="w-3.5 h-3.5 text-[#9A9DA0] animate-spin" />
+                      <Loader2 className="w-3.5 h-3.5 text-[#A3A6AD] animate-spin" />
                     )}
                   </div>
                 )}
 
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#D1D2D4] flex items-center gap-2">
+                  <span className="text-[#A3A6AD] flex items-center gap-2">
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Creating Tracker</span>
                   </span>
@@ -248,7 +248,7 @@ export function NewProjectDialog({
                       <Check className="w-3 h-3" />
                     </span>
                   ) : (
-                    <Loader2 className="w-3.5 h-3.5 text-[#9A9DA0] animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 text-[#A3A6AD] animate-spin" />
                   )}
                 </div>
               </div>
@@ -258,7 +258,7 @@ export function NewProjectDialog({
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-0 divide-y md:divide-y-0 md:divide-x divide-[#2E2F34]">
                 {/* Left Column: Start with (5 cols) */}
-                <div className="md:col-span-5 p-6 space-y-3.5 bg-[#1E1E20]">
+                <div className="md:col-span-5 p-6 space-y-3.5 bg-[#181818]">
                   <div className="text-[13px] font-medium text-[#A3A6AD]">
                     Start with
                   </div>
@@ -270,7 +270,7 @@ export function NewProjectDialog({
                       className={`cursor-pointer rounded-xl border p-4 transition-all ${
                         template === "video_project"
                           ? "border-[#4876F3] bg-[#4876F3]/10"
-                          : "border-[#2E2F34] bg-[#2A2B30] hover:border-[#3E4048]"
+                          : "border-[#2E2F34] bg-[#2A2B30] hover:border-[#2E2F34]"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
@@ -297,7 +297,7 @@ export function NewProjectDialog({
                         {["Briefs", "Raw footage", "Edits", "Deliverables"].map((f) => (
                           <span
                             key={f}
-                            className="inline-flex items-center gap-1 rounded bg-[#212121] px-2 py-0.5 text-[11px] text-[#D1D2D4] border border-[#2E2F34]"
+                            className="inline-flex items-center gap-1 rounded bg-[#212121] px-2 py-0.5 text-[11px] text-[#A3A6AD] border border-[#2E2F34]"
                           >
                             <Folder className="w-2.5 h-2.5 text-[#4876F3]" />
                             {f}
@@ -312,7 +312,7 @@ export function NewProjectDialog({
                       className={`cursor-pointer rounded-xl border p-4 transition-all ${
                         template === "blank"
                           ? "border-[#4876F3] bg-[#4876F3]/10"
-                          : "border-[#2E2F34] bg-[#2A2B30] hover:border-[#3E4048]"
+                          : "border-[#2E2F34] bg-[#2A2B30] hover:border-[#2E2F34]"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
@@ -344,7 +344,7 @@ export function NewProjectDialog({
                   {/* Preview Card with Cover + Input inside */}
                   <div className="rounded-xl border border-[#2E2F34] bg-[#181818] p-4">
                     {/* Dashed Add cover area */}
-                    <div className="border border-dashed border-[#2E2F34] rounded-lg py-5 px-4 flex items-center justify-center gap-2 text-[13px] text-[#7C7F87] hover:border-[#3E4048] hover:text-[#A3A6AD] cursor-pointer transition-colors">
+                    <div className="border border-dashed border-[#2E2F34] rounded-lg py-5 px-4 flex items-center justify-center gap-2 text-[13px] text-[#7C7F87] hover:border-[#2E2F34] hover:text-[#A3A6AD] cursor-pointer transition-colors">
                       <ImageIcon className="w-4 h-4" />
                       <span>Add cover (optional)</span>
                     </div>
@@ -376,7 +376,7 @@ export function NewProjectDialog({
                         value: c.id,
                         label: c.name,
                         icon: (
-                          <div className="w-5 h-5 rounded bg-[#2E2F34] flex items-center justify-center text-[10px] font-semibold text-[#D1D2D4] shrink-0">
+                          <div className="w-5 h-5 rounded bg-[#2E2F34] flex items-center justify-center text-xs font-semibold text-[#A3A6AD] shrink-0">
                             {c.name.charAt(0).toUpperCase()}
                           </div>
                         ),
@@ -421,7 +421,7 @@ export function NewProjectDialog({
                         type="button"
                         onClick={handleAddPersonEmail}
                         disabled={!personEmailInput.trim()}
-                        className="h-9 px-3.5 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] text-xs font-medium text-white hover:bg-[#34353B] disabled:opacity-40 transition-colors shrink-0"
+                        className="h-9 px-3.5 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] text-xs font-medium text-white hover:bg-[#2E2F34] disabled:opacity-40 transition-colors shrink-0"
                       >
                         Add
                       </button>
@@ -473,7 +473,7 @@ export function NewProjectDialog({
               </div>
 
               {/* Dialog Footer */}
-              <div className="flex items-center justify-between p-4 px-6 border-t border-[#2E2F34] bg-[#1E1E20]">
+              <div className="flex items-center justify-between p-4 px-6 border-t border-[#2E2F34] bg-[#181818]">
                 <div className="text-[13px] text-[#7C7F87]">
                   {template === "video_project"
                     ? "Creates 4 folders and a Tracker sheet"
@@ -491,7 +491,7 @@ export function NewProjectDialog({
                   <button
                     type="submit"
                     disabled={isCreateDisabled}
-                    className="rounded-[10px] bg-[#3B67E0] hover:bg-[#3258c7] px-5 py-2.5 text-[14px] font-medium text-white shadow disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                    className="rounded-[10px] bg-[#3B67E0] hover:bg-[#3B67E0] px-5 py-2.5 text-[14px] font-medium text-white shadow disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
                   >
                     <span>Create project</span>
                   </button>

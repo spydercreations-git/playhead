@@ -345,14 +345,14 @@ export function ReviewWorkspace({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0A0A0B] text-white font-sans animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#181818] text-white font-sans animate-in fade-in duration-150">
       {/* Top Header Bar */}
-      <div className="flex h-14 items-center justify-between border-b border-[#222226] px-6 bg-[#141416]">
+      <div className="flex h-14 items-center justify-between border-b border-[#212121] px-6 bg-[#181818]">
         {/* Left: Back button, project breadcrumb, filename, version dropdown, review status chip */}
         <div className="flex items-center gap-4">
           <button
             onClick={onClose}
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-[#9A9DA0] hover:bg-[#202024] hover:text-white transition-colors"
+            className="flex items-center justify-center w-8 h-8 rounded-lg text-[#A3A6AD] hover:bg-[#181818] hover:text-white transition-colors"
             title="Back to project (Esc)"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -361,8 +361,8 @@ export function ReviewWorkspace({
           <div className="flex items-center gap-2 text-xs">
             {item.project_name && (
               <>
-                <span className="text-[#71717A] max-w-[120px] truncate">{item.project_name}</span>
-                <span className="text-[#3F3F46]">/</span>
+                <span className="text-[#A3A6AD] max-w-[120px] truncate">{item.project_name}</span>
+                <span className="text-[#424344]">/</span>
               </>
             )}
             <span className="font-semibold text-white max-w-[200px] truncate" title={item.name}>
@@ -374,15 +374,15 @@ export function ReviewWorkspace({
           <div className="relative">
             <button
               onClick={() => setShowVersionDropdown(!showVersionDropdown)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#1E1E22] hover:bg-[#27272D] border border-[#2E2E34] text-xs font-mono font-bold text-white transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#181818] hover:bg-[#212121] border border-[#2E2F34] text-xs font-mono font-bold text-white transition-colors"
             >
               <span>v{activeVersionNumber}</span>
-              <ChevronDown className="w-3 h-3 text-[#71717A]" />
+              <ChevronDown className="w-3 h-3 text-[#A3A6AD]" />
             </button>
 
             {showVersionDropdown && (
-              <div className="absolute top-full left-0 mt-1 w-48 bg-[#18181A] border border-[#2E2E34] rounded-xl shadow-2xl p-1 z-50">
-                <div className="px-2.5 py-1 text-[10px] text-[#71717A] uppercase tracking-wider font-semibold">
+              <div className="absolute top-full left-0 mt-1 w-48 bg-[#181818] border border-[#2E2F34] rounded-xl shadow-overlay p-1 z-50">
+                <div className="px-2.5 py-1 text-xs text-[#A3A6AD]  font-semibold">
                   Switch Version
                 </div>
                 {versions.map((v) => (
@@ -393,11 +393,11 @@ export function ReviewWorkspace({
                       setShowVersionDropdown(false);
                     }}
                     className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-mono transition-colors ${
-                      v.number === activeVersionNumber ? "bg-[#FF5500] text-white" : "text-[#9A9DA0] hover:bg-[#27272A]"
+                      v.number === activeVersionNumber ? "bg-[#FFBB56] text-white" : "text-[#A3A6AD] hover:bg-[#212121]"
                     }`}
                   >
                     <span>Version v{v.number}</span>
-                    <span className="text-[10px] opacity-70">
+                    <span className="text-xs opacity-70">
                       {new Date(v.created_at).toLocaleDateString()}
                     </span>
                   </button>
@@ -408,9 +408,9 @@ export function ReviewWorkspace({
 
           {/* Review Status Chip */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
+            className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold  ${
               reviewStatus === "approved"
-                ? "bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30"
+                ? "bg-[#3FCF8E]/15 text-[#3FCF8E] border border-[#3FCF8E]/30"
                 : reviewStatus === "changes_requested"
                 ? "bg-[#EF4444]/15 text-[#EF4444] border border-[#EF4444]/30"
                 : "bg-[#EAB308]/15 text-[#EAB308] border border-[#EAB308]/30"
@@ -429,7 +429,7 @@ export function ReviewWorkspace({
 
         {/* Center: Item Position Counter (1 of N) */}
         {positionText && (
-          <div className="hidden md:flex items-center gap-2 bg-[#18181B] px-3 py-1 rounded-full border border-[#27272A] text-xs text-[#9A9DA0]">
+          <div className="hidden md:flex items-center gap-2 bg-[#181818] px-3 py-1 rounded-full border border-[#212121] text-xs text-[#A3A6AD]">
             {onSelectPrev && (
               <button onClick={onSelectPrev} className="hover:text-white transition-colors" title="Previous item">
                 <ChevronLeft className="w-3.5 h-3.5" />
@@ -465,7 +465,7 @@ export function ReviewWorkspace({
                   setApprovalDecision("approved");
                   setShowApprovalDialog(true);
                 }}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#22C55E] hover:bg-[#16A34A] text-black text-xs font-bold shadow transition-colors"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#3FCF8E] hover:bg-[#3FCF8E] text-black text-xs font-bold shadow transition-colors"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>Approve</span>
@@ -477,9 +477,9 @@ export function ReviewWorkspace({
           {onOpenShare && !isPublic && (
             <button
               onClick={onOpenShare}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1E1E22] hover:bg-[#27272D] text-xs font-semibold text-white border border-[#2E2E34] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#181818] hover:bg-[#212121] text-xs font-semibold text-white border border-[#2E2F34] transition-colors"
             >
-              <Share2 className="w-3.5 h-3.5 text-[#FF5500]" />
+              <Share2 className="w-3.5 h-3.5 text-[#FFBB56]" />
               <span>Share</span>
             </button>
           )}
@@ -487,7 +487,7 @@ export function ReviewWorkspace({
           {/* Copy Link Button */}
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1E1E22] hover:bg-[#27272D] text-xs font-medium text-[#9A9DA0] hover:text-white border border-[#2E2E34] transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#181818] hover:bg-[#212121] text-xs font-medium text-[#A3A6AD] hover:text-white border border-[#2E2F34] transition-colors"
           >
             <LinkIcon className="w-3.5 h-3.5" />
             <span>{copiedLink ? "Copied!" : "Copy link"}</span>
@@ -498,7 +498,7 @@ export function ReviewWorkspace({
       {/* Main Workspace Body */}
       <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
         {/* Left / Center Player Area */}
-        <div className="flex-1 flex flex-col min-w-0 bg-[#0A0A0B] overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 bg-[#181818] overflow-hidden">
           <VideoPlayer
             playlistUrl={playlistUrl}
             isAudio={item.kind === "audio" || item.mime.startsWith("audio/")}
@@ -539,7 +539,7 @@ export function ReviewWorkspace({
         </div>
 
         {/* Right Sidebar: Comments & Details Panel with Bottom Composer */}
-        <div className="w-full lg:w-96 flex flex-col h-72 lg:h-full border-t lg:border-t-0 lg:border-l border-[#222226] bg-[#141416]">
+        <div className="w-full lg:w-96 flex flex-col h-72 lg:h-full border-t lg:border-t-0 lg:border-l border-[#212121] bg-[#181818]">
           {/* Comments Panel */}
           <div className="flex-1 overflow-hidden">
             <CommentsPanel
@@ -582,11 +582,11 @@ export function ReviewWorkspace({
       {/* Decision Dialog Modal (Approve or Request Changes) */}
       {showApprovalDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md bg-[#18181A] border border-[#27272A] rounded-2xl shadow-2xl p-6 space-y-4">
+          <div className="w-full max-w-md bg-[#181818] border border-[#212121] rounded-xl shadow-overlay p-6 space-y-4">
             <h3 className="text-base font-bold text-white capitalize">
               {approvalDecision === "approved" ? "Approve this version" : "Request changes"}
             </h3>
-            <p className="text-xs text-[#9A9DA0]">
+            <p className="text-xs text-[#A3A6AD]">
               {approvalDecision === "approved"
                 ? "This version will be marked as approved. Team and clients will see your decision."
                 : "Let the editors know what adjustments are required before final delivery."}
@@ -599,14 +599,14 @@ export function ReviewWorkspace({
                   placeholder="Your Name *"
                   value={visitorName}
                   onChange={(e) => setVisitorName(e.target.value)}
-                  className="w-full bg-[#121214] text-xs p-2.5 rounded-lg border border-[#27272A] text-white outline-none focus:border-[#FF5500]"
+                  className="w-full bg-[#181818] text-xs p-2.5 rounded-lg border border-[#212121] text-white outline-none focus:border-[#FFBB56]"
                 />
                 <input
                   type="email"
                   placeholder="Your Email *"
                   value={visitorEmail}
                   onChange={(e) => setVisitorEmail(e.target.value)}
-                  className="w-full bg-[#121214] text-xs p-2.5 rounded-lg border border-[#27272A] text-white outline-none focus:border-[#FF5500]"
+                  className="w-full bg-[#181818] text-xs p-2.5 rounded-lg border border-[#212121] text-white outline-none focus:border-[#FFBB56]"
                 />
               </div>
             )}
@@ -616,13 +616,13 @@ export function ReviewWorkspace({
               value={approvalNote}
               onChange={(e) => setApprovalNote(e.target.value)}
               rows={3}
-              className="w-full bg-[#121214] text-xs p-3 rounded-xl border border-[#27272A] text-white outline-none focus:border-[#FF5500] placeholder-[#71717A] resize-none"
+              className="w-full bg-[#181818] text-xs p-3 rounded-xl border border-[#212121] text-white outline-none focus:border-[#FFBB56] placeholder-[#A3A6AD] resize-none"
             />
 
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 onClick={() => setShowApprovalDialog(false)}
-                className="px-4 py-2 rounded-lg text-xs font-medium text-[#9A9DA0] hover:text-white hover:bg-[#202024] transition-colors"
+                className="px-4 py-2 rounded-lg text-xs font-medium text-[#A3A6AD] hover:text-white hover:bg-[#181818] transition-colors"
               >
                 Cancel
               </button>
@@ -630,7 +630,7 @@ export function ReviewWorkspace({
                 onClick={handleSubmitReviewDecision}
                 className={`px-5 py-2 rounded-lg text-xs font-bold transition-all shadow ${
                   approvalDecision === "approved"
-                    ? "bg-[#22C55E] hover:bg-[#16A34A] text-black"
+                    ? "bg-[#3FCF8E] hover:bg-[#3FCF8E] text-black"
                     : "bg-[#EF4444] hover:bg-[#DC2626] text-white"
                 }`}
               >

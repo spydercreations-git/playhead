@@ -105,7 +105,7 @@ export default function TeamPage() {
   // New/Edit Role modal
   const [roleModalOpen, setRoleModalOpen] = useState(false);
   const [roleName, setRoleName] = useState("");
-  const [roleColor, setRoleColor] = useState("#0066FF");
+  const [roleColor, setRoleColor] = useState("#4876F3");
   const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
   const [roleError, setRoleError] = useState<string | null>(null);
   const [roleLoading, setRoleLoading] = useState(false);
@@ -255,11 +255,11 @@ export default function TeamPage() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-bold tracking-tight text-white">Team & Permissions</h1>
-            <span className="rounded-full bg-[#2E2F34] px-2.5 py-0.5 text-xs font-semibold text-[#9A9DA0]">
+            <span className="rounded-full bg-[#2E2F34] px-2.5 py-0.5 text-xs font-semibold text-[#A3A6AD]">
               {totalSeatsUsed} of {maxTrialSeats} seats
             </span>
           </div>
-          <p className="mt-1 text-xs text-[#9A9DA0]">
+          <p className="mt-1 text-xs text-[#A3A6AD]">
             Manage members, invitations, and custom access roles in <span className="text-white font-medium">{companyName || "Workspace"}</span>.
           </p>
         </div>
@@ -268,7 +268,7 @@ export default function TeamPage() {
           {activeTab === "roles" ? (
             <button
               onClick={() => setRoleModalOpen(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3b66df] transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3B67E0] transition-colors"
             >
               <Plus className="w-4 h-4" />
               New Role
@@ -277,7 +277,7 @@ export default function TeamPage() {
             <button
               onClick={() => setInviteModalOpen(true)}
               disabled={seatsRemaining === 0}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3b66df] disabled:opacity-40 transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3B67E0] disabled:opacity-40 transition-colors"
             >
               <Plus className="w-4 h-4" />
               Invite Member
@@ -293,7 +293,7 @@ export default function TeamPage() {
           className={`py-3 px-4 text-xs font-semibold border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === "members"
               ? "border-[#4876F3] text-white"
-              : "border-transparent text-[#9A9DA0] hover:text-white"
+              : "border-transparent text-[#A3A6AD] hover:text-white"
           }`}
         >
           <Users className="w-4 h-4" />
@@ -304,7 +304,7 @@ export default function TeamPage() {
           className={`py-3 px-4 text-xs font-semibold border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === "roles"
               ? "border-[#4876F3] text-white"
-              : "border-transparent text-[#9A9DA0] hover:text-white"
+              : "border-transparent text-[#A3A6AD] hover:text-white"
           }`}
         >
           <Shield className="w-4 h-4" />
@@ -323,15 +323,15 @@ export default function TeamPage() {
         <div className="overflow-hidden rounded-xl border border-[#424344] bg-[#212121]">
           <div className="border-b border-[#424344] px-6 py-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-white">Active Members</h2>
-            <span className="text-xs text-[#9A9DA0]">{members.length} people</span>
+            <span className="text-xs text-[#A3A6AD]">{members.length} people</span>
           </div>
 
           {loading ? (
-            <div className="py-12 text-center text-xs text-[#9A9DA0]">Loading members...</div>
+            <div className="py-12 text-center text-xs text-[#A3A6AD]">Loading members...</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="border-b border-[#424344] bg-[#181818]/50 text-[#9A9DA0]">
+                <thead className="border-b border-[#424344] bg-[#181818]/50 text-[#A3A6AD]">
                   <tr>
                     <th className="px-6 py-3 font-medium">User</th>
                     <th className="px-6 py-3 font-medium">Role</th>
@@ -346,14 +346,14 @@ export default function TeamPage() {
                       <tr key={m.user_id} className="hover:bg-[#2E2F34]/30">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-[#4876F3]/20 text-[#4876F3] flex items-center justify-center font-bold text-xs uppercase">
+                            <div className="h-8 w-8 rounded-full bg-[#4876F3]/20 text-[#4876F3] flex items-center justify-center font-bold text-xs ">
                               {m.name ? m.name.charAt(0) : m.email.charAt(0)}
                             </div>
                             <div>
                               <div className="font-semibold text-white">
                                 {m.name || "Anonymous"} {isSelf && "(You)"}
                               </div>
-                              <div className="text-[11px] text-[#9A9DA0]">{m.email}</div>
+                              <div className="text-[11px] text-[#A3A6AD]">{m.email}</div>
                             </div>
                           </div>
                         </td>
@@ -376,7 +376,7 @@ export default function TeamPage() {
                               ))}
                           </select>
                         </td>
-                        <td className="px-6 py-4 text-[#9A9DA0]">
+                        <td className="px-6 py-4 text-[#A3A6AD]">
                           {m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "Active"}
                         </td>
                         <td className="px-6 py-4 text-right">
@@ -406,18 +406,18 @@ export default function TeamPage() {
             {roles.map((role) => (
               <div
                 key={role.id}
-                className="bg-[#212121] border border-[#424344] rounded-2xl p-5 space-y-4 flex flex-col justify-between"
+                className="bg-[#212121] border border-[#424344] rounded-xl p-5 space-y-4 flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span
                         className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: role.color || "#0066FF" }}
+                        style={{ backgroundColor: role.color || "#4876F3" }}
                       />
                       <h3 className="text-sm font-semibold text-white">{role.name}</h3>
                       {role.is_system && (
-                        <span className="px-2 py-0.5 bg-[#2E2F34] text-[10px] font-medium text-[#9A9DA0] rounded-md">
+                        <span className="px-2 py-0.5 bg-[#2E2F34] text-xs font-medium text-[#A3A6AD] rounded-md">
                           System
                         </span>
                       )}
@@ -426,7 +426,7 @@ export default function TeamPage() {
                     {!role.is_system && (
                       <button
                         onClick={() => handleDeleteRole(role.id, role.name)}
-                        className="p-1 rounded hover:bg-rose-500/10 text-[#9A9DA0] hover:text-rose-400"
+                        className="p-1 rounded hover:bg-rose-500/10 text-[#A3A6AD] hover:text-rose-400"
                         title="Delete Role"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -434,13 +434,13 @@ export default function TeamPage() {
                     )}
                   </div>
 
-                  <p className="text-xs text-[#9A9DA0] mt-1">
+                  <p className="text-xs text-[#A3A6AD] mt-1">
                     {role.member_count} {role.member_count === 1 ? "member assigned" : "members assigned"}
                   </p>
 
                   {/* Permissions count or list */}
                   <div className="mt-4 pt-3 border-t border-[#424344]/50">
-                    <p className="text-[11px] font-medium text-[#9A9DA0] uppercase tracking-wider mb-2">
+                    <p className="text-[11px] font-medium text-[#A3A6AD]  mb-2">
                       Permissions ({role.permissions?.length || 0})
                     </p>
                     <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
@@ -448,13 +448,13 @@ export default function TeamPage() {
                         role.permissions.map((p) => (
                           <span
                             key={p}
-                            className="px-2 py-0.5 bg-[#181818] border border-[#424344]/40 text-[10px] text-zinc-300 rounded"
+                            className="px-2 py-0.5 bg-[#181818] border border-[#424344]/40 text-xs text-zinc-300 rounded"
                           >
                             {p}
                           </span>
                         ))
                       ) : (
-                        <span className="text-[11px] text-[#52525B]">No elevated permissions</span>
+                        <span className="text-[11px] text-[#A3A6AD]">No elevated permissions</span>
                       )}
                     </div>
                   </div>
@@ -470,12 +470,12 @@ export default function TeamPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <form
             onSubmit={handleCreateRole}
-            className="w-full max-w-2xl bg-[#212121] border border-[#2E2F34] rounded-2xl shadow-2xl flex flex-col max-h-[90vh]"
+            className="w-full max-w-2xl bg-[#212121] border border-[#2E2F34] rounded-xl shadow-overlay flex flex-col max-h-[90vh]"
           >
             <div className="flex items-center justify-between p-5 border-b border-[#2E2F34]">
               <div>
                 <h3 className="text-base font-semibold text-white">New Role</h3>
-                <p className="text-xs text-[#9A9DA0] mt-0.5">
+                <p className="text-xs text-[#A3A6AD] mt-0.5">
                   Define a tailored permission profile for team members
                 </p>
               </div>
@@ -515,7 +515,7 @@ export default function TeamPage() {
                     Badge Color
                   </label>
                   <div className="flex items-center gap-2">
-                    {["#0066FF", "#10B981", "#8B5CF6", "#F59E0B", "#F43F5E"].map((c) => (
+                    {["#4876F3", "#10B981", "#8B5CF6", "#F59E0B", "#F0506E"].map((c) => (
                       <button
                         type="button"
                         key={c}
@@ -531,8 +531,8 @@ export default function TeamPage() {
               </div>
 
               {/* 17 Permissions Matrix */}
-              <div className="space-y-4 pt-2 border-t border-[#27272A]">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#9A9DA0]">
+              <div className="space-y-4 pt-2 border-t border-[#212121]">
+                <h4 className="text-xs font-bold  text-[#A3A6AD]">
                   Permissions ({selectedPerms.length} selected)
                 </h4>
 
@@ -548,8 +548,8 @@ export default function TeamPage() {
                               key={p.id}
                               className={`p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-colors ${
                                 isChecked
-                                  ? "bg-[#3366FF]/10 border-[#3366FF] text-white"
-                                  : "bg-[#121214] border-[#27272A] text-[#9A9DA0] hover:text-white"
+                                  ? "bg-[#4876F3]/10 border-[#4876F3] text-white"
+                                  : "bg-[#181818] border-[#212121] text-[#A3A6AD] hover:text-white"
                               }`}
                             >
                               <span>{p.label}</span>
@@ -557,7 +557,7 @@ export default function TeamPage() {
                                 type="checkbox"
                                 checked={isChecked}
                                 onChange={() => togglePerm(p.id)}
-                                className="rounded border-[#27272A] text-[#3366FF] focus:ring-0 ml-2"
+                                className="rounded border-[#212121] text-[#4876F3] focus:ring-0 ml-2"
                               />
                             </label>
                           );
@@ -569,18 +569,18 @@ export default function TeamPage() {
               </div>
             </div>
 
-            <div className="p-4 border-t border-[#27272A] flex items-center justify-end gap-2 bg-[#141416]">
+            <div className="p-4 border-t border-[#212121] flex items-center justify-end gap-2 bg-[#181818]">
               <button
                 type="button"
                 onClick={() => setRoleModalOpen(false)}
-                className="px-4 py-2 bg-transparent hover:bg-[#27272A] text-xs text-[#9A9DA0] hover:text-white rounded-xl"
+                className="px-4 py-2 bg-transparent hover:bg-[#212121] text-xs text-[#A3A6AD] hover:text-white rounded-xl"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={roleLoading || !roleName}
-                className="px-5 py-2 bg-[#4876F3] hover:bg-[#3B66D6] disabled:opacity-50 text-white text-xs font-semibold rounded-[10px] shadow transition-colors"
+                className="px-5 py-2 bg-[#4876F3] hover:bg-[#3560D6] disabled:opacity-50 text-white text-xs font-semibold rounded-[10px] shadow transition-colors"
               >
                 {roleLoading ? "Creating..." : "Create Role"}
               </button>
@@ -594,7 +594,7 @@ export default function TeamPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <form
             onSubmit={handleSendInvite}
-            className="w-full max-w-md bg-[#212121] border border-[#2E2F34] rounded-2xl p-6 shadow-2xl space-y-4"
+            className="w-full max-w-md bg-[#212121] border border-[#2E2F34] rounded-xl p-6 shadow-overlay space-y-4"
           >
             <div className="flex items-center justify-between pb-3 border-b border-[#2E2F34]">
               <h3 className="text-base font-semibold text-white">Invite Team Member</h3>
@@ -652,14 +652,14 @@ export default function TeamPage() {
               <button
                 type="button"
                 onClick={() => setInviteModalOpen(false)}
-                className="px-3.5 py-2 text-xs font-medium text-[#9A9DA0] hover:text-white rounded-[10px]"
+                className="px-3.5 py-2 text-xs font-medium text-[#A3A6AD] hover:text-white rounded-[10px]"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={inviteLoading || !inviteEmail}
-                className="px-4 py-2 bg-[#4876F3] hover:bg-[#3B66D6] disabled:opacity-50 text-white text-xs font-semibold rounded-[10px] shadow transition-colors"
+                className="px-4 py-2 bg-[#4876F3] hover:bg-[#3560D6] disabled:opacity-50 text-white text-xs font-semibold rounded-[10px] shadow transition-colors"
               >
                 {inviteLoading ? "Sending..." : "Send Invitation"}
               </button>

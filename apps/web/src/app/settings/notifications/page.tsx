@@ -121,13 +121,13 @@ export default function NotificationSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="p-1.5 rounded-lg hover:bg-[#2E2F34] text-[#9A9DA0] hover:text-white"
+            className="p-1.5 rounded-lg hover:bg-[#2E2F34] text-[#A3A6AD] hover:text-white"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
             <h1 className="text-xl font-bold text-white tracking-tight">Notification Preferences</h1>
-            <p className="text-xs text-[#9A9DA0] mt-0.5">
+            <p className="text-xs text-[#A3A6AD] mt-0.5">
               Choose how and when Playhead notifies you about project activity
             </p>
           </div>
@@ -136,7 +136,7 @@ export default function NotificationSettingsPage() {
         <button
           onClick={() => saveMutation.mutate()}
           disabled={saveMutation.isPending}
-          className="flex items-center gap-1.5 px-4 py-2 bg-[#4876F3] hover:bg-[#3b66df] disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-all shadow"
+          className="flex items-center gap-1.5 px-4 py-2 bg-[#4876F3] hover:bg-[#3B67E0] disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-all shadow"
         >
           {savedToast ? (
             <>
@@ -152,8 +152,8 @@ export default function NotificationSettingsPage() {
         {/* Content */}
         <div className="p-8 max-w-4xl w-full mx-auto space-y-8">
           {/* Notification Frequency */}
-          <div className="bg-[#18181A] border border-[#27272A] rounded-2xl p-6 space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-[#9A9DA0]">
+          <div className="bg-[#181818] border border-[#212121] rounded-xl p-6 space-y-4">
+            <h2 className="text-xs font-bold  text-[#A3A6AD]">
               Email Frequency
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -161,8 +161,8 @@ export default function NotificationSettingsPage() {
                 onClick={() => setFrequency("instant")}
                 className={`p-4 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
                   frequency === "instant"
-                    ? "bg-[#3366FF]/10 border-[#3366FF] text-white"
-                    : "bg-[#121214] border-[#27272A] text-[#9A9DA0] hover:border-[#3F3F46]"
+                    ? "bg-[#4876F3]/10 border-[#4876F3] text-white"
+                    : "bg-[#181818] border-[#212121] text-[#A3A6AD] hover:border-[#424344]"
                 }`}
               >
                 <input
@@ -170,11 +170,11 @@ export default function NotificationSettingsPage() {
                   name="freq"
                   checked={frequency === "instant"}
                   onChange={() => setFrequency("instant")}
-                  className="mt-0.5 text-[#3366FF] focus:ring-0"
+                  className="mt-0.5 text-[#4876F3] focus:ring-0"
                 />
                 <div>
                   <p className="text-xs font-semibold text-white">Send right away</p>
-                  <p className="text-[11px] text-[#9A9DA0] mt-0.5">
+                  <p className="text-[11px] text-[#A3A6AD] mt-0.5">
                     Receive an email immediately when events occur
                   </p>
                 </div>
@@ -184,8 +184,8 @@ export default function NotificationSettingsPage() {
                 onClick={() => setFrequency("daily")}
                 className={`p-4 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
                   frequency === "daily"
-                    ? "bg-[#3366FF]/10 border-[#3366FF] text-white"
-                    : "bg-[#121214] border-[#27272A] text-[#9A9DA0] hover:border-[#3F3F46]"
+                    ? "bg-[#4876F3]/10 border-[#4876F3] text-white"
+                    : "bg-[#181818] border-[#212121] text-[#A3A6AD] hover:border-[#424344]"
                 }`}
               >
                 <input
@@ -193,11 +193,11 @@ export default function NotificationSettingsPage() {
                   name="freq"
                   checked={frequency === "daily"}
                   onChange={() => setFrequency("daily")}
-                  className="mt-0.5 text-[#3366FF] focus:ring-0"
+                  className="mt-0.5 text-[#4876F3] focus:ring-0"
                 />
                 <div>
                   <p className="text-xs font-semibold text-white">Daily summary</p>
-                  <p className="text-[11px] text-[#9A9DA0] mt-0.5">
+                  <p className="text-[11px] text-[#A3A6AD] mt-0.5">
                     A single digest sent every morning at 9:00 AM
                   </p>
                 </div>
@@ -206,14 +206,14 @@ export default function NotificationSettingsPage() {
           </div>
 
           {/* Events Matrix */}
-          <div className="bg-[#18181A] border border-[#27272A] rounded-2xl overflow-hidden">
-            <div className="p-6 border-b border-[#27272A]">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-[#9A9DA0]">
+          <div className="bg-[#181818] border border-[#212121] rounded-xl overflow-hidden">
+            <div className="p-6 border-b border-[#212121]">
+              <h2 className="text-xs font-bold  text-[#A3A6AD]">
                 Activity Alerts
               </h2>
             </div>
 
-            <div className="divide-y divide-[#27272A]">
+            <div className="divide-y divide-[#212121]">
               {DEFAULT_EVENTS.map((evt) => {
                 const current = preferences[evt.type] || { in_app: true, email: true };
 
@@ -221,7 +221,7 @@ export default function NotificationSettingsPage() {
                   <div key={evt.type} className="p-5 flex items-center justify-between gap-4">
                     <div className="space-y-0.5 max-w-lg">
                       <p className="text-xs font-medium text-white">{evt.label}</p>
-                      <p className="text-[11px] text-[#9A9DA0]">{evt.desc}</p>
+                      <p className="text-[11px] text-[#A3A6AD]">{evt.desc}</p>
                     </div>
 
                     <div className="flex items-center gap-6 shrink-0">
@@ -231,9 +231,9 @@ export default function NotificationSettingsPage() {
                           type="checkbox"
                           checked={current.in_app}
                           onChange={() => toggleSetting(evt.type, "in_app")}
-                          className="rounded border-[#27272A] text-[#3366FF] focus:ring-0"
+                          className="rounded border-[#212121] text-[#4876F3] focus:ring-0"
                         />
-                        <span className="text-xs text-[#9A9DA0]">In-app</span>
+                        <span className="text-xs text-[#A3A6AD]">In-app</span>
                       </label>
 
                       {/* Email Toggle */}
@@ -242,9 +242,9 @@ export default function NotificationSettingsPage() {
                           type="checkbox"
                           checked={current.email}
                           onChange={() => toggleSetting(evt.type, "email")}
-                          className="rounded border-[#27272A] text-[#3366FF] focus:ring-0"
+                          className="rounded border-[#212121] text-[#4876F3] focus:ring-0"
                         />
-                        <span className="text-xs text-[#9A9DA0]">Email</span>
+                        <span className="text-xs text-[#A3A6AD]">Email</span>
                       </label>
                     </div>
                   </div>

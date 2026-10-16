@@ -169,7 +169,7 @@ export function NewDocumentDialog({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: 4 }}
         transition={dialogTransition}
-        className="relative z-10 bg-[#212121] border border-[#2E2F34] rounded-2xl max-w-xl w-full p-6 shadow-2xl"
+        className="relative z-10 bg-[#212121] border border-[#2E2F34] rounded-xl max-w-xl w-full p-6 shadow-overlay"
       >
         {/* Close Button */}
         <button
@@ -183,7 +183,7 @@ export function NewDocumentDialog({
         <h2 className="text-base font-semibold text-white mb-1">
           Create new document
         </h2>
-        <p className="text-xs text-[#9A9DA0] mb-5">
+        <p className="text-xs text-[#A3A6AD] mb-5">
           Select a template and choose where to save this document.
         </p>
 
@@ -196,7 +196,7 @@ export function NewDocumentDialog({
         <form onSubmit={handleCreate} className="space-y-4">
           {/* Document Title */}
           <div>
-            <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
+            <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
               Document title
             </label>
             <input
@@ -211,7 +211,7 @@ export function NewDocumentDialog({
 
           {/* Location Selector */}
           <div>
-            <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
+            <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
               Location (optional)
             </label>
             <ProjectSelect
@@ -226,7 +226,7 @@ export function NewDocumentDialog({
 
           {/* Template Selection Cards */}
           <div>
-            <label className="block text-xs font-medium text-[#9A9DA0] mb-2">
+            <label className="block text-xs font-medium text-[#A3A6AD] mb-2">
               Choose template
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -240,7 +240,7 @@ export function NewDocumentDialog({
                     className={`p-3 rounded-[10px] border cursor-pointer transition-all flex items-start gap-3 select-none ${
                       isSelected
                         ? "bg-[#4876F3]/10 border-[#4876F3] text-white"
-                        : "bg-[#2A2B30] border-[#2E2F34] text-[#9A9DA0] hover:text-white hover:border-[#424344]"
+                        : "bg-[#2A2B30] border-[#2E2F34] text-[#A3A6AD] hover:text-white hover:border-[#424344]"
                     }`}
                   >
                     <div
@@ -271,14 +271,14 @@ export function NewDocumentDialog({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-[10px] text-xs font-medium text-[#9A9DA0] hover:text-white hover:bg-[#2A2B30] transition-colors"
+              className="px-4 py-2 rounded-[10px] text-xs font-medium text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 rounded-[10px] text-xs font-semibold bg-[#3B67E0] text-white hover:bg-[#3258c7] disabled:opacity-50 flex items-center gap-1.5 shadow transition-colors"
+              className="px-5 py-2 rounded-[10px] text-xs font-semibold bg-[#3B67E0] text-white hover:bg-[#3B67E0] disabled:opacity-50 flex items-center gap-1.5 shadow transition-colors"
             >
               {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               <span>Create Document</span>

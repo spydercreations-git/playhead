@@ -84,13 +84,13 @@ export function SelectionBar({
   const selectionText = `${selectedCount} ${itemTypeLabel} selected · ${formatBytes(selectedBytes)}`;
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#212121] border border-[#2E2F34] px-4 py-2 rounded-xl shadow-2xl flex items-center justify-between gap-6 text-xs font-medium text-white z-50 animate-in fade-in slide-in-from-bottom-3 min-w-[420px] max-w-[90vw]">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#212121] border border-[#2E2F34] px-4 py-2 rounded-xl shadow-overlay flex items-center justify-between gap-6 text-xs font-medium text-white z-50 animate-in fade-in slide-in-from-bottom-3 min-w-[420px] max-w-[90vw]">
       {/* Left side: X and "{n} {type} selected · {bytes}" */}
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={onClearSelection}
-          className="flex h-6 w-6 items-center justify-center rounded-md text-[#9A9DA0] hover:text-white hover:bg-[#2A2B30] transition-colors"
+          className="flex h-6 w-6 items-center justify-center rounded-md text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
           title="Deselect all"
         >
           <X className="w-4 h-4" />
@@ -108,7 +108,7 @@ export function SelectionBar({
             className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
               moreMenuOpen
                 ? "bg-[#2A2B30] text-white"
-                : "text-[#9A9DA0] hover:bg-[#2A2B30] hover:text-white"
+                : "text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white"
             }`}
             title="More actions"
           >
@@ -117,7 +117,7 @@ export function SelectionBar({
 
           {/* Upward Dropdown Menu */}
           {moreMenuOpen && (
-            <div className="absolute bottom-full right-0 mb-2 w-48 rounded-xl border border-[#2E2F34] bg-[#212121] p-1 shadow-2xl z-50 animate-in fade-in zoom-in-95">
+            <div className="absolute bottom-full right-0 mb-2 w-48 rounded-xl border border-[#2E2F34] bg-[#212121] p-1 shadow-overlay z-50 animate-in fade-in zoom-in-95">
               {/* Delete in red at top */}
               <button
                 type="button"
@@ -142,7 +142,7 @@ export function SelectionBar({
                 }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] rounded-lg transition-colors"
               >
-                <FolderInput className="w-3.5 h-3.5 text-[#9A9DA0]" />
+                <FolderInput className="w-3.5 h-3.5 text-[#A3A6AD]" />
                 <span>Move to</span>
               </button>
 
@@ -155,7 +155,7 @@ export function SelectionBar({
                 }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] rounded-lg transition-colors"
               >
-                <Copy className="w-3.5 h-3.5 text-[#9A9DA0]" />
+                <Copy className="w-3.5 h-3.5 text-[#A3A6AD]" />
                 <span>Duplicate</span>
               </button>
 
@@ -168,7 +168,7 @@ export function SelectionBar({
                 }}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] rounded-lg transition-colors"
               >
-                <FolderOutput className="w-3.5 h-3.5 text-[#9A9DA0]" />
+                <FolderOutput className="w-3.5 h-3.5 text-[#A3A6AD]" />
                 <span>Copy to</span>
               </button>
             </div>
@@ -179,7 +179,7 @@ export function SelectionBar({
         <button
           type="button"
           onClick={onCopyLink}
-          className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-[#9A9DA0] hover:text-white hover:bg-[#2A2B30] transition-colors"
+          className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
         >
           <Link2 className="w-3.5 h-3.5" />
           <span>Copy link</span>
@@ -190,7 +190,7 @@ export function SelectionBar({
           <button
             type="button"
             onClick={onDownload}
-            className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-[#9A9DA0] hover:text-white hover:bg-[#2A2B30] transition-colors"
+            className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Download</span>
@@ -201,7 +201,7 @@ export function SelectionBar({
         <button
           type="button"
           onClick={onManageAccess}
-          className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium bg-[#2A2B30] text-white hover:bg-[#34353B] transition-colors"
+          className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium bg-[#2A2B30] text-white hover:bg-[#2E2F34] transition-colors"
         >
           <Users className="w-3.5 h-3.5" />
           <span>Manage access</span>

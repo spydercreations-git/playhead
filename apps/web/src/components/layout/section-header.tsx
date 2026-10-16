@@ -63,7 +63,7 @@ export function SectionHeader({
       <button
         type="button"
         onClick={onToggleCollapse}
-        className="flex items-center justify-center h-5 w-5 rounded text-[#9A9DA0] hover:text-white hover:bg-[#2A2B30] transition-colors"
+        className="flex items-center justify-center h-5 w-5 rounded text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
       >
         <ChevronDown
           className={`w-3.5 h-3.5 transition-transform duration-200 ${
@@ -75,7 +75,7 @@ export function SectionHeader({
       {/* Label: e.g. "4 folders · 21.18 GB" */}
       <span
         onClick={onToggleCollapse}
-        className="text-xs font-semibold text-[#9A9DA0] hover:text-white cursor-pointer transition-colors"
+        className="text-xs font-semibold text-[#A3A6AD] hover:text-white cursor-pointer transition-colors"
       >
         {text}
       </span>

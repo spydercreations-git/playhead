@@ -122,14 +122,14 @@ export function WorkspaceDragGhost({
     <div className="relative pointer-events-none select-none z-50">
       {/* If multiple items, render card stack behind */}
       {count > 1 && (
-        <div className="absolute -inset-1.5 translate-x-1.5 translate-y-1.5 bg-[#2A2B30] rounded-2xl border border-[#2E2F34] opacity-50 shadow-lg" />
+        <div className="absolute -inset-1.5 translate-x-1.5 translate-y-1.5 bg-[#2A2B30] rounded-xl border border-[#2E2F34] opacity-50 shadow-lg" />
       )}
       {count > 2 && (
-        <div className="absolute -inset-3 translate-x-3 translate-y-3 bg-[#212121] rounded-2xl border border-[#2E2F34] opacity-30 shadow-lg" />
+        <div className="absolute -inset-3 translate-x-3 translate-y-3 bg-[#212121] rounded-xl border border-[#2E2F34] opacity-30 shadow-lg" />
       )}
 
       {/* Main Ghost Card */}
-      <div className="w-56 p-3 rounded-2xl bg-[#212121]/95 border-2 border-[#4876F3] shadow-2xl backdrop-blur-md flex items-center justify-between gap-3 text-white">
+      <div className="w-56 p-3 rounded-xl bg-[#212121]/95 border-2 border-[#4876F3] shadow-overlay backdrop-blur-md flex items-center justify-between gap-3 text-white">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-[#2A2B30] border border-[#2E2F34] flex items-center justify-center shrink-0">
             {isFolder ? (
@@ -148,14 +148,14 @@ export function WorkspaceDragGhost({
             <p className="text-xs font-semibold text-white truncate leading-tight">
               {activeItem.name}
             </p>
-            <p className="text-[10px] text-[#9A9DA0] truncate mt-0.5">
+            <p className="text-xs text-[#A3A6AD] truncate mt-0.5">
               {isFolder ? "Folder" : "File"}
             </p>
           </div>
         </div>
 
         {count > 1 && (
-          <span className="shrink-0 px-2 py-0.5 rounded-full bg-[#4876F3] text-white text-[10px] font-bold shadow">
+          <span className="shrink-0 px-2 py-0.5 rounded-full bg-[#4876F3] text-white text-xs font-bold shadow">
             {count} items
           </span>
         )}

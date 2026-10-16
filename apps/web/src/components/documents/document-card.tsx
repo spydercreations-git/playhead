@@ -38,7 +38,7 @@ export function DocumentCard({ document, isNew = false }: DocumentCardProps) {
       initial={isNew && !shouldReduceMotion ? { opacity: 0, scale: 0.96 } : false}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-      className={`rounded-2xl transition-all duration-1000 ${
+      className={`rounded-xl transition-all duration-1000 ${
         isNew
           ? "ring-2 ring-[#4876F3] shadow-[0_0_24px_rgba(72,118,243,0.35)]"
           : ""
@@ -46,7 +46,7 @@ export function DocumentCard({ document, isNew = false }: DocumentCardProps) {
     >
       <Link
         href={`/d/${document.id}`}
-        className="group relative flex flex-col justify-between h-64 rounded-2xl border border-border/80 bg-card/80 hover:bg-card hover:border-[#4876F3]/50 transition-all p-5 shadow-sm hover:shadow-md overflow-hidden select-none"
+        className="group relative flex flex-col justify-between h-64 rounded-xl border border-border/80 bg-card/80 hover:bg-card hover:border-[#4876F3]/50 transition-all p-5 shadow-sm hover:shadow-md overflow-hidden select-none"
       >
         {/* Dog-Ear Corner */}
         <div className="absolute top-0 right-0 w-8 h-8 pointer-events-none">
@@ -57,7 +57,7 @@ export function DocumentCard({ document, isNew = false }: DocumentCardProps) {
         <div>
           {/* Top Meta Bar */}
           <div className="flex items-center justify-between pr-8 mb-3">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-blue-500/15 text-blue-400 border border-blue-500/30">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-mono font-bold  bg-blue-500/15 text-blue-400 border border-blue-500/30">
               <FileText className="w-3 h-3" />
               <span>DOC</span>
             </span>

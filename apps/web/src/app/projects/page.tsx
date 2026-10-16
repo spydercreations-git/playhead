@@ -94,7 +94,7 @@ export default function ProjectsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-white">
             Projects
           </h1>
-          <p className="text-xs text-[#9A9DA0] mt-0.5">
+          <p className="text-xs text-[#A3A6AD] mt-0.5">
             {projects.length} {projects.length === 1 ? "project" : "projects"} across{" "}
             {clientCount} {clientCount === 1 ? "client" : "clients"}
           </p>
@@ -151,7 +151,7 @@ export default function ProjectsPage() {
               className={`px-2.5 py-1 text-xs font-medium rounded ${
                 view === "grid"
                   ? "bg-[#2E2F34] text-white"
-                  : "text-[#9A9DA0] hover:text-white"
+                  : "text-[#A3A6AD] hover:text-white"
               }`}
             >
               Grid
@@ -161,7 +161,7 @@ export default function ProjectsPage() {
               className={`px-2.5 py-1 text-xs font-medium rounded ${
                 view === "table"
                   ? "bg-[#2E2F34] text-white"
-                  : "text-[#9A9DA0] hover:text-white"
+                  : "text-[#A3A6AD] hover:text-white"
               }`}
             >
               List
@@ -188,7 +188,7 @@ export default function ProjectsPage() {
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 ${
               selectedClientId === ""
                 ? "bg-[#4876F3] text-white font-semibold shadow-sm"
-                : "bg-[#212121] border border-[#2E2F34] text-[#9A9DA0] hover:text-white hover:border-[#424344]"
+                : "bg-[#212121] border border-[#2E2F34] text-[#A3A6AD] hover:text-white hover:border-[#424344]"
             }`}
           >
             All ({projects.length})
@@ -227,11 +227,11 @@ export default function ProjectsPage() {
                     ? "ring-2 ring-[#4876F3] bg-[#4876F3]/30 text-white font-semibold scale-105"
                     : isSelected
                     ? "bg-[#4876F3] text-white font-semibold shadow-sm"
-                    : "bg-[#212121] border border-[#2E2F34] text-[#9A9DA0] hover:text-white hover:border-[#424344]"
+                    : "bg-[#212121] border border-[#2E2F34] text-[#A3A6AD] hover:text-white hover:border-[#424344]"
                 }`}
               >
                 <span>{client.name}</span>
-                <span className={`text-[10px] ${isSelected || isDropTarget ? "text-white/80" : "text-[#7C7F87]"}`}>
+                <span className={`text-xs ${isSelected || isDropTarget ? "text-white/80" : "text-[#7C7F87]"}`}>
                   {isDropTarget ? "Drop to move" : count}
                 </span>
               </button>
@@ -251,12 +251,12 @@ export default function ProjectsPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#424344] bg-[#212121]/50 py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#424344] bg-[#212121]/50 py-16 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#2E2F34] text-[#4876F3] mb-3">
             <Folder className="w-6 h-6 text-[#4876F3]" />
           </div>
           <h3 className="text-base font-semibold text-white">No projects found</h3>
-          <p className="mt-1 text-xs text-[#9A9DA0] max-w-sm">
+          <p className="mt-1 text-xs text-[#A3A6AD] max-w-sm">
             {search
               ? "No projects matched your search query."
               : "No projects in this view yet."}
@@ -264,7 +264,7 @@ export default function ProjectsPage() {
           {hasPermission("projects.create") && !search && (
             <button
               onClick={() => setShowNewProject(true)}
-              className="mt-4 rounded-lg bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3b66df]"
+              className="mt-4 rounded-lg bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3B67E0]"
             >
               + Create First Project
             </button>
@@ -302,7 +302,7 @@ export default function ProjectsPage() {
       ) : (
         <div className="overflow-hidden rounded-xl border border-[#424344] bg-[#212121]">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-[#424344] bg-[#2E2F34]/50 text-[#9A9DA0]">
+            <thead className="border-b border-[#424344] bg-[#2E2F34]/50 text-[#A3A6AD]">
               <tr>
                 <th className="py-3 px-4 font-medium">Project</th>
                 <th className="py-3 px-4 font-medium">Client</th>
@@ -335,22 +335,22 @@ export default function ProjectsPage() {
                   </td>
                   <td className="py-3.5 px-4">
                     <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${
+                      className={`text-[11px] px-1.5 py-0.5 rounded uppercase font-bold ${
                         project.status === "archived"
-                          ? "bg-[#424344] text-[#9A9DA0]"
+                          ? "bg-[#424344] text-[#A3A6AD]"
                           : "bg-green-500/20 text-green-400"
                       }`}
                     >
                       {project.status}
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 text-[#9A9DA0]">
+                  <td className="py-3.5 px-4 text-[#A3A6AD]">
                     {project.video_count || 0} videos, {project.file_count || 0} files, {project.folder_count || 0} folders
                   </td>
-                  <td className="py-3.5 px-4 text-[#9A9DA0]">
+                  <td className="py-3.5 px-4 text-[#A3A6AD]">
                     {formatBytes(project.total_bytes || 0)}
                   </td>
-                  <td className="py-3.5 px-4 text-[#9A9DA0]">
+                  <td className="py-3.5 px-4 text-[#A3A6AD]">
                     {formatDate(project.updated_at)}
                   </td>
                   <td className="py-3.5 px-4 text-right">
@@ -371,24 +371,24 @@ export default function ProjectsPage() {
       {/* Move Project to Client Confirmation Modal */}
       {moveConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-2xl bg-[#212121] border border-[#2E2F34] p-6 shadow-2xl space-y-4">
+          <div className="w-full max-w-md rounded-xl bg-[#212121] border border-[#2E2F34] p-6 shadow-overlay space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[#4876F3]/20 border border-[#4876F3]/30 flex items-center justify-center text-[#4876F3]">
                 <Folder className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-white">Move project to {moveConfirm.targetClient.name}?</h3>
-                <p className="text-xs text-[#9A9DA0] mt-0.5">Moving "{moveConfirm.project.name}"</p>
+                <p className="text-xs text-[#A3A6AD] mt-0.5">Moving "{moveConfirm.project.name}"</p>
               </div>
             </div>
-            <p className="text-xs text-[#9A9DA0] leading-relaxed">
+            <p className="text-xs text-[#A3A6AD] leading-relaxed">
               This project will be moved under <span className="text-white font-medium">{moveConfirm.targetClient.name}</span>. Members with client-level access will be updated.
             </p>
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setMoveConfirm(null)}
-                className="px-4 py-2 rounded-lg bg-[#2A2B30] hover:bg-[#323338] text-xs font-semibold text-white transition-colors"
+                className="px-4 py-2 rounded-lg bg-[#2A2B30] hover:bg-[#2E2F34] text-xs font-semibold text-white transition-colors"
               >
                 Cancel
               </button>
@@ -411,7 +411,7 @@ export default function ProjectsPage() {
                     setIsMovingProject(false);
                   }
                 }}
-                className="px-4 py-2 rounded-lg bg-[#3B67E0] hover:bg-[#325AC8] text-xs font-semibold text-white transition-colors shadow"
+                className="px-4 py-2 rounded-lg bg-[#3B67E0] hover:bg-[#3B67E0] text-xs font-semibold text-white transition-colors shadow"
               >
                 {isMovingProject ? "Moving..." : "Move Project"}
               </button>

@@ -97,11 +97,11 @@ export function CommentComposer({
   );
 
   return (
-    <div className="relative flex flex-col bg-[#18181A] border-t border-[#27272A] p-4 transition-colors">
+    <div className="relative flex flex-col bg-[#181818] border-t border-[#212121] p-4 transition-colors">
       {/* Active Playhead Timecode Chip */}
       <div className="flex items-center gap-2 mb-2">
         {includeTimecode ? (
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#FF5500]/15 text-[#FF5500] border border-[#FF5500]/30 text-xs font-mono tabular-nums font-medium">
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#FFBB56]/15 text-[#FFBB56] border border-[#FFBB56]/30 text-xs font-mono tabular-nums font-medium">
             <Clock className="w-3 h-3" />
             <span className="tabular-nums">{formatTimecode(timecodeStartMs, timecodeFormat, fps)}</span>
             <button
@@ -118,7 +118,7 @@ export function CommentComposer({
               setIncludeTimecode(true);
               setTimecodeStartMs(currentTimeMs);
             }}
-            className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#27272A] text-[#9A9DA0] hover:text-white text-xs font-mono transition-colors"
+            className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#212121] text-[#A3A6AD] hover:text-white text-xs font-mono transition-colors"
             title="Attach current timecode"
           >
             <Clock className="w-3 h-3" />
@@ -127,7 +127,7 @@ export function CommentComposer({
         )}
 
         {hasDrawing && (
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#FF5500]/10 text-[#FF5500] text-xs font-medium border border-[#FF5500]/20">
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#FFBB56]/10 text-[#FFBB56] text-xs font-medium border border-[#FFBB56]/20">
             <Pen className="w-3 h-3" />
             <span>Drawing attached</span>
           </span>
@@ -144,27 +144,27 @@ export function CommentComposer({
           disabled={disabled || submitting}
           rows={2}
           placeholder={includeTimecode ? "Leave a comment at this moment... (Cmd+Enter to send)" : "Leave a general comment..."}
-          className="w-full bg-[#121214] text-white text-xs rounded-xl border border-[#27272A] focus:border-[#FF5500] focus:ring-1 focus:ring-[#FF5500] p-3 outline-none resize-none placeholder-[#71717A] transition-all"
+          className="w-full bg-[#181818] text-white text-xs rounded-xl border border-[#212121] focus:border-[#FFBB56] focus:ring-1 focus:ring-[#FFBB56] p-3 outline-none resize-none placeholder-[#A3A6AD] transition-all"
         />
 
         {/* Mention suggestions popover */}
         {showMentionMenu && filteredMentions.length > 0 && (
-          <div className="absolute bottom-full left-0 mb-1 w-60 max-h-48 overflow-y-auto bg-[#18181A] border border-[#2E2E34] rounded-xl shadow-2xl p-1 z-50">
-            <div className="px-2 py-1 text-[10px] text-[#71717A] uppercase tracking-wider font-semibold">
+          <div className="absolute bottom-full left-0 mb-1 w-60 max-h-48 overflow-y-auto bg-[#181818] border border-[#2E2F34] rounded-xl shadow-overlay p-1 z-50">
+            <div className="px-2 py-1 text-xs text-[#A3A6AD]  font-semibold">
               Mention someone
             </div>
             {filteredMentions.map((p) => (
               <button
                 key={p.id}
                 onClick={() => handleSelectMention(p)}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left hover:bg-[#27272A] text-xs transition-colors"
+                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left hover:bg-[#212121] text-xs transition-colors"
               >
                 <div>
                   <div className="font-medium text-white">{p.name}</div>
-                  <div className="text-[10px] text-[#71717A]">{p.email}</div>
+                  <div className="text-xs text-[#A3A6AD]">{p.email}</div>
                 </div>
                 {p.role && (
-                  <span className="text-[10px] bg-[#27272A] px-1.5 py-0.5 rounded text-[#9A9DA0] capitalize">
+                  <span className="text-xs bg-[#212121] px-1.5 py-0.5 rounded text-[#A3A6AD] capitalize">
                     {p.role}
                   </span>
                 )}
@@ -183,8 +183,8 @@ export function CommentComposer({
               onClick={onToggleDrawing}
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 hasDrawing
-                  ? "bg-[#FF5500] text-white"
-                  : "bg-[#27272A] text-[#9A9DA0] hover:text-white hover:bg-[#323238]"
+                  ? "bg-[#FFBB56] text-white"
+                  : "bg-[#212121] text-[#A3A6AD] hover:text-white hover:bg-[#2E2F34]"
               }`}
               title="Draw annotation on paused frame"
             >
@@ -196,7 +196,7 @@ export function CommentComposer({
           {/* Mention Button */}
           <button
             onClick={() => setShowMentionMenu(!showMentionMenu)}
-            className="p-1.5 rounded-lg text-[#9A9DA0] hover:text-white hover:bg-[#27272A] transition-colors"
+            className="p-1.5 rounded-lg text-[#A3A6AD] hover:text-white hover:bg-[#212121] transition-colors"
             title="Mention someone (@)"
           >
             <AtSign className="w-3.5 h-3.5" />
@@ -209,14 +209,14 @@ export function CommentComposer({
                 onClick={() => setVisibility(visibility === "everyone" ? "team" : "everyone")}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                   visibility === "team"
-                    ? "bg-[#FEF9C3]/10 text-[#FACC15] border-[#FACC15]/40"
-                    : "bg-[#27272A] text-[#9A9DA0] border-transparent hover:text-white"
+                    ? "bg-[#FFBB56]/10 text-[#FFBB56] border-[#FFBB56]/40"
+                    : "bg-[#212121] text-[#A3A6AD] border-transparent hover:text-white"
                 }`}
                 title={visibility === "team" ? "Visible to Team only" : "Visible to Everyone"}
               >
                 {visibility === "team" ? (
                   <>
-                    <Lock className="w-3.5 h-3.5 text-[#FACC15]" />
+                    <Lock className="w-3.5 h-3.5 text-[#FFBB56]" />
                     <span>Team only</span>
                   </>
                 ) : (
@@ -234,7 +234,7 @@ export function CommentComposer({
         <button
           onClick={handleSubmit}
           disabled={!body.trim() || submitting || disabled}
-          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#FF5500] hover:bg-[#e04b00] disabled:opacity-40 disabled:hover:bg-[#FF5500] text-white text-xs font-semibold shadow transition-all"
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#FFBB56] hover:bg-[#FFBB56] disabled:opacity-40 disabled:hover:bg-[#FFBB56] text-white text-xs font-semibold shadow transition-all"
         >
           <Send className="w-3.5 h-3.5" />
           <span>{submitting ? "Sending..." : "Send"}</span>

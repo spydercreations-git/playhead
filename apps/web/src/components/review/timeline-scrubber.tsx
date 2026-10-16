@@ -128,7 +128,7 @@ export function TimelineScrubber({
           {waveformPeaks.map((peak, idx) => (
             <div
               key={idx}
-              className="flex-1 bg-[#71717A] rounded-full"
+              className="flex-1 bg-[#A3A6AD] rounded-full"
               style={{ height: `${Math.max(10, Math.min(100, peak))}%` }}
             />
           ))}
@@ -141,11 +141,11 @@ export function TimelineScrubber({
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="relative h-2 w-full bg-[#27272A] hover:h-3 rounded-full cursor-pointer transition-all flex items-center"
+        className="relative h-2 w-full bg-[#212121] hover:h-3 rounded-full cursor-pointer transition-all flex items-center"
       >
         {/* Progress Played Bar */}
         <div
-          className="absolute left-0 top-0 bottom-0 bg-[#FF5500] rounded-full transition-[width] duration-75"
+          className="absolute left-0 top-0 bottom-0 bg-[#FFBB56] rounded-full transition-[width] duration-75"
           style={{ width: `${progressPercent}%` }}
         />
 
@@ -167,7 +167,7 @@ export function TimelineScrubber({
                   if (onSelectComment) onSelectComment(c.id);
                 }}
                 className={`absolute top-0 bottom-0 z-10 rounded-sm opacity-80 hover:opacity-100 transition-opacity ${
-                  isTeam ? "bg-[#EAB308]/60 border-t border-b border-[#EAB308]" : "bg-[#FF5500]/50 border-t border-b border-[#FF5500]"
+                  isTeam ? "bg-[#EAB308]/60 border-t border-b border-[#EAB308]" : "bg-[#FFBB56]/50 border-t border-b border-[#FFBB56]"
                 }`}
                 style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
                 title={`${c.author_name}: ${c.body.substring(0, 40)}`}
@@ -197,17 +197,17 @@ export function TimelineScrubber({
               >
                 {/* Marker Avatar */}
                 <div
-                  className={`relative flex items-center justify-center w-5 h-5 rounded-full border shadow text-[9px] font-bold text-white ${
+                  className={`relative flex items-center justify-center w-5 h-5 rounded-full border shadow text-xs font-bold text-white ${
                     isTeam
-                      ? "bg-[#854D0E] border-[#EAB308]"
+                      ? "bg-[#FFBB56] border-[#EAB308]"
                       : c.resolved
-                      ? "bg-[#22C55E] border-white"
-                      : "bg-[#FF5500] border-white"
+                      ? "bg-[#3FCF8E] border-white"
+                      : "bg-[#FFBB56] border-white"
                   }`}
                 >
                   {initial}
                   {isTeam && (
-                    <Lock className="absolute -top-1 -right-1 w-2.5 h-2.5 text-[#EAB308] bg-[#18181A] rounded-full p-[1px]" />
+                    <Lock className="absolute -top-1 -right-1 w-2.5 h-2.5 text-[#EAB308] bg-[#181818] rounded-full p-[1px]" />
                   )}
                 </div>
               </button>
@@ -216,10 +216,10 @@ export function TimelineScrubber({
 
         {/* Playhead Scrubber Handle */}
         <div
-          className="absolute -top-1.5 w-5 h-5 rounded-full bg-white shadow-lg border-2 border-[#FF5500] -translate-x-1/2 pointer-events-none scale-0 group-hover:scale-100 transition-transform flex items-center justify-center z-30"
+          className="absolute -top-1.5 w-5 h-5 rounded-full bg-white shadow-lg border-2 border-[#FFBB56] -translate-x-1/2 pointer-events-none scale-0 group-hover:scale-100 transition-transform flex items-center justify-center z-30"
           style={{ left: `${progressPercent}%` }}
         >
-          <div className="w-1.5 h-1.5 bg-[#FF5500] rounded-full" />
+          <div className="w-1.5 h-1.5 bg-[#FFBB56] rounded-full" />
         </div>
       </div>
 
@@ -232,13 +232,13 @@ export function TimelineScrubber({
           {/* Sprite frame thumbnail if available */}
           {spriteUrl && spriteJson && (
             <div
-              className="rounded-lg border border-[#3F3F46] shadow-2xl overflow-hidden bg-black mb-1.5"
+              className="rounded-lg border border-[#424344] shadow-overlay overflow-hidden bg-black mb-1.5"
               style={getSpriteStyle(hoverTimeMs) || {}}
             />
           )}
 
           {/* Timecode badge */}
-          <div className="bg-[#18181B]/95 text-white text-[11px] font-mono tabular-nums px-2 py-0.5 rounded shadow border border-[#3F3F46]">
+          <div className="bg-[#181818]/95 text-white text-[11px] font-mono tabular-nums px-2 py-0.5 rounded shadow border border-[#424344]">
             {formatTimecode(hoverTimeMs, timecodeFormat, fps)}
           </div>
         </div>

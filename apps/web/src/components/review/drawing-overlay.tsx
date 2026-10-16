@@ -238,14 +238,14 @@ export function DrawingOverlay({
       {isEditing && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#1A1A1E]/95 border border-[#2E2E34] px-3 py-1.5 rounded-full shadow-2xl z-30 pointer-events-auto"
+          className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#212121]/95 border border-[#2E2F34] px-3 py-1.5 rounded-full shadow-overlay z-30 pointer-events-auto"
         >
           {/* Tool selectors */}
-          <div className="flex items-center gap-1 border-r border-[#2E2E34] pr-2">
+          <div className="flex items-center gap-1 border-r border-[#2E2F34] pr-2">
             <button
               onClick={() => setTool("pen")}
               className={`p-1.5 rounded-full transition-colors ${
-                tool === "pen" ? "bg-[#FF5500] text-white" : "text-[#9A9DA0] hover:text-white"
+                tool === "pen" ? "bg-[#4876F3] text-white" : "text-[#A3A6AD] hover:text-white"
               }`}
               title="Pen (freehand)"
             >

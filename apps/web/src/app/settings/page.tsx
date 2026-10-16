@@ -14,7 +14,7 @@ export default function SettingsPage() {
         <h1 className="text-xl font-bold tracking-tight text-white mb-1">
           Settings
         </h1>
-        <p className="text-xs text-[#9A9DA0]">
+        <p className="text-xs text-[#A3A6AD]">
           Manage your account preferences, notifications, and workspace settings.
         </p>
       </div>
@@ -22,7 +22,7 @@ export default function SettingsPage() {
       {/* User Account Card */}
       <div className="rounded-xl border border-[#2E2F34] bg-[#212121] p-5">
         <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#4876F3] text-sm font-bold text-white uppercase">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#4876F3] text-sm font-bold text-white ">
             {user?.name ? user.name.slice(0, 2).toUpperCase() : "PH"}
           </div>
           <div>
@@ -31,7 +31,7 @@ export default function SettingsPage() {
             </h2>
             <p className="text-xs text-[#7C7F87]">{user?.email}</p>
             {role && (
-              <span className="inline-block mt-1.5 rounded-[6px] bg-[#4876F3]/15 px-2 py-0.5 text-[10px] font-semibold text-[#4876F3] border border-[#4876F3]/20 capitalize">
+              <span className="inline-block mt-1.5 rounded-[6px] bg-[#4876F3]/15 px-2 py-0.5 text-xs font-semibold text-[#4876F3] border border-[#4876F3]/20 capitalize">
                 {role}
               </span>
             )}
@@ -52,7 +52,7 @@ export default function SettingsPage() {
             <h3 className="text-sm font-semibold text-white mb-1">
               Notification Preferences
             </h3>
-            <p className="text-xs text-[#9A9DA0]">
+            <p className="text-xs text-[#A3A6AD]">
               Configure email digests, project alerts, and mention notifications.
             </p>
           </div>
@@ -70,7 +70,7 @@ export default function SettingsPage() {
               <h3 className="text-sm font-semibold text-white mb-1">
                 Storage & Quota
               </h3>
-              <p className="text-xs text-[#9A9DA0]">
+              <p className="text-xs text-[#A3A6AD]">
                 View storage utilization, project usage breakdowns, and quota alerts.
               </p>
             </div>
@@ -89,7 +89,7 @@ export default function SettingsPage() {
               <h3 className="text-sm font-semibold text-white mb-1">
                 Team & Access Roles
               </h3>
-              <p className="text-xs text-[#9A9DA0]">
+              <p className="text-xs text-[#A3A6AD]">
                 Invite teammates, configure custom roles, and assign permissions.
               </p>
             </div>
@@ -105,7 +105,7 @@ export default function SettingsPage() {
               <h3 className="text-sm font-semibold text-white mb-1">
                 {company.name}
               </h3>
-              <p className="text-xs text-[#9A9DA0]">
+              <p className="text-xs text-[#A3A6AD]">
                 Plan: <span className="capitalize font-medium text-white">{company.plan}</span> · Status: <span className="capitalize text-green-400">{company.status}</span>
               </p>
             </div>

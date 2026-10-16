@@ -61,7 +61,7 @@ export function ProjectCard({
           ) : (
             <>
               {/* Left Slot: 1 Large Thumbnail */}
-              <div className="flex-1 h-full rounded-[6px] bg-[#2E2F35] overflow-hidden flex items-center justify-center relative">
+              <div className="flex-1 h-full rounded-[6px] bg-[#2E2F34] overflow-hidden flex items-center justify-center relative">
                 {thumbnails[0] ? (
                   <img
                     src={thumbnails[0]}
@@ -75,7 +75,7 @@ export function ProjectCard({
 
               {/* Right Column: 2 Small Thumbnails */}
               <div className="w-[34%] h-full flex flex-col gap-1.5">
-                <div className="flex-1 rounded-[6px] bg-[#2E2F35] overflow-hidden flex items-center justify-center relative">
+                <div className="flex-1 rounded-[6px] bg-[#2E2F34] overflow-hidden flex items-center justify-center relative">
                   {thumbnails[1] ? (
                     <img
                       src={thumbnails[1]}
@@ -86,7 +86,7 @@ export function ProjectCard({
                     <Film className="w-4 h-4 text-[#7C7F87]" />
                   )}
                 </div>
-                <div className="flex-1 rounded-[6px] bg-[#2E2F35] overflow-hidden flex items-center justify-center relative">
+                <div className="flex-1 rounded-[6px] bg-[#2E2F34] overflow-hidden flex items-center justify-center relative">
                   {thumbnails[2] ? (
                     <img
                       src={thumbnails[2]}
@@ -103,7 +103,7 @@ export function ProjectCard({
 
           {/* Badges on preview: Restricted Lock badge */}
           {isRestricted && (
-            <div className="absolute top-2.5 left-2.5 flex items-center gap-1 rounded-md bg-black/60 backdrop-blur-sm px-1.5 py-0.5 border border-amber-500/30 text-amber-400 text-[10px] font-semibold z-20">
+            <div className="absolute top-2.5 left-2.5 flex items-center gap-1 rounded-md bg-black/60 backdrop-blur-sm px-1.5 py-0.5 border border-amber-500/30 text-amber-400 text-xs font-semibold z-20">
               <Lock className="w-3 h-3" />
               <span>Restricted</span>
             </div>
@@ -111,7 +111,7 @@ export function ProjectCard({
 
           {/* Amber "3 to review" Chip if waiting review */}
           {waitingReviewCount > 0 && (
-            <div className="absolute bottom-2.5 right-2.5 rounded-md bg-amber-500/20 backdrop-blur-sm px-2 py-0.5 border border-amber-500/40 text-amber-300 text-[10px] font-semibold z-20">
+            <div className="absolute bottom-2.5 right-2.5 rounded-md bg-amber-500/20 backdrop-blur-sm px-2 py-0.5 border border-amber-500/40 text-amber-300 text-xs font-semibold z-20">
               {waitingReviewCount} to review
             </div>
           )}
@@ -123,7 +123,7 @@ export function ProjectCard({
             <h3 className="text-xs font-semibold text-white truncate leading-tight">
               {name}
             </h3>
-            <div className="flex items-center gap-1.5 text-[11px] text-[#9A9DA0] truncate mt-0.5">
+            <div className="flex items-center gap-1.5 text-[11px] text-[#A3A6AD] truncate mt-0.5">
               <span className="font-medium text-[#4876F3]">{clientName}</span>
               <span>·</span>
               <span>
@@ -145,7 +145,7 @@ export function ProjectCard({
                 {members.slice(0, 3).map((m, idx) => (
                   <div
                     key={m.id || idx}
-                    className="inline-block h-5 w-5 rounded-full ring-2 ring-[#212121] bg-[#4876F3] text-[9px] font-bold text-white flex items-center justify-center uppercase"
+                    className="inline-block h-5 w-5 rounded-full ring-2 ring-[#212121] bg-[#4876F3] text-xs font-bold text-white flex items-center justify-center "
                   >
                     {(m.name || m.email || "U").slice(0, 1).toUpperCase()}
                   </div>
@@ -162,7 +162,7 @@ export function ProjectCard({
                   e.stopPropagation();
                   onContextMenu(e);
                 }}
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-[#9A9DA0] hover:bg-[#2A2B30] hover:text-white transition-colors"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white transition-colors"
               >
                 <MoreHorizontal className="w-4 h-4" />
               </button>

@@ -59,7 +59,7 @@ function ResetPasswordForm() {
           <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-3">
             Password updated
           </h1>
-          <p className="text-sm text-[#8E9096] mb-8 leading-relaxed">
+          <p className="text-sm text-[#A3A6AD] mb-8 leading-relaxed">
             Your password has been reset successfully. You can now sign in with your new password.
           </p>
           <Link
@@ -74,7 +74,7 @@ function ResetPasswordForm() {
           <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-2">
             Create new password
           </h1>
-          <p className="text-sm text-[#8E9096] mb-8">
+          <p className="text-sm text-[#A3A6AD] mb-8">
             Choose a new password of at least 8 characters.
           </p>
 
@@ -86,7 +86,7 @@ function ResetPasswordForm() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-[#9A9DA0] mb-2">
+              <label className="block text-xs font-medium text-[#A3A6AD] mb-2">
                 New password
               </label>
               <div className="relative">
@@ -112,13 +112,13 @@ function ResetPasswordForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 8 characters"
-                  className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#3A3B40] pl-10 pr-4 text-sm text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
+                  className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-[#9A9DA0] mb-2">
+              <label className="block text-xs font-medium text-[#A3A6AD] mb-2">
                 Confirm new password
               </label>
               <div className="relative">
@@ -143,7 +143,7 @@ function ResetPasswordForm() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Repeat your new password"
-                  className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#3A3B40] pl-10 pr-4 text-sm text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
+                  className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
                 />
               </div>
             </div>
@@ -156,7 +156,7 @@ function ResetPasswordForm() {
               <span>{loading ? "Updating password..." : "Update password"}</span>
             </button>
 
-            <div className="pt-2 text-center text-xs text-[#9A9DA0]">
+            <div className="pt-2 text-center text-xs text-[#A3A6AD]">
               <Link href="/login" className="text-[#4876F3] hover:underline font-medium">
                 Back to sign in
               </Link>

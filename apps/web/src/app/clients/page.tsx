@@ -74,7 +74,7 @@ export default function ClientsPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center text-center">
         <h2 className="text-lg font-bold text-white">Access Restricted</h2>
-        <p className="mt-1 text-sm text-[#9A9DA0]">
+        <p className="mt-1 text-sm text-[#A3A6AD]">
           Clients do not have access to the clients management directory.
         </p>
       </div>
@@ -89,7 +89,7 @@ export default function ClientsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-white">
             Clients
           </h1>
-          <p className="text-xs text-[#9A9DA0]">
+          <p className="text-xs text-[#A3A6AD]">
             Manage all video production clients, contacts, and access permissions
           </p>
         </div>
@@ -113,7 +113,7 @@ export default function ClientsPage() {
               className={`px-2.5 py-1 text-xs font-medium rounded ${
                 view === "table"
                   ? "bg-[#2E2F34] text-white"
-                  : "text-[#9A9DA0] hover:text-white"
+                  : "text-[#A3A6AD] hover:text-white"
               }`}
             >
               List
@@ -123,7 +123,7 @@ export default function ClientsPage() {
               className={`px-2.5 py-1 text-xs font-medium rounded ${
                 view === "grid"
                   ? "bg-[#2E2F34] text-white"
-                  : "text-[#9A9DA0] hover:text-white"
+                  : "text-[#A3A6AD] hover:text-white"
               }`}
             >
               Grid
@@ -133,7 +133,7 @@ export default function ClientsPage() {
           {hasPermission("clients.create") && (
             <button
               onClick={() => setShowNewClient(true)}
-              className="flex h-9 items-center justify-center rounded-lg bg-[#4876F3] px-4 text-xs font-semibold text-white shadow hover:bg-[#3b66df] transition-colors"
+              className="flex h-9 items-center justify-center rounded-lg bg-[#4876F3] px-4 text-xs font-semibold text-white shadow hover:bg-[#3B67E0] transition-colors"
             >
               + New Client
             </button>
@@ -151,12 +151,12 @@ export default function ClientsPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#424344] bg-[#212121]/50 py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#424344] bg-[#212121]/50 py-16 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#2E2F34] text-[#4876F3] mb-3">
             <Building2 className="w-6 h-6 text-emerald-400" />
           </div>
           <h3 className="text-base font-semibold text-white">No clients found</h3>
-          <p className="mt-1 text-xs text-[#9A9DA0] max-w-sm">
+          <p className="mt-1 text-xs text-[#A3A6AD] max-w-sm">
             {search
               ? "No clients matched your search filter."
               : "Get started by adding your first agency client."}
@@ -164,7 +164,7 @@ export default function ClientsPage() {
           {!search && hasPermission("clients.create") && (
             <button
               onClick={() => setShowNewClient(true)}
-              className="mt-4 rounded-lg bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3b66df]"
+              className="mt-4 rounded-lg bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3B67E0]"
             >
               + Create Client
             </button>
@@ -173,7 +173,7 @@ export default function ClientsPage() {
       ) : view === "table" ? (
         <div className="overflow-hidden rounded-xl border border-[#424344] bg-[#212121]">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-[#424344] bg-[#2E2F34]/50 text-[#9A9DA0]">
+            <thead className="border-b border-[#424344] bg-[#2E2F34]/50 text-[#A3A6AD]">
               <tr>
                 <th className="py-3 px-4 font-medium">Client</th>
                 <th className="py-3 px-4 font-medium">Contacts</th>
@@ -200,23 +200,23 @@ export default function ClientsPage() {
                       <div className="flex flex-col">
                         <span>{client.name}</span>
                         {client.website?.Valid && (
-                          <span className="text-[11px] text-[#9A9DA0] hover:underline">
+                          <span className="text-[11px] text-[#A3A6AD] hover:underline">
                             {client.website.String}
                           </span>
                         )}
                       </div>
                     </Link>
                   </td>
-                  <td className="py-3.5 px-4 text-[#9A9DA0]">
+                  <td className="py-3.5 px-4 text-[#A3A6AD]">
                     {client.contacts_count} contacts
                   </td>
-                  <td className="py-3.5 px-4 text-[#9A9DA0]">
+                  <td className="py-3.5 px-4 text-[#A3A6AD]">
                     {client.projects_count} projects
                   </td>
-                  <td className="py-3.5 px-4 text-[#9A9DA0]">
+                  <td className="py-3.5 px-4 text-[#A3A6AD]">
                     {formatBytes(client.total_size_bytes)}
                   </td>
-                  <td className="py-3.5 px-4 text-[#9A9DA0]">
+                  <td className="py-3.5 px-4 text-[#A3A6AD]">
                     {formatDate(client.updated_at)}
                   </td>
                   <td className="py-3.5 px-4 text-right">
@@ -248,7 +248,7 @@ export default function ClientsPage() {
             <Link
               key={client.id}
               href={`/clients/${client.id}`}
-              className="flex flex-col justify-between rounded-xl border border-[#424344] bg-[#212121] p-5 hover:border-[#686B6E] transition-all hover:shadow-lg"
+              className="flex flex-col justify-between rounded-xl border border-[#424344] bg-[#212121] p-5 hover:border-[#7C7F87] transition-all hover:shadow-lg"
             >
               <div>
                 <div className="flex items-center gap-3 mb-3">
@@ -259,14 +259,14 @@ export default function ClientsPage() {
                     <h3 className="text-sm font-bold text-white">
                       {client.name}
                     </h3>
-                    <p className="text-xs text-[#9A9DA0]">
+                    <p className="text-xs text-[#A3A6AD]">
                       {client.website?.Valid ? client.website.String : "No website"}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-[#424344]/50 flex items-center justify-between text-xs text-[#9A9DA0]">
+              <div className="mt-4 pt-3 border-t border-[#424344]/50 flex items-center justify-between text-xs text-[#A3A6AD]">
                 <span>{client.projects_count} projects</span>
                 <span>{formatBytes(client.total_size_bytes)}</span>
               </div>
@@ -278,11 +278,11 @@ export default function ClientsPage() {
       {/* Delete Confirmation Modal (Admin Only, requires typing client name) */}
       {clientToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-          <div className="w-full max-w-md rounded-2xl border border-red-500/40 bg-[#212121] p-6 shadow-2xl">
+          <div className="w-full max-w-md rounded-xl border border-red-500/40 bg-[#212121] p-6 shadow-overlay">
             <h3 className="text-base font-bold text-white mb-2">
               Delete {clientToDelete.name}?
             </h3>
-            <p className="text-xs text-[#9A9DA0] mb-4 leading-relaxed">
+            <p className="text-xs text-[#A3A6AD] mb-4 leading-relaxed">
               Delete {clientToDelete.name} and its {clientToDelete.projects_count} projects? Everything moves to Trash for 30 days.
             </p>
 
@@ -293,7 +293,7 @@ export default function ClientsPage() {
             )}
 
             <div className="mb-4">
-              <label className="block text-xs text-[#9A9DA0] mb-1.5">
+              <label className="block text-xs text-[#A3A6AD] mb-1.5">
                 Type <strong>{clientToDelete.name}</strong> to confirm:
               </label>
               <input
@@ -309,7 +309,7 @@ export default function ClientsPage() {
               <button
                 type="button"
                 onClick={() => setClientToDelete(null)}
-                className="px-3.5 py-2 text-xs font-semibold text-[#9A9DA0] hover:text-white rounded-[10px]"
+                className="px-3.5 py-2 text-xs font-semibold text-[#A3A6AD] hover:text-white rounded-[10px]"
               >
                 Cancel
               </button>

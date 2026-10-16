@@ -119,7 +119,7 @@ export default function StarredPage() {
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="h-16 animate-pulse rounded-xl border border-[#383838] bg-[#1a1a1a]"
+              className="h-16 animate-pulse rounded-xl border border-[#2E2F34] bg-[#181818]"
             />
           ))}
         </div>
@@ -128,8 +128,8 @@ export default function StarredPage() {
           <p className="text-sm font-medium text-red-400">Failed to load starred items.</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#383838] bg-[#141414] py-16 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-400/10 text-amber-400 mb-4">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#2E2F34] bg-[#181818] py-16 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400 mb-4">
             <Star className="h-7 w-7" />
           </div>
           <h3 className="text-base font-semibold text-white">
@@ -142,14 +142,14 @@ export default function StarredPage() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#141414]">
-          <div className="grid grid-cols-12 border-b border-[#2a2a2a] px-4 py-3 text-xs font-medium uppercase tracking-wider text-neutral-400">
+        <div className="overflow-hidden rounded-xl border border-[#212121] bg-[#181818]">
+          <div className="grid grid-cols-12 border-b border-[#212121] px-4 py-3 text-xs font-medium  text-neutral-400">
             <div className="col-span-6 sm:col-span-6">Name</div>
             <div className="hidden col-span-2 sm:block">Size</div>
             <div className="hidden col-span-2 sm:block">Modified</div>
             <div className="col-span-6 sm:col-span-2 text-right">Actions</div>
           </div>
-          <div className="divide-y divide-[#222]">
+          <div className="divide-y divide-[#212121]">
             {filtered.map((item) => {
               const projectLink = `/projects/${item.project_id}${
                 item.type === "folder"
@@ -161,13 +161,13 @@ export default function StarredPage() {
               return (
                 <div
                   key={item.id}
-                  className="grid grid-cols-12 items-center px-4 py-3 hover:bg-[#1a1a1a] transition-colors group"
+                  className="grid grid-cols-12 items-center px-4 py-3 hover:bg-[#181818] transition-colors group"
                 >
                   <div className="col-span-6 flex items-center gap-3 min-w-0 pr-2">
                     {getItemIcon(item.type, item.name)}
                     <Link
                       href={projectLink}
-                      className="truncate text-sm font-medium text-white hover:text-[#4B7BF5] transition-colors"
+                      className="truncate text-sm font-medium text-white hover:text-[#4876F3] transition-colors"
                     >
                       {item.name}
                     </Link>
@@ -181,7 +181,7 @@ export default function StarredPage() {
                   <div className="col-span-6 sm:col-span-2 flex items-center justify-end gap-2">
                     <Link
                       href={projectLink}
-                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-neutral-400 hover:text-white hover:bg-[#252525]"
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-neutral-400 hover:text-white hover:bg-[#212121]"
                       title="Open in project"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
@@ -189,7 +189,7 @@ export default function StarredPage() {
                     </Link>
                     <button
                       onClick={() => unstarMutation.mutate(item.id)}
-                      className="rounded-md p-1.5 text-amber-400 hover:bg-[#252525] transition-colors"
+                      className="rounded-md p-1.5 text-amber-400 hover:bg-[#212121] transition-colors"
                       title="Remove from starred"
                     >
                       <Star className="h-4 w-4 fill-amber-400" />

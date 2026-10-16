@@ -94,14 +94,14 @@ export default function InviteAcceptPage({
         {loading ? (
           <div className="py-8 text-center">
             <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-[#4876F3] border-t-transparent" />
-            <p className="text-sm text-[#8E9096]">Loading invitation...</p>
+            <p className="text-sm text-[#A3A6AD]">Loading invitation...</p>
           </div>
         ) : error ? (
           <div>
             <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-3">
               Invitation invalid
             </h1>
-            <p className="text-sm text-[#8E9096] mb-8">{error}</p>
+            <p className="text-sm text-[#A3A6AD] mb-8">{error}</p>
             <Link
               href="/login"
               className="w-full h-[48px] rounded-[10px] bg-[#3B67E0] hover:bg-[#4876F3] text-white text-sm font-semibold transition flex items-center justify-center shadow-md mb-6"
@@ -114,13 +114,13 @@ export default function InviteAcceptPage({
             <h1 className="text-[34px] font-bold text-white tracking-tight leading-tight mb-2">
               Join {invite.company_name}
             </h1>
-            <p className="text-sm text-[#8E9096] mb-8">
-              You were invited as a <span className="font-semibold text-white uppercase">{invite.role}</span>.
+            <p className="text-sm text-[#A3A6AD] mb-8">
+              You were invited as a <span className="font-semibold text-white capitalize">{invite.role}</span>.
             </p>
 
             {!currentUser ? (
               <div className="space-y-4">
-                <div className="rounded-[12px] bg-[#212121] border border-[#2D2F34] p-3.5 text-xs text-[#9A9DA0] leading-relaxed">
+                <div className="rounded-[12px] bg-[#212121] border border-[#2E2F34] p-3.5 text-xs text-[#A3A6AD] leading-relaxed">
                   This invitation was sent to <span className="text-white font-medium">{invite.email}</span>. To accept, sign in with this exact email address.
                 </div>
                 <Link
@@ -132,7 +132,7 @@ export default function InviteAcceptPage({
               </div>
             ) : currentUser.email.toLowerCase() === invite.email.toLowerCase() ? (
               <div className="space-y-4">
-                <div className="rounded-[12px] bg-[#212121] border border-[#2D2F34] p-3.5 text-xs text-[#9A9DA0]">
+                <div className="rounded-[12px] bg-[#212121] border border-[#2E2F34] p-3.5 text-xs text-[#A3A6AD]">
                   Signed in as <span className="text-white font-medium">{currentUser.email}</span>
                 </div>
                 <button
@@ -152,7 +152,7 @@ export default function InviteAcceptPage({
                 <button
                   type="button"
                   onClick={handleLogoutAndSwitch}
-                  className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] hover:bg-[#34363C] text-white text-sm font-semibold transition flex items-center justify-center"
+                  className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] hover:bg-[#2E2F34] text-white text-sm font-semibold transition flex items-center justify-center"
                 >
                   Switch account to {invite.email}
                 </button>

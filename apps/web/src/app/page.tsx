@@ -133,7 +133,7 @@ export default function DashboardPage() {
           {categoryCards.map((card) => (
             <div
               key={card.title}
-              className="flex flex-col justify-between rounded-[10px] bg-[#212121] p-3.5 sm:p-5 h-[175px] sm:h-[216px] transition-colors hover:bg-[#252525]"
+              className="flex flex-col justify-between rounded-[10px] bg-[#212121] p-3.5 sm:p-5 h-[175px] sm:h-[216px] transition-colors hover:bg-[#212121]"
             >
               <div className="flex items-center justify-between">
                 <card.icon
@@ -144,9 +144,9 @@ export default function DashboardPage() {
                 />
                 <button
                   title="Card options"
-                  className="text-[#9A9DA0] hover:text-white"
+                  className="text-[#A3A6AD] hover:text-white"
                 >
-                  <MoreOptionsIcon size={16} color="#9A9DA0" />
+                  <MoreOptionsIcon size={16} color="#A3A6AD" />
                 </button>
               </div>
 
@@ -154,13 +154,13 @@ export default function DashboardPage() {
                 <h3 className="text-sm sm:text-base font-semibold text-white truncate">
                   {card.title}
                 </h3>
-                <p className="text-[11px] sm:text-xs text-[#9A9DA0]">{card.count}</p>
+                <p className="text-[11px] sm:text-xs text-[#A3A6AD]">{card.count}</p>
               </div>
 
               <div className="space-y-1.5 sm:space-y-2">
                 <div className="flex items-center justify-between text-xs text-white">
                   <span className="font-medium text-xs sm:text-sm">{card.size}</span>
-                  <span className="text-[10px] sm:text-[11px] text-[#9A9DA0]">
+                  <span className="text-xs sm:text-[11px] text-[#A3A6AD]">
                     {card.fillPercent}%
                   </span>
                 </div>
@@ -184,7 +184,7 @@ export default function DashboardPage() {
             <h2 className="text-lg font-bold text-white tracking-tight">
               All Folders
             </h2>
-            <button className="text-xs font-medium text-[#BCBFC2] hover:text-white transition-colors">
+            <button className="text-xs font-medium text-[#A3A6AD] hover:text-white transition-colors">
               View more &gt;
             </button>
           </div>
@@ -193,7 +193,7 @@ export default function DashboardPage() {
             {folders.map((folder) => (
               <div
                 key={folder.name}
-                className="flex items-center justify-between rounded-[10px] bg-[#212121] px-4 sm:px-5 py-3.5 sm:py-4 h-[74px] sm:h-[78px] transition-colors hover:bg-[#252525] cursor-pointer"
+                className="flex items-center justify-between rounded-[10px] bg-[#212121] px-4 sm:px-5 py-3.5 sm:py-4 h-[74px] sm:h-[78px] transition-colors hover:bg-[#212121] cursor-pointer"
               >
                 <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
                   <FolderIcon size={28} color="#4876F3" />
@@ -201,7 +201,7 @@ export default function DashboardPage() {
                     <span className="text-sm font-semibold text-white truncate">
                       {folder.name}
                     </span>
-                    <span className="text-xs text-[#9A9DA0]">
+                    <span className="text-xs text-[#A3A6AD]">
                       {folder.files} · {folder.size}
                     </span>
                   </div>
@@ -209,9 +209,9 @@ export default function DashboardPage() {
 
                 <button
                   title="Folder options"
-                  className="text-[#9A9DA0] hover:text-white shrink-0 ml-2"
+                  className="text-[#A3A6AD] hover:text-white shrink-0 ml-2"
                 >
-                  <MoreOptionsIcon size={18} color="#9A9DA0" />
+                  <MoreOptionsIcon size={18} color="#A3A6AD" />
                 </button>
               </div>
             ))}
@@ -227,12 +227,12 @@ export default function DashboardPage() {
 
             {/* Filter Controls (Search + Details + Filter buttons from Figma) */}
             <div className="flex items-center gap-2 sm:gap-2.5">
-              <div className="flex h-[41px] flex-1 sm:flex-initial items-center gap-2 rounded-[7.5px] border border-[#424344] bg-[#212121] px-3 text-xs text-[#9A9DA0]">
-                <SearchIcon size={15} color="#9A9DA0" />
+              <div className="flex h-[41px] flex-1 sm:flex-initial items-center gap-2 rounded-[7.5px] border border-[#424344] bg-[#212121] px-3 text-xs text-[#A3A6AD]">
+                <SearchIcon size={15} color="#A3A6AD" />
                 <input
                   type="text"
                   placeholder="Search files..."
-                  className="w-full sm:w-56 bg-transparent text-white placeholder-[#9A9DA0] focus:outline-none"
+                  className="w-full sm:w-56 bg-transparent text-white placeholder-[#A3A6AD] focus:outline-none"
                 />
               </div>
 
@@ -249,7 +249,7 @@ export default function DashboardPage() {
           <div className="overflow-x-auto rounded-[10px] border border-[#424344] bg-[#212121]">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-[#424344] text-[#9A9DA0] font-medium h-12">
+                <tr className="border-b border-[#424344] text-[#A3A6AD] font-medium h-12">
                   <th className="w-12 px-4 text-center">
                     <div className="flex items-center justify-center">
                       <Checkbox
@@ -324,12 +324,12 @@ export default function DashboardPage() {
                       </td>
 
                       {/* File Size */}
-                      <td className="px-4 text-[#9A9DA0] font-medium">
+                      <td className="px-4 text-[#A3A6AD] font-medium">
                         {file.size}
                       </td>
 
                       {/* Date */}
-                      <td className="px-4 text-[#9A9DA0]">{file.date}</td>
+                      <td className="px-4 text-[#A3A6AD]">{file.date}</td>
 
                       {/* Assignee / Collaborator Avatars (overlapping 20x20 circles) */}
                       <td className="px-4">
@@ -337,7 +337,7 @@ export default function DashboardPage() {
                           {file.collaborators.map((initial, i) => (
                             <div
                               key={i}
-                              className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#212121] bg-[#424344] text-[9px] font-bold text-white"
+                              className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#212121] bg-[#424344] text-xs font-bold text-white"
                             >
                               {initial}
                             </div>
@@ -349,9 +349,9 @@ export default function DashboardPage() {
                       <td className="px-4 text-center">
                         <button
                           title="File options"
-                          className="flex h-7 w-7 items-center justify-center mx-auto rounded text-[#9A9DA0] hover:text-white"
+                          className="flex h-7 w-7 items-center justify-center mx-auto rounded text-[#A3A6AD] hover:text-white"
                         >
-                          <MoreOptionsIcon size={16} color="#9A9DA0" />
+                          <MoreOptionsIcon size={16} color="#A3A6AD" />
                         </button>
                       </td>
                     </tr>

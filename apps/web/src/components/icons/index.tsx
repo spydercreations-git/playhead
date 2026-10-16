@@ -258,7 +258,7 @@ export function FolderIcon({ size = 28, color = "#4876F3", className, ...props }
 }
 
 // More Options (3 Dots Horizontal from Icon Outlines.svg)
-export function MoreOptionsIcon({ size = 20, color = "#9A9DA0", className, ...props }: IconProps) {
+export function MoreOptionsIcon({ size = 20, color = "#A3A6AD", className, ...props }: IconProps) {
   return (
     <svg
       width={size}
@@ -277,7 +277,7 @@ export function MoreOptionsIcon({ size = 20, color = "#9A9DA0", className, ...pr
 }
 
 // Search Icon
-export function SearchIcon({ size = 18, color = "#9A9DA0", className, ...props }: IconProps) {
+export function SearchIcon({ size = 18, color = "#A3A6AD", className, ...props }: IconProps) {
   return (
     <svg
       width={size}

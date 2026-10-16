@@ -114,7 +114,7 @@ export function NewSpreadsheetDialog({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-[#212121] border border-[#2E2F34] rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+      <div className="bg-[#212121] border border-[#2E2F34] rounded-xl max-w-md w-full p-6 shadow-overlay relative">
         {/* Close Button */}
         <button
           type="button"
@@ -127,7 +127,7 @@ export function NewSpreadsheetDialog({
         <h2 className="text-base font-semibold text-white mb-1">
           Create new spreadsheet
         </h2>
-        <p className="text-xs text-[#9A9DA0] mb-5">
+        <p className="text-xs text-[#A3A6AD] mb-5">
           Select a template and choose where to save this spreadsheet.
         </p>
 
@@ -139,7 +139,7 @@ export function NewSpreadsheetDialog({
 
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
+            <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
               Spreadsheet title
             </label>
             <input
@@ -153,7 +153,7 @@ export function NewSpreadsheetDialog({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
+            <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
               Location (optional)
             </label>
             <ProjectSelect
@@ -167,7 +167,7 @@ export function NewSpreadsheetDialog({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[#9A9DA0] mb-1.5">
+            <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
               Template
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -181,7 +181,7 @@ export function NewSpreadsheetDialog({
                     className={`p-2.5 rounded-[10px] text-left border text-xs transition-colors ${
                       isSelected
                         ? "bg-[#4876F3]/10 border-[#4876F3] text-white font-medium"
-                        : "border-[#2E2F34] bg-[#2A2B30] text-[#9A9DA0] hover:text-white hover:border-[#424344]"
+                        : "border-[#2E2F34] bg-[#2A2B30] text-[#A3A6AD] hover:text-white hover:border-[#424344]"
                     }`}
                   >
                     {tmpl.name}
@@ -195,14 +195,14 @@ export function NewSpreadsheetDialog({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-[10px] text-xs font-medium text-[#9A9DA0] hover:text-white hover:bg-[#2A2B30] transition-colors"
+              className="px-4 py-2 rounded-[10px] text-xs font-medium text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 rounded-[10px] text-xs font-semibold bg-[#3B67E0] text-white hover:bg-[#3258c7] disabled:opacity-50 flex items-center gap-1.5 shadow transition-colors"
+              className="px-5 py-2 rounded-[10px] text-xs font-semibold bg-[#3B67E0] text-white hover:bg-[#3B67E0] disabled:opacity-50 flex items-center gap-1.5 shadow transition-colors"
             >
               {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               <span>Create Spreadsheet</span>

@@ -719,7 +719,7 @@ export function DocumentEditor({
                 </div>
               ))}
               {activeUsers.length > 4 && (
-                <div className="w-7 h-7 rounded-full border-2 border-card bg-muted text-[10px] font-semibold flex items-center justify-center text-muted-foreground">
+                <div className="w-7 h-7 rounded-full border-2 border-card bg-muted text-xs font-semibold flex items-center justify-center text-muted-foreground">
                   +{activeUsers.length - 4}
                 </div>
               )}
@@ -939,7 +939,7 @@ export function DocumentEditor({
           </button>
           <button
             type="button"
-            onClick={() => editor.chain().focus().toggleHighlight({ color: "#fef08a" }).run()}
+            onClick={() => editor.chain().focus().toggleHighlight({ color: "#FFBB56" }).run()}
             className={`p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ${
               editor.isActive("highlight") ? "bg-muted text-amber-400" : ""
             }`}
@@ -1113,7 +1113,7 @@ export function DocumentEditor({
         {/* Floating Table of Contents Outline Panel */}
         {showOutline && (
           <aside className="w-64 border-r border-border bg-card/40 p-4 overflow-y-auto shrink-0 hidden md:block">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            <h3 className="text-xs font-semibold  text-muted-foreground mb-3">
               Outline
             </h3>
             {outlineItems.length === 0 ? (
@@ -1260,7 +1260,7 @@ export function DocumentEditor({
       {/* Insert Video Card Modal */}
       {insertVideoModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 shadow-2xl">
+          <div className="bg-card border border-border rounded-xl max-w-md w-full p-6 shadow-overlay">
             <h3 className="text-base font-semibold text-foreground mb-1">
               Insert Playhead Video Card
             </h3>

@@ -180,7 +180,7 @@ export function Select({
         className={`group relative flex h-10 w-full items-center justify-between rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-3.5 pr-9 text-left text-xs text-white transition-colors focus:outline-none focus:border-[#4876F3] ${
           disabled
             ? "opacity-50 cursor-not-allowed"
-            : "cursor-pointer hover:border-[#3E4048]"
+            : "cursor-pointer hover:border-[#2E2F34]"
         } ${triggerClassName}`}
       >
         <span className="truncate flex items-center gap-2">
@@ -226,11 +226,11 @@ export function Select({
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
                   transition={openTransition}
-                  className="relative z-50 w-full rounded-t-2xl border-t border-[#2E2F34] bg-[#212121] p-4 shadow-2xl max-h-[85vh] overflow-y-auto"
+                  className="relative z-50 w-full rounded-t-xl border-t border-[#2E2F34] bg-[#212121] p-4 shadow-overlay max-h-[85vh] overflow-y-auto"
                 >
-                  <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#34353B]" />
+                  <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#424344]" />
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#2E2F34]">
-                    <span className="text-xs font-semibold text-[#7C7F87] uppercase tracking-wider">
+                    <span className="text-[13px] font-medium text-[#A3A6AD]">
                       {placeholder}
                     </span>
                     <button
@@ -264,7 +264,7 @@ export function Select({
                       Array.from(groupedOptions.entries()).map(([grp, opts]) => (
                         <div key={grp} className="mb-2">
                           {grp && (
-                            <div className="px-2 py-1 text-[11px] font-semibold text-[#7C7F87] uppercase tracking-wider">
+                            <div className="px-2 py-1 text-[13px] font-medium text-[#A3A6AD]">
                               {grp}
                             </div>
                           )}
@@ -329,7 +329,7 @@ export function Select({
                   {...getFloatingProps({
                     onKeyDown: handleKeyDown,
                   })}
-                  className="z-50 min-w-[200px] max-w-sm rounded-[10px] border border-[#2E2F34] bg-[#212121] p-1.5 shadow-2xl outline-none"
+                  className="z-50 min-w-[200px] max-w-sm rounded-[10px] border border-[#2E2F34] bg-[#212121] p-1.5 shadow-overlay outline-none"
                 >
                   {shouldSearch && (
                     <div className="relative mb-1.5 px-1 pt-1">
@@ -354,7 +354,7 @@ export function Select({
                       Array.from(groupedOptions.entries()).map(([grp, opts]) => (
                         <div key={grp}>
                           {grp && (
-                            <div className="px-2.5 py-1 text-[10px] font-semibold text-[#7C7F87] uppercase tracking-wider">
+                            <div className="px-2.5 py-1 text-[13px] font-medium text-[#A3A6AD]">
                               {grp}
                             </div>
                           )}
@@ -377,7 +377,7 @@ export function Select({
                                     ? "bg-[#4876F3]/15 text-[#4876F3] font-semibold"
                                     : isFocused
                                     ? "bg-[#2A2B30] text-white"
-                                    : "text-[#D1D2D4] hover:bg-[#2A2B30] hover:text-white"
+                                    : "text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white"
                                 }`}
                               >
                                 <div className="flex items-center gap-2 truncate">

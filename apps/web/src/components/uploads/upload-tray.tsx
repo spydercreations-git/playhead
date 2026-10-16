@@ -75,7 +75,7 @@ export function UploadTray({
   const completedCount = uploads.filter((u) => u.status === "completed").length;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-96 rounded-xl border border-[#424344] bg-[#212121] shadow-2xl overflow-hidden font-sans">
+    <div className="fixed bottom-6 right-6 z-50 w-96 rounded-xl border border-[#424344] bg-[#212121] shadow-overlay overflow-hidden font-sans">
       {/* Header Bar */}
       <div className="flex items-center justify-between px-4 py-3 bg-[#181818] border-b border-[#424344]/60">
         <div className="flex items-center gap-2">
@@ -95,14 +95,14 @@ export function UploadTray({
           {completedCount > 0 && activeCount === 0 && (
             <button
               onClick={onClearCompleted}
-              className="text-[11px] text-[#9A9DA0] hover:text-white transition-colors"
+              className="text-[11px] text-[#A3A6AD] hover:text-white transition-colors"
             >
               Clear
             </button>
           )}
           <button
             onClick={() => setMinimized(!minimized)}
-            className="text-xs text-[#9A9DA0] hover:text-white px-1"
+            className="text-xs text-[#A3A6AD] hover:text-white px-1"
           >
             {minimized ? "▲" : "▼"}
           </button>
@@ -123,7 +123,7 @@ export function UploadTray({
                     <p className="font-medium text-white truncate" title={item.filename}>
                       {item.filename}
                     </p>
-                    <p className="text-[11px] text-[#9A9DA0] mt-0.5">
+                    <p className="text-[11px] text-[#A3A6AD] mt-0.5">
                       {formatBytes(bytesUploaded)} of {formatBytes(item.sizeBytes)} •{" "}
                       {item.status === "uploading" && (
                         <>
@@ -149,7 +149,7 @@ export function UploadTray({
 
                   <div className="flex items-center gap-1.5 shrink-0">
                     {!item.file && item.status !== "completed" ? (
-                      <label className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#4876F3] text-white text-[11px] font-semibold hover:bg-[#3b66df] transition-colors shrink-0">
+                      <label className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#4876F3] text-white text-[11px] font-semibold hover:bg-[#3B67E0] transition-colors shrink-0">
                         <span>Select file to resume</span>
                         <input
                           type="file"
@@ -173,7 +173,7 @@ export function UploadTray({
                           <button
                             onClick={() => onPause(item.id)}
                             title="Pause"
-                            className="px-2 py-0.5 rounded bg-[#2E2F34] text-[#9A9DA0] hover:text-white hover:bg-[#3b3d44]"
+                            className="px-2 py-0.5 rounded bg-[#2E2F34] text-[#A3A6AD] hover:text-white hover:bg-[#2E2F34]"
                           >
                             ⏸
                           </button>
@@ -182,7 +182,7 @@ export function UploadTray({
                           <button
                             onClick={() => onResume(item.id)}
                             title="Resume"
-                            className="px-2 py-0.5 rounded bg-[#2E2F34] text-emerald-400 hover:text-white hover:bg-[#3b3d44]"
+                            className="px-2 py-0.5 rounded bg-[#2E2F34] text-emerald-400 hover:text-white hover:bg-[#2E2F34]"
                           >
                             ▶
                           </button>
@@ -193,7 +193,7 @@ export function UploadTray({
                       <button
                         onClick={() => onCancel(item.id)}
                         title="Cancel"
-                        className="p-1 rounded bg-[#2E2F34] text-[#9A9DA0] hover:text-red-400 hover:bg-[#3b3d44]"
+                        className="p-1 rounded bg-[#2E2F34] text-[#A3A6AD] hover:text-red-400 hover:bg-[#2E2F34]"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>

@@ -212,7 +212,7 @@ export default function LoginPage() {
           <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-3">
             Check your email
           </h1>
-          <div className="flex items-center gap-1.5 text-sm text-[#9A9DA0] mb-8">
+          <div className="flex items-center gap-1.5 text-sm text-[#A3A6AD] mb-8">
             <span>We sent a 6 digit code to</span>
             <span className="font-semibold text-white truncate max-w-[200px]">
               {email}
@@ -223,7 +223,7 @@ export default function LoginPage() {
                 setScreen("email");
                 setError(null);
               }}
-              className="text-[#9A9DA0] hover:text-[#4876F3] transition p-0.5 ml-0.5"
+              className="text-[#A3A6AD] hover:text-[#4876F3] transition p-0.5 ml-0.5"
               title="Edit email"
             >
               <svg
@@ -262,7 +262,7 @@ export default function LoginPage() {
                 onKeyDown={(e) => handleKeyDown(idx, e)}
                 onPaste={handlePaste}
                 autoFocus={idx === 0}
-                className="w-12 h-14 sm:w-14 sm:h-16 rounded-[12px] bg-[#2A2B30] border border-[#3A3B40] text-center text-2xl font-bold text-white focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition-all"
+                className="w-12 h-14 sm:w-14 sm:h-16 rounded-[12px] bg-[#2A2B30] border border-[#2E2F34] text-center text-2xl font-bold text-white focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition-all"
               />
             ))}
           </div>
@@ -289,7 +289,7 @@ export default function LoginPage() {
             <p>
               Didn&apos;t get it? Check spam, or{" "}
               {countdown > 0 ? (
-                <span className="text-[#9A9DA0]">
+                <span className="text-[#A3A6AD]">
                   resend in 0:{countdown < 10 ? `0${countdown}` : countdown}
                 </span>
               ) : (
@@ -302,7 +302,7 @@ export default function LoginPage() {
                 </button>
               )}
             </p>
-            <p className="text-[11px] text-[#63666E]">
+            <p className="text-[11px] text-[#7C7F87]">
               The code works for 10 minutes.
             </p>
           </div>
@@ -315,7 +315,7 @@ export default function LoginPage() {
           <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-2">
             Sign in to Playhead
           </h1>
-          <p className="text-sm text-[#8E9096] mb-8">
+          <p className="text-sm text-[#A3A6AD] mb-8">
             Welcome back. Use the email Idyll invited.
           </p>
 
@@ -365,7 +365,7 @@ export default function LoginPage() {
           {screen === "email" ? (
             <form onSubmit={handleSendCode} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[#9A9DA0] mb-2">
+                <label className="block text-xs font-medium text-[#A3A6AD] mb-2">
                   Work email
                 </label>
                 <div className="relative">
@@ -391,7 +391,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="harsh@idyllproductions.com"
-                    className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#3A3B40] pl-10 pr-4 text-sm text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
+                    className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
                   />
                 </div>
               </div>
@@ -417,7 +417,7 @@ export default function LoginPage() {
                 </svg>
               </button>
 
-              <div className="pt-1 text-center text-xs text-[#9A9DA0]">
+              <div className="pt-1 text-center text-xs text-[#A3A6AD]">
                 <span>Team member? </span>
                 <button
                   type="button"
@@ -435,7 +435,7 @@ export default function LoginPage() {
             /* PASSWORD MODE */
             <form onSubmit={handlePasswordLogin} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[#9A9DA0] mb-2">
+                <label className="block text-xs font-medium text-[#A3A6AD] mb-2">
                   Work email
                 </label>
                 <div className="relative">
@@ -460,14 +460,14 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@company.com"
-                    className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#3A3B40] pl-10 pr-4 text-sm text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
+                    className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
                   />
                 </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-medium text-[#9A9DA0]">
+                  <label className="text-xs font-medium text-[#A3A6AD]">
                     Password
                   </label>
                   <Link
@@ -500,7 +500,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#3A3B40] pl-10 pr-4 text-sm text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
+                    className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
                   />
                 </div>
               </div>
@@ -513,7 +513,7 @@ export default function LoginPage() {
                 <span>{loading ? "Signing in..." : "Sign in with password"}</span>
               </button>
 
-              <div className="pt-1 text-center text-xs text-[#9A9DA0]">
+              <div className="pt-1 text-center text-xs text-[#A3A6AD]">
                 <span>Client or fast login? </span>
                 <button
                   type="button"
@@ -530,8 +530,8 @@ export default function LoginPage() {
           )}
 
           {/* Note Box with Lock Icon */}
-          <div className="mt-8 rounded-[12px] bg-[#212121] border border-[#2D2F34] p-3.5 flex items-start gap-3">
-            <div className="w-8 h-8 rounded-[8px] bg-[#2A2B30] flex items-center justify-center text-[#9A9DA0] shrink-0 mt-0.5">
+          <div className="mt-8 rounded-[12px] bg-[#212121] border border-[#2E2F34] p-3.5 flex items-start gap-3">
+            <div className="w-8 h-8 rounded-[8px] bg-[#2A2B30] flex items-center justify-center text-[#A3A6AD] shrink-0 mt-0.5">
               <svg
                 width="15"
                 height="15"

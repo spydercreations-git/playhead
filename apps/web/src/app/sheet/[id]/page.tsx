@@ -76,7 +76,7 @@ export default function SheetPage() {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#181818] text-white">
         <Loader2 className="w-8 h-8 text-[#3B67E0] animate-spin mb-3" />
-        <span className="text-xs text-[#8E8F90] font-medium">
+        <span className="text-xs text-[#A3A6AD] font-medium">
           Loading spreadsheet...
         </span>
       </div>
@@ -86,19 +86,19 @@ export default function SheetPage() {
   if (error || !sheetData) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#181818] text-white p-4">
-        <div className="max-w-md w-full p-8 rounded-2xl border border-[#2D2F34] bg-[#212121] text-center shadow-2xl">
+        <div className="max-w-md w-full p-8 rounded-xl border border-[#2E2F34] bg-[#212121] text-center shadow-overlay">
           <div className="w-12 h-12 rounded-xl bg-red-950/40 text-red-400 flex items-center justify-center mx-auto mb-4 border border-red-900/30">
             <FileQuestion className="w-6 h-6" />
           </div>
           <h2 className="text-base font-semibold text-white mb-2">
             Unable to open spreadsheet
           </h2>
-          <p className="text-xs text-[#8E8F90] mb-6">
+          <p className="text-xs text-[#A3A6AD] mb-6">
             {error || "The requested spreadsheet does not exist or access was restricted."}
           </p>
           <Link
             href="/spreadsheets"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2A2B30] hover:bg-[#34353B] text-xs font-semibold text-white transition-colors border border-[#34353B]"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2A2B30] hover:bg-[#2E2F34] text-xs font-semibold text-white transition-colors border border-[#2E2F34]"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back to Spreadsheets</span>

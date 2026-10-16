@@ -22,7 +22,7 @@ export function StoragePanel({
     { name: "Videos", size: "0 B", color: "#FFBB56", percent: 0 },
     { name: "Images", size: "0 B", color: "#FA457B", percent: 0 },
     { name: "Documents", size: "0 B", color: "#9787FF", percent: 0 },
-    { name: "Other", size: "0 B", color: "#1490DF", percent: 0 },
+    { name: "Other", size: "0 B", color: "#4876F3", percent: 0 },
   ];
 
   return (
@@ -30,7 +30,7 @@ export function StoragePanel({
       {/* Title */}
       <div>
         <h2 className="text-xl font-bold text-white tracking-tight">Storage</h2>
-        <p className="text-xs text-[#9A9DA0]">14-Day Free Trial</p>
+        <p className="text-xs text-[#A3A6AD]">14-Day Free Trial</p>
       </div>
 
       {/* Ring Chart & Category Breakdown Container */}
@@ -64,7 +64,7 @@ export function StoragePanel({
           {/* Center Text inside Ring Chart */}
           <div className="absolute flex flex-col items-center text-center">
             <span className="text-2xl font-bold text-white">0 B</span>
-            <span className="text-[11px] font-medium text-[#9A9DA0]">
+            <span className="text-[11px] font-medium text-[#A3A6AD]">
               Used of 25 GB
             </span>
           </div>
@@ -82,7 +82,7 @@ export function StoragePanel({
                   />
                   {cat.name}
                 </span>
-                <span className="text-[#9A9DA0] text-[11px] font-medium">
+                <span className="text-[#A3A6AD] text-[11px] font-medium">
                   {cat.size}
                 </span>
               </div>
@@ -103,12 +103,12 @@ export function StoragePanel({
       {/* Upload Drag & Drop Box + Action Card */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-6 lg:gap-6">
         {/* Upload Drag & Drop Box */}
-        <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-[#9A9DA0] bg-[#212121] p-5 text-center transition-colors hover:border-white cursor-pointer min-h-[104px]">
+        <div className="flex flex-col items-center justify-center rounded-[10px] border border-dashed border-[#A3A6AD] bg-[#212121] p-5 text-center transition-colors hover:border-white cursor-pointer min-h-[104px]">
           <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-[#2E2F34]">
             <CloudUploadIcon size={20} color="#4876F3" />
           </div>
           <span className="text-sm font-semibold text-white">Upload File</span>
-          <span className="mt-0.5 text-[11px] text-[#9A9DA0]">
+          <span className="mt-0.5 text-[11px] text-[#A3A6AD]">
             Drop cuts or click to browse
           </span>
         </div>
@@ -122,7 +122,7 @@ export function StoragePanel({
 
           <div>
             <h3 className="text-base font-bold text-white">Let&apos;s start!</h3>
-            <p className="mt-1 text-xs text-[#9A9DA0] leading-relaxed">
+            <p className="mt-1 text-xs text-[#A3A6AD] leading-relaxed">
               Creating projects and sharing cuts couldn&apos;t be easier.
             </p>
           </div>
@@ -130,14 +130,14 @@ export function StoragePanel({
           {hasPermission("projects.create") ? (
             <button
               onClick={() => router.push("/projects")}
-              className="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-[#4876F3] text-sm font-semibold text-white hover:bg-[#3B66D6] transition-colors"
+              className="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-[#4876F3] text-sm font-semibold text-white hover:bg-[#3560D6] transition-colors"
             >
               + New Project
             </button>
           ) : (
             <button
               onClick={() => router.push("/projects")}
-              className="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-[#2A2B30] border border-[#424344] text-sm font-semibold text-white hover:bg-[#34353B] transition-colors"
+              className="mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-[#2A2B30] border border-[#424344] text-sm font-semibold text-white hover:bg-[#2E2F34] transition-colors"
             >
               View Projects
             </button>

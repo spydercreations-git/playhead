@@ -170,21 +170,21 @@ export function CommentsPanel({
   const unresolvedCount = comments.filter((c) => !c.resolved_at).length;
 
   return (
-    <div className="flex flex-col h-full bg-[#141416] border-l border-[#222226] text-white select-none">
+    <div className="flex flex-col h-full bg-[#181818] border-l border-[#212121] text-white select-none">
       {/* Panel Top Tabs */}
-      <div className="flex items-center justify-between border-b border-[#222226] px-4 bg-[#18181B]">
+      <div className="flex items-center justify-between border-b border-[#212121] px-4 bg-[#181818]">
         <div className="flex items-center gap-1">
           <button
             onClick={() => setActiveTab("comments")}
             className={`flex items-center gap-2 py-3 px-3 text-xs font-semibold border-b-2 transition-colors ${
               activeTab === "comments"
-                ? "border-[#FF5500] text-white"
-                : "border-transparent text-[#9A9DA0] hover:text-white"
+                ? "border-[#FFBB56] text-white"
+                : "border-transparent text-[#A3A6AD] hover:text-white"
             }`}
           >
             <MessageSquare className="w-3.5 h-3.5" />
             <span>Comments</span>
-            <span className="rounded-full bg-[#27272A] px-2 py-0.5 text-[10px] text-[#A1A1AA]">
+            <span className="rounded-full bg-[#212121] px-2 py-0.5 text-xs text-[#A3A6AD]">
               {unresolvedCount}
             </span>
           </button>
@@ -193,8 +193,8 @@ export function CommentsPanel({
             onClick={() => setActiveTab("details")}
             className={`flex items-center gap-2 py-3 px-3 text-xs font-semibold border-b-2 transition-colors ${
               activeTab === "details"
-                ? "border-[#FF5500] text-white"
-                : "border-transparent text-[#9A9DA0] hover:text-white"
+                ? "border-[#FFBB56] text-white"
+                : "border-transparent text-[#A3A6AD] hover:text-white"
             }`}
           >
             <Info className="w-3.5 h-3.5" />
@@ -205,7 +205,7 @@ export function CommentsPanel({
         {activeTab === "comments" && (
           <button
             onClick={onExportCSV}
-            className="flex items-center gap-1 text-[11px] font-medium text-[#9A9DA0] hover:text-white transition-colors"
+            className="flex items-center gap-1 text-[11px] font-medium text-[#A3A6AD] hover:text-white transition-colors"
             title="Export comments to CSV"
           >
             <Download className="w-3 h-3" />
@@ -218,13 +218,13 @@ export function CommentsPanel({
       {activeTab === "comments" && (
         <div className="flex flex-col flex-1 overflow-hidden">
           {/* Filters & Search Header */}
-          <div className="p-3 border-b border-[#222226] space-y-2">
+          <div className="p-3 border-b border-[#212121] space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1 bg-[#1F1F23] p-0.5 rounded-lg border border-[#2B2B30]">
+              <div className="flex items-center gap-1 bg-[#181818] p-0.5 rounded-lg border border-[#2E2F34]">
                 <button
                   onClick={() => setFilter("all")}
                   className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
-                    filter === "all" ? "bg-[#2E2E34] text-white shadow-sm" : "text-[#9A9DA0] hover:text-white"
+                    filter === "all" ? "bg-[#2E2F34] text-white shadow-sm" : "text-[#A3A6AD] hover:text-white"
                   }`}
                 >
                   All
@@ -232,7 +232,7 @@ export function CommentsPanel({
                 <button
                   onClick={() => setFilter("unresolved")}
                   className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
-                    filter === "unresolved" ? "bg-[#2E2E34] text-white shadow-sm" : "text-[#9A9DA0] hover:text-white"
+                    filter === "unresolved" ? "bg-[#2E2F34] text-white shadow-sm" : "text-[#A3A6AD] hover:text-white"
                   }`}
                 >
                   Unresolved
@@ -240,7 +240,7 @@ export function CommentsPanel({
                 <button
                   onClick={() => setFilter("resolved")}
                   className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
-                    filter === "resolved" ? "bg-[#2E2E34] text-white shadow-sm" : "text-[#9A9DA0] hover:text-white"
+                    filter === "resolved" ? "bg-[#2E2F34] text-white shadow-sm" : "text-[#A3A6AD] hover:text-white"
                   }`}
                 >
                   Resolved
@@ -251,7 +251,7 @@ export function CommentsPanel({
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value as any)}
-                className="bg-[#1F1F23] border border-[#2B2B30] text-[#9A9DA0] rounded-lg px-2 py-1 text-[11px] outline-none cursor-pointer"
+                className="bg-[#181818] border border-[#2E2F34] text-[#A3A6AD] rounded-lg px-2 py-1 text-[11px] outline-none cursor-pointer"
               >
                 <option value="timecode">Timecode</option>
                 <option value="newest">Newest</option>
@@ -260,13 +260,13 @@ export function CommentsPanel({
 
             {/* Quick search input */}
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[#71717A]" />
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[#A3A6AD]" />
               <input
                 type="text"
                 placeholder="Search comments..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#18181B] border border-[#27272A] text-xs text-white pl-8 pr-3 py-1.5 rounded-lg outline-none placeholder-[#71717A] focus:border-[#FF5500]"
+                className="w-full bg-[#181818] border border-[#212121] text-xs text-white pl-8 pr-3 py-1.5 rounded-lg outline-none placeholder-[#A3A6AD] focus:border-[#FFBB56]"
               />
             </div>
           </div>
@@ -274,10 +274,10 @@ export function CommentsPanel({
           {/* Threaded Comment List */}
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {filteredComments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-48 text-[#71717A] text-center">
+              <div className="flex flex-col items-center justify-center h-48 text-[#A3A6AD] text-center">
                 <MessageSquare className="w-8 h-8 mb-2 opacity-30" />
                 <p className="text-xs">No comments found</p>
-                <p className="text-[10px] text-[#52525B]">Be the first to leave a feedback comment!</p>
+                <p className="text-xs text-[#A3A6AD]">Be the first to leave a feedback comment!</p>
               </div>
             ) : (
               filteredComments.map((comment) => {
@@ -292,10 +292,10 @@ export function CommentsPanel({
                     key={comment.id}
                     className={`rounded-xl border p-3 transition-colors ${
                       isTeam
-                        ? "bg-[#FEF9C3]/5 border-[#EAB308]/30 hover:border-[#EAB308]/50"
+                        ? "bg-[#FFBB56]/5 border-[#EAB308]/30 hover:border-[#EAB308]/50"
                         : isResolved
-                        ? "bg-[#18181A]/40 border-[#27272A]/40 opacity-70"
-                        : "bg-[#18181A] border-[#27272A] hover:border-[#3F3F46]"
+                        ? "bg-[#181818]/40 border-[#212121]/40 opacity-70"
+                        : "bg-[#181818] border-[#212121] hover:border-[#424344]"
                     }`}
                   >
                     {/* Header: Avatar, Name, Badge, Timecode Chip, Resolve */}
@@ -303,8 +303,8 @@ export function CommentsPanel({
                       <div className="flex items-center gap-2">
                         {/* Avatar */}
                         <div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow ${
-                            isTeam ? "bg-[#854D0E]" : "bg-[#FF5500]"
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shadow ${
+                            isTeam ? "bg-[#FFBB56]" : "bg-[#FFBB56]"
                           }`}
                         >
                           {initial}
@@ -314,12 +314,12 @@ export function CommentsPanel({
                           <div className="flex items-center gap-1.5">
                             <span className="text-xs font-semibold text-white">{comment.author_name}</span>
                             {isTeam ? (
-                              <span className="flex items-center gap-0.5 rounded px-1 py-0.2 bg-[#EAB308]/20 text-[#EAB308] text-[9px] font-medium border border-[#EAB308]/30">
+                              <span className="flex items-center gap-0.5 rounded px-1 py-0.2 bg-[#EAB308]/20 text-[#EAB308] text-xs font-medium border border-[#EAB308]/30">
                                 <Lock className="w-2.5 h-2.5" /> Team only
                               </span>
                             ) : null}
                           </div>
-                          <span className="text-[10px] text-[#71717A]">
+                          <span className="text-xs text-[#A3A6AD]">
                             {new Date(comment.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
@@ -330,7 +330,7 @@ export function CommentsPanel({
                         {comment.timecode_start_ms !== null && (
                           <button
                             onClick={() => onSeekToTime(comment.timecode_start_ms!)}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#FF5500]/15 text-[#FF5500] hover:bg-[#FF5500] hover:text-white text-[11px] font-mono tabular-nums font-medium transition-colors"
+                            className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#FFBB56]/15 text-[#FFBB56] hover:bg-[#FFBB56] hover:text-white text-[11px] font-mono tabular-nums font-medium transition-colors"
                             title="Jump to timecode"
                           >
                             <Clock className="w-3 h-3" />
@@ -343,12 +343,12 @@ export function CommentsPanel({
                           <button
                             onClick={() => onResolveComment(comment.id, !isResolved)}
                             className={`p-1 rounded-full transition-colors ${
-                              isResolved ? "text-[#22C55E] hover:text-[#16A34A]" : "text-[#71717A] hover:text-white"
+                              isResolved ? "text-[#3FCF8E] hover:text-[#3FCF8E]" : "text-[#A3A6AD] hover:text-white"
                             }`}
                             title={isResolved ? "Mark unresolved" : "Resolve comment"}
                           >
                             {isResolved ? (
-                              <CheckCircle2 className="w-4 h-4 fill-[#22C55E]/20" />
+                              <CheckCircle2 className="w-4 h-4 fill-[#3FCF8E]/20" />
                             ) : (
                               <Circle className="w-4 h-4" />
                             )}
@@ -363,26 +363,26 @@ export function CommentsPanel({
                         <textarea
                           value={editText}
                           onChange={(e) => setEditText(e.target.value)}
-                          className="w-full bg-[#121214] text-xs p-2 rounded-lg border border-[#FF5500] text-white outline-none"
+                          className="w-full bg-[#181818] text-xs p-2 rounded-lg border border-[#FFBB56] text-white outline-none"
                           rows={2}
                         />
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => setEditingId(null)}
-                            className="px-2 py-1 text-xs text-[#9A9DA0] hover:text-white"
+                            className="px-2 py-1 text-xs text-[#A3A6AD] hover:text-white"
                           >
                             Cancel
                           </button>
                           <button
                             onClick={() => handleSaveEdit(comment.id)}
-                            className="px-2.5 py-1 text-xs bg-[#FF5500] rounded text-white font-medium"
+                            className="px-2.5 py-1 text-xs bg-[#FFBB56] rounded text-white font-medium"
                           >
                             Save
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <p className={`text-xs text-[#D4D4D8] leading-relaxed mb-2 ${isResolved ? "line-through text-[#71717A]" : ""}`}>
+                      <p className={`text-xs text-[#A3A6AD] leading-relaxed mb-2 ${isResolved ? "line-through text-[#A3A6AD]" : ""}`}>
                         {comment.body}
                       </p>
                     )}
@@ -396,7 +396,7 @@ export function CommentsPanel({
                           }
                           onPreviewDrawing(comment.drawing);
                         }}
-                        className="flex items-center gap-1 text-[11px] text-[#FF5500] hover:underline mb-2 font-medium"
+                        className="flex items-center gap-1 text-[11px] text-[#FFBB56] hover:underline mb-2 font-medium"
                       >
                         <Eye className="w-3 h-3" />
                         <span>View drawing on frame</span>
@@ -404,7 +404,7 @@ export function CommentsPanel({
                     )}
 
                     {/* Bottom Actions: Reply, Edit, Delete */}
-                    <div className="flex items-center justify-between pt-1 border-t border-[#27272A]/60 text-[10px] text-[#71717A]">
+                    <div className="flex items-center justify-between pt-1 border-t border-[#212121]/60 text-xs text-[#A3A6AD]">
                       <div className="flex items-center gap-3">
                         {canComment && (
                           <button
@@ -443,28 +443,28 @@ export function CommentsPanel({
 
                     {/* Threaded Replies */}
                     {comment.replies && comment.replies.length > 0 && (
-                      <div className="mt-2.5 pl-3 border-l-2 border-[#2E2E34] space-y-2">
+                      <div className="mt-2.5 pl-3 border-l-2 border-[#2E2F34] space-y-2">
                         {comment.replies.map((reply) => {
                           const isReplyAuthor = currentUserId && reply.author_user_id === currentUserId;
                           return (
                             <div key={reply.id} className="text-xs space-y-0.5">
-                              <div className="flex items-center justify-between text-[10px]">
+                              <div className="flex items-center justify-between text-xs">
                                 <span className="font-semibold text-white">{reply.author_name}</span>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[#71717A]">
+                                  <span className="text-[#A3A6AD]">
                                     {new Date(reply.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                   </span>
                                   {(isReplyAuthor || hasFullAccess) && (
                                     <button
                                       onClick={() => onDeleteComment(reply.id)}
-                                      className="text-[#71717A] hover:text-[#EF4444]"
+                                      className="text-[#A3A6AD] hover:text-[#EF4444]"
                                     >
                                       <Trash2 className="w-2.5 h-2.5" />
                                     </button>
                                   )}
                                 </div>
                               </div>
-                              <p className="text-[#D4D4D8] text-[11px]">{reply.body}</p>
+                              <p className="text-[#A3A6AD] text-[11px]">{reply.body}</p>
                             </div>
                           );
                         })}
@@ -474,7 +474,7 @@ export function CommentsPanel({
                     {/* Inline Reply Input Box */}
                     {replyingToId === comment.id && (
                       <div className="mt-2.5 flex items-center gap-1.5">
-                        <CornerDownRight className="w-3.5 h-3.5 text-[#71717A]" />
+                        <CornerDownRight className="w-3.5 h-3.5 text-[#A3A6AD]" />
                         <input
                           type="text"
                           placeholder="Reply to this thread..."
@@ -483,12 +483,12 @@ export function CommentsPanel({
                           onKeyDown={(e) => {
                             if (e.key === "Enter") handleSendReply(comment.id);
                           }}
-                          className="flex-1 bg-[#121214] text-xs p-1.5 rounded-lg border border-[#27272A] text-white outline-none focus:border-[#FF5500]"
+                          className="flex-1 bg-[#181818] text-xs p-1.5 rounded-lg border border-[#212121] text-white outline-none focus:border-[#FFBB56]"
                           autoFocus
                         />
                         <button
                           onClick={() => handleSendReply(comment.id)}
-                          className="px-2.5 py-1 text-xs bg-[#FF5500] rounded text-white font-medium"
+                          className="px-2.5 py-1 text-xs bg-[#FFBB56] rounded text-white font-medium"
                         >
                           Send
                         </button>
@@ -506,13 +506,13 @@ export function CommentsPanel({
       {activeTab === "details" && (
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Review Status Banner */}
-          <div className="p-4 rounded-xl bg-[#18181A] border border-[#27272A] space-y-2">
+          <div className="p-4 rounded-xl bg-[#181818] border border-[#212121] space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#9A9DA0]">Status</span>
+              <span className="text-xs font-semibold text-[#A3A6AD]">Status</span>
               <span
-                className={`px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
+                className={`px-2.5 py-0.5 rounded-full text-xs font-semibold  ${
                   reviewStatus === "approved"
-                    ? "bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30"
+                    ? "bg-[#3FCF8E]/15 text-[#3FCF8E] border border-[#3FCF8E]/30"
                     : reviewStatus === "changes_requested"
                     ? "bg-[#EF4444]/15 text-[#EF4444] border border-[#EF4444]/30"
                     : "bg-[#EAB308]/15 text-[#EAB308] border border-[#EAB308]/30"
@@ -525,29 +525,29 @@ export function CommentsPanel({
 
           {/* Review Approval History */}
           <div className="space-y-3">
-            <h4 className="text-xs font-semibold text-[#9A9DA0] uppercase tracking-wider">
+            <h4 className="text-xs font-semibold text-[#A3A6AD] ">
               Review History
             </h4>
             {reviewHistory.length === 0 ? (
-              <p className="text-xs text-[#71717A]">No review decisions recorded yet.</p>
+              <p className="text-xs text-[#A3A6AD]">No review decisions recorded yet.</p>
             ) : (
               <div className="space-y-2">
                 {reviewHistory.map((rev) => (
-                  <div key={rev.id} className="p-3 rounded-xl bg-[#18181A] border border-[#27272A] space-y-1">
+                  <div key={rev.id} className="p-3 rounded-xl bg-[#181818] border border-[#212121] space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-white">{rev.author_name}</span>
                       <span
-                        className={`text-[10px] font-bold px-1.5 py-0.2 rounded uppercase ${
+                        className={`text-[11px] font-bold px-1.5 py-0.5 rounded uppercase ${
                           rev.decision === "approved"
-                            ? "bg-[#22C55E]/20 text-[#22C55E]"
-                            : "bg-[#EF4444]/20 text-[#EF4444]"
+                            ? "bg-[#3FCF8E]/20 text-[#3FCF8E]"
+                            : "bg-[#F0506E]/20 text-[#F0506E]"
                         }`}
                       >
                         {rev.decision === "approved" ? "Approved" : "Changes Requested"}
                       </span>
                     </div>
-                    {rev.note && <p className="text-xs text-[#D4D4D8] italic">"{rev.note}"</p>}
-                    <div className="flex items-center justify-between text-[10px] text-[#71717A] pt-1">
+                    {rev.note && <p className="text-xs text-[#A3A6AD] italic">"{rev.note}"</p>}
+                    <div className="flex items-center justify-between text-xs text-[#A3A6AD] pt-1">
                       <span>Version v{rev.version_number}</span>
                       <span>{new Date(rev.created_at).toLocaleDateString()}</span>
                     </div>
@@ -559,7 +559,7 @@ export function CommentsPanel({
 
           {/* Versions List */}
           <div className="space-y-3">
-            <h4 className="text-xs font-semibold text-[#9A9DA0] uppercase tracking-wider">
+            <h4 className="text-xs font-semibold text-[#A3A6AD] ">
               Versions ({versions.length})
             </h4>
             <div className="space-y-1.5">
@@ -569,21 +569,21 @@ export function CommentsPanel({
                   onClick={() => onSelectVersion(ver.number)}
                   className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition-colors ${
                     ver.number === activeVersionNumber
-                      ? "bg-[#FF5500]/10 border-[#FF5500] text-white"
-                      : "bg-[#18181A] border-[#27272A] text-[#9A9DA0] hover:border-[#3F3F46]"
+                      ? "bg-[#FFBB56]/10 border-[#FFBB56] text-white"
+                      : "bg-[#181818] border-[#212121] text-[#A3A6AD] hover:border-[#424344]"
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-xs">v{ver.number}</span>
                     <div className="text-[11px]">
                       <div>{new Date(ver.created_at).toLocaleDateString()}</div>
-                      <div className="text-[10px] text-[#71717A]">
+                      <div className="text-xs text-[#A3A6AD]">
                         {ver.width && ver.height ? `${ver.width}x${ver.height}` : ver.mime}
                       </div>
                     </div>
                   </div>
                   {ver.number === activeVersionNumber && (
-                    <span className="text-[10px] bg-[#FF5500] text-white px-1.5 py-0.5 rounded font-medium">
+                    <span className="text-xs bg-[#FFBB56] text-white px-1.5 py-0.5 rounded font-medium">
                       Current
                     </span>
                   )}

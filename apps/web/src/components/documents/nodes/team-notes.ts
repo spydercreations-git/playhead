@@ -56,7 +56,7 @@ export const TeamNotes = Node.create<TeamNotesOptions>({
         "div",
         {
           class:
-            "flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-amber-400 mb-2 select-none",
+            "flex items-center gap-1.5 text-xs font-semibold  text-amber-400 mb-2 select-none",
           contenteditable: "false",
         },
         [

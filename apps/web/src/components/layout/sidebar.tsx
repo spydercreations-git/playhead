@@ -172,7 +172,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="relative px-6 pt-5 pb-2">
             <button
               onClick={() => setNewMenuOpen(!newMenuOpen)}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-[10px] bg-[#4876F3] text-xs font-semibold text-white shadow hover:bg-[#3B66D6] transition-colors"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-[10px] bg-[#4876F3] text-xs font-semibold text-white shadow hover:bg-[#3560D6] transition-colors"
             >
               <span>+ New</span>
               <ChevronDown
@@ -188,7 +188,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   className="fixed inset-0 z-30"
                   onClick={() => setNewMenuOpen(false)}
                 />
-                <div className="absolute left-6 right-6 top-[66px] z-40 rounded-[10px] border border-[#2E2F34] bg-[#212121] py-1.5 shadow-2xl space-y-0.5">
+                <div className="absolute left-6 right-6 top-[66px] z-40 rounded-[10px] border border-[#2E2F34] bg-[#212121] py-1.5 shadow-overlay space-y-0.5">
                   {hasPermission("clients.create") && (
                     <button
                       onClick={() => {
@@ -287,7 +287,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 className="w-28 bg-transparent text-xs text-white placeholder-[#7C7F87] focus:outline-none"
               />
             </div>
-            <kbd className="rounded border border-[#2E2F34] bg-[#212121] px-1.5 py-0.5 text-[9px] font-mono text-[#7C7F87]">
+            <kbd className="rounded border border-[#2E2F34] bg-[#212121] px-1.5 py-0.5 text-xs font-mono text-[#7C7F87]">
               ⌘K
             </kbd>
           </div>
@@ -310,13 +310,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   className={`flex h-10 items-center justify-between rounded-[10px] px-3 text-xs font-medium transition-colors ${
                     isActive
                       ? "bg-[#2A2B30] text-white font-semibold border border-[#2E2F34]"
-                      : "text-[#9A9DA0] hover:bg-[#2A2B30]/60 hover:text-white"
+                      : "text-[#A3A6AD] hover:bg-[#2A2B30]/60 hover:text-white"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <item.icon
                       size={17}
-                      color={isActive ? "#4876F3" : "#9A9DA0"}
+                      color={isActive ? "#4876F3" : "#A3A6AD"}
                     />
                     <span>{item.name}</span>
                   </div>
@@ -333,10 +333,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   className={`flex h-10 items-center gap-3 rounded-[10px] px-3 text-xs font-medium transition-colors ${
                     pathname.startsWith("/team")
                       ? "bg-[#2A2B30] text-white font-semibold border border-[#2E2F34]"
-                      : "text-[#9A9DA0] hover:bg-[#2A2B30]/60 hover:text-white"
+                      : "text-[#A3A6AD] hover:bg-[#2A2B30]/60 hover:text-white"
                   }`}
                 >
-                  <TeamIcon size={17} color="#9A9DA0" />
+                  <TeamIcon size={17} color="#A3A6AD" />
                   <span>Team</span>
                 </Link>
               )}
@@ -346,10 +346,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 className={`flex h-10 items-center gap-3 rounded-[10px] px-3 text-xs font-medium transition-colors ${
                   pathname.startsWith("/settings")
                     ? "bg-[#2A2B30] text-white font-semibold border border-[#2E2F34]"
-                    : "text-[#9A9DA0] hover:bg-[#2A2B30]/60 hover:text-white"
+                    : "text-[#A3A6AD] hover:bg-[#2A2B30]/60 hover:text-white"
                 }`}
               >
-                <SettingsIcon size={17} color="#9A9DA0" />
+                <SettingsIcon size={17} color="#A3A6AD" />
                 <span>Settings</span>
               </Link>
             </div>
@@ -358,13 +358,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Storage Used for Admins (Spec Section 5.1) */}
         {!isClient && hasPermission("admin.storage") && storageStats && (
-          <div className="px-5 py-3 border-t border-[#2E2F34] bg-[#1c1c1c]">
+          <div className="px-5 py-3 border-t border-[#2E2F34] bg-[#181818]">
             <div className="flex items-center justify-between text-[11px] mb-1.5">
-              <span className="text-[#9A9DA0] font-medium flex items-center gap-1.5">
+              <span className="text-[#A3A6AD] font-medium flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5 text-amber-400" />
                 <span>Storage</span>
               </span>
-              <span className="text-[#7C7F87] font-mono text-[10px]">
+              <span className="text-[#7C7F87] font-mono text-xs">
                 {storageStats.usedFormatted} of {storageStats.limitFormatted}
               </span>
             </div>
@@ -381,17 +381,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="relative p-4 border-t border-[#2E2F34]">
           <div
             onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-            className="flex h-14 items-center justify-between rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3 cursor-pointer hover:bg-[#34353B] transition-colors"
+            className="flex h-14 items-center justify-between rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3 cursor-pointer hover:bg-[#2E2F34] transition-colors"
           >
             <div className="flex items-center gap-2.5 truncate">
-              <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#4876F3] text-xs font-bold text-white uppercase">
+              <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#4876F3] text-xs font-bold text-white ">
                 {initials}
               </div>
               <div className="flex flex-col truncate">
                 <span className="text-xs font-semibold text-white truncate">
                   {displayName}
                 </span>
-                <span className="text-[10px] text-[#7C7F87] truncate">
+                <span className="text-xs text-[#7C7F87] truncate">
                   {user?.email || ""}
                 </span>
               </div>
@@ -399,7 +399,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
             {/* Role Badge (hidden for clients) */}
             {!isClient && role && (
-              <span className="shrink-0 rounded-[6px] bg-[#4876F3]/15 px-1.5 py-0.5 text-[10px] font-semibold text-[#4876F3] capitalize border border-[#4876F3]/20">
+              <span className="shrink-0 rounded-[6px] bg-[#4876F3]/15 px-1.5 py-0.5 text-xs font-semibold text-[#4876F3] capitalize border border-[#4876F3]/20">
                 {role}
               </span>
             )}
@@ -411,13 +411,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 className="fixed inset-0 z-30"
                 onClick={() => setProfileMenuOpen(false)}
               />
-              <div className="absolute bottom-[72px] left-4 right-4 z-40 rounded-[10px] border border-[#2E2F34] bg-[#212121] py-1 shadow-2xl">
+              <div className="absolute bottom-[72px] left-4 right-4 z-40 rounded-[10px] border border-[#2E2F34] bg-[#212121] py-1 shadow-overlay">
                 <Link
                   href="/settings"
                   onClick={() => setProfileMenuOpen(false)}
                   className="flex w-full items-center gap-2 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
                 >
-                  <SettingsIcon size={14} color="#9A9DA0" />
+                  <SettingsIcon size={14} color="#A3A6AD" />
                   <span>Settings</span>
                 </Link>
                 <div className="my-1 border-t border-[#2E2F34]" />

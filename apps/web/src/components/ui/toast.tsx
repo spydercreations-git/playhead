@@ -23,14 +23,14 @@ function SingleToast({ toast }: { toast: ToastItem }) {
       onMouseLeave={() => setIsHovered(false)}
       role="status"
       aria-live="polite"
-      className="pointer-events-auto flex w-full items-center justify-between gap-3 rounded-[10px] border border-[#2E2F34] bg-[#212121] p-3.5 shadow-2xl backdrop-blur-none transition-all duration-150 animate-in fade-in slide-in-from-bottom-2"
+      className="pointer-events-auto flex w-full items-center justify-between gap-3 rounded-[10px] border border-[#2E2F34] bg-[#212121] p-3.5 shadow-overlay backdrop-blur-none transition-all duration-150 animate-in fade-in slide-in-from-bottom-2"
     >
       <div className="flex items-start gap-2.5 min-w-0 flex-1">
         {toast.type === "success" && (
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+          <CheckCircle2 className="w-4 h-4 text-[#3FCF8E] shrink-0 mt-0.5" />
         )}
         {toast.type === "error" && (
-          <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <AlertCircle className="w-4 h-4 text-[#F0506E] shrink-0 mt-0.5" />
         )}
         {toast.type === "info" && (
           <Info className="w-4 h-4 text-[#4876F3] shrink-0 mt-0.5" />
@@ -41,7 +41,7 @@ function SingleToast({ toast }: { toast: ToastItem }) {
             {toast.message}
           </span>
           {toast.reason && (
-            <span className="text-[11px] text-[#9A9DA0] mt-0.5">
+            <span className="text-xs text-[#A3A6AD] mt-0.5">
               {toast.reason}
             </span>
           )}
@@ -74,7 +74,7 @@ function SingleToast({ toast }: { toast: ToastItem }) {
                 dismiss(toast.id);
               }
             }}
-            className="rounded-[6px] bg-[#2A2B30] border border-[#2E2F34] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#34353B] transition-colors"
+            className="rounded-[6px] bg-[#2A2B30] border border-[#2E2F34] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#2C2D33] transition-colors"
           >
             Try again
           </button>

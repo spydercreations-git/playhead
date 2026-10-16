@@ -104,7 +104,7 @@ export function VersionHistoryDrawer({
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 w-80 sm:w-96 bg-card border-l border-border shadow-2xl z-50 flex flex-col">
+    <div className="fixed inset-y-0 right-0 w-80 sm:w-96 bg-card border-l border-border shadow-overlay z-50 flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">

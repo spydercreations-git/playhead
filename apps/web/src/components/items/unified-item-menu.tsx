@@ -53,12 +53,12 @@ export function buildUnifiedItemMenuGroups(options: UnifiedItemMenuOptions): Men
       items: [
         {
           label: "Manage access",
-          icon: <Users className="w-3.5 h-3.5 text-[#9A9DA0]" />,
+          icon: <Users className="w-3.5 h-3.5 text-[#A3A6AD]" />,
           onClick: onManageAccess,
         },
         {
           label: "Create share link",
-          icon: <Share2 className="w-3.5 h-3.5 text-[#9A9DA0]" />,
+          icon: <Share2 className="w-3.5 h-3.5 text-[#A3A6AD]" />,
           onClick: onCreateShareLink,
         },
       ],
@@ -68,7 +68,7 @@ export function buildUnifiedItemMenuGroups(options: UnifiedItemMenuOptions): Men
       items: [
         {
           label: "Download",
-          icon: <Download className="w-3.5 h-3.5 text-[#9A9DA0]" />,
+          icon: <Download className="w-3.5 h-3.5 text-[#A3A6AD]" />,
           onClick: onDownload,
           show: canDownload,
         },
@@ -76,7 +76,7 @@ export function buildUnifiedItemMenuGroups(options: UnifiedItemMenuOptions): Men
           ? [
               {
                 label: "Upload new version",
-                icon: <Upload className="w-3.5 h-3.5 text-[#9A9DA0]" />,
+                icon: <Upload className="w-3.5 h-3.5 text-[#A3A6AD]" />,
                 onClick: onUploadNewVersion,
                 show: canUploadVersion,
               },
@@ -84,22 +84,22 @@ export function buildUnifiedItemMenuGroups(options: UnifiedItemMenuOptions): Men
           : []),
         {
           label: "Copy to",
-          icon: <FolderOutput className="w-3.5 h-3.5 text-[#9A9DA0]" />,
+          icon: <FolderOutput className="w-3.5 h-3.5 text-[#A3A6AD]" />,
           onClick: onCopyTo,
         },
         {
           label: "Move to",
-          icon: <FolderInput className="w-3.5 h-3.5 text-[#9A9DA0]" />,
+          icon: <FolderInput className="w-3.5 h-3.5 text-[#A3A6AD]" />,
           onClick: onMoveTo,
         },
         {
           label: "Duplicate",
-          icon: <Copy className="w-3.5 h-3.5 text-[#9A9DA0]" />,
+          icon: <Copy className="w-3.5 h-3.5 text-[#A3A6AD]" />,
           onClick: onDuplicate,
         },
         {
           label: "Rename",
-          icon: <Edit3 className="w-3.5 h-3.5 text-[#9A9DA0]" />,
+          icon: <Edit3 className="w-3.5 h-3.5 text-[#A3A6AD]" />,
           onClick: onRename,
         },
       ],

@@ -22,7 +22,7 @@ export function AuthContainer({ children, showBack, onBack }: AuthContainerProps
             <button
               type="button"
               onClick={onBack}
-              className="inline-flex items-center gap-1.5 text-xs text-[#9A9DA0] hover:text-white transition cursor-pointer mb-6"
+              className="inline-flex items-center gap-1.5 text-xs text-[#A3A6AD] hover:text-white transition cursor-pointer mb-6"
             >
               <svg
                 width="14"

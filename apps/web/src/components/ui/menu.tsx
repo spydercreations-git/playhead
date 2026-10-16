@@ -177,11 +177,11 @@ export function Menu({
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
                   transition={menuTransition}
-                  className="relative z-50 w-full rounded-t-2xl border-t border-[#2E2F34] bg-[#212121] p-4 shadow-2xl max-h-[85vh] overflow-y-auto"
+                  className="relative z-50 w-full rounded-t-xl border-t border-[#2E2F34] bg-[#212121] p-4 shadow-overlay max-h-[85vh] overflow-y-auto"
                 >
-                  <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#34353B]" />
+                  <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#2E2F34]" />
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#2E2F34]">
-                    <span className="text-xs font-semibold text-[#7C7F87] uppercase tracking-wider">
+                    <span className="text-xs font-semibold text-[#7C7F87] ">
                       Options
                     </span>
                     <button
@@ -219,7 +219,7 @@ export function Menu({
                             >
                               <div className="flex items-center gap-3">
                                 {item.icon && (
-                                  <span className={item.danger ? "text-red-400" : "text-[#9A9DA0]"}>
+                                  <span className={item.danger ? "text-red-400" : "text-[#A3A6AD]"}>
                                     {item.icon}
                                   </span>
                                 )}
@@ -251,7 +251,7 @@ export function Menu({
                   {...getFloatingProps({
                     onKeyDown: handleKeyDown,
                   })}
-                  className={`z-50 w-56 rounded-[10px] border border-[#2E2F34] bg-[#212121] p-1.5 shadow-2xl outline-none max-h-[min(480px,80vh)] overflow-y-auto ${className}`}
+                  className={`z-50 w-56 rounded-[10px] border border-[#2E2F34] bg-[#212121] p-1.5 shadow-overlay outline-none max-h-[min(480px,80vh)] overflow-y-auto ${className}`}
                 >
                   {groups.map((group, gIdx) => {
                     const groupItems = group.items.filter(
@@ -282,16 +282,16 @@ export function Menu({
                                 }
                               }}
                               onMouseEnter={() => setActiveIndex(globalIndex)}
-                              className={`flex h-9 w-full items-center justify-between rounded-[8px] px-2.5 text-xs font-medium transition-colors outline-none ${
+                              className={`flex h-9 w-full items-center justify-between rounded-[8px] px-2.5 text-sm font-normal transition-colors outline-none ${
                                 item.disabled
                                   ? "opacity-40 cursor-not-allowed text-[#7C7F87]"
                                   : item.danger
                                   ? isFocused
-                                    ? "bg-red-500/15 text-red-400"
-                                    : "text-red-400 hover:bg-red-500/10"
+                                    ? "bg-[#F0506E]/15 text-[#F0506E]"
+                                    : "text-[#F0506E] hover:bg-[#F0506E]/10"
                                   : isFocused
-                                  ? "bg-[#2A2B30] text-white"
-                                  : "text-[#D1D2D4] hover:bg-[#2A2B30] hover:text-white"
+                                  ? "bg-[#2C2D33] text-white"
+                                  : "text-white hover:bg-[#2C2D33]"
                               }`}
                             >
                               <div className="flex items-center gap-2.5 truncate">
@@ -299,10 +299,10 @@ export function Menu({
                                   <span
                                     className={`shrink-0 ${
                                       item.danger
-                                        ? "text-red-400"
+                                        ? "text-[#F0506E]"
                                         : isFocused
                                         ? "text-white"
-                                        : "text-[#9A9DA0]"
+                                        : "text-[#A3A6AD]"
                                     }`}
                                   >
                                     {item.icon}
@@ -311,7 +311,7 @@ export function Menu({
                                 <span className="truncate">{item.label}</span>
                               </div>
                               {item.shortcut && (
-                                <span className="shrink-0 font-mono text-[10px] text-[#7C7F87] pl-2">
+                                <span className="shrink-0 font-mono text-xs text-[#7C7F87] pl-2">
                                   {item.shortcut}
                                 </span>
                               )}
@@ -467,11 +467,11 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
                   transition={menuTransition}
-                  className="relative z-50 w-full rounded-t-2xl border-t border-[#2E2F34] bg-[#212121] p-4 shadow-2xl max-h-[85vh] overflow-y-auto"
+                  className="relative z-50 w-full rounded-t-xl border-t border-[#2E2F34] bg-[#212121] p-4 shadow-overlay max-h-[85vh] overflow-y-auto"
                 >
-                  <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#34353B]" />
+                  <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#2E2F34]" />
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#2E2F34]">
-                    <span className="text-xs font-semibold text-[#7C7F87] uppercase tracking-wider">
+                    <span className="text-xs font-semibold text-[#7C7F87] ">
                       Actions
                     </span>
                     <button
@@ -507,7 +507,7 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                             >
                               <div className="flex items-center gap-3">
                                 {item.icon && (
-                                  <span className={item.danger ? "text-red-400" : "text-[#9A9DA0]"}>
+                                  <span className={item.danger ? "text-red-400" : "text-[#A3A6AD]"}>
                                     {item.icon}
                                   </span>
                                 )}
@@ -536,7 +536,7 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                   exit={{ opacity: 0, scale: 0.98, y: -2 }}
                   transition={menuTransition}
                   {...getFloatingProps()}
-                  className="z-50 w-56 rounded-[10px] border border-[#2E2F34] bg-[#212121] p-1.5 shadow-2xl outline-none max-h-[min(480px,80vh)] overflow-y-auto"
+                  className="z-50 w-56 rounded-[10px] border border-[#2E2F34] bg-[#212121] p-1.5 shadow-overlay outline-none max-h-[min(480px,80vh)] overflow-y-auto"
                 >
                   {state.groups.map((group, gIdx) => {
                     const groupItems = group.items.filter((item) => item.show !== false);
@@ -560,19 +560,19 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                                 closeContextMenu();
                               }
                             }}
-                            className={`flex h-9 w-full items-center justify-between rounded-[8px] px-2.5 text-xs font-medium transition-colors outline-none ${
+                            className={`flex h-9 w-full items-center justify-between rounded-[8px] px-2.5 text-sm font-normal transition-colors outline-none ${
                               item.disabled
                                 ? "opacity-40 cursor-not-allowed text-[#7C7F87]"
                                 : item.danger
-                                ? "text-red-400 hover:bg-red-500/10"
-                                : "text-[#D1D2D4] hover:bg-[#2A2B30] hover:text-white"
+                                ? "text-[#F0506E] hover:bg-[#F0506E]/10"
+                                : "text-white hover:bg-[#2C2D33]"
                             }`}
                           >
                             <div className="flex items-center gap-2.5 truncate">
                               {item.icon && (
                                 <span
                                   className={`shrink-0 ${
-                                    item.danger ? "text-red-400" : "text-[#9A9DA0]"
+                                    item.danger ? "text-[#F0506E]" : "text-[#A3A6AD]"
                                   }`}
                                 >
                                   {item.icon}
@@ -581,7 +581,7 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                               <span className="truncate">{item.label}</span>
                             </div>
                             {item.shortcut && (
-                              <span className="shrink-0 font-mono text-[10px] text-[#7C7F87] pl-2">
+                              <span className="shrink-0 font-mono text-xs text-[#7C7F87] pl-2">
                                 {item.shortcut}
                               </span>
                             )}

@@ -4,41 +4,58 @@
 
 
 :root {
-  --bg-page: #181818;
-  --bg-sidebar: #212121;
-  --bg-card: #212121;
-  --bg-elevated: #2E2F34;
+  /* Playhead Design System Tokens */
+  --bg: #181818;
+  --panel: #212121;
+  --panel-raised: #26272C;
+  --input: #2A2B30;
+  --hover: #2C2D33;
+  --border: #2E2F34;
+  --border-strong: #424344;
+  --text: #FFFFFF;
+  --text-2: #A3A6AD;
+  --text-3: #7C7F87;
+  --accent: #4876F3;
+  --button: #3B67E0;
+  --button-hover: #3560D6;
+  --success: #3FCF8E;
+  --warning: #FFBB56;
+  --danger: #F0506E;
+  --purple: #9787FF;
+  --pink: #FA457B;
 
-  --border-subtle: #424344;
-  --border-dashed: #9A9DA0;
-
-  --accent-blue: #4876F3;
-  --accent-pink: #FA457B;
-  --accent-red: #FF5A5A;
-  --accent-yellow: #FFBB56;
-  --accent-purple: #9787FF;
-  --accent-cyan: #1490DF;
-
-  --text-primary: #FFFFFF;
-  --text-secondary: #9A9DA0;
-  --text-muted: #747678;
-  --link-subtle: #BCBFC2;
-  --separator-dot: #D8DDE0;
+  /* Semantic aliases */
+  --bg-page: var(--bg);
+  --bg-sidebar: var(--panel);
+  --bg-card: var(--panel);
+  --bg-elevated: var(--panel-raised);
+  --border-subtle: var(--border);
+  --border-dashed: var(--border-strong);
+  --text-primary: var(--text);
+  --text-secondary: var(--text-2);
+  --text-muted: var(--text-3);
+  --link-subtle: var(--text-2);
+  --separator-dot: var(--text-3);
+  --accent-blue: var(--accent);
+  --accent-pink: var(--pink);
+  --accent-red: var(--danger);
+  --accent-yellow: var(--warning);
+  --accent-purple: var(--purple);
+  --accent-cyan: var(--accent);
 
   /* Standard mappings */
-  --background: var(--bg-page);
-  --foreground: var(--text-primary);
-  --card: var(--bg-card);
-  --card-foreground: var(--text-primary);
-  --card-border: var(--border-subtle);
-  --sidebar: var(--bg-sidebar);
-  --sidebar-foreground: var(--text-secondary);
-  --sidebar-border: var(--border-subtle);
-  --primary: var(--accent-blue);
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--panel);
+  --card-foreground: var(--text);
+  --card-border: var(--border);
+  --sidebar: var(--panel);
+  --sidebar-foreground: var(--text-2);
+  --sidebar-border: var(--border);
+  --primary: var(--button);
   --primary-foreground: #FFFFFF;
-  --muted: var(--bg-elevated);
-  --muted-foreground: var(--text-secondary);
-  --border: var(--border-subtle);
+  --muted: var(--panel-raised);
+  --muted-foreground: var(--text-2);
 }
 
 body {
@@ -75,7 +92,7 @@ body {
   background: var(--bg-page);
 }
 ::-webkit-scrollbar-thumb {
-  background: #333333;
+  background: #2E2F34;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {

@@ -5,7 +5,7 @@ import React from "react";
 export function AuthShowcase() {
   return (
     <div
-      className="relative flex flex-col justify-between w-full h-full rounded-[20px] bg-[#212121] p-8 lg:p-10 overflow-hidden select-none border border-[#2D2F34]/40"
+      className="relative flex flex-col justify-between w-full h-full rounded-[20px] bg-[#212121] p-8 lg:p-10 overflow-hidden select-none border border-[#2E2F34]/40"
       style={{
         backgroundImage:
           "radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px)",
@@ -17,7 +17,7 @@ export function AuthShowcase() {
         <h2 className="text-[32px] xl:text-[34px] font-bold text-white tracking-tight leading-tight">
           Review , share and deliver .
         </h2>
-        <p className="mt-1.5 text-[18px] xl:text-[20px] text-[#8E9096] font-normal">
+        <p className="mt-1.5 text-[18px] xl:text-[20px] text-[#A3A6AD] font-normal">
           Every client, file and comment in one place.
         </p>
       </div>
@@ -25,14 +25,14 @@ export function AuthShowcase() {
       {/* Main Showcase Center (Static HTML / CSS Replica) */}
       <div className="relative my-auto flex items-center justify-center gap-6 xl:gap-8 py-4">
         {/* Vertical Video Player Frame */}
-        <div className="relative w-[280px] sm:w-[300px] xl:w-[320px] rounded-[18px] bg-[#121316] border border-[#2D2F34] shadow-2xl p-3 flex flex-col">
+        <div className="relative w-[280px] sm:w-[300px] xl:w-[320px] rounded-[18px] bg-[#181818] border border-[#2E2F34] shadow-overlay p-3 flex flex-col">
           {/* Canvas / Portrait Video Content */}
-          <div className="relative w-full aspect-[9/14] rounded-[10px] overflow-hidden bg-[#3D5473] flex flex-col justify-between">
+          <div className="relative w-full aspect-[9/14] rounded-[10px] overflow-hidden bg-[#2E2F34] flex flex-col justify-between">
             {/* Abstract Graphic: Sun / Circle */}
-            <div className="absolute top-[28%] left-1/2 -translate-x-1/2 w-14 h-14 rounded-full bg-[#D9BC93] shadow-sm" />
+            <div className="absolute top-[28%] left-1/2 -translate-x-1/2 w-14 h-14 rounded-full bg-[#FFBB56] shadow-sm" />
 
             {/* Amber Vertical Rectangle */}
-            <div className="absolute top-[52%] right-[22%] w-11 h-16 rounded-[4px] bg-[#D98C2B]" />
+            <div className="absolute top-[52%] right-[22%] w-11 h-16 rounded-[4px] bg-[#FFBB56]" />
 
             {/* Amber Circle Hand-Drawn Ring */}
             <svg
@@ -45,7 +45,7 @@ export function AuthShowcase() {
                 cy="46"
                 rx="24"
                 ry="30"
-                stroke="#E5A83B"
+                stroke="#FFBB56"
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 transform="rotate(-8 40 46)"
@@ -53,7 +53,7 @@ export function AuthShowcase() {
             </svg>
 
             {/* Hill Shape at Bottom */}
-            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-36 h-36 rounded-full bg-[#D9BC93]" />
+            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-36 h-36 rounded-full bg-[#FFBB56]" />
           </div>
 
           {/* Player Scrubber & Controls */}
@@ -64,14 +64,14 @@ export function AuthShowcase() {
               <div className="h-full w-[42%] bg-[#4876F3] rounded-full" />
 
               {/* Amber Range Band (e.g. 26% to 42%) */}
-              <div className="absolute left-[26%] w-[16%] h-full bg-[#E5A83B]/50 rounded-full" />
+              <div className="absolute left-[26%] w-[16%] h-full bg-[#FFBB56]/50 rounded-full" />
 
               {/* White Scrubber Knob */}
               <div className="absolute left-[42%] -translate-x-1/2 w-3 h-3 bg-white rounded-full shadow-md border border-[#181818]" />
 
               {/* Sarah Avatar on Timeline (Teal) */}
               <div
-                className="absolute top-4 left-[26%] -translate-x-1/2 w-4 h-4 rounded-full bg-[#17A2B8] text-[9px] font-bold text-white flex items-center justify-center shadow"
+                className="absolute top-4 left-[26%] -translate-x-1/2 w-4 h-4 rounded-full bg-[#4876F3] text-xs font-bold text-white flex items-center justify-center shadow"
                 title="Sarah"
               >
                 S
@@ -79,7 +79,7 @@ export function AuthShowcase() {
 
               {/* Rohit Avatar on Timeline (Purple) */}
               <div
-                className="absolute top-4 left-[64%] -translate-x-1/2 w-4 h-4 rounded-full bg-[#7048E8] text-[9px] font-bold text-white flex items-center justify-center shadow"
+                className="absolute top-4 left-[64%] -translate-x-1/2 w-4 h-4 rounded-full bg-[#9787FF] text-xs font-bold text-white flex items-center justify-center shadow"
                 title="Rohit"
               >
                 R
@@ -87,7 +87,7 @@ export function AuthShowcase() {
 
               {/* Team Avatar on Timeline (Pink) */}
               <div
-                className="absolute top-4 left-[86%] -translate-x-1/2 w-4 h-4 rounded-full bg-[#F03E3E] text-[9px] font-bold text-white flex items-center justify-center shadow"
+                className="absolute top-4 left-[86%] -translate-x-1/2 w-4 h-4 rounded-full bg-[#F0506E] text-xs font-bold text-white flex items-center justify-center shadow"
                 title="Nora"
               >
                 N
@@ -95,7 +95,7 @@ export function AuthShowcase() {
             </div>
 
             {/* Timecodes and Play Button */}
-            <div className="mt-4 flex items-center justify-between text-[11px] font-mono text-[#8E9096]">
+            <div className="mt-4 flex items-center justify-between text-[11px] font-mono text-[#A3A6AD]">
               <span>00:00:08:12</span>
               <button
                 type="button"
@@ -113,35 +113,35 @@ export function AuthShowcase() {
         {/* Floating Feedback Cards */}
         <div className="flex flex-col gap-3.5 w-[220px] xl:w-[240px]">
           {/* Card 1: Sarah Client Comment */}
-          <div className="rounded-[12px] bg-[#1A1B1E] border border-[#2D2F34] p-3 shadow-xl">
+          <div className="rounded-[12px] bg-[#181818] border border-[#2E2F34] p-3 shadow-xl">
             <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-[#17A2B8] text-white text-[10px] font-bold flex items-center justify-center">
+              <div className="w-5 h-5 rounded-full bg-[#4876F3] text-white text-xs font-bold flex items-center justify-center">
                 S
               </div>
               <div className="flex flex-col leading-tight">
                 <span className="text-[12px] font-semibold text-white">Sarah</span>
-                <span className="text-[10px] text-[#7C7F87]">Client · 2 min ago</span>
+                <span className="text-xs text-[#7C7F87]">Client · 2 min ago</span>
               </div>
             </div>
             {/* Amber Timecode Chip */}
-            <div className="mt-2 inline-flex items-center px-1.5 py-0.5 rounded bg-[#2B2211] text-[#E5A83B] text-[10px] font-mono font-medium">
+            <div className="mt-2 inline-flex items-center px-1.5 py-0.5 rounded bg-[#26272C] text-[#FFBB56] text-xs font-mono font-medium">
               00:08 - 00:11
             </div>
-            <p className="mt-1.5 text-[11.5px] text-[#D0D2D6] leading-snug">
+            <p className="mt-1.5 text-[11.5px] text-[#A3A6AD] leading-snug">
               Logo is too small here, can we make it bigger?
             </p>
           </div>
 
           {/* Card 2: Rohit Team Only Comment */}
-          <div className="rounded-[12px] bg-[#221F17] border border-[#483B19] p-3 shadow-xl">
+          <div className="rounded-[12px] bg-[#26272C] border border-[#26272C] p-3 shadow-xl">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-[#7048E8] text-white text-[10px] font-bold flex items-center justify-center">
+                <div className="w-5 h-5 rounded-full bg-[#9787FF] text-white text-xs font-bold flex items-center justify-center">
                   R
                 </div>
                 <div className="flex flex-col leading-tight">
                   <span className="text-[12px] font-semibold text-white">Rohit</span>
-                  <span className="text-[10px] text-[#7C7F87]">Team · just now</span>
+                  <span className="text-xs text-[#7C7F87]">Team · just now</span>
                 </div>
               </div>
               {/* Amber Lock Icon */}
@@ -150,7 +150,7 @@ export function AuthShowcase() {
                 height="13"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#E5A83B"
+                stroke="#FFBB56"
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -159,17 +159,17 @@ export function AuthShowcase() {
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
             </div>
-            <p className="mt-2 text-[11.5px] text-[#D0D2D6] leading-snug">
+            <p className="mt-2 text-[11.5px] text-[#A3A6AD] leading-snug">
               On it. Fixing in v2.
             </p>
-            <span className="mt-1.5 inline-block text-[10.5px] font-medium text-[#E5A83B]">
+            <span className="mt-1.5 inline-block text-[10.5px] font-medium text-[#FFBB56]">
               Team only
             </span>
           </div>
 
           {/* Card 3: Version Approved Badge */}
-          <div className="rounded-[12px] bg-[#141B17] border border-[#1E2E23] px-3.5 py-2.5 shadow-xl flex items-center justify-between">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-[#1F8A50] text-white text-[11.5px] font-semibold">
+          <div className="rounded-[12px] bg-[#212121] border border-[#212121] px-3.5 py-2.5 shadow-xl flex items-center justify-between">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-[#3FCF8E] text-white text-[11.5px] font-semibold">
               <svg
                 width="12"
                 height="12"
@@ -184,13 +184,13 @@ export function AuthShowcase() {
               </svg>
               <span>Approved</span>
             </div>
-            <span className="text-[11.5px] text-[#8E9096] font-medium">Version 2</span>
+            <span className="text-[11.5px] text-[#A3A6AD] font-medium">Version 2</span>
           </div>
         </div>
       </div>
 
       {/* Bottom 3 Features */}
-      <div className="z-10 mt-6 pt-4 border-t border-[#2D2F34]/50 flex items-center justify-between text-xs text-[#8E9096]">
+      <div className="z-10 mt-6 pt-4 border-t border-[#2E2F34]/50 flex items-center justify-between text-xs text-[#A3A6AD]">
         {/* Feature 1 */}
         <div className="flex items-center gap-2">
           <svg

@@ -64,12 +64,12 @@ export default function StorageSettingsPage() {
     return (
       <div className="p-8 max-w-lg mx-auto text-center space-y-4">
         <h2 className="text-xl font-bold text-white">Admin Access Required</h2>
-        <p className="text-sm text-[#9A9DA0]">
+        <p className="text-sm text-[#A3A6AD]">
           The storage and billing dashboard is only available to workspace administrators.
         </p>
         <Link
           href="/projects"
-          className="inline-block px-4 py-2 bg-[#4876F3] text-white rounded-lg text-sm font-semibold hover:bg-[#3b66df]"
+          className="inline-block px-4 py-2 bg-[#4876F3] text-white rounded-lg text-sm font-semibold hover:bg-[#3B67E0]"
         >
           Back to Projects
         </Link>
@@ -95,13 +95,13 @@ export default function StorageSettingsPage() {
     <div className="p-8 max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <div className="flex items-center gap-2 text-xs text-[#9A9DA0] mb-1">
+          <div className="flex items-center gap-2 text-xs text-[#A3A6AD] mb-1">
             <Link href="/settings" className="hover:text-white">Settings</Link>
             <span>/</span>
             <span className="text-white">Storage & Usage</span>
           </div>
           <h1 className="text-2xl font-bold text-white">Storage & Pay-as-you-go Usage</h1>
-          <p className="text-sm text-[#9A9DA0] mt-1">
+          <p className="text-sm text-[#A3A6AD] mt-1">
             Byte-accurate storage tracking across all file versions and Trash until permanently deleted.
           </p>
         </div>
@@ -109,27 +109,27 @@ export default function StorageSettingsPage() {
         {/* Top Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-[#212121] border border-[#424344] rounded-xl p-5 space-y-2">
-            <span className="text-xs font-medium text-[#9A9DA0]">Total Storage Used</span>
+            <span className="text-xs font-medium text-[#A3A6AD]">Total Storage Used</span>
             <div className="text-2xl font-bold text-white">
               {formatBytes(data.storage_used_bytes)}
             </div>
-            <p className="text-xs text-[#747678]">
+            <p className="text-xs text-[#A3A6AD]">
               {usedGB.toFixed(2)} GB total consumed
             </p>
           </div>
 
           <div className="bg-[#212121] border border-[#424344] rounded-xl p-5 space-y-2">
-            <span className="text-xs font-medium text-[#9A9DA0]">Estimated Monthly Cost</span>
+            <span className="text-xs font-medium text-[#A3A6AD]">Estimated Monthly Cost</span>
             <div className="text-2xl font-bold text-[#4876F3]">
               ${data.estimated_monthly_cost.toFixed(2)}
             </div>
-            <p className="text-xs text-[#747678]">
+            <p className="text-xs text-[#A3A6AD]">
               At ${data.storage_price_per_gb} / GB / month
             </p>
           </div>
 
           <div className="bg-[#212121] border border-[#424344] rounded-xl p-5 space-y-2">
-            <span className="text-xs font-medium text-[#9A9DA0]">Workspace Plan</span>
+            <span className="text-xs font-medium text-[#A3A6AD]">Workspace Plan</span>
             <div className="text-lg font-bold text-white capitalize">
               {isInternal ? "Internal Studio (Pay as you go)" : data.plan}
             </div>
@@ -146,11 +146,11 @@ export default function StorageSettingsPage() {
           </div>
 
           <div className="bg-[#212121] border border-[#424344] rounded-xl p-5 space-y-2">
-            <span className="text-xs font-medium text-[#9A9DA0]">Reserved In-Flight</span>
+            <span className="text-xs font-medium text-[#A3A6AD]">Reserved In-Flight</span>
             <div className="text-2xl font-bold text-white">
               {formatBytes(data.storage_reserved_bytes)}
             </div>
-            <p className="text-xs text-[#747678]">
+            <p className="text-xs text-[#A3A6AD]">
               Active uploads in progress
             </p>
           </div>
@@ -161,20 +161,20 @@ export default function StorageSettingsPage() {
           <div className="p-5 border-b border-[#424344]/50 flex items-center justify-between">
             <div>
               <h2 className="text-base font-semibold text-white">Storage Breakdown by Client & Project</h2>
-              <p className="text-xs text-[#9A9DA0] mt-0.5">
+              <p className="text-xs text-[#A3A6AD] mt-0.5">
                 Shows exact consumption per client folder and project workspace.
               </p>
             </div>
           </div>
 
           {data.breakdown.length === 0 ? (
-            <div className="p-8 text-center text-sm text-[#9A9DA0]">
+            <div className="p-8 text-center text-sm text-[#A3A6AD]">
               No active projects with storage usage yet.
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#181818] text-[#9A9DA0] border-b border-[#424344]/50">
+                <thead className="bg-[#181818] text-[#A3A6AD] border-b border-[#424344]/50">
                   <tr>
                     <th className="px-5 py-3 font-medium">Client</th>
                     <th className="px-5 py-3 font-medium">Project</th>
@@ -186,7 +186,7 @@ export default function StorageSettingsPage() {
                 <tbody className="divide-y divide-[#424344]/30 text-white">
                   {data.breakdown.map((row) => (
                     <tr key={row.project_id} className="hover:bg-[#2E2F34]/40 transition-colors">
-                      <td className="px-5 py-3.5 font-medium text-[#9A9DA0]">
+                      <td className="px-5 py-3.5 font-medium text-[#A3A6AD]">
                         <Link href={`/clients/${row.client_id}`} className="hover:text-white transition-colors">
                           {row.client_name}
                         </Link>
@@ -196,8 +196,8 @@ export default function StorageSettingsPage() {
                           {row.project_name}
                         </Link>
                       </td>
-                      <td className="px-5 py-3.5 text-[#9A9DA0]">{row.file_count}</td>
-                      <td className="px-5 py-3.5 text-[#9A9DA0]">{row.video_count}</td>
+                      <td className="px-5 py-3.5 text-[#A3A6AD]">{row.file_count}</td>
+                      <td className="px-5 py-3.5 text-[#A3A6AD]">{row.video_count}</td>
                       <td className="px-5 py-3.5 font-semibold text-right text-emerald-400">
                         {formatBytes(row.project_bytes)}
                       </td>

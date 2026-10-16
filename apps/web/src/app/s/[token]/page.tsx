@@ -227,7 +227,7 @@ export default function PublicSharePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0D0D0E] flex items-center justify-center text-xs text-[#9A9DA0]">
+      <div className="min-h-screen bg-[#181818] flex items-center justify-center text-xs text-[#A3A6AD]">
         Loading share link...
       </div>
     );
@@ -235,13 +235,13 @@ export default function PublicSharePage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0D0D0E] flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-[#18181A] border border-[#27272A] rounded-2xl p-8 text-center shadow-2xl">
+      <div className="min-h-screen bg-[#181818] flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-[#181818] border border-[#212121] rounded-xl p-8 text-center shadow-overlay">
           <div className="w-12 h-12 rounded-full bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-6 h-6" />
           </div>
           <h2 className="text-base font-semibold text-white">Link Unavailable</h2>
-          <p className="text-xs text-[#9A9DA0] mt-2">{error}</p>
+          <p className="text-xs text-[#A3A6AD] mt-2">{error}</p>
         </div>
       </div>
     );
@@ -271,13 +271,13 @@ export default function PublicSharePage() {
           <h1 className="text-[34px] font-bold text-white tracking-tight leading-none mb-2">
             Protected link
           </h1>
-          <p className="text-sm text-[#8E9096] mb-8">
+          <p className="text-sm text-[#A3A6AD] mb-8">
             This link requires a password to view its contents.
           </p>
 
           <form onSubmit={handleUnlock} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-[#9A9DA0] mb-2">
+              <label className="block text-xs font-medium text-[#A3A6AD] mb-2">
                 Password
               </label>
               <div className="relative">
@@ -291,7 +291,7 @@ export default function PublicSharePage() {
                   placeholder="Enter password"
                   required
                   autoFocus
-                  className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#3A3B40] pl-10 pr-4 text-sm text-white placeholder-[#686B6E] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
+                  className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
                 />
               </div>
               {passwordError && (
@@ -321,46 +321,46 @@ export default function PublicSharePage() {
 
   if (needsIdentity) {
     return (
-      <div className="min-h-screen bg-[#0D0D0E] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#181818] flex items-center justify-center p-4">
         <form
           onSubmit={handleIdentify}
-          className="max-w-sm w-full bg-[#18181A] border border-[#27272A] rounded-2xl p-6 shadow-2xl space-y-4"
+          className="max-w-sm w-full bg-[#181818] border border-[#212121] rounded-xl p-6 shadow-overlay space-y-4"
         >
           <div className="text-center">
             <h2 className="text-base font-semibold text-white">Before you continue</h2>
-            <p className="text-xs text-[#9A9DA0] mt-1">
+            <p className="text-xs text-[#A3A6AD] mt-1">
               Please enter your name and email to access this project.
             </p>
           </div>
 
           <div className="space-y-3">
             <div>
-              <label className="text-[11px] font-medium text-[#9A9DA0] block mb-1">Your Name</label>
+              <label className="text-[11px] font-medium text-[#A3A6AD] block mb-1">Your Name</label>
               <input
                 type="text"
                 value={visitorName}
                 onChange={(e) => setVisitorName(e.target.value)}
                 required
                 placeholder="Jane Doe"
-                className="w-full bg-[#121214] border border-[#27272A] rounded-xl px-3 py-2 text-xs text-white placeholder-[#52525B] focus:outline-none focus:border-[#3366FF]"
+                className="w-full bg-[#181818] border border-[#212121] rounded-xl px-3 py-2 text-xs text-white placeholder-[#A3A6AD] focus:outline-none focus:border-[#4876F3]"
               />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-[#9A9DA0] block mb-1">Your Email</label>
+              <label className="text-[11px] font-medium text-[#A3A6AD] block mb-1">Your Email</label>
               <input
                 type="email"
                 value={visitorEmail}
                 onChange={(e) => setVisitorEmail(e.target.value)}
                 required
                 placeholder="jane@agency.com"
-                className="w-full bg-[#121214] border border-[#27272A] rounded-xl px-3 py-2 text-xs text-white placeholder-[#52525B] focus:outline-none focus:border-[#3366FF]"
+                className="w-full bg-[#181818] border border-[#212121] rounded-xl px-3 py-2 text-xs text-white placeholder-[#A3A6AD] focus:outline-none focus:border-[#4876F3]"
               />
             </div>
           </div>
 
           <button
             type="submit"
-            className="w-full py-2.5 bg-[#3366FF] hover:bg-[#2554DB] text-white text-xs font-medium rounded-xl transition-all"
+            className="w-full py-2.5 bg-[#4876F3] hover:bg-[#4876F3] text-white text-xs font-medium rounded-xl transition-all"
           >
             Continue
           </button>
@@ -373,16 +373,16 @@ export default function PublicSharePage() {
   const canUpload = linkData?.access === "upload" || linkData?.access === "comment_upload";
 
   return (
-    <div className="min-h-screen bg-[#0D0D0E] text-white">
+    <div className="min-h-screen bg-[#181818] text-white">
       {/* Top Navbar */}
-      <header className="h-16 border-b border-[#27272A] px-6 flex items-center justify-between bg-[#121214]/60 sticky top-0 z-30">
+      <header className="h-16 border-b border-[#212121] px-6 flex items-center justify-between bg-[#181818]/60 sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#3366FF] flex items-center justify-center font-bold text-white text-xs">
+          <div className="w-8 h-8 rounded-lg bg-[#4876F3] flex items-center justify-center font-bold text-white text-xs">
             PH
           </div>
           <div>
             <h1 className="text-sm font-semibold text-white">{linkData?.name}</h1>
-            <p className="text-[10px] text-[#9A9DA0]">
+            <p className="text-xs text-[#A3A6AD]">
               Playhead Public Share · {items.length} {items.length === 1 ? "item" : "items"}
             </p>
           </div>
@@ -398,7 +398,7 @@ export default function PublicSharePage() {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-3.5 py-2 bg-[#3366FF] hover:bg-[#2554DB] text-white text-xs font-medium rounded-xl transition-all"
+              className="flex items-center gap-2 px-3.5 py-2 bg-[#4876F3] hover:bg-[#4876F3] text-white text-xs font-medium rounded-xl transition-all"
             >
               <Upload className="w-4 h-4" />
               <span>Upload to Folder</span>
@@ -418,10 +418,10 @@ export default function PublicSharePage() {
 
         {/* Items Grid */}
         {items.length === 0 ? (
-          <div className="py-16 text-center border border-dashed border-[#27272A] rounded-2xl">
-            <Folder className="w-10 h-10 text-[#52525B] mx-auto mb-2" />
+          <div className="py-16 text-center border border-dashed border-[#212121] rounded-xl">
+            <Folder className="w-10 h-10 text-[#A3A6AD] mx-auto mb-2" />
             <h3 className="text-sm font-semibold text-white">No items yet</h3>
-            <p className="text-xs text-[#9A9DA0] mt-1">
+            <p className="text-xs text-[#A3A6AD] mt-1">
               {canUpload ? "Use the upload button above to upload files into this folder." : "This link has no shared items."}
             </p>
           </div>
@@ -439,13 +439,13 @@ export default function PublicSharePage() {
                       setActiveReviewItem(item);
                     }
                   }}
-                  className={`bg-[#18181A] border border-[#27272A] hover:border-[#3F3F46] rounded-2xl p-4 transition-all flex flex-col justify-between group ${
+                  className={`bg-[#181818] border border-[#212121] hover:border-[#424344] rounded-xl p-4 transition-all flex flex-col justify-between group ${
                     isVideo ? "cursor-pointer" : ""
                   }`}
                 >
-                  <div className="h-32 rounded-xl bg-[#121214] border border-[#27272A] flex items-center justify-center mb-3 text-[#71717A]">
+                  <div className="h-32 rounded-xl bg-[#181818] border border-[#212121] flex items-center justify-center mb-3 text-[#A3A6AD]">
                     {item.kind === "folder" ? (
-                      <Folder className="w-10 h-10 text-[#3366FF]" />
+                      <Folder className="w-10 h-10 text-[#4876F3]" />
                     ) : isVideo ? (
                       <Film className="w-10 h-10 text-violet-400 group-hover:scale-110 transition-transform" />
                     ) : isAudio ? (
@@ -459,7 +459,7 @@ export default function PublicSharePage() {
                     <h3 className="text-xs font-semibold text-white truncate" title={item.name}>
                       {item.name}
                     </h3>
-                    <p className="text-[10px] text-[#9A9DA0] mt-0.5">
+                    <p className="text-xs text-[#A3A6AD] mt-0.5">
                       {item.kind === "folder"
                         ? `${item.file_count || 0} files`
                         : `${(item.total_bytes / (1024 * 1024)).toFixed(1)} MB`}
@@ -472,7 +472,7 @@ export default function PublicSharePage() {
                         e.stopPropagation();
                         downloadItem(item.id);
                       }}
-                      className="mt-3 w-full py-1.5 bg-[#27272A] hover:bg-[#323236] text-white text-xs font-medium rounded-xl flex items-center justify-center gap-1.5 transition-all"
+                      className="mt-3 w-full py-1.5 bg-[#212121] hover:bg-[#2E2F34] text-white text-xs font-medium rounded-xl flex items-center justify-center gap-1.5 transition-all"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Download</span>

@@ -76,7 +76,7 @@ export default function SheetBenchmarkPage() {
 
   return (
     <div className="w-screen h-screen flex flex-col bg-[#181818] text-white">
-      <div id="benchmark-header" className="p-3 bg-[#212121] border-b border-[#2D2F34] flex items-center justify-between text-xs">
+      <div id="benchmark-header" className="p-3 bg-[#212121] border-b border-[#2E2F34] flex items-center justify-between text-xs">
         <span className="font-bold">FortuneSheet 10k x 50 Benchmark</span>
         {metrics && (
           <span id="benchmark-metrics" className="text-emerald-400 font-mono">

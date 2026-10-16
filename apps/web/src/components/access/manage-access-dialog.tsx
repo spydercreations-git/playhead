@@ -116,23 +116,23 @@ export function ManageAccessDialog({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98 }}
         transition={{ duration: 0.18, ease: "easeOut" }}
-        className="relative z-10 w-full max-w-lg rounded-2xl border border-[#2E2F34] bg-[#212121] shadow-2xl flex flex-col overflow-hidden max-h-[90vh]"
+        className="relative z-10 w-full max-w-lg rounded-xl border border-[#2E2F34] bg-[#212121] shadow-overlay flex flex-col overflow-hidden max-h-[90vh]"
       >
         {/* Header with Project Logo and "Add to {name}" */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#2E2F34] bg-[#212121]">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-xl bg-[#4876F3]/15 border border-[#4876F3]/30 flex items-center justify-center text-[#4876F3] font-bold text-xs uppercase">
+            <div className="h-8 w-8 rounded-xl bg-[#4876F3]/15 border border-[#4876F3]/30 flex items-center justify-center text-[#4876F3] font-bold text-xs">
               {targetName.slice(0, 2)}
             </div>
             <div>
               <h3 className="text-sm font-bold text-white">Add to {targetName}</h3>
-              <p className="text-[11px] text-[#9A9DA0]">Manage access and permissions</p>
+              <p className="text-[11px] text-[#A3A6AD]">Manage access and permissions</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#9A9DA0] hover:text-white hover:bg-[#2A2B30] transition-colors"
+            className="p-1.5 rounded-lg text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -141,14 +141,14 @@ export function ManageAccessDialog({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {/* Restricted Switch */}
-          <div className="flex items-center justify-between p-3.5 rounded-xl border border-[#2E2F34] bg-[#1C1C1E]">
+          <div className="flex items-center justify-between p-3.5 rounded-xl border border-[#2E2F34] bg-[#181818]">
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 mt-0.5">
                 <Lock className="w-3.5 h-3.5" />
               </div>
               <div>
                 <p className="text-xs font-semibold text-white">Restricted access</p>
-                <p className="text-[11px] text-[#9A9DA0] mt-0.5 leading-snug">
+                <p className="text-[11px] text-[#A3A6AD] mt-0.5 leading-snug">
                   Only people added here and Admins can see this
                 </p>
               </div>
@@ -211,7 +211,7 @@ export function ManageAccessDialog({
             </div>
 
             {/* Hint + Can Download switch */}
-            <div className="flex items-center justify-between text-[11px] text-[#9A9DA0] px-1">
+            <div className="flex items-center justify-between text-[11px] text-[#A3A6AD] px-1">
               <span>Add a new or existing member</span>
               <label className="flex items-center gap-1.5 cursor-pointer select-none">
                 <input
@@ -228,10 +228,10 @@ export function ManageAccessDialog({
           {/* Suggested List (team and client contacts) */}
           {filteredSuggested.length > 0 && !selectedContact && (
             <div className="space-y-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-[#7C7F87]">
+              <span className="text-[11px] font-semibold  text-[#7C7F87]">
                 Suggested
               </span>
-              <div className="space-y-1 max-h-32 overflow-y-auto rounded-xl border border-[#2E2F34] bg-[#1C1C1E] p-1.5">
+              <div className="space-y-1 max-h-32 overflow-y-auto rounded-xl border border-[#2E2F34] bg-[#181818] p-1.5">
                 {filteredSuggested.slice(0, 4).map((s) => (
                   <div
                     key={s.id}
@@ -242,16 +242,16 @@ export function ManageAccessDialog({
                     className="flex items-center justify-between p-2 rounded-lg hover:bg-[#2A2B30] cursor-pointer transition-colors"
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className="h-6 w-6 rounded-full bg-[#4876F3] text-white text-[10px] font-bold flex items-center justify-center uppercase">
+                      <div className="h-6 w-6 rounded-full bg-[#4876F3] text-white text-xs font-bold flex items-center justify-center ">
                         {s.name.slice(0, 1)}
                       </div>
                       <div>
                         <p className="text-xs font-semibold text-white leading-none">{s.name}</p>
-                        <p className="text-[10px] text-[#7C7F87] leading-none mt-1">{s.email}</p>
+                        <p className="text-xs text-[#7C7F87] leading-none mt-1">{s.email}</p>
                       </div>
                     </div>
                     {s.role && (
-                      <span className="text-[10px] text-[#7C7F87] bg-[#2E2F34] px-1.5 py-0.5 rounded">
+                      <span className="text-xs text-[#7C7F87] bg-[#2E2F34] px-1.5 py-0.5 rounded">
                         {s.role}
                       </span>
                     )}
@@ -274,21 +274,21 @@ export function ManageAccessDialog({
 
           {/* Restricted Access Toggle Card */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between rounded-xl border border-[#2E2F34] bg-[#1C1C1E] p-3.5">
+            <div className="flex items-center justify-between rounded-xl border border-[#2E2F34] bg-[#181818] p-3.5">
               <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg bg-[#2A2B30] flex items-center justify-center text-[#9A9DA0] shrink-0">
+                <div className="h-8 w-8 rounded-lg bg-[#2A2B30] flex items-center justify-center text-[#A3A6AD] shrink-0">
                   <Lock className={`w-4 h-4 ${restricted ? "text-amber-400" : "text-[#7C7F87]"}`} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h4 className="text-xs font-semibold text-white">Restricted access</h4>
                     {restricted && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                      <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
                         ON
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-[#9A9DA0]">
+                  <p className="text-[11px] text-[#A3A6AD]">
                     Only invited members and Admins can access
                   </p>
                 </div>
@@ -330,7 +330,7 @@ export function ManageAccessDialog({
                       <div
                         key={m.id}
                         title={m.name || m.email}
-                        className="h-6 w-6 rounded-full bg-[#2A2B30] border border-amber-500/40 text-amber-300 text-[10px] font-bold flex items-center justify-center shrink-0 uppercase"
+                        className="h-6 w-6 rounded-full bg-[#2A2B30] border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center justify-center shrink-0 "
                       >
                         {(m.name || m.email).slice(0, 1)}
                       </div>
@@ -341,7 +341,7 @@ export function ManageAccessDialog({
           </div>
 
           {/* Separate Card: "{n} members · Manage" */}
-          <div className="rounded-xl border border-[#2E2F34] bg-[#1C1C1E] p-3.5 space-y-3">
+          <div className="rounded-xl border border-[#2E2F34] bg-[#181818] p-3.5 space-y-3">
             <div
               onClick={() => setIsManagingMembers(!isManagingMembers)}
               className="flex items-center justify-between cursor-pointer select-none"
@@ -371,11 +371,11 @@ export function ManageAccessDialog({
                       <div
                         key={m.id}
                         className={`flex items-center justify-between p-2 rounded-lg ${
-                          isInherited ? "opacity-60 bg-[#252528]" : "bg-[#2A2B30]"
+                          isInherited ? "opacity-60 bg-[#212121]" : "bg-[#2A2B30]"
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
-                          <div className="h-6 w-6 rounded-full bg-[#4876F3] text-white text-[10px] font-bold flex items-center justify-center uppercase shrink-0">
+                          <div className="h-6 w-6 rounded-full bg-[#4876F3] text-white text-xs font-bold flex items-center justify-center  shrink-0">
                             {(m.name || m.email).slice(0, 1)}
                           </div>
                           <div className="truncate">
@@ -383,7 +383,7 @@ export function ManageAccessDialog({
                               {m.name || m.email}
                             </p>
                             {isInherited && (
-                              <p className="text-[10px] text-[#7C7F87] leading-none mt-1">
+                              <p className="text-xs text-[#7C7F87] leading-none mt-1">
                                 Inherited from {m.inherited_from}
                               </p>
                             )}
@@ -392,7 +392,7 @@ export function ManageAccessDialog({
 
                         <div className="flex items-center gap-2 shrink-0">
                           {isInherited ? (
-                            <span className="text-[11px] text-[#9A9DA0] capitalize px-2">
+                            <span className="text-[11px] text-[#A3A6AD] capitalize px-2">
                               {m.level}
                             </span>
                           ) : (
@@ -435,7 +435,7 @@ export function ManageAccessDialog({
           <button
             type="button"
             onClick={onClose}
-            className="h-9 px-4 rounded-xl border border-[#2E2F34] bg-[#2A2B30] text-xs font-semibold text-[#D1D2D4] hover:bg-[#34353B] hover:text-white transition-colors"
+            className="h-9 px-4 rounded-xl border border-[#2E2F34] bg-[#2A2B30] text-xs font-semibold text-[#A3A6AD] hover:bg-[#2E2F34] hover:text-white transition-colors"
           >
             Cancel
           </button>

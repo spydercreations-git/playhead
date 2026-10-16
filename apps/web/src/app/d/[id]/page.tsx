@@ -90,7 +90,7 @@ export default function DocumentPage() {
   if (error || !document) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-background text-foreground p-4">
-        <div className="max-w-md w-full p-8 rounded-2xl border border-border bg-card text-center shadow-lg">
+        <div className="max-w-md w-full p-8 rounded-xl border border-border bg-card text-center shadow-lg">
           <div className="w-12 h-12 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center mx-auto mb-4">
             <FileQuestion className="w-6 h-6" />
           </div>

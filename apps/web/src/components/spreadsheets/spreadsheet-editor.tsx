@@ -34,6 +34,7 @@ import { HocuspocusProvider } from "@hocuspocus/provider";
 import ExcelJS from "exceljs";
 import { apiRequest } from "@/lib/api";
 import { PdfExportDialog } from "@/components/export/pdf-export-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   buildSheetsFromYDoc,
   populateYDocIfEmpty,
@@ -109,6 +110,8 @@ export function SpreadsheetEditor({
   // Drawers & Modals
   const [showVersions, setShowVersions] = useState(false);
   const [versions, setVersions] = useState<any[]>([]);
+  const [restoreVersionId, setRestoreVersionId] = useState<string | null>(null);
+  const [isRestoringVersion, setIsRestoringVersion] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [newCommentText, setNewCommentText] = useState("");
@@ -283,16 +286,19 @@ export function SpreadsheetEditor({
 
   // Restore version
   const handleRestoreVersion = async (vId: string) => {
-    if (!confirm("Are you sure you want to restore this version? All users will see the restored data.")) return;
     try {
+      setIsRestoringVersion(true);
       await apiRequest(`/spreadsheets/${id}/versions/${vId}/restore`, { method: "POST" });
       notify("success", "Version restored successfully!");
       setShowVersions(false);
+      setRestoreVersionId(null);
       // Reload view
       const refreshed = await apiRequest<any>(`/spreadsheets/${id}`);
       if (refreshed.sheets) setSheets(refreshed.sheets);
     } catch (e: any) {
       notify("error", e.message || "Failed to restore version");
+    } finally {
+      setIsRestoringVersion(false);
     }
   };
 
@@ -1105,7 +1111,7 @@ export function SpreadsheetEditor({
                     {ver.created_by_name || "Team Member"}
                   </span>
                   <button
-                    onClick={() => handleRestoreVersion(ver.id)}
+                    onClick={() => setRestoreVersionId(ver.id)}
                     className="flex items-center gap-1 text-xs text-[#4876F3] hover:underline"
                   >
                     <RotateCcw className="h-3 w-3" />
@@ -1182,6 +1188,17 @@ export function SpreadsheetEditor({
         itemId={id}
         title={title || "Spreadsheet"}
         isTeamMember={isTeamMember}
+      />
+
+      <ConfirmDialog
+        open={!!restoreVersionId}
+        onOpenChange={(open) => !open && setRestoreVersionId(null)}
+        title="Restore spreadsheet version"
+        description="Are you sure you want to restore this version? All users will see the restored data."
+        confirmLabel="Restore version"
+        variant="primary"
+        loading={isRestoringVersion}
+        onConfirm={() => restoreVersionId && handleRestoreVersion(restoreVersionId)}
       />
     </div>
   );

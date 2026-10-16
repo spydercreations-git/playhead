@@ -13,6 +13,7 @@ import {
   Clock,
   Sparkles,
 } from "lucide-react";
+import { toast } from "@/lib/toast";
 import { VideoPlayer } from "./video-player";
 import { CommentsPanel, CommentItem, ReviewHistoryItem, VersionInfoItem } from "./comments-panel";
 import { CommentComposer } from "./comment-composer";
@@ -331,10 +332,11 @@ export function ReviewWorkspace({
       setReviewStatus(approvalDecision);
       setShowApprovalDialog(false);
       setApprovalNote("");
+      toast.success(`Review decision submitted: ${approvalDecision}`);
       if (!isPublic) await fetchReviews();
     } else {
       const err = await res.json();
-      alert(err.message || "Failed to submit decision");
+      toast.error(err.message || "Failed to submit decision");
     }
   };
 

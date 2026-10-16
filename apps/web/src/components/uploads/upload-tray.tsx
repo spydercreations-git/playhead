@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
+import { toast } from "@/lib/toast";
 
 export interface UploadItem {
   id: string; // client upload tracking id
@@ -158,7 +159,7 @@ export function UploadTray({
                             const picked = e.target.files?.[0];
                             if (!picked) return;
                             if (picked.name !== item.filename || picked.size !== item.sizeBytes) {
-                              alert(
+                              toast.error(
                                 `Selected file "${picked.name}" (${formatBytes(picked.size)}) does not match "${item.filename}" (${formatBytes(item.sizeBytes)}).`
                               );
                               return;

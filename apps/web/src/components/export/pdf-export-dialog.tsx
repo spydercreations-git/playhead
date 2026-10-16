@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Download, Loader2, Check, FileText, Table, Eye, X } from "lucide-react";
+import { toast } from "@/lib/toast";
 import { apiRequest } from "@/lib/api";
 
 export interface PdfExportDialogProps {
@@ -177,7 +178,7 @@ export function PdfExportDialog({
       onOpenChange(false);
     } catch (err: any) {
       console.error("Download PDF failed:", err);
-      alert("Failed to generate PDF. Please try again.");
+      toast.error("Failed to generate PDF. Please try again.");
     } finally {
       setIsExporting(false);
     }

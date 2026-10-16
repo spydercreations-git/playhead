@@ -151,6 +151,14 @@ func (p Person) IsAdmin() bool {
 	return p.HasPermission(PermAdminSettings)
 }
 
+// IsTeamMember returns true if the person is an authenticated team member of the company (not a client contact or guest).
+func (p Person) IsTeamMember() bool {
+	if p.Role == "" || strings.ToLower(p.Role) == "guest" {
+		return false
+	}
+	return true
+}
+
 // ProjectTarget represents the project resource being accessed.
 type ProjectTarget struct {
 	ID           uuid.UUID
@@ -196,7 +204,8 @@ func (a AccessResult) CanModifyItem(person Person, itemCreatedBy uuid.UUID) bool
 
 // CanManagePeople checks if a person is allowed to add, edit, or remove members on a project.
 func CanManagePeople(person Person, access AccessResult) bool {
-	if person.IsAdmin() || person.HasPermission(PermProjectsManagePeople) {
+	r := strings.ToLower(person.Role)
+	if person.IsAdmin() || person.HasPermission(PermProjectsManagePeople) || r == RoleManager || r == RoleAdmin || r == RoleOwner {
 		return true
 	}
 	return access.Level == LevelFull

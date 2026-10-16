@@ -316,6 +316,12 @@ func (h *SpreadsheetsHandler) CreateSpreadsheet(w http.ResponseWriter, r *http.R
 			renderJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You cannot create spreadsheets in this project"})
 			return
 		}
+	} else {
+		// Creating in "My documents" must only require being a logged-in team member, not edit access to a project
+		if !caller.IsTeamMember() {
+			renderJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only team members can create spreadsheets in My documents"})
+			return
+		}
 	}
 	title := strings.TrimSpace(req.Title)
 	if title == "" {

@@ -531,6 +531,12 @@ func (h *DocumentsHandler) Create(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Forbidden: Cannot create documents in this project", http.StatusForbidden)
 			return
 		}
+	} else {
+		// Creating in "My documents" must only require being a logged-in team member, not edit access to a project
+		if !caller.IsTeamMember() {
+			http.Error(w, "Forbidden: Only team members can create documents in My documents", http.StatusForbidden)
+			return
+		}
 	}
 
 	var parentUUID pgtype.UUID

@@ -16,6 +16,7 @@ import {
   Folder,
 } from "lucide-react";
 import { ReviewWorkspace } from "@/components/review/review-workspace";
+import { toast } from "@/lib/toast";
 
 interface PublicShareItem {
   id: string;
@@ -144,7 +145,7 @@ export default function PublicSharePage() {
     try {
       const res = await fetch(`/api/v1/s/${token}/download/${itemId}`);
       if (!res.ok) {
-        alert("Failed to get download URL");
+        toast.error("Failed to get download URL");
         return;
       }
       const data = await res.json();
@@ -152,7 +153,7 @@ export default function PublicSharePage() {
         window.location.href = data.download_url;
       }
     } catch (err) {
-      alert("Download error");
+      toast.error("Download error");
     }
   }
 
@@ -162,7 +163,7 @@ export default function PublicSharePage() {
 
     // Enforce link upload limit
     if (linkData?.upload_limit_bytes && file.size > linkData.upload_limit_bytes) {
-      alert(`File size exceeds the upload limit of ${Math.round(linkData.upload_limit_bytes / (1024 * 1024))} MB`);
+      toast.error(`File size exceeds the upload limit of ${Math.round(linkData.upload_limit_bytes / (1024 * 1024))} MB`);
       return;
     }
 
@@ -180,7 +181,7 @@ export default function PublicSharePage() {
 
       if (!initRes.ok) {
         const d = await initRes.json();
-        alert(d.message || "Upload rejected");
+        toast.error(d.message || "Upload rejected");
         setUploadProgress(null);
         return;
       }
@@ -203,7 +204,7 @@ export default function PublicSharePage() {
             body: JSON.stringify({ upload_id }),
           });
         }
-        alert("Direct upload failed");
+        toast.error("Direct upload failed");
         setUploadProgress(null);
         return;
       }
@@ -220,7 +221,7 @@ export default function PublicSharePage() {
       setTimeout(() => setUploadProgress(null), 3000);
       await fetchLink();
     } catch (err) {
-      alert("Upload failed");
+      toast.error("Upload failed");
       setUploadProgress(null);
     }
   }

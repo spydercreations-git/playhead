@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { apiRequest, ApiError } from "@/lib/api";
 import { Shield, Plus, Trash2, Check, AlertCircle, X, Users, ChevronDown } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "@/lib/toast";
 
 interface Member {
   user_id: string;
@@ -110,6 +112,10 @@ export default function TeamPage() {
   const [roleError, setRoleError] = useState<string | null>(null);
   const [roleLoading, setRoleLoading] = useState(false);
 
+  // Confirmation dialogs
+  const [memberToRemove, setMemberToRemove] = useState<{ id: string; name: string } | null>(null);
+  const [roleToDelete, setRoleToDelete] = useState<{ id: string; name: string } | null>(null);
+
   const maxTrialSeats = 5;
   const totalSeatsUsed = members.length + invites.length;
   const seatsRemaining = Math.max(0, maxTrialSeats - totalSeatsUsed);
@@ -174,18 +180,18 @@ export default function TeamPage() {
     }
   }
 
-  async function handleRemoveMember(userId: string) {
+  async function executeRemoveMember(userId: string) {
     if (!companyId) return;
-    if (!confirm("Are you sure you want to remove this member from the workspace?")) return;
 
     try {
       await apiRequest(`/companies/${companyId}/members/${userId}`, {
         method: "DELETE",
       });
+      toast.success("Team member removed");
       loadTeamData();
     } catch (err: any) {
       const apiErr = err as ApiError;
-      alert(apiErr.message || apiErr.error || "Failed to remove member.");
+      toast.error(apiErr.message || apiErr.error || "Failed to remove member.");
     }
   }
 
@@ -197,10 +203,11 @@ export default function TeamPage() {
         method: "PATCH",
         body: JSON.stringify({ role: newRole }),
       });
+      toast.success("Member role updated");
       loadTeamData();
     } catch (err: any) {
       const apiErr = err as ApiError;
-      alert(apiErr.message || apiErr.error || "Failed to update member role.");
+      toast.error(apiErr.message || apiErr.error || "Failed to update member role.");
     }
   }
 
@@ -221,6 +228,7 @@ export default function TeamPage() {
       setRoleName("");
       setSelectedPerms([]);
       setRoleModalOpen(false);
+      toast.success("Custom role created");
       loadTeamData();
     } catch (err: any) {
       setRoleError(err.message || "Failed to create role");
@@ -229,14 +237,13 @@ export default function TeamPage() {
     }
   }
 
-  async function handleDeleteRole(roleId: string, roleName: string) {
-    if (!confirm(`Are you sure you want to delete role "${roleName}"?`)) return;
-
+  async function executeDeleteRole(roleId: string) {
     try {
       await apiRequest(`/roles/${roleId}`, { method: "DELETE" });
+      toast.success("Role deleted");
       loadTeamData();
     } catch (err: any) {
-      alert(err.message || "Failed to delete role");
+      toast.error(err.message || "Failed to delete role");
     }
   }
 
@@ -382,7 +389,7 @@ export default function TeamPage() {
                         <td className="px-6 py-4 text-right">
                           {!isSelf && (
                             <button
-                              onClick={() => handleRemoveMember(m.user_id)}
+                              onClick={() => setMemberToRemove({ id: m.user_id, name: m.name || m.email })}
                               className="text-xs text-red-400 hover:text-red-300 font-medium"
                             >
                               Remove
@@ -425,7 +432,7 @@ export default function TeamPage() {
 
                     {!role.is_system && (
                       <button
-                        onClick={() => handleDeleteRole(role.id, role.name)}
+                        onClick={() => setRoleToDelete({ id: role.id, name: role.name })}
                         className="p-1 rounded hover:bg-rose-500/10 text-[#A3A6AD] hover:text-rose-400"
                         title="Delete Role"
                       >
@@ -667,6 +674,28 @@ export default function TeamPage() {
           </form>
         </div>
       )}
+
+      {/* Remove Member Confirmation Dialog */}
+      <ConfirmDialog
+        open={Boolean(memberToRemove)}
+        onOpenChange={(open) => !open && setMemberToRemove(null)}
+        title={`Remove ${memberToRemove?.name || "member"}?`}
+        description="Are you sure you want to remove this member from the workspace? They will lose access to all projects and documents."
+        confirmLabel="Remove Member"
+        variant="danger"
+        onConfirm={() => memberToRemove && executeRemoveMember(memberToRemove.id)}
+      />
+
+      {/* Delete Role Confirmation Dialog */}
+      <ConfirmDialog
+        open={Boolean(roleToDelete)}
+        onOpenChange={(open) => !open && setRoleToDelete(null)}
+        title={`Delete role "${roleToDelete?.name || ""}"?`}
+        description="Are you sure you want to delete this custom role? Members with this role will revert to the default Editor role."
+        confirmLabel="Delete Role"
+        variant="danger"
+        onConfirm={() => roleToDelete && executeDeleteRole(roleToDelete.id)}
+      />
     </div>
   );
 }

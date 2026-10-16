@@ -22,6 +22,7 @@ import {
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { ProjectSelect } from "@/components/ui/project-select";
+import { toast } from "@/lib/toast";
 
 interface SpreadsheetItem {
   id: string;
@@ -87,7 +88,6 @@ export default function SpreadsheetsPage() {
         setProjects(projRes.projects);
       }
     } catch (err: any) {
-      console.error("Failed to load spreadsheets", err);
       setError(err?.message || "Failed to load spreadsheets. Please try again.");
     } finally {
       setLoading(false);
@@ -178,9 +178,8 @@ export default function SpreadsheetsPage() {
           router.push(`/sheet/${res.id}?new=1`);
         }, 1000);
       }
-    } catch (err) {
-      console.error("Failed to create spreadsheet", err);
-      alert("Failed to create spreadsheet. Make sure you have edit access.");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to create spreadsheet.");
     } finally {
       setCreating(false);
     }
@@ -232,9 +231,8 @@ export default function SpreadsheetsPage() {
 
       setShowImportModal(false);
       router.push(`/sheet/${res.id}`);
-    } catch (err) {
-      console.error("Failed to import spreadsheet", err);
-      alert("Failed to import file. Make sure it is a valid XLSX or CSV file.");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to import file. Make sure it is a valid XLSX or CSV file.");
     } finally {
       setImporting(false);
     }
@@ -415,7 +413,7 @@ export default function SpreadsheetsPage() {
                       </div>
                       <div className="flex items-center gap-1.5 text-[#A3A6AD] justify-end">
                         <Calendar className="h-3.5 w-3.5 text-[#7C7F87]" />
-                        <span>
+                        <span suppressHydrationWarning>
                           {sheet.updated_at
                             ? new Date(sheet.updated_at).toLocaleDateString()
                             : "Recently"}
@@ -589,7 +587,7 @@ export default function SpreadsheetsPage() {
                     if (e.target.files && e.target.files[0]) {
                       const file = e.target.files[0];
                       if (file.size > 25 * 1024 * 1024) {
-                        alert("File exceeds 25MB limit");
+                        toast.error("File exceeds 25MB limit");
                         return;
                       }
                       setImportFile(file);

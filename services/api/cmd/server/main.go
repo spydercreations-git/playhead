@@ -78,6 +78,9 @@ func main() {
 	var queries *db.Queries
 	if dbPool != nil {
 		queries = db.New(dbPool)
+		if cfg.Environment != "production" {
+			_ = handler.EnsureDevHarshAdmin(ctx, dbPool.Pool, queries)
+		}
 	}
 
 	mailClient := mailer.New(mailer.Config{
@@ -207,6 +210,7 @@ func main() {
 			protected.Use(middleware.RequireVerifiedEmail)
 
 			protected.Get("/me", authHandler.Me)
+			protected.Get("/auth/me", authHandler.Me)
 
 			// Company management
 			protected.Post("/companies", companyHandler.Create)

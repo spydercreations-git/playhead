@@ -11,6 +11,8 @@ import {
   User,
   ChevronRight,
 } from "lucide-react";
+import { toast } from "@/lib/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { apiRequest } from "@/lib/api";
 
 export interface DocumentVersionItem {
@@ -50,6 +52,7 @@ export function VersionHistoryDrawer({
   const [namingVersionId, setNamingVersionId] = useState<string | null>(null);
   const [versionNameInput, setVersionNameInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [restoreTargetVersion, setRestoreTargetVersion] = useState<DocumentVersionItem | null>(null);
 
   if (!isOpen) return null;
 
@@ -69,20 +72,17 @@ export function VersionHistoryDrawer({
       }
       setNamingVersionId(null);
       setVersionNameInput("");
+      toast.success("Version renamed");
     } catch (err) {
       console.error("Failed to rename version", err);
+      toast.error("Failed to rename version");
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  async function handleRestoreVersion(version: DocumentVersionItem) {
+  async function executeRestoreVersion(version: DocumentVersionItem) {
     if (!canEdit) return;
-    const confirmed = window.confirm(
-      `Restore "${version.name || "this version"}"? A new version will be created with its contents without deleting any newer history.`
-    );
-    if (!confirmed) return;
-
     try {
       setIsSubmitting(true);
       const res = await apiRequest<{ new_version_number: number }>(
@@ -92,12 +92,13 @@ export function VersionHistoryDrawer({
           body: JSON.stringify({ version_id: version.id }),
         }
       );
+      toast.success(`Restored "${version.name || `version ${version.id.slice(0, 7)}`}"`);
       onSelectVersion(null); // exit historical preview
       onVersionRestored(res.new_version_number);
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to restore version", err);
-      alert("Failed to restore version. Please check permissions.");
+      toast.error("Failed to restore version. Please check permissions.");
     } finally {
       setIsSubmitting(false);
     }
@@ -253,7 +254,7 @@ export function VersionHistoryDrawer({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleRestoreVersion(ver);
+                          setRestoreTargetVersion(ver);
                         }}
                         className="ml-auto text-[11px] text-primary hover:text-primary/80 font-medium flex items-center gap-1"
                       >
@@ -268,6 +269,17 @@ export function VersionHistoryDrawer({
           })
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!restoreTargetVersion}
+        onOpenChange={(open) => !open && setRestoreTargetVersion(null)}
+        title="Restore version"
+        description={`Restore "${restoreTargetVersion?.name || "this version"}"? A new version will be created with its contents without deleting any newer history.`}
+        confirmLabel="Restore version"
+        variant="primary"
+        loading={isSubmitting}
+        onConfirm={() => restoreTargetVersion && executeRestoreVersion(restoreTargetVersion)}
+      />
     </div>
   );
 }

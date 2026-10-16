@@ -107,6 +107,8 @@ import {
   VersionHistoryDrawer,
   DocumentVersionItem,
 } from "./version-history-drawer";
+import { toast } from "@/lib/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { apiRequest } from "@/lib/api";
 import { PdfExportDialog } from "@/components/export/pdf-export-dialog";
 import TurndownService from "turndown";
@@ -224,6 +226,32 @@ export function DocumentEditor({
   const [versions, setVersions] = useState<DocumentVersionItem[]>([]);
   const [selectedHistoricalVersion, setSelectedHistoricalVersion] =
     useState<DocumentVersionItem | null>(null);
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+  const [isRestoringVersion, setIsRestoringVersion] = useState(false);
+
+  async function handleRestoreHistoricalVersion() {
+    if (!selectedHistoricalVersion) return;
+    try {
+      setIsRestoringVersion(true);
+      await apiRequest(`/documents/${documentId}/restore`, {
+        method: "POST",
+        body: JSON.stringify({ version_id: selectedHistoricalVersion.id }),
+      });
+      toast.success(`Restored "${selectedHistoricalVersion.name || "version"}"`);
+      setSelectedHistoricalVersion(null);
+      setShowRestoreConfirm(false);
+      apiRequest<{ versions: DocumentVersionItem[] }>(
+        `/documents/${documentId}/versions`
+      ).then((res) => {
+        if (res?.versions) setVersions(res.versions);
+      });
+    } catch (err: any) {
+      console.error("Failed to restore version", err);
+      toast.error("Failed to restore version");
+    } finally {
+      setIsRestoringVersion(false);
+    }
+  }
 
   // Find & replace state
   const [searchTerm, setSearchTerm] = useState("");
@@ -487,7 +515,7 @@ export function DocumentEditor({
       setSyncStatus("saved");
     } catch (err: any) {
       console.error("Image upload failed", err);
-      alert(err.message || "Failed to upload image. Please check storage quota.");
+      toast.error(err.message || "Failed to upload image. Please check storage quota.");
       setSyncStatus("saved");
     } finally {
       e.target.value = "";
@@ -597,7 +625,7 @@ export function DocumentEditor({
       URL.revokeObjectURL(url);
     } catch (e) {
       console.error("Docx export error", e);
-      alert("Failed to export Word document");
+      toast.error("Failed to export Word document");
     } finally {
       setShowExportMenu(false);
     }
@@ -615,7 +643,7 @@ export function DocumentEditor({
     e.target.value = "";
 
     if (file.size > 25 * 1024 * 1024) {
-      alert("Word document exceeds 25MB limit.");
+      toast.error("Word document exceeds 25MB limit.");
       return;
     }
 
@@ -635,9 +663,10 @@ export function DocumentEditor({
       ).then((vRes) => {
         if (vRes?.versions) setVersions(vRes.versions);
       });
+      toast.success("Word document imported successfully");
     } catch (err: any) {
       console.error("Failed to import Word document:", err);
-      alert(err.message || "Failed to import Word document.");
+      toast.error(err.message || "Failed to import Word document.");
     } finally {
       setIsImportingDocx(false);
     }
@@ -1166,27 +1195,7 @@ export function DocumentEditor({
                 {canEdit && (
                   <button
                     type="button"
-                    onClick={async () => {
-                      const confirmed = window.confirm(
-                        `Restore "${selectedHistoricalVersion.name || "this version"}"? A new version will be created with its contents.`
-                      );
-                      if (!confirmed) return;
-                      try {
-                        await apiRequest(`/documents/${documentId}/restore`, {
-                          method: "POST",
-                          body: JSON.stringify({ version_id: selectedHistoricalVersion.id }),
-                        });
-                        setSelectedHistoricalVersion(null);
-                        apiRequest<{ versions: DocumentVersionItem[] }>(
-                          `/documents/${documentId}/versions`
-                        ).then((res) => {
-                          if (res?.versions) setVersions(res.versions);
-                        });
-                      } catch (err) {
-                        console.error("Failed to restore version", err);
-                        alert("Failed to restore version");
-                      }
-                    }}
+                    onClick={() => setShowRestoreConfirm(true)}
                     className="px-3 py-1 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 text-xs"
                   >
                     Restore
@@ -1303,6 +1312,17 @@ export function DocumentEditor({
         itemId={documentId}
         title={title || initialTitle || "Document"}
         isTeamMember={isTeamMember}
+      />
+
+      <ConfirmDialog
+        open={showRestoreConfirm}
+        onOpenChange={setShowRestoreConfirm}
+        title="Restore version"
+        description={`Restore "${selectedHistoricalVersion?.name || "this version"}"? A new version will be created with its contents.`}
+        confirmLabel="Restore version"
+        variant="primary"
+        loading={isRestoringVersion}
+        onConfirm={handleRestoreHistoricalVersion}
       />
     </div>
   );

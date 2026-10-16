@@ -8,6 +8,7 @@ import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ProjectCard } from "@/components/cards/project-card";
 import { ChevronDown, X, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 
@@ -21,6 +22,7 @@ export default function ClientDetailPage() {
   const [activeTab, setActiveTab] = useState<"projects" | "contacts" | "notes">("projects");
   const [showNewProject, setShowNewProject] = useState(false);
   const [showEditClient, setShowEditClient] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -218,9 +220,7 @@ export default function ClientDetailPage() {
                     <button
                       onClick={() => {
                         setShowMoreMenu(false);
-                        if (confirm(`Delete ${client?.name || "client"} and all its projects?`)) {
-                          deleteClientMutation.mutate();
-                        }
+                        setShowDeleteConfirm(true);
                       }}
                       className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-rose-400 hover:bg-[#2A2B30] transition-colors"
                     >
@@ -593,6 +593,18 @@ export default function ClientDetailPage() {
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["client-detail", clientId] });
         }}
+      />
+
+      {/* Delete Client Confirmation Modal */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title={`Delete ${client?.name || "Client"}?`}
+        description="This will permanently delete the client and all associated projects. This action cannot be undone."
+        confirmLabel="Delete Client"
+        variant="danger"
+        onConfirm={() => deleteClientMutation.mutate()}
+        loading={deleteClientMutation.isPending}
       />
     </div>
   );

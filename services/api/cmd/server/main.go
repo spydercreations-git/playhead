@@ -123,6 +123,7 @@ func main() {
 	}
 	documentsHandler := handler.NewDocumentsHandler(pgxPool, queries, rdb, storageClient, cfg)
 	spreadsheetsHandler := handler.NewSpreadsheetsHandler(pgxPool, queries, rdb, storageClient, cfg)
+	driveHandler := handler.NewDriveHandler(queries, pgxPool, storageClient, cfg)
 
 	// Background job queue via Redis asynq
 	var asynqClient *asynq.Client
@@ -376,8 +377,22 @@ func main() {
 			protected.Get("/spreadsheets/{id}/comments", spreadsheetsHandler.ListComments)
 			protected.Post("/spreadsheets/{id}/comments", spreadsheetsHandler.CreateComment)
 			protected.Patch("/spreadsheets/{id}/comments/{commentId}/resolve", spreadsheetsHandler.ResolveComment)
+
+			// My Drive & Recent Items (P2 & P3)
+			protected.Get("/drive/folders", driveHandler.ListFolders)
+			protected.Get("/drive/items", driveHandler.ListItems)
+			protected.Post("/drive/folders", driveHandler.CreateFolder)
+			protected.Patch("/drive/items/{id}", driveHandler.RenameItem)
+			protected.Delete("/drive/items/{id}", driveHandler.DeleteItem)
+			protected.Post("/drive/items/{id}/restore", driveHandler.RestoreItem)
+			protected.Post("/drive/items/{id}/move", driveHandler.MoveToProject)
+			protected.Post("/drive/items/{id}/copy", driveHandler.CopyToProject)
+			protected.Get("/drive/recent", driveHandler.ListRecentItems)
+			protected.Post("/drive/recent", driveHandler.RecordRecentItem)
+			protected.Get("/drive/trash", driveHandler.ListTrash)
 		})
 	})
+
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,

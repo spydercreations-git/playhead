@@ -172,7 +172,7 @@ func (q *Queries) CreateGrant(ctx context.Context, arg CreateGrantParams) (Grant
 const createItem = `-- name: CreateItem :one
 INSERT INTO items (company_id, project_id, parent_id, kind, name, position, created_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
 `
 
 type CreateItemParams struct {
@@ -218,6 +218,9 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (Item, e
 		&i.UpdatedAt,
 		&i.VideoCount,
 		&i.IsRestricted,
+		&i.DriveOwnerID,
+		&i.IsDefaultFolder,
+		&i.Category,
 	)
 	return i, err
 }
@@ -883,7 +886,7 @@ func (q *Queries) ListGrantsByTarget(ctx context.Context, arg ListGrantsByTarget
 }
 
 const listItemsByProjectAndParent = `-- name: ListItemsByProjectAndParent :many
-SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted FROM items
+SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category FROM items
 WHERE company_id = $1
   AND project_id = $2
   AND ($3::uuid IS NULL AND parent_id IS NULL OR parent_id = $3)
@@ -927,6 +930,9 @@ func (q *Queries) ListItemsByProjectAndParent(ctx context.Context, arg ListItems
 			&i.UpdatedAt,
 			&i.VideoCount,
 			&i.IsRestricted,
+			&i.DriveOwnerID,
+			&i.IsDefaultFolder,
+			&i.Category,
 		); err != nil {
 			return nil, err
 		}

@@ -200,6 +200,9 @@ type Item struct {
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	VideoCount       int32              `json:"video_count"`
 	IsRestricted     bool               `json:"is_restricted"`
+	DriveOwnerID     pgtype.UUID        `json:"drive_owner_id"`
+	IsDefaultFolder  bool               `json:"is_default_folder"`
+	Category         pgtype.Text        `json:"category"`
 }
 
 type LoginCode struct {
@@ -265,6 +268,16 @@ type ProjectNotificationPref struct {
 	Level     string             `json:"level"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type RecentItem struct {
+	ID        pgtype.UUID        `json:"id"`
+	CompanyID pgtype.UUID        `json:"company_id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	ItemID    pgtype.UUID        `json:"item_id"`
+	ItemType  string             `json:"item_type"`
+	ProjectID pgtype.UUID        `json:"project_id"`
+	ViewedAt  pgtype.Timestamptz `json:"viewed_at"`
 }
 
 type Review struct {
@@ -411,6 +424,7 @@ type Upload struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	ShareLinkID    pgtype.UUID        `json:"share_link_id"`
+	DriveOwnerID   pgtype.UUID        `json:"drive_owner_id"`
 }
 
 type User struct {

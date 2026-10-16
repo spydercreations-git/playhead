@@ -30,3 +30,4 @@ infra/data/
 *.zip
 
 /services/worker/worker
+test-results/

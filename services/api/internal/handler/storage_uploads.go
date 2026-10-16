@@ -90,37 +90,70 @@ func (h *StorageUploadsHandler) InitiateUpload(w http.ResponseWriter, r *http.Re
 		req.Mime = "application/octet-stream"
 	}
 
+	isDrive := req.ProjectID == "" || req.ProjectID == "drive"
 	var projID pgtype.UUID
-	if err := projID.Scan(req.ProjectID); err != nil {
-		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_project_id"})
-		return
-	}
 
-	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
-		ID:        projID,
-		CompanyID: companyID,
-	})
-	if err != nil {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
-		return
-	}
+	if !isDrive {
+		if err := projID.Scan(req.ProjectID); err != nil {
+			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_project_id"})
+			return
+		}
 
-	person := middleware.GetPerson(ctx)
+		proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+			ID:        projID,
+			CompanyID: companyID,
+		})
+		if err != nil {
+			respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+			return
+		}
 
-	var targetFolderUUID uuid.UUID
-	if req.ParentID != nil && *req.ParentID != "" && *req.ParentID != "null" {
-		if pid, err := uuid.Parse(*req.ParentID); err == nil {
-			targetFolderUUID = pid
+		person := middleware.GetPerson(ctx)
+
+		var targetFolderUUID uuid.UUID
+		if req.ParentID != nil && *req.ParentID != "" && *req.ParentID != "null" {
+			if pid, err := uuid.Parse(*req.ParentID); err == nil {
+				targetFolderUUID = pid
+			}
+		}
+
+		access, err := authz.AccessFolder(ctx, h.queries, person, authz.ProjectTarget{
+			ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+		}, targetFolderUUID)
+		if err != nil || !access.CanUpload() {
+			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to upload files to this folder"})
+			return
+		}
+	} else {
+		// Drive upload: Ensure default folders exist and route if parent_id is missing
+		cat := detectCategory(req.Filename, req.Mime)
+		if req.ParentID == nil || *req.ParentID == "" || *req.ParentID == "null" {
+			folder, err := h.queries.GetDefaultDriveFolderByCategory(ctx, db.GetDefaultDriveFolderByCategoryParams{
+				CompanyID:    companyID,
+				DriveOwnerID: user.ID,
+				Category:     pgtype.Text{String: cat, Valid: true},
+			})
+			if err != nil {
+				createdFolder, cErr := h.queries.CreateDriveFolder(ctx, db.CreateDriveFolderParams{
+					CompanyID:       companyID,
+					DriveOwnerID:    user.ID,
+					ParentID:        pgtype.UUID{Valid: false},
+					Name:            strings.Title(cat),
+					Position:        pgtype.Numeric{Int: big.NewInt(0), Valid: true},
+					IsDefaultFolder: true,
+					Category:        pgtype.Text{String: cat, Valid: true},
+				})
+				if cErr == nil {
+					fIDStr := uuid.UUID(createdFolder.ID.Bytes).String()
+					req.ParentID = &fIDStr
+				}
+			} else {
+				fIDStr := uuid.UUID(folder.ID.Bytes).String()
+				req.ParentID = &fIDStr
+			}
 		}
 	}
 
-	access, err := authz.AccessFolder(ctx, h.queries, person, authz.ProjectTarget{
-		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
-	}, targetFolderUUID)
-	if err != nil || !access.CanUpload() {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to upload files to this folder"})
-		return
-	}
 
 	// 1. Storage Quota Check in transaction (Requirement 1 & 2)
 	company, err := h.queries.GetCompanyStorageDetails(ctx, companyID)
@@ -207,21 +240,39 @@ func (h *StorageUploadsHandler) InitiateUpload(w http.ResponseWriter, r *http.Re
 	// Expires in 24 hours (Requirement 2)
 	expiresAt := time.Now().Add(24 * time.Hour)
 
-	uploadRecord, err := h.queries.CreateUpload(ctx, db.CreateUploadParams{
-		CompanyID:     companyID,
-		UserID:        user.ID,
-		ProjectID:     projID,
-		ParentID:      parentUUID,
-		TargetItemID:  targetItemUUID,
-		Filename:      req.Filename,
-		SizeBytes:     req.SizeBytes,
-		Mime:          req.Mime,
-		StorageKey:    storageKey,
-		UploadID:      s3UploadID,
-		PartSizeBytes: partSize,
-		TotalParts:    int32(totalParts),
-		ExpiresAt:     pgtype.Timestamptz{Time: expiresAt, Valid: true},
-	})
+	var uploadRecord db.Upload
+	if isDrive {
+		uploadRecord, err = h.queries.CreateDriveUpload(ctx, db.CreateDriveUploadParams{
+			CompanyID:     companyID,
+			UserID:        user.ID,
+			ParentID:      parentUUID,
+			TargetItemID:  targetItemUUID,
+			Filename:      req.Filename,
+			SizeBytes:     req.SizeBytes,
+			Mime:          req.Mime,
+			StorageKey:    storageKey,
+			UploadID:      s3UploadID,
+			PartSizeBytes: partSize,
+			TotalParts:    int32(totalParts),
+			ExpiresAt:     pgtype.Timestamptz{Time: expiresAt, Valid: true},
+		})
+	} else {
+		uploadRecord, err = h.queries.CreateUpload(ctx, db.CreateUploadParams{
+			CompanyID:     companyID,
+			UserID:        user.ID,
+			ProjectID:     projID,
+			ParentID:      parentUUID,
+			TargetItemID:  targetItemUUID,
+			Filename:      req.Filename,
+			SizeBytes:     req.SizeBytes,
+			Mime:          req.Mime,
+			StorageKey:    storageKey,
+			UploadID:      s3UploadID,
+			PartSizeBytes: partSize,
+			TotalParts:    int32(totalParts),
+			ExpiresAt:     pgtype.Timestamptz{Time: expiresAt, Valid: true},
+		})
+	}
 	if err != nil {
 		_ = h.queries.ReleaseCompanyReservedStorage(ctx, db.ReleaseCompanyReservedStorageParams{
 			ID:    companyID,
@@ -414,21 +465,47 @@ func (h *StorageUploadsHandler) CompleteUpload(w http.ResponseWriter, r *http.Re
 	}
 
 	if !item.ID.Valid {
-		// Create new file item
-		created, err := h.queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
-			CompanyID: companyID,
-			ProjectID: upload.ProjectID,
-			ParentID:  upload.ParentID,
-			Kind:      "file",
-			Name:      upload.Filename,
-			Position:  pgtype.Numeric{Int: big.NewInt(0), Valid: true},
-			CreatedBy: upload.UserID,
-		})
-		if err != nil {
-			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_item"})
-			return
+		if upload.DriveOwnerID.Valid {
+			cat := detectCategory(upload.Filename, upload.Mime)
+			created, err := h.queries.CreateDriveFileItem(ctx, db.CreateDriveFileItemParams{
+				CompanyID:    companyID,
+				DriveOwnerID: upload.DriveOwnerID,
+				ParentID:     upload.ParentID,
+				Name:         upload.Filename,
+				Position:     pgtype.Numeric{Int: big.NewInt(0), Valid: true},
+				TotalBytes:   upload.SizeBytes,
+				Category:     pgtype.Text{String: cat, Valid: true},
+			})
+			if err != nil {
+				respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_item"})
+				return
+			}
+			item = created
+
+			_ = h.queries.RecordRecentItem(ctx, db.RecordRecentItemParams{
+				CompanyID: companyID,
+				UserID:    upload.DriveOwnerID,
+				ItemID:    item.ID,
+				ItemType:  "file",
+				ProjectID: pgtype.UUID{Valid: false},
+			})
+		} else {
+			// Create new file item in project
+			created, err := h.queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+				CompanyID: companyID,
+				ProjectID: upload.ProjectID,
+				ParentID:  upload.ParentID,
+				Kind:      "file",
+				Name:      upload.Filename,
+				Position:  pgtype.Numeric{Int: big.NewInt(0), Valid: true},
+				CreatedBy: upload.UserID,
+			})
+			if err != nil {
+				respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_item"})
+				return
+			}
+			item = created
 		}
-		item = created
 	}
 
 	previewStatus := "none"
@@ -461,12 +538,14 @@ func (h *StorageUploadsHandler) CompleteUpload(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Requirement 6: Uploading a new version sets status back to Needs review
-	_, _ = h.queries.UpdateItemReviewStatus(ctx, db.UpdateItemReviewStatusParams{
-		ID:           item.ID,
-		CompanyID:    companyID,
-		ReviewStatus: "needs_review",
-	})
+	if upload.ProjectID.Valid {
+		// Requirement 6: Uploading a new version sets status back to Needs review
+		_, _ = h.queries.UpdateItemReviewStatus(ctx, db.UpdateItemReviewStatusParams{
+			ID:           item.ID,
+			CompanyID:    companyID,
+			ReviewStatus: "needs_review",
+		})
+	}
 
 	// 4. Mark upload completed
 	_, _ = h.queries.CompleteUpload(ctx, upload.ID)
@@ -479,20 +558,24 @@ func (h *StorageUploadsHandler) CompleteUpload(w http.ResponseWriter, r *http.Re
 	}
 
 	// 5. Recalculate counts
-	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, upload.ProjectID)
+	if upload.ProjectID.Valid {
+		_ = h.queries.RecalculateProjectAndFolderCounts(ctx, upload.ProjectID)
+	}
 	if upload.ParentID.Valid {
 		_ = h.queries.RecalculateFolderCounts(ctx, upload.ParentID)
 	}
 
 	// 6. Record activity
-	_, _ = h.queries.CreateActivity(ctx, db.CreateActivityParams{
-		CompanyID: companyID,
-		ProjectID: upload.ProjectID,
-		ItemID:    item.ID,
-		ActorID:   user.ID,
-		Action:    "uploaded",
-		Details:   []byte(fmt.Sprintf(`{"filename":%q,"version":%d,"size_bytes":%d}`, upload.Filename, versionNumber, upload.SizeBytes)),
-	})
+	if upload.ProjectID.Valid {
+		_, _ = h.queries.CreateActivity(ctx, db.CreateActivityParams{
+			CompanyID: companyID,
+			ProjectID: upload.ProjectID,
+			ItemID:    item.ID,
+			ActorID:   user.ID,
+			Action:    "uploaded",
+			Details:   []byte(fmt.Sprintf(`{"filename":%q,"version":%d,"size_bytes":%d}`, upload.Filename, versionNumber, upload.SizeBytes)),
+		})
+	}
 
 	// 7. Check Storage Alert Threshold (Requirement 1)
 	go h.checkStorageAlerts(companyID)
@@ -986,3 +1069,19 @@ func (h *StorageUploadsHandler) checkStorageAlerts(companyID pgtype.UUID) {
 func ptrInt32(v int32) *int32 {
 	return &v
 }
+
+func detectCategory(filename, mime string) string {
+	lowerMime := strings.ToLower(mime)
+	lowerName := strings.ToLower(filename)
+	if strings.HasPrefix(lowerMime, "video/") || strings.HasSuffix(lowerName, ".mp4") || strings.HasSuffix(lowerName, ".mov") || strings.HasSuffix(lowerName, ".webm") || strings.HasSuffix(lowerName, ".mkv") {
+		return "videos"
+	}
+	if strings.HasPrefix(lowerMime, "image/") || strings.HasSuffix(lowerName, ".png") || strings.HasSuffix(lowerName, ".jpg") || strings.HasSuffix(lowerName, ".jpeg") || strings.HasSuffix(lowerName, ".webp") || strings.HasSuffix(lowerName, ".gif") || strings.HasSuffix(lowerName, ".svg") {
+		return "images"
+	}
+	if strings.HasPrefix(lowerMime, "audio/") || strings.HasSuffix(lowerName, ".mp3") || strings.HasSuffix(lowerName, ".wav") || strings.HasSuffix(lowerName, ".flac") || strings.HasSuffix(lowerName, ".aac") || strings.HasSuffix(lowerName, ".m4a") {
+		return "music"
+	}
+	return "documents"
+}
+

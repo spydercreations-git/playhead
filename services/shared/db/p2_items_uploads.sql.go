@@ -16,7 +16,7 @@ UPDATE uploads
 SET status = 'aborted',
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id
+RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id, drive_owner_id
 `
 
 func (q *Queries) AbortUpload(ctx context.Context, id pgtype.UUID) (Upload, error) {
@@ -42,6 +42,7 @@ func (q *Queries) AbortUpload(ctx context.Context, id pgtype.UUID) (Upload, erro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ShareLinkID,
+		&i.DriveOwnerID,
 	)
 	return i, err
 }
@@ -69,7 +70,7 @@ UPDATE uploads
 SET status = 'completed',
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id
+RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id, drive_owner_id
 `
 
 func (q *Queries) CompleteUpload(ctx context.Context, id pgtype.UUID) (Upload, error) {
@@ -95,6 +96,7 @@ func (q *Queries) CompleteUpload(ctx context.Context, id pgtype.UUID) (Upload, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ShareLinkID,
+		&i.DriveOwnerID,
 	)
 	return i, err
 }
@@ -211,7 +213,7 @@ VALUES (
     $1, $2, $3, $4, $5, $6, $7,
     0, 0, 0, 0, 'none', FALSE
 )
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
 `
 
 type CreateItemWithCountsParams struct {
@@ -256,6 +258,9 @@ func (q *Queries) CreateItemWithCounts(ctx context.Context, arg CreateItemWithCo
 		&i.UpdatedAt,
 		&i.VideoCount,
 		&i.IsRestricted,
+		&i.DriveOwnerID,
+		&i.IsDefaultFolder,
+		&i.Category,
 	)
 	return i, err
 }
@@ -270,7 +275,7 @@ VALUES (
     $7, $8, $9, $10, $11, $12, $13,
     '[]'::jsonb, 'pending', $14
 )
-RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id
+RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id, drive_owner_id
 `
 
 type CreateUploadParams struct {
@@ -329,6 +334,7 @@ func (q *Queries) CreateUpload(ctx context.Context, arg CreateUploadParams) (Upl
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ShareLinkID,
+		&i.DriveOwnerID,
 	)
 	return i, err
 }
@@ -581,7 +587,7 @@ func (q *Queries) GetItemAncestors(ctx context.Context, arg GetItemAncestorsPara
 }
 
 const getItemByID = `-- name: GetItemByID :one
-SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.is_restricted, 
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.is_restricted, i.drive_owner_id, i.is_default_folder, i.category, 
        COALESCE(fv.storage_key, '') AS latest_storage_key,
        COALESCE(fv.size_bytes, 0) AS latest_size_bytes,
        COALESCE(fv.mime, '') AS latest_mime,
@@ -622,6 +628,9 @@ type GetItemByIDRow struct {
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	VideoCount          int32              `json:"video_count"`
 	IsRestricted        bool               `json:"is_restricted"`
+	DriveOwnerID        pgtype.UUID        `json:"drive_owner_id"`
+	IsDefaultFolder     bool               `json:"is_default_folder"`
+	Category            pgtype.Text        `json:"category"`
 	LatestStorageKey    string             `json:"latest_storage_key"`
 	LatestSizeBytes     int64              `json:"latest_size_bytes"`
 	LatestMime          string             `json:"latest_mime"`
@@ -655,6 +664,9 @@ func (q *Queries) GetItemByID(ctx context.Context, arg GetItemByIDParams) (GetIt
 		&i.UpdatedAt,
 		&i.VideoCount,
 		&i.IsRestricted,
+		&i.DriveOwnerID,
+		&i.IsDefaultFolder,
+		&i.Category,
 		&i.LatestStorageKey,
 		&i.LatestSizeBytes,
 		&i.LatestMime,
@@ -749,7 +761,7 @@ func (q *Queries) GetStorageBreakdownByClientAndProject(ctx context.Context, com
 }
 
 const getUploadByID = `-- name: GetUploadByID :one
-SELECT id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id FROM uploads
+SELECT id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id, drive_owner_id FROM uploads
 WHERE id = $1 AND company_id = $2
 `
 
@@ -781,12 +793,13 @@ func (q *Queries) GetUploadByID(ctx context.Context, arg GetUploadByIDParams) (U
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ShareLinkID,
+		&i.DriveOwnerID,
 	)
 	return i, err
 }
 
 const getUploadByIDSimple = `-- name: GetUploadByIDSimple :one
-SELECT id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id FROM uploads
+SELECT id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id, drive_owner_id FROM uploads
 WHERE id = $1
 `
 
@@ -813,6 +826,7 @@ func (q *Queries) GetUploadByIDSimple(ctx context.Context, id pgtype.UUID) (Uplo
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ShareLinkID,
+		&i.DriveOwnerID,
 	)
 	return i, err
 }
@@ -875,7 +889,7 @@ func (q *Queries) ListAllProjectFolders(ctx context.Context, arg ListAllProjectF
 }
 
 const listExpiredPendingUploads = `-- name: ListExpiredPendingUploads :many
-SELECT id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id FROM uploads
+SELECT id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id, drive_owner_id FROM uploads
 WHERE status = 'pending' AND expires_at < NOW()
 LIMIT 100
 `
@@ -909,6 +923,7 @@ func (q *Queries) ListExpiredPendingUploads(ctx context.Context) ([]Upload, erro
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ShareLinkID,
+			&i.DriveOwnerID,
 		); err != nil {
 			return nil, err
 		}
@@ -985,7 +1000,7 @@ func (q *Queries) ListFileVersions(ctx context.Context, itemID pgtype.UUID) ([]L
 }
 
 const listItemsWithVersions = `-- name: ListItemsWithVersions :many
-SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.is_restricted,
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.is_restricted, i.drive_owner_id, i.is_default_folder, i.category,
        COALESCE(fv.storage_key, '') AS latest_storage_key,
        COALESCE(fv.size_bytes, 0) AS latest_size_bytes,
        COALESCE(fv.mime, '') AS latest_mime,
@@ -1038,6 +1053,9 @@ type ListItemsWithVersionsRow struct {
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	VideoCount          int32              `json:"video_count"`
 	IsRestricted        bool               `json:"is_restricted"`
+	DriveOwnerID        pgtype.UUID        `json:"drive_owner_id"`
+	IsDefaultFolder     bool               `json:"is_default_folder"`
+	Category            pgtype.Text        `json:"category"`
 	LatestStorageKey    string             `json:"latest_storage_key"`
 	LatestSizeBytes     int64              `json:"latest_size_bytes"`
 	LatestMime          string             `json:"latest_mime"`
@@ -1082,6 +1100,9 @@ func (q *Queries) ListItemsWithVersions(ctx context.Context, arg ListItemsWithVe
 			&i.UpdatedAt,
 			&i.VideoCount,
 			&i.IsRestricted,
+			&i.DriveOwnerID,
+			&i.IsDefaultFolder,
+			&i.Category,
 			&i.LatestStorageKey,
 			&i.LatestSizeBytes,
 			&i.LatestMime,
@@ -1101,7 +1122,7 @@ func (q *Queries) ListItemsWithVersions(ctx context.Context, arg ListItemsWithVe
 }
 
 const listStarredItems = `-- name: ListStarredItems :many
-SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.is_restricted, 
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.is_restricted, i.drive_owner_id, i.is_default_folder, i.category, 
        COALESCE(fv.storage_key, '') AS latest_storage_key,
        COALESCE(fv.size_bytes, 0) AS latest_size_bytes,
        COALESCE(fv.mime, '') AS latest_mime,
@@ -1146,6 +1167,9 @@ type ListStarredItemsRow struct {
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	VideoCount       int32              `json:"video_count"`
 	IsRestricted     bool               `json:"is_restricted"`
+	DriveOwnerID     pgtype.UUID        `json:"drive_owner_id"`
+	IsDefaultFolder  bool               `json:"is_default_folder"`
+	Category         pgtype.Text        `json:"category"`
 	LatestStorageKey string             `json:"latest_storage_key"`
 	LatestSizeBytes  int64              `json:"latest_size_bytes"`
 	LatestMime       string             `json:"latest_mime"`
@@ -1185,6 +1209,9 @@ func (q *Queries) ListStarredItems(ctx context.Context, arg ListStarredItemsPara
 			&i.UpdatedAt,
 			&i.VideoCount,
 			&i.IsRestricted,
+			&i.DriveOwnerID,
+			&i.IsDefaultFolder,
+			&i.Category,
 			&i.LatestStorageKey,
 			&i.LatestSizeBytes,
 			&i.LatestMime,
@@ -1204,7 +1231,7 @@ func (q *Queries) ListStarredItems(ctx context.Context, arg ListStarredItemsPara
 }
 
 const listTrashItems = `-- name: ListTrashItems :many
-SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.is_restricted, 
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.is_restricted, i.drive_owner_id, i.is_default_folder, i.category, 
        u.name AS deleted_by_name,
        COALESCE(fv.size_bytes, 0) AS latest_size_bytes,
        COALESCE(fv.mime, '') AS latest_mime,
@@ -1241,6 +1268,9 @@ type ListTrashItemsRow struct {
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	VideoCount       int32              `json:"video_count"`
 	IsRestricted     bool               `json:"is_restricted"`
+	DriveOwnerID     pgtype.UUID        `json:"drive_owner_id"`
+	IsDefaultFolder  bool               `json:"is_default_folder"`
+	Category         pgtype.Text        `json:"category"`
 	DeletedByName    pgtype.Text        `json:"deleted_by_name"`
 	LatestSizeBytes  int64              `json:"latest_size_bytes"`
 	LatestMime       string             `json:"latest_mime"`
@@ -1279,6 +1309,9 @@ func (q *Queries) ListTrashItems(ctx context.Context, companyID pgtype.UUID) ([]
 			&i.UpdatedAt,
 			&i.VideoCount,
 			&i.IsRestricted,
+			&i.DriveOwnerID,
+			&i.IsDefaultFolder,
+			&i.Category,
 			&i.DeletedByName,
 			&i.LatestSizeBytes,
 			&i.LatestMime,
@@ -1300,7 +1333,7 @@ UPDATE items
 SET parent_id = $1,
     updated_at = NOW()
 WHERE id = $2 AND company_id = $3
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
 `
 
 type MoveItemParams struct {
@@ -1333,6 +1366,9 @@ func (q *Queries) MoveItem(ctx context.Context, arg MoveItemParams) (Item, error
 		&i.UpdatedAt,
 		&i.VideoCount,
 		&i.IsRestricted,
+		&i.DriveOwnerID,
+		&i.IsDefaultFolder,
+		&i.Category,
 	)
 	return i, err
 }
@@ -1439,7 +1475,7 @@ UPDATE items
 SET name = $1,
     updated_at = NOW()
 WHERE id = $2 AND company_id = $3
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
 `
 
 type RenameItemParams struct {
@@ -1472,6 +1508,9 @@ func (q *Queries) RenameItem(ctx context.Context, arg RenameItemParams) (Item, e
 		&i.UpdatedAt,
 		&i.VideoCount,
 		&i.IsRestricted,
+		&i.DriveOwnerID,
+		&i.IsDefaultFolder,
+		&i.Category,
 	)
 	return i, err
 }
@@ -1501,7 +1540,7 @@ SET deleted_at = NULL,
     parent_id = original_parent_id,
     updated_at = NOW()
 WHERE id = $1 AND company_id = $2
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
 `
 
 type RestoreItemParams struct {
@@ -1533,6 +1572,9 @@ func (q *Queries) RestoreItem(ctx context.Context, arg RestoreItemParams) (Item,
 		&i.UpdatedAt,
 		&i.VideoCount,
 		&i.IsRestricted,
+		&i.DriveOwnerID,
+		&i.IsDefaultFolder,
+		&i.Category,
 	)
 	return i, err
 }
@@ -1542,7 +1584,7 @@ UPDATE items
 SET is_restricted = $1,
     updated_at = NOW()
 WHERE id = $2 AND company_id = $3
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
 `
 
 type SetItemRestrictedParams struct {
@@ -1575,6 +1617,9 @@ func (q *Queries) SetItemRestricted(ctx context.Context, arg SetItemRestrictedPa
 		&i.UpdatedAt,
 		&i.VideoCount,
 		&i.IsRestricted,
+		&i.DriveOwnerID,
+		&i.IsDefaultFolder,
+		&i.Category,
 	)
 	return i, err
 }
@@ -1587,7 +1632,7 @@ SET deleted_at = NOW(),
     parent_id = NULL,
     updated_at = NOW()
 WHERE id = $2 AND company_id = $3
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
 `
 
 type SoftDeleteItemParams struct {
@@ -1620,6 +1665,9 @@ func (q *Queries) SoftDeleteItem(ctx context.Context, arg SoftDeleteItemParams) 
 		&i.UpdatedAt,
 		&i.VideoCount,
 		&i.IsRestricted,
+		&i.DriveOwnerID,
+		&i.IsDefaultFolder,
+		&i.Category,
 	)
 	return i, err
 }
@@ -1680,7 +1728,7 @@ UPDATE uploads
 SET completed_parts = $1,
     updated_at = NOW()
 WHERE id = $2
-RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id
+RETURNING id, company_id, user_id, project_id, parent_id, target_item_id, filename, size_bytes, mime, storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at, created_at, updated_at, share_link_id, drive_owner_id
 `
 
 type UpdateUploadCompletedPartsParams struct {
@@ -1711,6 +1759,7 @@ func (q *Queries) UpdateUploadCompletedParts(ctx context.Context, arg UpdateUplo
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ShareLinkID,
+		&i.DriveOwnerID,
 	)
 	return i, err
 }

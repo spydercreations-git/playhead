@@ -353,6 +353,7 @@ func main() {
 			protected.Post("/documents/{id}/preview-pdf-html", documentsHandler.PreviewPdfHtml)
 			protected.Post("/documents/{id}/import/docx", documentsHandler.ImportDocx)
 			protected.Post("/documents/{id}/import-docx", documentsHandler.ImportDocx)
+			protected.Delete("/documents/{id}", itemsHandler.DeleteItem)
 
 			// Spreadsheets (Milestone P6)
 			protected.Get("/spreadsheets", spreadsheetsHandler.ListSpreadsheets)
@@ -360,6 +361,7 @@ func main() {
 			protected.Post("/projects/{projectId}/spreadsheets", spreadsheetsHandler.CreateSpreadsheet)
 			protected.Get("/projects/{projectId}/spreadsheets", spreadsheetsHandler.ListSpreadsheets)
 			protected.Get("/spreadsheets/{id}", spreadsheetsHandler.GetSpreadsheet)
+			protected.Delete("/spreadsheets/{id}", itemsHandler.DeleteItem)
 			protected.Get("/spreadsheets/{id}/view", spreadsheetsHandler.GetSpreadsheetView)
 			protected.Post("/spreadsheets/{id}/export/pdf", spreadsheetsHandler.ExportPdf)
 			protected.Get("/spreadsheets/{id}/export/pdf", spreadsheetsHandler.ExportPdf)

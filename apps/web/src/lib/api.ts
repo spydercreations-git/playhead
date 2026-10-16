@@ -1,5 +1,5 @@
 // API client helper for Playhead with credentials and CSRF protection
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 function getCsrfToken(): string | null {
   if (typeof document === "undefined") return null;

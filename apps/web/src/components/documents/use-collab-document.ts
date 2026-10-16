@@ -124,8 +124,12 @@ export function useCollabDocument({
 
         if (!isMounted) return;
 
+        const defaultWsUrl =
+          typeof window !== "undefined"
+            ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/collab`
+            : "ws://localhost:8082";
         const wsBaseUrl =
-          process.env.NEXT_PUBLIC_COLLAB_WS_URL || "ws://localhost:8082";
+          process.env.NEXT_PUBLIC_COLLAB_WS_URL || defaultWsUrl;
 
         hpProvider = new HocuspocusProvider({
           url: wsBaseUrl,

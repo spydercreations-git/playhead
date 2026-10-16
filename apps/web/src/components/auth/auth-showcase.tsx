@@ -15,7 +15,7 @@ export function AuthShowcase() {
       {/* Top Titles */}
       <div className="z-10 mb-6">
         <h2 className="text-[28px] xl:text-[28px] font-bold text-white tracking-tight leading-tight">
-          Review , share and deliver .
+          Review, share and deliver.
         </h2>
         <p className="mt-1.5 text-base xl:text-[20px] text-[#A3A6AD] font-normal">
           Every client, file and comment in one place.

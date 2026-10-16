@@ -129,7 +129,7 @@ func (h *StorageUploadsHandler) InitiateUpload(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if !plans.IsUnlimitedStorage(company.Plan) {
+	if !plans.IsUnlimitedStorage(company.Plan) && company.StorageLimitBytes > 0 {
 		currentProjected := company.StorageUsedBytes + company.StorageReservedBytes + req.SizeBytes
 		if currentProjected > company.StorageLimitBytes {
 			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "quota_exceeded", "message": "Company storage quota exceeded. Upgrade your plan or add storage."})

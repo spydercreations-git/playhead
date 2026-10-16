@@ -27,7 +27,7 @@ import {
   Calendar,
   X,
   Check,
-} from "lucide-react";
+} from "@/components/ui/icon";
 import "@fortune-sheet/react/dist/index.css";
 import * as Y from "yjs";
 import { HocuspocusProvider } from "@hocuspocus/provider";
@@ -203,7 +203,11 @@ export function SpreadsheetEditor({
         const ydoc = new Y.Doc();
         ydocRef.current = ydoc;
 
-        const wsUrl = ticketRes.ws_url || "ws://localhost:8082";
+        const defaultWsUrl =
+          typeof window !== "undefined"
+            ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/collab`
+            : "ws://localhost:8082";
+        const wsUrl = process.env.NEXT_PUBLIC_COLLAB_WS_URL || ticketRes.ws_url || defaultWsUrl;
         const provider = new HocuspocusProvider({
           url: wsUrl,
           name: `sheet:${id}`,

@@ -328,7 +328,7 @@ function LoginForm() {
 
           {/* Continue with Google Button */}
           <a
-            href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1"}/auth/google/url`}
+            href={`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/auth/google/url`}
             className="w-full h-[50px] rounded-[10px] bg-white hover:bg-neutral-100 text-[#181818] font-medium text-sm transition flex items-center justify-center gap-3 shadow-sm"
           >
             {/* Google Icon */}

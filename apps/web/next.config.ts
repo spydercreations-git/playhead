@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
           ? `${process.env.API_URL}/api/v1/:path*`
           : "http://localhost:8080/api/v1/:path*",
       },
+      {
+        source: "/collab/:path*",
+        destination: process.env.COLLAB_URL
+          ? `${process.env.COLLAB_URL}/:path*`
+          : "http://localhost:8082/:path*",
+      },
     ];
   },
 };

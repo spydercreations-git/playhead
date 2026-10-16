@@ -320,7 +320,7 @@ export default function TeamPage() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-400">
+        <div className="rounded-xl border border-[#F0506E]/30 bg-[#F0506E]/10 p-4 text-xs text-[#F0506E]">
           {error}
         </div>
       )}
@@ -390,7 +390,7 @@ export default function TeamPage() {
                           {!isSelf && (
                             <button
                               onClick={() => setMemberToRemove({ id: m.user_id, name: m.name || m.email })}
-                              className="text-xs text-red-400 hover:text-red-300 font-medium"
+                              className="text-xs text-[#F0506E] hover:text-[#F0506E]/80 font-medium"
                             >
                               Remove
                             </button>
@@ -433,7 +433,7 @@ export default function TeamPage() {
                     {!role.is_system && (
                       <button
                         onClick={() => setRoleToDelete({ id: role.id, name: role.name })}
-                        className="p-1 rounded hover:bg-rose-500/10 text-[#A3A6AD] hover:text-rose-400"
+                        className="p-1 rounded hover:bg-[#F0506E]/10 text-[#A3A6AD] hover:text-[#F0506E]"
                         title="Delete Role"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -497,7 +497,7 @@ export default function TeamPage() {
 
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
               {roleError && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-[10px]">
+                <div className="p-3 bg-[#F0506E]/10 border border-[#F0506E]/20 text-[#F0506E] text-xs rounded-xl">
                   {roleError}
                 </div>
               )}
@@ -615,7 +615,7 @@ export default function TeamPage() {
             </div>
 
             {inviteError && (
-              <p className="text-xs text-red-400 bg-red-500/10 p-2.5 rounded-[10px] border border-red-500/20">
+              <p className="text-xs text-[#F0506E] bg-[#F0506E]/10 p-2.5 rounded-xl border border-[#F0506E]/20">
                 {inviteError}
               </p>
             )}

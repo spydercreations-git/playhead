@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -20,16 +21,26 @@ type AuthHandler struct {
 	googleClientID string
 	appURL         string
 	isProduction   bool
+	environment    string
 }
 
 func NewAuthHandler(queries *db.Queries, mailer *mailer.Mailer, googleClientID, appURL string, isProduction bool) *AuthHandler {
+	env := "development"
+	if isProduction {
+		env = "production"
+	}
 	return &AuthHandler{
 		queries:        queries,
 		mailer:         mailer,
 		googleClientID: googleClientID,
 		appURL:         appURL,
 		isProduction:   isProduction,
+		environment:    env,
 	}
+}
+
+func (h *AuthHandler) SetEnvironment(env string) {
+	h.environment = env
 }
 
 type SignupRequest struct {
@@ -473,6 +484,116 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type DevLoginRequest struct {
+	Email string `json:"email"`
+}
+
+// DevLogin logs in a dev user directly without email verification codes.
+// STRICT SECURITY REQUIREMENT:
+// 1. Only enabled when ENV=development explicitly set.
+// 2. Only accepts requests originating from localhost (127.0.0.1, ::1, or localhost).
+func (h *AuthHandler) DevLogin(w http.ResponseWriter, r *http.Request) {
+	if h.environment != "development" {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	host := r.Host
+	if hStr, _, err := net.SplitHostPort(host); err == nil {
+		host = hStr
+	}
+	remote := r.RemoteAddr
+	if rStr, _, err := net.SplitHostPort(remote); err == nil {
+		remote = rStr
+	}
+
+	isLocalHost := host == "localhost" || host == "127.0.0.1" || host == "::1"
+	isLocalRemote := remote == "localhost" || remote == "127.0.0.1" || remote == "::1" || remote == ""
+
+	if !isLocalHost || !isLocalRemote {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Dev login is restricted to localhost requests only",
+		})
+		return
+	}
+
+	var req DevLoginRequest
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	email := authz.NormalizeEmail(req.Email)
+	if email == "" {
+		email = "harsh@idyllproductions.com"
+	}
+
+	user, err := h.queries.GetUserByEmail(r.Context(), email)
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{
+			"error":   "user_not_found",
+			"message": "User not found in development database",
+		})
+		return
+	}
+
+	// Create session (expires in 30 days)
+	rawSessionToken, err := authz.GenerateSecureToken(32)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to generate session"})
+		return
+	}
+
+	sessionHash := authz.HashToken(rawSessionToken)
+	expiresAt := time.Now().Add(30 * 24 * time.Hour)
+
+	_, err = h.queries.CreateSession(r.Context(), db.CreateSessionParams{
+		UserID:    user.ID,
+		TokenHash: sessionHash,
+		ExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
+		UserAgent: pgtype.Text{String: r.UserAgent(), Valid: true},
+		Ip:        pgtype.Text{String: r.RemoteAddr, Valid: true},
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to persist session"})
+		return
+	}
+
+	rawCSRFToken, _ := authz.GenerateSecureToken(16)
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "playhead_session",
+		Value:    rawSessionToken,
+		Path:     "/",
+		Expires:  expiresAt,
+		HttpOnly: true,
+		Secure:   h.isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     middleware.CSRFCookieName,
+		Value:    rawCSRFToken,
+		Path:     "/",
+		Expires:  expiresAt,
+		HttpOnly: false,
+		Secure:   h.isProduction,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"status":     "ok",
+		"csrf_token": rawCSRFToken,
+		"user": map[string]interface{}{
+			"id":             user.ID,
+			"email":          user.Email,
+			"name":           user.Name,
+			"avatar_url":     user.AvatarUrl.String,
+			"email_verified": user.EmailVerifiedAt.Valid,
+		},
+	})
+}
+
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie("playhead_session"); err == nil && cookie.Value != "" {
 		tokenHash := authz.HashToken(cookie.Value)
@@ -666,8 +787,25 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Client users have no company team role (or guest role)
-	isClient := activeRole == "" || strings.ToLower(activeRole) == "guest"
+	// A signed-in user with no company must NOT become a client silently.
+	// is_client must only be true if the user's email is explicitly registered in client_contacts.
+	isClient := false
+	if activeRole == "" || strings.ToLower(activeRole) == "guest" {
+		contacts, err := h.queries.GetClientContactsByEmail(r.Context(), user.Email)
+		if err == nil && len(contacts) > 0 {
+			isClient = true
+		}
+	}
+
+	// If the user has no company membership and is NOT a registered client contact,
+	// clear active_company and active_role so they are prompted to ask an Admin.
+	if !isClient && activeRole == "" {
+		activeCompany = nil
+		activeRole = ""
+		roleID = ""
+		roleName = ""
+		permissions = []string{}
+	}
 
 	// Feature flags for company plan
 	var features map[string]bool

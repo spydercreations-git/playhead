@@ -3,13 +3,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { AuthContainer } from "@/components/auth/auth-container";
 import { apiRequest, ApiError } from "@/lib/api";
+import { clearAuthCache } from "@/lib/use-auth";
 
 type Screen = "email" | "password" | "code";
 
 export default function LoginPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [screen, setScreen] = useState<Screen>("email");
   const [email, setEmail] = useState("");
@@ -94,6 +97,7 @@ export default function LoginPage() {
           code,
         }),
       });
+      clearAuthCache(queryClient);
       router.push("/");
     } catch (err: any) {
       const apiErr = err as ApiError;
@@ -183,6 +187,7 @@ export default function LoginPage() {
           password,
         }),
       });
+      clearAuthCache(queryClient);
       router.push("/");
     } catch (err: any) {
       const apiErr = err as ApiError;

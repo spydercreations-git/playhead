@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -78,8 +81,9 @@ func main() {
 	var queries *db.Queries
 	if dbPool != nil {
 		queries = db.New(dbPool)
+		checkMigrations(ctx, dbPool.Pool)
 		if cfg.Environment != "production" {
-			_ = handler.EnsureDevHarshAdmin(ctx, dbPool.Pool, queries)
+			_ = handler.EnsureDevAdmins(ctx, dbPool.Pool, queries, cfg.DevAdminEmails)
 		}
 	}
 
@@ -94,6 +98,7 @@ func main() {
 
 	// Handlers and middleware
 	authHandler := handler.NewAuthHandler(queries, mailClient, cfg.GoogleClientID, cfg.AppURL, cfg.Environment == "production")
+	authHandler.SetEnvironment(cfg.Environment)
 	companyHandler := handler.NewCompanyHandler(queries)
 	inviteHandler := handler.NewInviteHandler(queries, mailClient)
 	clientHandler := handler.NewClientHandler(queries, mailClient)
@@ -174,6 +179,10 @@ func main() {
 			auth.Get("/google/callback", authHandler.GoogleOAuthCallback)
 			auth.Post("/google/callback", authHandler.GoogleOAuthCallback)
 			auth.Post("/logout", authHandler.Logout)
+
+			if cfg.Environment == "development" {
+				auth.Post("/dev-login", authHandler.DevLogin)
+			}
 		})
 
 		// Public invite preview
@@ -402,4 +411,69 @@ func main() {
 	}
 
 	slog.Info("api server stopped")
+}
+
+// checkMigrations verifies on startup that all database migrations in db/migrations have run.
+// If the database is behind, it logs a warning and prints "Database is behind: run make migrate" in the terminal.
+func checkMigrations(ctx context.Context, pool *pgxpool.Pool) {
+	if pool == nil {
+		return
+	}
+
+	// 1. Find migrations directory and locate highest version
+	candidatePaths := []string{"db/migrations", "../../db/migrations", "../db/migrations"}
+	var latestVersion int64 = 0
+
+	for _, p := range candidatePaths {
+		entries, err := os.ReadDir(p)
+		if err == nil && len(entries) > 0 {
+			for _, e := range entries {
+				name := e.Name()
+				if strings.HasSuffix(name, ".sql") {
+					parts := strings.SplitN(name, "_", 2)
+					if len(parts) > 0 {
+						if v, err := strconv.ParseInt(parts[0], 10, 64); err == nil && v > latestVersion {
+							latestVersion = v
+						}
+					}
+				}
+			}
+			if latestVersion > 0 {
+				break
+			}
+		}
+	}
+
+	if latestVersion == 0 {
+		return
+	}
+
+	// 2. Query goose_db_version
+	var exists bool
+	err := pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables 
+			WHERE table_name = 'goose_db_version'
+		)
+	`).Scan(&exists)
+
+	if err != nil || !exists {
+		slog.Warn("Database is behind: run make migrate", "applied_version", 0, "latest_version", latestVersion)
+		fmt.Fprintf(os.Stderr, "\n⚠️  Database is behind: run make migrate (applied: 0, latest: %d)\n\n", latestVersion)
+		return
+	}
+
+	var appliedVersion int64 = 0
+	err = pool.QueryRow(ctx, `
+		SELECT COALESCE(MAX(version_id), 0)
+		FROM goose_db_version
+		WHERE is_applied = true
+	`).Scan(&appliedVersion)
+
+	if err != nil || appliedVersion < latestVersion {
+		slog.Warn("Database is behind: run make migrate", "applied_version", appliedVersion, "latest_version", latestVersion)
+		fmt.Fprintf(os.Stderr, "\n⚠️  Database is behind: run make migrate (applied: %d, latest: %d)\n\n", appliedVersion, latestVersion)
+	} else {
+		slog.Info("database migrations are up to date", "applied_version", appliedVersion)
+	}
 }

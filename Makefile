@@ -27,7 +27,7 @@ dev:
 	@echo "Collab will run on ws://localhost:8082"
 	@echo "MinIO Console on http://localhost:9001"
 	@echo "Mailpit Web on http://localhost:8025"
-	@(trap 'kill 0' SIGINT; cd services/api && $(GO) run cmd/server/main.go & cd services/collab && npm run dev & cd apps/web && npm run dev & wait)
+	@(trap 'kill 0' SIGINT; cd services/api && ENV=development $(GO) run cmd/server/main.go & cd services/collab && npm run dev & cd apps/web && npm run dev & wait)
 
 # Re-queue all pending video versions
 requeue:

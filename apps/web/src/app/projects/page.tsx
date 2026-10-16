@@ -27,7 +27,7 @@ interface ProjectItem {
 
 export default function ProjectsPage() {
   const queryClient = useQueryClient();
-  const { hasPermission } = useAuth();
+  const { user, company, isClient, hasPermission, isLoading: authLoading } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("active");
   const [selectedClientId, setSelectedClientId] = useState<string>("");
@@ -85,6 +85,20 @@ export default function ProjectsPage() {
 
   const uniqueClientIds = Array.from(new Set(projects.map((p) => p.client_id).filter(Boolean)));
   const clientCount = uniqueClientIds.length || clientOptions.length;
+
+  if (!authLoading && user && !company && !isClient) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div className="w-16 h-16 rounded-full bg-[#2A2B30] border border-[#2E2F34] flex items-center justify-center mb-4 text-[#A3A6AD]">
+          <Folder className="w-8 h-8 text-[#A3A6AD]" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Projects</h2>
+        <p className="text-sm text-[#A3A6AD] max-w-md">
+          Your account isn&apos;t part of a team yet. Ask an Admin to invite you.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">

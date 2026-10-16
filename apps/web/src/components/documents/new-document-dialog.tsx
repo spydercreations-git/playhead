@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { ProjectSelect, ProjectOption } from "@/components/ui/project-select";
+import { toast } from "@/lib/toast";
 
 interface NewDocumentDialogProps {
   isOpen: boolean;
@@ -137,7 +138,9 @@ export function NewDocumentDialog({
       }
     } catch (err: any) {
       console.error("Failed to create document", err);
-      setError(err.message || "Failed to create document.");
+      const errMsg = err?.message || "Failed to create document.";
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setIsSubmitting(false);
     }

@@ -7,11 +7,94 @@ function getCsrfToken(): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-export interface ApiError {
-  error?: string;
+export class ApiError extends Error {
+  status: number;
   code?: string;
-  message?: string;
-  status?: number;
+  error?: string;
+
+  constructor(status: number, message: string, code?: string, rawError?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+    this.error = rawError || message;
+    Object.setPrototypeOf(this, ApiError.prototype);
+  }
+}
+
+function formatServerErrorMessage(status: number, data: any): string {
+  let raw = "";
+  if (typeof data === "string") {
+    raw = data.trim();
+  } else if (typeof data === "object" && data !== null) {
+    if (typeof data.message === "string" && data.message.trim() !== "") {
+      raw = data.message.trim();
+    } else if (typeof data.error === "string" && data.error.trim() !== "") {
+      raw = data.error.trim();
+    } else if (typeof data.detail === "string" && data.detail.trim() !== "") {
+      raw = data.detail.trim();
+    }
+  }
+
+  // Remove HTTP error prefixes like "Forbidden: ", "Unauthorized: ", "Error: "
+  raw = raw.replace(/^(forbidden|unauthorized|error|bad request):\s*/i, "").trim();
+
+  // Plain words normalization per spec requirements
+  const lower = raw.toLowerCase();
+  if (
+    lower.includes("only team members can create") ||
+    lower === "no_company_context" ||
+    lower.includes("not a member of this company") ||
+    lower.includes("not part of a team")
+  ) {
+    return "You're not on the team yet";
+  }
+  if (
+    lower.includes("cannot create") ||
+    lower.includes("cannot upload") ||
+    lower.includes("no permission") ||
+    lower.includes("insufficient permissions") ||
+    lower.includes("only admins and managers")
+  ) {
+    return "No permission for this project";
+  }
+  if (
+    lower.includes("relation") ||
+    lower.includes("column") ||
+    lower.includes("database error") ||
+    lower.includes("table") ||
+    lower.includes("migration") ||
+    lower.includes("pgx:") ||
+    lower.includes("pq:")
+  ) {
+    return "Database not up to date, run migrations";
+  }
+
+  if (raw !== "" && raw !== "forbidden" && raw !== "unauthorized" && raw !== "server_error") {
+    return raw;
+  }
+
+  // Status code fallbacks
+  switch (status) {
+    case 401:
+      return "Please sign in to continue";
+    case 403:
+      return "No permission for this project";
+    case 404:
+      return "The requested item was not found";
+    case 409:
+      return "An item with this name already exists";
+    case 413:
+      return "File exceeds upload size limit";
+    case 429:
+      return "Too many requests. Please slow down";
+    case 500:
+    case 502:
+    case 503:
+      return "Database not up to date, run migrations";
+    default:
+      return `Action failed (HTTP ${status})`;
+  }
 }
 
 export async function apiRequest<T = any>(
@@ -49,12 +132,10 @@ export async function apiRequest<T = any>(
   }
 
   if (!response.ok) {
-    const err: ApiError = {
-      status: response.status,
-      error: typeof data === "object" ? data?.error || data?.message : data,
-      code: typeof data === "object" ? data?.code : undefined,
-    };
-    throw err;
+    const rawError = typeof data === "object" ? data?.error || data?.message : data;
+    const message = formatServerErrorMessage(response.status, data);
+    const code = typeof data === "object" ? data?.code : undefined;
+    throw new ApiError(response.status, message, code, rawError);
   }
 
   return data as T;

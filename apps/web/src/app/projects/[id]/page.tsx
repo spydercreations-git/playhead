@@ -319,6 +319,9 @@ export default function ProjectWorkspacePage() {
       setRenamingItemId(null);
       toast.success("Renamed successfully");
     },
+    onError: (err: any) => {
+      toast.error(err?.message || "Failed to rename item");
+    },
   });
 
   const moveMutation = useMutation({
@@ -334,6 +337,9 @@ export default function ProjectWorkspacePage() {
       setTargetMoveFolderId(null);
       toast.success("Item moved");
     },
+    onError: (err: any) => {
+      toast.error(err?.message || "Failed to move item");
+    },
   });
 
   const deleteItemMutation = useMutation({
@@ -344,6 +350,10 @@ export default function ProjectWorkspacePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project-items", projectId] });
       queryClient.invalidateQueries({ queryKey: ["project-tree", projectId] });
+    },
+    onError: (err: any, deletedId: string) => {
+      setHiddenItemIds((prev) => prev.filter((id) => id !== deletedId));
+      toast.error(err?.message || "Failed to delete item");
     },
   });
 
@@ -361,6 +371,12 @@ export default function ProjectWorkspacePage() {
       queryClient.invalidateQueries({ queryKey: ["project-items", projectId] });
       queryClient.invalidateQueries({ queryKey: ["project-tree", projectId] });
       setSelectedItemIds([]);
+    },
+    onError: (err: any, vars) => {
+      if (vars.action === "delete") {
+        setHiddenItemIds((prev) => prev.filter((id) => !vars.ids.includes(id)));
+      }
+      toast.error(err?.message || `Failed to ${vars.action} items`);
     },
   });
 

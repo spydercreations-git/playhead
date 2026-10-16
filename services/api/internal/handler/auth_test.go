@@ -533,7 +533,7 @@ func TestMe_PermissionsAndRoleGranularity(t *testing.T) {
 		RoleID:    editorRole.ID,
 	})
 
-	// 3. Client user (grant only)
+	// 3. Client user (registered client contact)
 	clientEmail := fmt.Sprintf("client-%d@clientcorp.com", ts)
 	clientUser, err := queries.CreateUser(ctx, db.CreateUserParams{
 		Email:        clientEmail,
@@ -544,6 +544,18 @@ func TestMe_PermissionsAndRoleGranularity(t *testing.T) {
 		t.Fatalf("failed to create client: %v", err)
 	}
 	_ = queries.VerifyUserEmail(ctx, clientUser.ID)
+	clientCorp, _ := queries.CreateClient(ctx, db.CreateClientParams{
+		CompanyID: comp.ID,
+		Name:      fmt.Sprintf("Client Corp %d", ts),
+	})
+	_, _ = queries.CreateClientContact(ctx, db.CreateClientContactParams{
+		CompanyID:    comp.ID,
+		ClientID:     clientCorp.ID,
+		Name:         "Client Contact",
+		Email:        clientEmail,
+		DefaultLevel: "viewer",
+		CanDownload:  true,
+	})
 	_, _ = queries.CreateGrant(ctx, db.CreateGrantParams{
 		CompanyID:   comp.ID,
 		TargetType:  "company",

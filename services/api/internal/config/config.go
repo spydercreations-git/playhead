@@ -36,6 +36,7 @@ type Config struct {
 	StorageAlertGB       int
 	CollabInternalSecret string
 	CollabURL            string
+	DevAdminEmails       string
 }
 
 func (c *Config) IsProduction() bool {
@@ -120,11 +121,12 @@ func Load() *Config {
 		ResendAPIKey:         getEnv("RESEND_API_KEY", ""),
 		SMTPHost:             getEnv("SMTP_HOST", "localhost"),
 		SMTPPort:             1025,
-		Environment:          getEnv("ENV", getEnv("ENVIRONMENT", "development")),
+		Environment:          getEnv("ENV", getEnv("ENVIRONMENT", "production")),
 		StoragePricePerGB:    storagePrice,
 		StorageAlertGB:       storageAlert,
 		CollabInternalSecret: getEnv("COLLAB_INTERNAL_SECRET", DefaultDevCollabSecret),
 		CollabURL:            getEnv("COLLAB_URL", "http://localhost:8082"),
+		DevAdminEmails:       getEnv("DEV_ADMIN_EMAILS", "harsh@idyllproductions.com"),
 	}
 }
 

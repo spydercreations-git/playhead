@@ -601,6 +601,38 @@ Google Login is built into the backend and UI, but hidden until configured. When
 
 ---
 
+## Step 0: Auth Resolution, Dev Admin Seeding & Explicit Error Handling
+
+### Status: Completed ✅ (Verified end-to-end in browser and tests)
+
+### What was built:
+1. **Dev Admin Seeding & Multi-Admin Support**:
+   - Added `DEV_ADMIN_EMAILS` configuration in `config.go` (comma-separated, default `"harsh@idyllproductions.com"`).
+   - In `dev_seed.go`: looked up admin role strictly by `name = 'Admin'` (removed `OR is_system = true`).
+   - Ensured all configured dev admin emails are verified Admins of Idyll Productions with full permissions.
+2. **Security Hardening**:
+   - Removed permanent `"dev-harsh-token"` session insertion and purged existing token from database.
+   - Changed default `Environment` in `config.go` to `"production"` when unset.
+   - Added `POST /api/v1/auth/dev-login`: strictly enabled only when `ENV=development` and request originates from localhost (`127.0.0.1`, `::1`, or `localhost`).
+3. **Explicit Client Contact Resolution (`/me`)**:
+   - Updated `/api/v1/auth/me` so signed-in users with no company membership never become clients silently.
+   - `is_client` is strictly true only if the user's email is explicitly registered in `client_contacts`.
+   - If an account has no company membership and is not a client contact, returns `active_company: null`, `active_role: ""`, `is_client: false`.
+   - Frontend pages (`/`, `/projects`, `/documents`, `/spreadsheets`) display: *"Your account isn't part of a team yet. Ask an Admin to invite you."*
+4. **Plain-English Real Error Display (Toasts)**:
+   - Enhanced `apps/web/src/lib/api.ts` `ApiError` class and `formatServerErrorMessage` helper.
+   - Extracts plain-English reasons (e.g. *"You're not on the team yet"*, *"No permission for this project"*, *"Database not up to date, run migrations"*).
+   - Added `onError` toast handlers to folder creation, renaming, moving, single delete, and batch actions in `apps/web/src/app/projects/[id]/page.tsx`.
+   - Added error toasts to document creation dialog and spreadsheet creation.
+5. **Startup Migration Verification**:
+   - Added `checkMigrations(ctx, pool)` in `cmd/server/main.go` checking `goose_db_version` against migration files on startup.
+   - Prints clear terminal warning `⚠️  Database is behind: run make migrate` if migrations are missing.
+6. **Dev Account Badge & Cache Invalidation**:
+   - Added dev-only session badge in sidebar account popup showing email and role.
+   - Implemented `clearAuthCache(queryClient)` invoked on code login, password login, and sign out.
+
+---
+
 ## Upcoming Milestones (Version 2: P7)
 
 - **Milestone P7: Search, notifications, polish**
@@ -608,6 +640,7 @@ Google Login is built into the backend and UI, but hidden until configured. When
   - In-app notification bell and email notifications.
   - Client Notes. Performance validation against Section 7 benchmarks. Security audit.
   - **Internal launch for the Idyll team and clients after P7.**
+
 
 
 

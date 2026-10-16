@@ -13,9 +13,25 @@ import {
   AudioFileIcon,
   FileTypeBadge,
 } from "@/components/icons";
+import { useAuth } from "@/lib/use-auth";
 
 export default function DashboardPage() {
+  const { user, company, isClient, isLoading: authLoading } = useAuth();
   const [selectedIds, setSelectedIds] = useState<number[]>([0]);
+
+  if (!authLoading && user && !company && !isClient) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div className="w-16 h-16 rounded-full bg-[#2A2B30] border border-[#2E2F34] flex items-center justify-center mb-4 text-[#A3A6AD]">
+          <FolderIcon size={32} />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Welcome to Playhead</h2>
+        <p className="text-sm text-[#A3A6AD] max-w-md">
+          Your account isn&apos;t part of a team yet. Ask an Admin to invite you.
+        </p>
+      </div>
+    );
+  }
 
   // Top 4 Category Cards matching Figma (Videos, Images, Documents, Music)
   const categoryCards = [

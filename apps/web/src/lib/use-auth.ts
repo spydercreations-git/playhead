@@ -43,9 +43,18 @@ export interface MeResponse {
   companies: any[];
 }
 
+export const AUTH_QUERY_KEY = ["auth-me"];
+
+export function clearAuthCache(queryClient: any) {
+  if (queryClient && typeof queryClient.removeQueries === "function") {
+    queryClient.removeQueries({ queryKey: AUTH_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+  }
+}
+
 export function useAuth() {
   const { data, isLoading, error, refetch } = useQuery<MeResponse>({
-    queryKey: ["auth-me"],
+    queryKey: AUTH_QUERY_KEY,
     queryFn: () => apiRequest<MeResponse>("/me"),
     retry: 1,
     staleTime: 5 * 60 * 1000,

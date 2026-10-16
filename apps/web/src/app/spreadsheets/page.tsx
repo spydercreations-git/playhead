@@ -50,7 +50,7 @@ interface ClientChip {
 export default function SpreadsheetsPage() {
   const router = useRouter();
   const shouldReduceMotion = useReducedMotion();
-  const { user, isClient, isLoading: authLoading } = useAuth();
+  const { user, company, isClient, isLoading: authLoading } = useAuth();
 
   const [spreadsheets, setSpreadsheets] = useState<SpreadsheetItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -238,6 +238,20 @@ export default function SpreadsheetsPage() {
       setImporting(false);
     }
   };
+
+  if (!authLoading && user && !company && !isClient) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div className="w-16 h-16 rounded-full bg-[#2A2B30] border border-[#2E2F34] flex items-center justify-center mb-4 text-[#A3A6AD]">
+          <FileSpreadsheet className="w-8 h-8 text-[#A3A6AD]" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Spreadsheets</h2>
+        <p className="text-sm text-[#A3A6AD] max-w-md">
+          Your account isn&apos;t part of a team yet. Ask an Admin to invite you.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-8 text-white font-sans">

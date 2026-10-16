@@ -13,7 +13,8 @@ import {
   SettingsIcon,
   SearchIcon,
 } from "@/components/icons";
-import { useAuth } from "@/lib/use-auth";
+import { useAuth, clearAuthCache } from "@/lib/use-auth";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Star,
   Building2,
@@ -49,6 +50,7 @@ function formatBytes(bytes: number): string {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user, company, role, roleName, isClient, hasPermission } = useAuth();
 
   const [newMenuOpen, setNewMenuOpen] = useState(false);
@@ -62,6 +64,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     try {
       await apiRequest("/auth/logout", { method: "POST" });
     } catch {}
+    clearAuthCache(queryClient);
     // Clear y-indexeddb documents data
     try {
       if (typeof window !== "undefined" && window.indexedDB) {
@@ -412,6 +415,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 onClick={() => setProfileMenuOpen(false)}
               />
               <div className="absolute bottom-[72px] left-4 right-4 z-40 rounded-[10px] border border-[#2E2F34] bg-[#212121] py-1 shadow-overlay">
+                {process.env.NODE_ENV === "development" && (
+                  <div className="mx-2 mb-1 p-2 rounded bg-[#2A2B30] border border-[#2E2F34] text-xs">
+                    <div className="flex items-center justify-between text-xs text-[#A3A6AD] font-semibold mb-1">
+                      <span>Dev account</span>
+                      <span className="text-[#3FCF8E] bg-[#3FCF8E]/10 px-1 py-0.5 rounded font-mono">dev</span>
+                    </div>
+                    <div className="text-white font-medium truncate">{user?.email || "harsh@idyllproductions.com"}</div>
+                    <div className="text-[#A3A6AD] text-xs mt-0.5">Role: <span className="text-[#4876F3] font-medium">{role || (isClient ? "Client" : "None")}</span></div>
+                  </div>
+                )}
                 <Link
                   href="/settings"
                   onClick={() => setProfileMenuOpen(false)}

@@ -3,9 +3,9 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/use-auth";
+import { useAuth, clearAuthCache } from "@/lib/use-auth";
 import { apiRequest } from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Home,
   Search,
@@ -60,10 +60,13 @@ export function ProjectIconRail({
     return "PH";
   }, [user]);
 
+  const queryClient = useQueryClient();
+
   const handleLogout = async () => {
     try {
       await apiRequest("/auth/logout", { method: "POST" });
     } catch {}
+    clearAuthCache(queryClient);
     router.push("/login");
   };
 

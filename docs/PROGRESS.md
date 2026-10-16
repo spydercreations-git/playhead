@@ -648,6 +648,51 @@ Google Login is built into the backend and UI, but hidden until configured. When
 
 ---
 
+## Step 1 & Pages 1-3: Real Data, Authentication, My Drive & Home
+
+### Status: Completed ✅ (Verified end-to-end with real backend, Go tests, and Playwright smoke tests)
+
+### What was built:
+1. **Zero Mockup Data & Design System Enforcement**:
+   - Eliminated all hardcoded mockup names (Everygen, Jada, Bri, Truvani, Pizza Hut) and sample statistics ("38.5 GB", "480 Files", fake percentages) across all pages and cards.
+   - Removed `/cards-preview` dev route.
+   - Removed hardcoded "6" badge in sidebar reviews count; now reflects real review items count from `/api/v1/reviews` and hides when count is 0.
+   - Updated `project-card.tsx` and `document-card.tsx` to display real client names, or fallback to "My Drive" (for drive items) or nothing.
+   - Upgraded `scripts/check-design-tokens.js` with strict mockup sample data scan: fails CI/lint if any mockup sample names or numbers appear.
+   - Documented all 131 allowed hex color exceptions with reasons in `docs/HEX_COLOR_EXCEPTIONS.md`.
+2. **Strict Storage Quota Gate**:
+   - Only the `internal` plan has unlimited storage.
+   - For all other plans, `storage_limit_bytes = 0` (or `storage_limit_bytes <= storage_used_bytes`) strictly refuses uploads with `quota_exceeded`.
+   - Verified with unit tests in `storage_uploads_test.go` and `documents_test.go`.
+3. **Page 1: Login (P01, P02)**:
+   - Full fidelity matching `Playhead UI/Pages/P01 Login.svg` and `P02 Check email code.svg`.
+   - Google sign-in click handled gracefully.
+   - Email code authentication fully working end-to-end with Mailpit API.
+   - Unknown email refusal with friendly invite-only message.
+   - Automated Playwright smoke test: `tests/page1-login.test.ts`.
+4. **Page 2: My Drive (P06, P07)**:
+   - Backend database migration `00012_my_drive_and_recent_items.sql` with `drive_owner_id`, `is_default_folder`, `category` on `items`, and table `recent_items`.
+   - Auto-seeding of 4 default folders: Videos, Images, Documents, Music.
+   - Strict owner-only access: non-owners, other members, Admins, Viewers, and share link visitors are refused with 403 Forbidden.
+   - Default folders protected: cannot be renamed, deleted, or moved.
+   - Custom folder lifecycle: create, rename, trash, restore, move to project, deep copy to project (respecting storage quota).
+   - Breadcrumb navigation (`My Drive > Folder`), Grid and Table list views.
+   - Automated Go tests (`services/api/internal/handler/drive_test.go`) and Playwright smoke test: `tests/page2-mydrive.test.ts`.
+   - Captured screenshots: `screenshots/P06_My_Drive_Grid.png` and `screenshots/P07_My_Drive_Folder_List.png`.
+5. **Page 3: Home (P03, P04, P05)**:
+   - 100% real data from My Drive default folders, `recent_items`, reviews count, and projects.
+   - Uploading directly from Home drops files into private My Drive, auto-categorizing into Videos, Images, Documents, or Music based on MIME type.
+   - Live upload progress and feedback toast banner.
+   - `recent_items` records and displays recently viewed/uploaded files under "Recent folders" / "Recent items".
+   - P05 first-time empty state when user has zero projects and zero files:
+     - *"Welcome to Playhead, {user.first_name}"*
+     - *"Your private My Drive is ready. Upload something or open a project."*
+     - *"You haven't been added to a project yet. When an Admin adds you, it shows up here."*
+   - Automated Playwright smoke test: `tests/page3-home.test.ts`.
+   - Captured screenshots: `screenshots/P03_Home_Real_Data.png`, `screenshots/P04_Home_New_Menu.png`, `screenshots/P05_Home_First_Time_Uploaded.png`.
+
+---
+
 ## Upcoming Milestones (Version 2: P7)
 
 - **Milestone P7: Search, notifications, polish**

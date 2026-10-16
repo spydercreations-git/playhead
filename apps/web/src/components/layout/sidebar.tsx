@@ -127,7 +127,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Sidebar: exactly 232px width from Foundations & P pages */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[232px] flex-col border-r border-[#2E2F34] bg-[#212121] select-none transition-transform duration-200 ease-in-out md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-[232px] h-full flex-col border-r border-[#2E2F34] bg-[#212121] select-none transition-transform duration-200 ease-in-out md:static md:translate-x-0 shrink-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

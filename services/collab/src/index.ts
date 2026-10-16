@@ -32,6 +32,7 @@ import {
   buildYDocFromJson,
   replaceContentInLiveDoc,
   convertDocxToProseMirror,
+  prosemirrorJsonToHtml,
 } from "./prosemirror-converter.js";
 import {
   buildYDocFromSheets,
@@ -41,7 +42,9 @@ import {
   insertRowInLiveDoc,
   setColumnMetaInLiveDoc,
   parseExcelOrCsvBuffer,
+  spreadsheetDataToHtml,
 } from "./spreadsheet-converter.js";
+import { generatePdf, buildPrintableHtml } from "./pdf-generator.js";
 
 // Helper functions for spreadsheet names
 function isSpreadsheet(name: string): boolean {
@@ -821,6 +824,85 @@ app.post("/internal/sheet/import-excel", authCollabInternal, async (req: Request
   } catch (err: any) {
     console.error(`Failed to import Excel/CSV for spreadsheet ${spreadsheet_id}:`, err);
     res.status(500).json({ error: err.message || "Failed to import Excel/CSV" });
+  }
+});
+
+/**
+ * Internal Endpoint: POST /internal/preview-pdf-html
+ * Returns printable sanitized HTML for the live preview dialog in the UI.
+ */
+app.post("/internal/preview-pdf-html", authCollabInternal, async (req: Request, res: Response) => {
+  try {
+    let { html, content_json, sheets, title, background, theme_color, size, margins, orientation, fit_to_width, include_team_notes } = req.body;
+
+    if (!html) {
+      if (content_json) {
+        html = prosemirrorJsonToHtml(content_json);
+      } else if (sheets) {
+        html = spreadsheetDataToHtml(sheets);
+      } else {
+        html = "<p></p>";
+      }
+    }
+
+    const printableHtml = buildPrintableHtml({
+      html,
+      title,
+      background,
+      theme_color,
+      size,
+      margins,
+      orientation,
+      fit_to_width,
+      include_team_notes,
+    });
+
+    res.json({ html: printableHtml });
+  } catch (err: any) {
+    console.error("Failed to build PDF preview HTML:", err);
+    res.status(500).json({ error: err?.message || "Failed to build preview" });
+  }
+});
+
+/**
+ * Internal Endpoint: POST /internal/export-pdf
+ * Generates a PDF via headless Chromium with page breaks, Inter font, page numbers, and custom themes.
+ */
+app.post("/internal/export-pdf", authCollabInternal, async (req: Request, res: Response) => {
+  try {
+    let { html, content_json, sheets, title, background, theme_color, size, margins, orientation, fit_to_width, include_team_notes } = req.body;
+
+    if (!html) {
+      if (content_json) {
+        html = prosemirrorJsonToHtml(content_json);
+      } else if (sheets) {
+        html = spreadsheetDataToHtml(sheets);
+      } else {
+        res.status(400).json({ error: "Missing document content or html" });
+        return;
+      }
+    }
+
+    const pdfBuffer = await generatePdf({
+      html,
+      title,
+      background,
+      theme_color,
+      size,
+      margins,
+      orientation,
+      fit_to_width,
+      include_team_notes,
+    });
+
+    const safeFilename = (title || "export").replace(/[^a-zA-Z0-9_\-\.]/g, "_");
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeFilename}.pdf"`);
+    res.setHeader("Content-Length", pdfBuffer.length);
+    res.send(pdfBuffer);
+  } catch (err: any) {
+    console.error("Failed to export PDF:", err);
+    res.status(500).json({ error: err?.message || "Failed to generate PDF" });
   }
 });
 

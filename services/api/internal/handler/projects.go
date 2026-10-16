@@ -289,12 +289,23 @@ func (h *ProjectHandler) Get(w http.ResponseWriter, r *http.Request) {
 		ParentID:  pgtype.UUID{Valid: false},
 	})
 
+	var visibleFolders []db.Item
+	for _, f := range folders {
+		fAccess, fErr := authz.AccessFolder(r.Context(), h.queries, person, target, uuid.UUID(f.ID.Bytes))
+		if fErr == nil && fAccess.CanView() {
+			visibleFolders = append(visibleFolders, f)
+		}
+	}
+	if visibleFolders == nil {
+		visibleFolders = []db.Item{}
+	}
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"project":      project,
 		"access_level": access.Level,
 		"can_download": access.CanDownload,
 		"can_manage":   authz.CanManagePeople(person, access),
-		"folders":      folders,
+		"folders":      visibleFolders,
 	})
 }
 

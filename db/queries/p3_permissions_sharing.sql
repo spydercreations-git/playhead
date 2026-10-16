@@ -220,4 +220,15 @@ SELECT EXISTS (
     WHERE sli.share_link_id = $1
 ) as in_scope;
 
+-- name: UserHasAnyItemGrantInProject :one
+SELECT EXISTS (
+    SELECT 1 FROM grants g
+    JOIN items i ON i.id = g.target_id AND i.deleted_at IS NULL
+    WHERE i.project_id = @project_id
+      AND (g.target_type = 'item' OR g.target_type = 'folder')
+      AND LOWER(g.email) = @email
+      AND g.level != 'none' AND g.level != ''
+) AS has_grant;
+
+
 

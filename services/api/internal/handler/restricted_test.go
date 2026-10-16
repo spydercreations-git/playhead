@@ -296,3 +296,353 @@ func TestRestrictedProjectsAndFolders(t *testing.T) {
 		t.Fatalf("expected 200 for editor after explicit grant on restricted folder, got %d: %s", recEditorFolderGet2.Code, recEditorFolderGet2.Body.String())
 	}
 }
+
+// TestRestrictedProjectFolderAndFileAccessOnly verifies that a person given access to only one folder
+// or file inside a restricted project can open exactly that folder or file (and what is inside), nothing else.
+func TestRestrictedProjectFolderAndFileAccessOnly(t *testing.T) {
+	queries, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	projectH := NewProjectHandler(queries)
+	itemsH := NewItemsHandler(queries, nil)
+
+	comp, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
+		Name:              "Restricted Gap Studio",
+		Slug:              fmt.Sprintf("restr-gap-%d", time.Now().UnixNano()),
+		Plan:              plans.PlanInternal,
+		Status:            "active",
+		StorageLimitBytes: 0,
+		Seats:             10,
+	})
+	if err != nil {
+		t.Fatalf("failed to create company: %v", err)
+	}
+
+	adminUser, err := queries.CreateUser(ctx, db.CreateUserParams{
+		Email: fmt.Sprintf("admin-gap-%d@studio.com", time.Now().UnixNano()),
+		Name:  "Admin Gap User",
+	})
+	if err != nil {
+		t.Fatalf("failed to create admin: %v", err)
+	}
+	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+		CompanyID: comp.ID,
+		UserID:    adminUser.ID,
+		Role:      authz.RoleAdmin,
+	})
+
+	contractor, err := queries.CreateUser(ctx, db.CreateUserParams{
+		Email: fmt.Sprintf("contractor-%d@studio.com", time.Now().UnixNano()),
+		Name:  "Contractor Gap User",
+	})
+	if err != nil {
+		t.Fatalf("failed to create contractor: %v", err)
+	}
+	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+		CompanyID: comp.ID,
+		UserID:    contractor.ID,
+		Role:      authz.RoleMember,
+	})
+
+	client, err := queries.CreateClient(ctx, db.CreateClientParams{
+		CompanyID: comp.ID,
+		Name:      "Gap Client",
+		CreatedBy: adminUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	// Admin creates a restricted project
+	proj, err := queries.CreateProject(ctx, db.CreateProjectParams{
+		CompanyID: comp.ID,
+		ClientID:  client.ID,
+		Name:      "Restricted Secret Project",
+		CreatedBy: adminUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create project: %v", err)
+	}
+	// Mark project restricted
+	_, _ = queries.UpdateProject(ctx, db.UpdateProjectParams{
+		CompanyID:    comp.ID,
+		ID:           proj.ID,
+		IsRestricted: pgtype.Bool{Bool: true, Valid: true},
+	})
+	projIDStr := pgUUIDToString(proj.ID)
+
+	// Admin creates folder A (which will be granted to contractor)
+	folderA, err := queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+		CompanyID: comp.ID,
+		ProjectID: proj.ID,
+		Kind:      "folder",
+		Name:      "Folder A (Granted)",
+		Position:  pgtype.Numeric{Valid: true, Int: big.NewInt(0)},
+		CreatedBy: adminUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create folder A: %v", err)
+	}
+
+	// Admin creates a file inside folder A
+	fileInA, err := queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+		CompanyID: comp.ID,
+		ProjectID: proj.ID,
+		ParentID:  folderA.ID,
+		Kind:      "video",
+		Name:      "Video_in_A.mp4",
+		Position:  pgtype.Numeric{Valid: true, Int: big.NewInt(0)},
+		CreatedBy: adminUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create file in folder A: %v", err)
+	}
+
+	// Admin creates folder B (sibling folder - NOT granted to contractor)
+	folderB, err := queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+		CompanyID: comp.ID,
+		ProjectID: proj.ID,
+		Kind:      "folder",
+		Name:      "Folder B (Secret Sibling)",
+		Position:  pgtype.Numeric{Valid: true, Int: big.NewInt(1)},
+		CreatedBy: adminUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create folder B: %v", err)
+	}
+
+	// Admin creates file 1 in folder B
+	file1InB, err := queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+		CompanyID: comp.ID,
+		ProjectID: proj.ID,
+		ParentID:  folderB.ID,
+		Kind:      "video",
+		Name:      "Video_in_B.mp4",
+		Position:  pgtype.Numeric{Valid: true, Int: big.NewInt(0)},
+		CreatedBy: adminUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create file 1 in folder B: %v", err)
+	}
+
+	// Admin creates file 2 in folder B (will be individually granted to contractor)
+	file2InB, err := queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+		CompanyID: comp.ID,
+		ProjectID: proj.ID,
+		ParentID:  folderB.ID,
+		Kind:      "video",
+		Name:      "Standalone_In_B.mp4",
+		Position:  pgtype.Numeric{Valid: true, Int: big.NewInt(1)},
+		CreatedBy: adminUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create file 2 in folder B: %v", err)
+	}
+
+	// Admin creates root file (in project root)
+	_, err = queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+		CompanyID: comp.ID,
+		ProjectID: proj.ID,
+		Kind:      "video",
+		Name:      "Root_File.mp4",
+		Position:  pgtype.Numeric{Valid: true, Int: big.NewInt(2)},
+		CreatedBy: adminUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create root file: %v", err)
+	}
+
+	r := chi.NewRouter()
+	r.Get("/api/v1/projects", projectH.List)
+	r.Get("/api/v1/projects/{id}", projectH.Get)
+	r.Get("/api/v1/projects/{id}/items", itemsH.ListItems)
+
+	// Step 1: Before any grants, contractor cannot view project at all (404)
+	reqContractorGet := httptest.NewRequest("GET", "/api/v1/projects/"+projIDStr, nil)
+	reqContractorGet = reqContractorGet.WithContext(contextWithAuth(reqContractorGet.Context(), contractor, comp.ID, authz.RoleMember))
+	recContractorGet := httptest.NewRecorder()
+	r.ServeHTTP(recContractorGet, reqContractorGet)
+	if recContractorGet.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for contractor with no grants, got %d", recContractorGet.Code)
+	}
+
+	// Step 2: Grant contractor access to ONLY folder A (no grant on project itself)
+	_, err = queries.CreateGrant(ctx, db.CreateGrantParams{
+		CompanyID:   comp.ID,
+		TargetType:  "item",
+		TargetID:    folderA.ID,
+		Email:       authz.NormalizeEmail(contractor.Email),
+		Level:       authz.LevelViewer,
+		CanDownload: true,
+		GrantedBy:   adminUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to grant folder A to contractor: %v", err)
+	}
+
+	// Step 3: Contractor can now open the project container (GET /api/v1/projects/:id returns 200)
+	reqContractorGet2 := httptest.NewRequest("GET", "/api/v1/projects/"+projIDStr, nil)
+	reqContractorGet2 = reqContractorGet2.WithContext(contextWithAuth(reqContractorGet2.Context(), contractor, comp.ID, authz.RoleMember))
+	recContractorGet2 := httptest.NewRecorder()
+	r.ServeHTTP(recContractorGet2, reqContractorGet2)
+	if recContractorGet2.Code != http.StatusOK {
+		t.Fatalf("expected 200 for contractor opening project with folder grant, got %d: %s", recContractorGet2.Code, recContractorGet2.Body.String())
+	}
+
+	// Step 4: Contractor CANNOT see root items (GET /api/v1/projects/:id/items returns 404)
+	reqContractorRoot := httptest.NewRequest("GET", "/api/v1/projects/"+projIDStr+"/items", nil)
+	reqContractorRoot = reqContractorRoot.WithContext(contextWithAuth(reqContractorRoot.Context(), contractor, comp.ID, authz.RoleMember))
+	recContractorRoot := httptest.NewRecorder()
+	r.ServeHTTP(recContractorRoot, reqContractorRoot)
+	if recContractorRoot.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for contractor accessing root of restricted project, got %d: %s", recContractorRoot.Code, recContractorRoot.Body.String())
+	}
+
+	// Step 5: Contractor CAN access Folder A and see its contents
+	reqContractorFolderA := httptest.NewRequest("GET", "/api/v1/projects/"+projIDStr+"/items?parent_id="+pgUUIDToString(folderA.ID), nil)
+	reqContractorFolderA = reqContractorFolderA.WithContext(contextWithAuth(reqContractorFolderA.Context(), contractor, comp.ID, authz.RoleMember))
+	recContractorFolderA := httptest.NewRecorder()
+	r.ServeHTTP(recContractorFolderA, reqContractorFolderA)
+	if recContractorFolderA.Code != http.StatusOK {
+		t.Fatalf("expected 200 for contractor accessing granted Folder A, got %d: %s", recContractorFolderA.Code, recContractorFolderA.Body.String())
+	}
+	var folderAResp struct {
+		Items []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"items"`
+	}
+	_ = json.NewDecoder(recContractorFolderA.Body).Decode(&folderAResp)
+	if len(folderAResp.Items) != 1 || folderAResp.Items[0].ID != pgUUIDToString(fileInA.ID) {
+		t.Fatalf("expected fileInA in Folder A items, got: %+v", folderAResp.Items)
+	}
+
+	// Step 6: Contractor CANNOT access sibling Folder B (returns 404)
+	reqContractorFolderB := httptest.NewRequest("GET", "/api/v1/projects/"+projIDStr+"/items?parent_id="+pgUUIDToString(folderB.ID), nil)
+	reqContractorFolderB = reqContractorFolderB.WithContext(contextWithAuth(reqContractorFolderB.Context(), contractor, comp.ID, authz.RoleMember))
+	recContractorFolderB := httptest.NewRecorder()
+	r.ServeHTTP(recContractorFolderB, reqContractorFolderB)
+	if recContractorFolderB.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for contractor accessing ungranted Folder B, got %d", recContractorFolderB.Code)
+	}
+
+	// Step 7: Contractor CAN access file inside Folder A via authz.AccessItem
+	contractorPerson := authz.Person{
+		UserID:      uuid.UUID(contractor.ID.Bytes),
+		Email:       contractor.Email,
+		Role:        authz.RoleMember,
+		CompanyID:   uuid.UUID(comp.ID.Bytes),
+		Permissions: []string{},
+	}
+	pt := authz.ProjectTarget{
+		ID:           uuid.UUID(proj.ID.Bytes),
+		CompanyID:    uuid.UUID(comp.ID.Bytes),
+		ClientID:     uuid.UUID(client.ID.Bytes),
+		IsRestricted: true,
+	}
+	accessFileInA, err := authz.AccessItem(ctx, queries, contractorPerson, pt, authz.ItemTarget{
+		ID:        uuid.UUID(fileInA.ID.Bytes),
+		ProjectID: uuid.UUID(proj.ID.Bytes),
+		CompanyID: uuid.UUID(comp.ID.Bytes),
+	})
+	if err != nil || !accessFileInA.CanView() {
+		t.Fatalf("contractor should have access to file inside granted folder A, got level=%s err=%v", accessFileInA.Level, err)
+	}
+
+	// Step 8: Contractor CANNOT access file 1 inside Folder B
+	accessFile1InB, err := authz.AccessItem(ctx, queries, contractorPerson, pt, authz.ItemTarget{
+		ID:        uuid.UUID(file1InB.ID.Bytes),
+		ProjectID: uuid.UUID(proj.ID.Bytes),
+		CompanyID: uuid.UUID(comp.ID.Bytes),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if accessFile1InB.CanView() {
+		t.Fatalf("contractor should NOT have access to ungranted file1 in Folder B")
+	}
+
+	// Step 9: Now grant contractor access to ONLY standalone file 2 in Folder B
+	_, err = queries.CreateGrant(ctx, db.CreateGrantParams{
+		CompanyID:   comp.ID,
+		TargetType:  "item",
+		TargetID:    file2InB.ID,
+		Email:       authz.NormalizeEmail(contractor.Email),
+		Level:       authz.LevelViewer,
+		CanDownload: true,
+		GrantedBy:   adminUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to grant standalone file to contractor: %v", err)
+	}
+
+	// Step 10: Contractor CAN access file 2 in Folder B
+	accessFile2InB, err := authz.AccessItem(ctx, queries, contractorPerson, pt, authz.ItemTarget{
+		ID:        uuid.UUID(file2InB.ID.Bytes),
+		ProjectID: uuid.UUID(proj.ID.Bytes),
+		CompanyID: uuid.UUID(comp.ID.Bytes),
+	})
+	if err != nil || !accessFile2InB.CanView() {
+		t.Fatalf("contractor should have access to granted file2 in Folder B, got level=%s err=%v", accessFile2InB.Level, err)
+	}
+
+	// Step 11: Contractor STILL cannot access Folder B itself or file 1 in Folder B
+	folderBAccess, err := authz.AccessFolder(ctx, queries, contractorPerson, pt, uuid.UUID(folderB.ID.Bytes))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if folderBAccess.CanView() {
+		t.Fatalf("contractor granted only a single file should NOT gain access to the containing folder B")
+	}
+}
+
+// TestAdminCheckUsesPermissionsNotRoleName verifies that Admin status is determined by permissions
+// (specifically admin.settings) rather than hardcoded role name checks.
+func TestAdminCheckUsesPermissionsNotRoleName(t *testing.T) {
+	// 1. Person with custom role name but admin.settings permission is recognized as Admin
+	customRolePerson := authz.Person{
+		UserID:      uuid.New(),
+		Email:       "custom-admin@studio.com",
+		Role:        "StudioDirector", // Not "admin" or "owner"
+		Permissions: []string{authz.PermAdminSettings},
+	}
+	if !customRolePerson.IsAdmin() {
+		t.Fatalf("expected customRolePerson with admin.settings permission to be recognized as Admin")
+	}
+
+	// 2. Person with non-admin role and non-admin permissions is NOT Admin
+	editorPerson := authz.Person{
+		UserID:      uuid.New(),
+		Email:       "editor@studio.com",
+		Role:        "Editor",
+		Permissions: []string{authz.PermProjectsViewAll, authz.PermClientsViewAll},
+	}
+	if editorPerson.IsAdmin() {
+		t.Fatalf("expected editorPerson without admin.settings to NOT be Admin")
+	}
+
+	// 3. Admin access on restricted project works for person with admin.settings permission
+	pt := authz.ProjectTarget{
+		ID:           uuid.New(),
+		CompanyID:    uuid.New(),
+		IsRestricted: true,
+	}
+	res, err := authz.Access(context.Background(), nil, customRolePerson, pt)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Level != authz.LevelFull || !res.CanDownload {
+		t.Fatalf("expected Full access and CanDownload for custom role with admin.settings, got %+v", res)
+	}
+
+	// 4. Editor without admin.settings gets LevelNone on restricted project without grant
+	resEditor, err := authz.Access(context.Background(), nil, editorPerson, pt)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resEditor.CanView() {
+		t.Fatalf("expected LevelNone for editor without admin.settings on restricted project, got %+v", resEditor)
+	}
+}
+

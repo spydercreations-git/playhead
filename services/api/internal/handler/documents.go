@@ -1899,12 +1899,320 @@ func (h *DocumentsHandler) Export(w http.ResponseWriter, r *http.Request) {
 	case "json":
 		w.Header().Set("Content-Type", "application/json")
 		renderJSON(w, http.StatusOK, contentJSON)
+	case "pdf":
+		h.ExportPdf(w, r)
 	default:
 		renderJSON(w, http.StatusOK, map[string]interface{}{
 			"title":        doc.Title,
 			"content_json": contentJSON,
 		})
 	}
+}
+
+type PdfExportRequest struct {
+	Background       string `json:"background"`
+	ThemeColor       string `json:"theme_color"`
+	Size             string `json:"size"`
+	Margins          string `json:"margins"`
+	Orientation      string `json:"orientation"`
+	FitToWidth       *bool  `json:"fit_to_width"`
+	IncludeTeamNotes *bool  `json:"include_team_notes"`
+	Html             string `json:"html"`
+}
+
+func (h *DocumentsHandler) callCollabExportPdf(ctx context.Context, payload map[string]interface{}) ([]byte, error) {
+	collabURL := h.cfg.CollabURL
+	if collabURL == "" {
+		collabURL = "http://localhost:8082"
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", collabURL+"/internal/export-pdf", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Collab-Secret", h.cfg.CollabInternalSecret)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("collab export-pdf error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
+func (h *DocumentsHandler) callCollabPreviewPdfHtml(ctx context.Context, payload map[string]interface{}) (string, error) {
+	collabURL := h.cfg.CollabURL
+	if collabURL == "" {
+		collabURL = "http://localhost:8082"
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", collabURL+"/internal/preview-pdf-html", bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Collab-Secret", h.cfg.CollabInternalSecret)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("collab preview-pdf-html error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var res struct {
+		Html string `json:"html"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return "", err
+	}
+	return res.Html, nil
+}
+
+// ExportPdf handles server-side PDF generation for documents with live custom background and theme colors.
+func (h *DocumentsHandler) ExportPdf(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	caller := getCaller(ctx)
+	if caller == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	docUUID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Invalid document ID", http.StatusBadRequest)
+		return
+	}
+
+	doc, err := h.q.GetDocument(ctx, db.GetDocumentParams{
+		ID:        pgtype.UUID{Bytes: docUUID, Valid: true},
+		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+	})
+	if err != nil {
+		http.Error(w, "Document not found", http.StatusNotFound)
+		return
+	}
+
+	projTarget := authz.ProjectTarget{
+		ID:        doc.ProjectID.Bytes,
+		CompanyID: caller.CompanyID,
+	}
+	itemTarget := authz.ItemTarget{
+		ID:        docUUID,
+		ProjectID: doc.ProjectID.Bytes,
+		CompanyID: caller.CompanyID,
+		CreatedBy: doc.CreatedBy.Bytes,
+	}
+
+	access, err := authz.AccessItem(ctx, h.q, *caller, projTarget, itemTarget)
+	if err != nil || !access.CanView() {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	if !access.CanDownload {
+		http.Error(w, "Forbidden: Download not permitted", http.StatusForbidden)
+		return
+	}
+
+	membership, _ := h.q.GetMembership(ctx, db.GetMembershipParams{
+		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+		UserID:    pgtype.UUID{Bytes: caller.UserID, Valid: true},
+	})
+	isTeamMember := (membership.Role != "")
+
+	var req PdfExportRequest
+	if r.Method == http.MethodPost && r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	} else {
+		req.Background = r.URL.Query().Get("background")
+		req.ThemeColor = r.URL.Query().Get("theme_color")
+		req.Size = r.URL.Query().Get("size")
+		req.Margins = r.URL.Query().Get("margins")
+		if inc := r.URL.Query().Get("include_team_notes"); inc == "true" || inc == "1" {
+			tVal := true
+			req.IncludeTeamNotes = &tVal
+		}
+	}
+
+	if req.Background == "" {
+		req.Background = "#ffffff"
+	}
+	if req.ThemeColor == "" {
+		req.ThemeColor = "#3B67E0"
+	}
+	if req.Size == "" {
+		req.Size = "A4"
+	}
+	if req.Margins == "" {
+		req.Margins = "normal"
+	}
+
+	// Strictly enforce: clients NEVER get team notes
+	includeTeamNotes := false
+	if isTeamMember && req.IncludeTeamNotes != nil && *req.IncludeTeamNotes {
+		includeTeamNotes = true
+	}
+
+	var contentJSON map[string]interface{}
+	if len(doc.ContentJson) > 0 {
+		_ = json.Unmarshal(doc.ContentJson, &contentJSON)
+	}
+	if contentJSON == nil {
+		contentJSON = map[string]interface{}{"type": "doc", "content": []interface{}{}}
+	}
+
+	if !includeTeamNotes {
+		contentJSON = StripTeamNotes(contentJSON)
+	}
+
+	collabPayload := map[string]interface{}{
+		"title":              doc.Title,
+		"content_json":       contentJSON,
+		"html":               req.Html,
+		"background":         req.Background,
+		"theme_color":        req.ThemeColor,
+		"size":               req.Size,
+		"margins":            req.Margins,
+		"include_team_notes": includeTeamNotes,
+	}
+
+	pdfBytes, err := h.callCollabExportPdf(ctx, collabPayload)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to generate PDF: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	safeName := sanitizeFilename(doc.Title)
+	if safeName == "" {
+		safeName = "document"
+	}
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.pdf\"", safeName))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
+	w.Write(pdfBytes)
+}
+
+// PreviewPdfHtml provides live printable HTML for client-side live preview in the dialog.
+func (h *DocumentsHandler) PreviewPdfHtml(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	caller := getCaller(ctx)
+	if caller == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	docUUID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Invalid document ID", http.StatusBadRequest)
+		return
+	}
+
+	doc, err := h.q.GetDocument(ctx, db.GetDocumentParams{
+		ID:        pgtype.UUID{Bytes: docUUID, Valid: true},
+		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+	})
+	if err != nil {
+		http.Error(w, "Document not found", http.StatusNotFound)
+		return
+	}
+
+	projTarget := authz.ProjectTarget{
+		ID:        doc.ProjectID.Bytes,
+		CompanyID: caller.CompanyID,
+	}
+	itemTarget := authz.ItemTarget{
+		ID:        docUUID,
+		ProjectID: doc.ProjectID.Bytes,
+		CompanyID: caller.CompanyID,
+		CreatedBy: doc.CreatedBy.Bytes,
+	}
+
+	access, err := authz.AccessItem(ctx, h.q, *caller, projTarget, itemTarget)
+	if err != nil || !access.CanView() {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	membership, _ := h.q.GetMembership(ctx, db.GetMembershipParams{
+		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+		UserID:    pgtype.UUID{Bytes: caller.UserID, Valid: true},
+	})
+	isTeamMember := (membership.Role != "")
+
+	var req PdfExportRequest
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	if req.Background == "" {
+		req.Background = "#ffffff"
+	}
+	if req.ThemeColor == "" {
+		req.ThemeColor = "#3B67E0"
+	}
+	if req.Size == "" {
+		req.Size = "A4"
+	}
+	if req.Margins == "" {
+		req.Margins = "normal"
+	}
+
+	includeTeamNotes := false
+	if isTeamMember && req.IncludeTeamNotes != nil && *req.IncludeTeamNotes {
+		includeTeamNotes = true
+	}
+
+	var contentJSON map[string]interface{}
+	if len(doc.ContentJson) > 0 {
+		_ = json.Unmarshal(doc.ContentJson, &contentJSON)
+	}
+	if contentJSON == nil {
+		contentJSON = map[string]interface{}{"type": "doc", "content": []interface{}{}}
+	}
+
+	if !includeTeamNotes {
+		contentJSON = StripTeamNotes(contentJSON)
+	}
+
+	collabPayload := map[string]interface{}{
+		"title":              doc.Title,
+		"content_json":       contentJSON,
+		"html":               req.Html,
+		"background":         req.Background,
+		"theme_color":        req.ThemeColor,
+		"size":               req.Size,
+		"margins":            req.Margins,
+		"include_team_notes": includeTeamNotes,
+	}
+
+	previewHtml, err := h.callCollabPreviewPdfHtml(ctx, collabPayload)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to generate preview HTML: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	renderJSON(w, http.StatusOK, map[string]string{
+		"html": previewHtml,
+	})
 }
 
 // ---------------------------------------------------------

@@ -410,3 +410,87 @@ export async function parseExcelOrCsvBuffer(
     },
   ];
 }
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
+ * Converts spreadsheet sheets data into clean HTML tables for PDF export.
+ */
+export function spreadsheetDataToHtml(sheets: any[]): string {
+  let html = "";
+  for (const sheet of sheets || []) {
+    html += `<h2 style="margin-top: 1.5em; margin-bottom: 0.5em;">${escapeHtml(sheet.name || "Sheet")}</h2>`;
+    html += `<table class="spreadsheet-table" style="width: 100%; border-collapse: collapse; margin-bottom: 2em; font-variant-numeric: tabular-nums;">`;
+
+    if (Array.isArray(sheet.data) && sheet.data.length > 0) {
+      let maxR = 0;
+      let maxC = 0;
+      sheet.data.forEach((row: any[], r: number) => {
+        if (Array.isArray(row)) {
+          row.forEach((cell: any, c: number) => {
+            if (cell && (cell.v !== undefined || cell.m !== undefined)) {
+              if (r > maxR) maxR = r;
+              if (c > maxC) maxC = c;
+            }
+          });
+        }
+      });
+      maxR = Math.min(maxR + 1, sheet.data.length);
+      maxC = Math.min(maxC + 1, (sheet.data[0] || []).length);
+
+      html += "<tbody>";
+      for (let r = 0; r < maxR; r++) {
+        html += "<tr>";
+        for (let c = 0; c < maxC; c++) {
+          const cell = sheet.data[r]?.[c];
+          const val = cell?.m ?? cell?.v ?? "";
+          if (r === 0) {
+            html += `<th>${escapeHtml(String(val))}</th>`;
+          } else {
+            html += `<td>${escapeHtml(String(val))}</td>`;
+          }
+        }
+        html += "</tr>";
+      }
+      html += "</tbody>";
+    } else if (Array.isArray(sheet.celldata) && sheet.celldata.length > 0) {
+      let maxR = 0;
+      let maxC = 0;
+      const cellMap = new Map<string, any>();
+      sheet.celldata.forEach((cd: any) => {
+        if (cd.r > maxR) maxR = cd.r;
+        if (cd.c > maxC) maxC = cd.c;
+        cellMap.set(`${cd.r}:${cd.c}`, cd.v);
+      });
+
+      html += "<tbody>";
+      for (let r = 0; r <= maxR; r++) {
+        html += "<tr>";
+        for (let c = 0; c <= maxC; c++) {
+          const cell = cellMap.get(`${r}:${c}`);
+          const val = cell?.m ?? cell?.v ?? "";
+          if (r === 0) {
+            html += `<th>${escapeHtml(String(val))}</th>`;
+          } else {
+            html += `<td>${escapeHtml(String(val))}</td>`;
+          }
+        }
+        html += "</tr>";
+      }
+      html += "</tbody>";
+    } else {
+      html += "<tbody><tr><td style=\"color: #888; font-style: italic; padding: 12px;\">Empty Sheet</td></tr></tbody>";
+    }
+
+    html += `</table><div class="page-break"></div>`;
+  }
+  return html;
+}
+

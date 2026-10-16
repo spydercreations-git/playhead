@@ -176,7 +176,14 @@ WHERE p.company_id = @company_id
   AND (
     (p.is_restricted = FALSE AND (g.id IS NOT NULL OR cc.id IS NOT NULL))
     OR
-    (p.is_restricted = TRUE AND g.id IS NOT NULL)
+    (p.is_restricted = TRUE AND (g.id IS NOT NULL OR EXISTS (
+        SELECT 1 FROM grants ig
+        JOIN items i ON i.id = ig.target_id AND i.deleted_at IS NULL
+        WHERE i.project_id = p.id
+          AND (ig.target_type = 'item' OR ig.target_type = 'folder')
+          AND LOWER(ig.email) = LOWER(@email)
+          AND ig.level != 'none' AND ig.level != ''
+    )))
   )
 ORDER BY p.updated_at DESC;
 

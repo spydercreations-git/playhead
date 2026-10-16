@@ -1,7 +1,7 @@
 import { parseHTML } from "linkedom";
 import * as Y from "yjs";
 import { prosemirrorJSONToYDoc, prosemirrorJSONToYXmlFragment } from "y-prosemirror";
-import { getSchema, Node } from "@tiptap/core";
+import { getSchema, Node, generateHTML } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Highlight from "@tiptap/extension-highlight";
@@ -109,10 +109,11 @@ const ResizableImage = Node.create({
   },
 });
 
-export const serverSchema: Schema = getSchema([
+export const serverExtensions = [
   StarterKit.configure({
     undoRedo: false,
   }),
+  Underline,
   Highlight,
   TextAlign.configure({ types: ["heading", "paragraph"] }),
   TaskList,
@@ -121,11 +122,14 @@ export const serverSchema: Schema = getSchema([
   TableRow,
   TableHeader,
   TableCell,
+  LinkExtension,
   TeamNotes,
   TeamNotesCamel,
   PlayheadVideoCard,
   ResizableImage,
-]);
+];
+
+export const serverSchema: Schema = getSchema(serverExtensions);
 
 /**
  * Creates a brand new Y.Doc containing the given ProseMirror JSON.
@@ -179,3 +183,15 @@ export async function convertDocxToProseMirror(docxBuffer: Buffer): Promise<any>
   const pmNode = PMDOMParser.fromSchema(serverSchema).parse(dom.document.body);
   return pmNode.toJSON();
 }
+
+/**
+ * Converts ProseMirror JSON to clean HTML representation.
+ */
+export function prosemirrorJsonToHtml(contentJson: any): string {
+  try {
+    return generateHTML(contentJson, serverExtensions);
+  } catch (err) {
+    return "<p></p>";
+  }
+}
+

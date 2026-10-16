@@ -1101,3 +1101,26 @@ func (q *Queries) UpsertUserSettings(ctx context.Context, arg UpsertUserSettings
 	)
 	return i, err
 }
+
+const userHasAnyItemGrantInProject = `-- name: UserHasAnyItemGrantInProject :one
+SELECT EXISTS (
+    SELECT 1 FROM grants g
+    JOIN items i ON i.id = g.target_id AND i.deleted_at IS NULL
+    WHERE i.project_id = $1
+      AND (g.target_type = 'item' OR g.target_type = 'folder')
+      AND LOWER(g.email) = $2
+      AND g.level != 'none' AND g.level != ''
+) AS has_grant
+`
+
+type UserHasAnyItemGrantInProjectParams struct {
+	ProjectID pgtype.UUID `json:"project_id"`
+	Email     string      `json:"email"`
+}
+
+func (q *Queries) UserHasAnyItemGrantInProject(ctx context.Context, arg UserHasAnyItemGrantInProjectParams) (bool, error) {
+	row := q.db.QueryRow(ctx, userHasAnyItemGrantInProject, arg.ProjectID, arg.Email)
+	var has_grant bool
+	err := row.Scan(&has_grant)
+	return has_grant, err
+}

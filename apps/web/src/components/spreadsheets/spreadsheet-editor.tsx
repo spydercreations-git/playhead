@@ -33,6 +33,7 @@ import * as Y from "yjs";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import ExcelJS from "exceljs";
 import { apiRequest } from "@/lib/api";
+import { PdfExportDialog } from "@/components/export/pdf-export-dialog";
 import {
   buildSheetsFromYDoc,
   populateYDocIfEmpty,
@@ -112,6 +113,7 @@ export function SpreadsheetEditor({
   const [comments, setComments] = useState<any[]>([]);
   const [newCommentText, setNewCommentText] = useState("");
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showPdfExportDialog, setShowPdfExportDialog] = useState(false);
   const [showColumnConfig, setShowColumnConfig] = useState(false);
 
   // Custom cell interactive popup
@@ -800,11 +802,14 @@ export function SpreadsheetEditor({
                   <span>CSV (.csv)</span>
                 </button>
                 <button
-                  onClick={handlePrint}
+                  onClick={() => {
+                    setShowExportMenu(false);
+                    setShowPdfExportDialog(true);
+                  }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-xs text-white hover:bg-[#2A2B30] rounded-lg transition-colors"
                 >
                   <Printer className="h-3.5 w-3.5 text-blue-400" />
-                  <span>Print / PDF</span>
+                  <span>Download as PDF</span>
                 </button>
               </div>
             )}
@@ -1169,6 +1174,15 @@ export function SpreadsheetEditor({
           </div>
         </div>
       )}
+
+      <PdfExportDialog
+        open={showPdfExportDialog}
+        onOpenChange={setShowPdfExportDialog}
+        itemType="spreadsheet"
+        itemId={id}
+        title={title || "Spreadsheet"}
+        isTeamMember={isTeamMember}
+      />
     </div>
   );
 }

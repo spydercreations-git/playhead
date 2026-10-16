@@ -108,6 +108,7 @@ import {
   DocumentVersionItem,
 } from "./version-history-drawer";
 import { apiRequest } from "@/lib/api";
+import { PdfExportDialog } from "@/components/export/pdf-export-dialog";
 import TurndownService from "turndown";
 import { Document as DocxDocument, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
 
@@ -214,6 +215,7 @@ export function DocumentEditor({
   const [showOutline, setShowOutline] = useState(false);
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showPdfExportDialog, setShowPdfExportDialog] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
   const [insertVideoModalOpen, setInsertVideoModalOpen] = useState(false);
   const [videoItemIdInput, setVideoItemIdInput] = useState("");
@@ -603,7 +605,7 @@ export function DocumentEditor({
 
   function exportPDF() {
     setShowExportMenu(false);
-    window.print();
+    setShowPdfExportDialog(true);
   }
 
   // 7. Word import: converts .docx on the server side via collab service with 25MB limit
@@ -838,8 +840,8 @@ export function DocumentEditor({
                   onClick={exportPDF}
                   className="w-full px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted rounded-lg flex items-center gap-2"
                 >
-                  <Printer className="w-3.5 h-3.5 text-primary" />
-                  <span>PDF Print</span>
+                  <Download className="w-3.5 h-3.5 text-primary" />
+                  <span>Download as PDF</span>
                 </button>
                 <button
                   type="button"
@@ -1293,6 +1295,15 @@ export function DocumentEditor({
           </div>
         </div>
       )}
+
+      <PdfExportDialog
+        open={showPdfExportDialog}
+        onOpenChange={setShowPdfExportDialog}
+        itemType="document"
+        itemId={documentId}
+        title={title || initialTitle || "Document"}
+        isTeamMember={isTeamMember}
+      />
     </div>
   );
 }

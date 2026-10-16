@@ -1459,3 +1459,273 @@ func (h *SpreadsheetsHandler) ResolveComment(w http.ResponseWriter, r *http.Requ
 		"resolved": resolved.Resolved,
 	})
 }
+
+func (h *SpreadsheetsHandler) callCollabExportPdf(ctx context.Context, payload map[string]interface{}) ([]byte, error) {
+	collabURL := h.cfg.CollabURL
+	if collabURL == "" {
+		collabURL = "http://localhost:8082"
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", collabURL+"/internal/export-pdf", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Collab-Secret", h.cfg.CollabInternalSecret)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("collab export-pdf error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
+func (h *SpreadsheetsHandler) callCollabPreviewPdfHtml(ctx context.Context, payload map[string]interface{}) (string, error) {
+	collabURL := h.cfg.CollabURL
+	if collabURL == "" {
+		collabURL = "http://localhost:8082"
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", collabURL+"/internal/preview-pdf-html", bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Collab-Secret", h.cfg.CollabInternalSecret)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("collab preview-pdf-html error (%d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var res struct {
+		Html string `json:"html"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return "", err
+	}
+	return res.Html, nil
+}
+
+// ExportPdf handles server-side PDF generation for spreadsheets with orientation and fit-to-width.
+func (h *SpreadsheetsHandler) ExportPdf(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	caller := getCaller(ctx)
+	if caller == nil {
+		renderJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	sheetUUID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		renderJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_id"})
+		return
+	}
+
+	sheetRow, err := h.q.GetSpreadsheet(ctx, db.GetSpreadsheetParams{
+		ID:        pgtype.UUID{Bytes: sheetUUID, Valid: true},
+		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+	})
+	if err != nil {
+		renderJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
+		return
+	}
+
+	projTarget := authz.ProjectTarget{
+		ID:        sheetRow.ProjectID.Bytes,
+		CompanyID: caller.CompanyID,
+		ClientID:  sheetRow.ClientID.Bytes,
+	}
+	itemTarget := authz.ItemTarget{
+		ID:        sheetUUID,
+		ProjectID: sheetRow.ProjectID.Bytes,
+		CompanyID: caller.CompanyID,
+		CreatedBy: sheetRow.CreatedBy.Bytes,
+	}
+
+	access, err := authz.AccessItem(ctx, h.q, *caller, projTarget, itemTarget)
+	if err != nil || !access.CanView() {
+		renderJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	if !access.CanDownload {
+		renderJSON(w, http.StatusForbidden, map[string]string{"error": "download_not_permitted"})
+		return
+	}
+
+	var req PdfExportRequest
+	if r.Method == http.MethodPost && r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	} else {
+		req.Background = r.URL.Query().Get("background")
+		req.ThemeColor = r.URL.Query().Get("theme_color")
+		req.Size = r.URL.Query().Get("size")
+		req.Margins = r.URL.Query().Get("margins")
+		req.Orientation = r.URL.Query().Get("orientation")
+	}
+
+	if req.Background == "" {
+		req.Background = "#ffffff"
+	}
+	if req.ThemeColor == "" {
+		req.ThemeColor = "#3B67E0"
+	}
+	if req.Size == "" {
+		req.Size = "A4"
+	}
+	if req.Margins == "" {
+		req.Margins = "normal"
+	}
+	if req.Orientation == "" {
+		req.Orientation = "landscape"
+	}
+	fitToWidth := true
+	if req.FitToWidth != nil {
+		fitToWidth = *req.FitToWidth
+	}
+
+	var contentData interface{}
+	_ = json.Unmarshal(sheetRow.ContentJson, &contentData)
+
+	collabPayload := map[string]interface{}{
+		"title":        sheetRow.Title,
+		"sheets":       contentData,
+		"html":         req.Html,
+		"background":   req.Background,
+		"theme_color":  req.ThemeColor,
+		"size":         req.Size,
+		"margins":      req.Margins,
+		"orientation":  req.Orientation,
+		"fit_to_width": fitToWidth,
+	}
+
+	pdfBytes, err := h.callCollabExportPdf(ctx, collabPayload)
+	if err != nil {
+		renderJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_generate_pdf", "details": err.Error()})
+		return
+	}
+
+	safeName := sanitizeFilename(sheetRow.Title)
+	if safeName == "" {
+		safeName = "spreadsheet"
+	}
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.pdf\"", safeName))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
+	w.Write(pdfBytes)
+}
+
+// PreviewPdfHtml provides live printable HTML for client-side live preview in the spreadsheet dialog.
+func (h *SpreadsheetsHandler) PreviewPdfHtml(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	caller := getCaller(ctx)
+	if caller == nil {
+		renderJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	sheetUUID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		renderJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_id"})
+		return
+	}
+
+	sheetRow, err := h.q.GetSpreadsheet(ctx, db.GetSpreadsheetParams{
+		ID:        pgtype.UUID{Bytes: sheetUUID, Valid: true},
+		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+	})
+	if err != nil {
+		renderJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
+		return
+	}
+
+	projTarget := authz.ProjectTarget{
+		ID:        sheetRow.ProjectID.Bytes,
+		CompanyID: caller.CompanyID,
+		ClientID:  sheetRow.ClientID.Bytes,
+	}
+	itemTarget := authz.ItemTarget{
+		ID:        sheetUUID,
+		ProjectID: sheetRow.ProjectID.Bytes,
+		CompanyID: caller.CompanyID,
+		CreatedBy: sheetRow.CreatedBy.Bytes,
+	}
+
+	access, err := authz.AccessItem(ctx, h.q, *caller, projTarget, itemTarget)
+	if err != nil || !access.CanView() {
+		renderJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+
+	var req PdfExportRequest
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	if req.Background == "" {
+		req.Background = "#ffffff"
+	}
+	if req.ThemeColor == "" {
+		req.ThemeColor = "#3B67E0"
+	}
+	if req.Size == "" {
+		req.Size = "A4"
+	}
+	if req.Margins == "" {
+		req.Margins = "normal"
+	}
+	if req.Orientation == "" {
+		req.Orientation = "landscape"
+	}
+	fitToWidth := true
+	if req.FitToWidth != nil {
+		fitToWidth = *req.FitToWidth
+	}
+
+	var contentData interface{}
+	_ = json.Unmarshal(sheetRow.ContentJson, &contentData)
+
+	collabPayload := map[string]interface{}{
+		"title":        sheetRow.Title,
+		"sheets":       contentData,
+		"html":         req.Html,
+		"background":   req.Background,
+		"theme_color":  req.ThemeColor,
+		"size":         req.Size,
+		"margins":      req.Margins,
+		"orientation":  req.Orientation,
+		"fit_to_width": fitToWidth,
+	}
+
+	previewHtml, err := h.callCollabPreviewPdfHtml(ctx, collabPayload)
+	if err != nil {
+		renderJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_generate_preview", "details": err.Error()})
+		return
+	}
+
+	renderJSON(w, http.StatusOK, map[string]string{
+		"html": previewHtml,
+	})
+}
+

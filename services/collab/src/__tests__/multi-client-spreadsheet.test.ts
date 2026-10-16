@@ -174,7 +174,7 @@ test("P6 Multi-User Browser Spreadsheet Tests", async () => {
     if (!createResp.ok) {
       throw new Error(`Failed to create test spreadsheet: ${createResp.status} ${await createResp.text()}`);
     }
-    const createData = await createResp.json();
+    const createData = (await createResp.json()) as any;
     const spreadsheetId = createData.spreadsheet?.id || createData.id;
     console.log(`Created test spreadsheet: ${spreadsheetId}`);
 
@@ -193,7 +193,7 @@ test("P6 Multi-User Browser Spreadsheet Tests", async () => {
     const initViewResp = await fetch(`http://localhost:8080/api/v1/spreadsheets/${spreadsheetId}/view`, {
       headers: { Cookie: `playhead_session=${sessionA}` },
     });
-    const initViewData = await initViewResp.json();
+    const initViewData = (await initViewResp.json()) as any;
     const targetRowId = initViewData.sheets[0].rowIds?.[1] || "r_test_row_1";
     const targetColId = initViewData.sheets[0].colIds?.[0] || "c_test_col_0";
 
@@ -280,7 +280,7 @@ test("P6 Multi-User Browser Spreadsheet Tests", async () => {
     const viewAfterInsert = await fetch(`http://localhost:8080/api/v1/spreadsheets/${spreadsheetId}/view`, {
       headers: { Cookie: `playhead_session=${sessionA}` },
     });
-    const insertCheck = await viewAfterInsert.json();
+    const insertCheck = (await viewAfterInsert.json()) as any;
     const cellInRightRow = insertCheck.sheets[0].celldata.find((c: any) => c.rowId === targetRowId);
     assert.strictEqual(cellInRightRow?.v?.v, "Commercial 30s Cut - Updated by B");
     console.log("Result 4c: PASSED. Row inserted at top, cell below stayed in exact row without data corruption.");

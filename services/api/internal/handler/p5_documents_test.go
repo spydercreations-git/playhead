@@ -601,3 +601,204 @@ func TestDocxImportFileSizeLimit(t *testing.T) {
 	}
 }
 
+func TestPdfExportClientNeverGetsTeamNotesAndCustomOptions(t *testing.T) {
+	cfg := config.Load()
+	ctx := context.Background()
+
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	if err != nil {
+		t.Skipf("skipping: postgres not reachable: %v", err)
+	}
+	defer pool.Close()
+	if err := pool.Ping(ctx); err != nil {
+		t.Skipf("skipping: ping failed: %v", err)
+	}
+
+	queries := db.New(pool)
+	nano := time.Now().UnixNano()
+
+	company, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
+		Name:   fmt.Sprintf("PDF Export Co %d", nano),
+		Slug:   fmt.Sprintf("pdf-export-%d", nano),
+		Plan:   plans.PlanPro,
+		Status: "active",
+	})
+	if err != nil {
+		t.Fatalf("failed to create company: %v", err)
+	}
+
+	owner, err := queries.CreateUser(ctx, db.CreateUserParams{
+		Email: fmt.Sprintf("pdf-owner-%d@test.com", nano),
+		Name:  "PDF Owner",
+	})
+	if err != nil {
+		t.Fatalf("failed to create owner: %v", err)
+	}
+
+	_, err = queries.CreateMembership(ctx, db.CreateMembershipParams{
+		CompanyID: company.ID,
+		UserID:    owner.ID,
+		Role:      authz.RoleAdmin,
+	})
+	if err != nil {
+		t.Fatalf("failed to create membership: %v", err)
+	}
+
+	clientUser, err := queries.CreateUser(ctx, db.CreateUserParams{
+		Email: fmt.Sprintf("pdf-client-%d@test.com", nano),
+		Name:  "PDF Client",
+	})
+	if err != nil {
+		t.Fatalf("failed to create client user: %v", err)
+	}
+
+	clientObj, err := queries.CreateClient(ctx, db.CreateClientParams{
+		CompanyID: company.ID,
+		Name:      "PDF Test Client",
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	_, err = queries.CreateClientContact(ctx, db.CreateClientContactParams{
+		CompanyID:    company.ID,
+		ClientID:     clientObj.ID,
+		Email:        clientUser.Email,
+		Name:         "PDF Client",
+		DefaultLevel: "viewer",
+		CanDownload:  true,
+	})
+	if err != nil {
+		t.Fatalf("failed to create client contact: %v", err)
+	}
+
+	project, err := queries.CreateProject(ctx, db.CreateProjectParams{
+		CompanyID: company.ID,
+		ClientID:  clientObj.ID,
+		Name:      "PDF Test Project",
+	})
+	if err != nil {
+		t.Fatalf("failed to create project: %v", err)
+	}
+
+	_, err = queries.CreateGrant(ctx, db.CreateGrantParams{
+		CompanyID:   company.ID,
+		TargetType:  "project",
+		TargetID:    project.ID,
+		Email:       clientUser.Email,
+		UserID:      clientUser.ID,
+		Level:       authz.LevelViewer,
+		CanDownload: true,
+		GrantedBy:   owner.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create grant for client user: %v", err)
+	}
+
+	var itemPos pgtype.Numeric
+	_ = itemPos.Scan("1000")
+	item, err := queries.CreateItem(ctx, db.CreateItemParams{
+		CompanyID: company.ID,
+		ProjectID: project.ID,
+		Kind:      "document",
+		Name:      "Quarterly Review",
+		Position:  itemPos,
+		CreatedBy: owner.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create item: %v", err)
+	}
+
+	docContentWithTeamNotes := []byte(`{
+		"type": "doc",
+		"content": [
+			{"type": "paragraph", "content": [{"type": "text", "text": "Public Document Text"}]},
+			{"type": "teamNotes", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "CONFIDENTIAL INTERNAL TEAM NOTE"}]}]}
+		]
+	}`)
+
+	doc, err := queries.CreateDocument(ctx, db.CreateDocumentParams{
+		ID:          item.ID,
+		CompanyID:   company.ID,
+		ContentJson: docContentWithTeamNotes,
+		PlainText:   "Public Document Text CONFIDENTIAL INTERNAL TEAM NOTE",
+	})
+	if err != nil {
+		t.Fatalf("failed to create document: %v", err)
+	}
+
+	var receivedPayload map[string]interface{}
+	mockCollabServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/internal/export-pdf" {
+			_ = json.NewDecoder(r.Body).Decode(&receivedPayload)
+			w.Header().Set("Content-Type", "application/pdf")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("%PDF-1.4 mock pdf content"))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer mockCollabServer.Close()
+
+	cfg = &config.Config{
+		CollabInternalSecret: "test-secret-at-least-32-chars-long!",
+		CollabURL:            mockCollabServer.URL,
+	}
+	docsH := &DocumentsHandler{
+		q:   queries,
+		cfg: cfg,
+	}
+
+	// 1. Client user attempts to export PDF with include_team_notes = true and custom styles
+	clientPerson := authz.Person{
+		UserID:      uuid.UUID(clientUser.ID.Bytes),
+		Email:       clientUser.Email,
+		CompanyID:   uuid.UUID(company.ID.Bytes),
+		Role:        "", // Client contact has no team role
+		Permissions: nil,
+	}
+
+	exportReqBody, _ := json.Marshal(map[string]interface{}{
+		"background":         "#181818",
+		"theme_color":        "#4876F3",
+		"size":               "Letter",
+		"margins":            "narrow",
+		"include_team_notes": true, // Client attempts to ask for team notes
+	})
+
+	r := httptest.NewRequest("POST", "/api/v1/documents/"+uuid.UUID(doc.ID.Bytes).String()+"/export/pdf", bytes.NewReader(exportReqBody))
+	r.Header.Set("Content-Type", "application/json")
+	r = r.WithContext(contextWithPerson(r.Context(), clientUser, company.ID, clientPerson))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", uuid.UUID(doc.ID.Bytes).String())
+	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+	w := httptest.NewRecorder()
+
+	docsH.ExportPdf(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 from ExportPdf, got %d (body: %s)", w.Code, w.Body.String())
+	}
+
+	// Verify client never gets team notes:
+	if inc, ok := receivedPayload["include_team_notes"].(bool); !ok || inc {
+		t.Errorf("SECURITY FAILURE: include_team_notes was true in collab payload for client! got %v", receivedPayload["include_team_notes"])
+	}
+
+	// Verify custom background and theme color appear in payload:
+	if bg, _ := receivedPayload["background"].(string); bg != "#181818" {
+		t.Errorf("expected background '#181818', got %q", bg)
+	}
+	if theme, _ := receivedPayload["theme_color"].(string); theme != "#4876F3" {
+		t.Errorf("expected theme_color '#4876F3', got %q", theme)
+	}
+
+	// Verify team notes were actually stripped from content_json sent to generator
+	contentJSON, _ := receivedPayload["content_json"].(map[string]interface{})
+	marshaledJSON, _ := json.Marshal(contentJSON)
+	if strings.Contains(string(marshaledJSON), "CONFIDENTIAL INTERNAL TEAM NOTE") {
+		t.Errorf("SECURITY FAILURE: payload content_json contains confidential team note text for client!")
+	}
+}
+
+

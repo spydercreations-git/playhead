@@ -511,7 +511,7 @@ export default function ClientDetailPage() {
                 required
                 value={newContactEmail}
                 onChange={(e) => setNewContactEmail(e.target.value)}
-                placeholder="sarah@everygen.com"
+                placeholder="contact@company.com"
                 className="w-full h-10 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3.5 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
               />
             </div>

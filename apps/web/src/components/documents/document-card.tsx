@@ -55,13 +55,7 @@ export function DocumentCard({
     ? formatDate(document.updated_at)
     : "Oct 12";
 
-  const members = document.members && document.members.length > 0
-    ? document.members
-    : [
-        { id: "1", name: "Harsh", color: "#C2410C" },
-        { id: "2", name: "Rohit", color: "#7C3AED" },
-        { id: "3", name: "Kunal", color: "#0F766E" },
-      ];
+  const members = document.members || [];
 
   // SVG path matching shape-document.svg with dynamic width (fold fixed at 28px top-right)
   const foldSize = 28;
@@ -147,7 +141,7 @@ export function DocumentCard({
               </button>
             </div>
             <p className="text-[13px] text-[#A3A6AD] truncate mt-0.5">
-              {document.project_name || document.client_name || "Everygen"}
+              {document.project_name || document.client_name || "My Drive"}
             </p>
           </div>
 
@@ -176,11 +170,11 @@ export function DocumentCard({
 }
 
 function formatDate(dateStr?: string): string {
-  if (!dateStr) return "Oct 12";
+  if (!dateStr) return "";
   try {
     const d = new Date(dateStr);
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   } catch {
-    return "Oct 12";
+    return "";
   }
 }

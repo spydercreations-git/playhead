@@ -62,7 +62,18 @@ export function DriveFolderCard({
   const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.custom;
   const IconComponent = style.icon;
 
-  const countText = typeof fileCount === "number" ? `${fileCount} files` : fileCount;
+  const isZero = fileCount === 0 || fileCount === "0" || fileCount === "Empty";
+  const countText = isZero
+    ? "Empty"
+    : typeof fileCount === "number"
+    ? `${fileCount} ${fileCount === 1 ? "file" : "files"}`
+    : fileCount;
+
+  const subtitleText = isZero
+    ? "Empty"
+    : totalSize
+    ? `${countText}  ·  ${totalSize}`
+    : countText;
 
   return (
     <div
@@ -83,7 +94,7 @@ export function DriveFolderCard({
         <div className="min-w-0">
           <p className="text-sm font-semibold text-white truncate">{name}</p>
           <p className="text-xs text-[#7C7F87] truncate mt-0.5">
-            {countText}  ·  {totalSize}
+            {subtitleText}
           </p>
         </div>
       </div>

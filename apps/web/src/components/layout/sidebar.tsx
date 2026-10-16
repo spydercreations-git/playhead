@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { PlayheadLogoWithText } from "@/components/icons";
 import { useAuth, clearAuthCache } from "@/lib/use-auth";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   Home,
   HardDrive,
@@ -46,6 +46,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, role, isClient, hasPermission } = useAuth();
+
+  const { data: reviewsData } = useQuery({
+    queryKey: ["reviews-count"],
+    queryFn: () => apiRequest<{ items: any[] }>("/reviews").catch(() => ({ items: [] })),
+    staleTime: 30_000,
+    enabled: !!user,
+  });
+  const reviewCount = reviewsData?.items?.length || 0;
 
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const [showNewClient, setShowNewClient] = useState(false);
@@ -89,7 +97,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     { name: "Projects", href: "/projects", icon: FolderOpen, show: true },
     { name: "Documents", href: "/documents", icon: Description, show: true },
     { name: "Spreadsheets", href: "/spreadsheets", icon: TableChart, show: true },
-    { name: "Reviews", href: "/reviews", icon: RateReview, badge: 6, show: true },
+    {
+      name: "Reviews",
+      href: "/reviews",
+      icon: RateReview,
+      badge: reviewCount > 0 ? reviewCount : undefined,
+      show: true,
+    },
     { name: "Shared with me", href: "/shared-with-me", icon: FolderShared, show: true },
     { name: "Starred", href: "/starred", icon: Star, show: true },
     { name: "Trash", href: "/trash", icon: Delete, show: true },

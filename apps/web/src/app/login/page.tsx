@@ -205,6 +205,25 @@ function LoginForm() {
     }
   }
 
+  // Handle Google OAuth sign in
+  async function handleGoogleLogin(e: React.MouseEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      const res = await apiRequest<{ url: string }>("/auth/google/url");
+      if (res?.url) {
+        window.location.href = res.url;
+      }
+    } catch (err: any) {
+      const apiErr = err as ApiError;
+      if (apiErr.error === "google_auth_disabled" || apiErr.status === 404) {
+        setError("Google Login is not configured. Ask your administrator to set GOOGLE_CLIENT_ID.");
+      } else {
+        setError(apiErr.message || "Failed to initiate Google sign in");
+      }
+    }
+  }
+
   return (
     <AuthContainer
       showBack={screen === "code"}
@@ -327,8 +346,9 @@ function LoginForm() {
           </p>
 
           {/* Continue with Google Button */}
-          <a
-            href={`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/auth/google/url`}
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
             className="w-full h-[50px] rounded-[10px] bg-white hover:bg-neutral-100 text-[#181818] font-medium text-sm transition flex items-center justify-center gap-3 shadow-sm"
           >
             {/* Google Icon */}
@@ -351,7 +371,7 @@ function LoginForm() {
               />
             </svg>
             <span>Continue with Google</span>
-          </a>
+          </button>
 
           {/* Divider "or" */}
           <div className="relative my-7 flex items-center justify-center">

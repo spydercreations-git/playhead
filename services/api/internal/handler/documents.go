@@ -1099,9 +1099,8 @@ func (h *DocumentsHandler) PresignImageUpload(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if !plans.IsUnlimitedStorage(company.Plan) && company.StorageLimitBytes > 0 {
-		currentProjected := company.StorageUsedBytes + company.StorageReservedBytes + req.SizeBytes
-		if currentProjected > company.StorageLimitBytes {
+	if !plans.IsUnlimitedStorage(company.Plan) {
+		if company.StorageLimitBytes == 0 || (company.StorageUsedBytes+company.StorageReservedBytes+req.SizeBytes > company.StorageLimitBytes) {
 			http.Error(w, "Storage quota exceeded", http.StatusPaymentRequired)
 			return
 		}

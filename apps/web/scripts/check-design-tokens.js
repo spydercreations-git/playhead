@@ -108,6 +108,17 @@ const EXEMPTED_FILE_PATTERNS = [
   'design-tokens.ts',
 ];
 
+// 8. Prohibited Mockup Sample Strings (Everygen, Jada, Bri, Truvani, Pizza Hut, "38.5 GB", "480 Files")
+const PROHIBITED_MOCKUP_PATTERNS = [
+  { pattern: /\bEverygen\b/i, label: 'Everygen' },
+  { pattern: /\bJada\b/i, label: 'Jada' },
+  { pattern: /\bBri\b/, label: 'Bri' },
+  { pattern: /\bTruvani\b/i, label: 'Truvani' },
+  { pattern: /\bPizza Hut\b/i, label: 'Pizza Hut' },
+  { pattern: /\b38\.5\s*GB\b/i, label: '38.5 GB' },
+  { pattern: /\b480\s*Files\b/i, label: '480 Files' },
+];
+
 // Allowed text pixel sizes: only 12, 13, 14, 16, 20, 28
 const ALLOWED_TEXT_PX = new Set([12, 13, 14, 16, 20, 28]);
 
@@ -127,6 +138,23 @@ function checkDirectory(dir, results) {
       const relPath = path.relative(SRC_DIR, fullPath);
       const isExempt = EXEMPTED_FILE_PATTERNS.some(p => relPath.includes(p));
       const content = fs.readFileSync(fullPath, 'utf8');
+
+      // 8. Prohibited mockup sample strings
+      if (relPath.startsWith('app') || relPath.startsWith('components')) {
+        const fileLines = content.split('\n');
+        fileLines.forEach((line, idx) => {
+          for (const item of PROHIBITED_MOCKUP_PATTERNS) {
+            if (item.pattern.test(line)) {
+              results.mockupSampleOccurrences.push({
+                file: relPath,
+                line: idx + 1,
+                matched: item.label,
+                snippet: line.trim(),
+              });
+            }
+          }
+        });
+      }
 
       // 1. Text sizes: check arbitrary text-[...px]
       const textPxMatches = content.matchAll(/\btext-\[(\d+)px\]/g);
@@ -221,6 +249,7 @@ function runAudit() {
     invalidHexOccurrences: [],
     radiusValues: new Set(),
     invalidRadius: [],
+    mockupSampleOccurrences: [],
   };
 
   checkDirectory(SRC_DIR, results);
@@ -235,6 +264,7 @@ function runAudit() {
   console.log(`Invalid hex colors (non-token, non-exception): ${results.invalidHexColors.size}`);
   console.log(`Invalid radius values: ${results.invalidRadius.length}`);
   console.log(`Radius values in use: ${JSON.stringify(Array.from(results.radiusValues).sort())}`);
+  console.log(`Mockup sample data occurrences: ${results.mockupSampleOccurrences.length}`);
   console.log('====================================================');
 
   if (process.argv.includes('--strict')) {
@@ -245,7 +275,8 @@ function runAudit() {
       results.scaleCount > 0 ||
       results.shadow2xlCount > 0 ||
       results.invalidHexColors.size > 0 ||
-      results.invalidRadius.length > 0;
+      results.invalidRadius.length > 0 ||
+      results.mockupSampleOccurrences.length > 0;
 
     if (hasViolations) {
       console.error('Audit failed strict compliance check.');
@@ -255,6 +286,7 @@ function runAudit() {
       if (results.scaleOccurrences.length) console.error('Scales:', results.scaleOccurrences);
       if (results.invalidHexOccurrences.length) console.error('Invalid hex:', results.invalidHexOccurrences.slice(0, 10));
       if (results.invalidRadius.length) console.error('Invalid radius:', results.invalidRadius.slice(0, 10));
+      if (results.mockupSampleOccurrences.length) console.error('Mockup sample data:', results.mockupSampleOccurrences.slice(0, 10));
       process.exit(1);
     }
   }

@@ -116,6 +116,76 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 		}
 	})
 
+	t.Run("Non-internal plan with storage_limit_bytes = 0 is blocked immediately", func(t *testing.T) {
+		nonInternalComp, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
+			Name:              "Zero Storage Pro Studio",
+			Slug:              fmt.Sprintf("zero-storage-%d", time.Now().UnixNano()),
+			Plan:              plans.PlanPro,
+			Status:            "active",
+			StorageLimitBytes: 0, // No storage allocated
+			Seats:             1,
+		})
+		if err != nil {
+			t.Fatalf("failed to create company: %v", err)
+		}
+
+		userZero, err := queries.CreateUser(ctx, db.CreateUserParams{
+			Email: fmt.Sprintf("zero-%d@prostudio.com", time.Now().UnixNano()),
+			Name:  "Zero User",
+		})
+		if err != nil {
+			t.Fatalf("failed to create user: %v", err)
+		}
+
+		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
+			CompanyID: nonInternalComp.ID,
+			UserID:    userZero.ID,
+			Role:      authz.RoleAdmin,
+		})
+
+		clientZero, err := queries.CreateClient(ctx, db.CreateClientParams{
+			CompanyID: nonInternalComp.ID,
+			Name:      "Client Zero",
+		})
+		if err != nil {
+			t.Fatalf("failed to create client: %v", err)
+		}
+
+		projZero, err := queries.CreateProject(ctx, db.CreateProjectParams{
+			CompanyID: nonInternalComp.ID,
+			ClientID:  clientZero.ID,
+			Name:      "Zero Project",
+			CreatedBy: userZero.ID,
+		})
+		if err != nil {
+			t.Fatalf("failed to create project: %v", err)
+		}
+
+		uploadPayload := map[string]interface{}{
+			"project_id": uuid.UUID(projZero.ID.Bytes).String(),
+			"filename":   "clip.mp4",
+			"size_bytes": 1024 * 1024, // 1 MB
+			"mime":       "video/mp4",
+		}
+		body, _ := json.Marshal(uploadPayload)
+
+		req := httptest.NewRequest("POST", "/api/v1/uploads/initiate", bytes.NewReader(body))
+		req = req.WithContext(contextWithAuth(req.Context(), userZero, nonInternalComp.ID, authz.RoleAdmin))
+		rr := httptest.NewRecorder()
+
+		storageH.InitiateUpload(rr, req)
+
+		if rr.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 Bad Request for non-internal plan with 0 storage limit, got %d: %s", rr.Code, rr.Body.String())
+		}
+
+		var res map[string]interface{}
+		_ = json.Unmarshal(rr.Body.Bytes(), &res)
+		if res["error"] != "quota_exceeded" {
+			t.Errorf("expected error=quota_exceeded, got %v", res["error"])
+		}
+	})
+
 	// -------------------------------------------------------------------------
 	// Test 2: DELETE /api/v1/documents/{id} sends to Trash and Restore brings it back
 	// -------------------------------------------------------------------------

@@ -151,7 +151,7 @@ export function NewClientDialog({
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Everygen, Nike, Red Bull"
+              placeholder="e.g. Acme Studio, Horizon Labs"
               className="w-full h-10 rounded-[10px] border border-[#2E2F34] bg-[#2A2B30] px-3.5 text-xs text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none transition-colors"
             />
           </div>
@@ -164,7 +164,7 @@ export function NewClientDialog({
               type="url"
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
-              placeholder="https://everygen.com"
+              placeholder="https://example.com"
               className="w-full h-10 rounded-[10px] border border-[#2E2F34] bg-[#2A2B30] px-3.5 text-xs text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none transition-colors"
             />
           </div>

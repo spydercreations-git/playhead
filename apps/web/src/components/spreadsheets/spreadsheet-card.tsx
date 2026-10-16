@@ -26,13 +26,7 @@ export function SpreadsheetCard({ sheet, onContextMenu }: SpreadsheetCardProps) 
     ? formatDate(sheet.updated_at)
     : "Recently";
 
-  const members = sheet.members && sheet.members.length > 0
-    ? sheet.members
-    : [
-        { id: "1", name: "Harsh", color: "#C2410C" },
-        { id: "2", name: "Rohit", color: "#7C3AED" },
-        { id: "3", name: "Kunal", color: "#0F766E" },
-      ];
+  const members = sheet.members || [];
 
   return (
     <Link
@@ -156,7 +150,7 @@ export function SpreadsheetCard({ sheet, onContextMenu }: SpreadsheetCardProps) 
             )}
           </div>
           <p className="text-[13px] text-[#A3A6AD] truncate mt-0.5">
-            {sheet.project_name || sheet.client_name || "Drive"}
+            {sheet.project_name || sheet.client_name || "My Drive"}
           </p>
         </div>
 
@@ -184,11 +178,11 @@ export function SpreadsheetCard({ sheet, onContextMenu }: SpreadsheetCardProps) 
 }
 
 function formatDate(dateStr?: string): string {
-  if (!dateStr) return "Sep 30";
+  if (!dateStr) return "";
   try {
     const d = new Date(dateStr);
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   } catch {
-    return "Sep 30";
+    return "";
   }
 }

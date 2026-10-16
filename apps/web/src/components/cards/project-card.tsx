@@ -28,8 +28,8 @@ function formatBytes(bytes?: number): string {
 export function ProjectCard({
   id,
   name,
-  clientName = "Everygen",
-  videoCount = 24,
+  clientName,
+  videoCount = 0,
   totalBytes = 0,
   isRestricted = false,
   waitingReviewCount = 0,
@@ -37,16 +37,19 @@ export function ProjectCard({
   thumbnails = [],
   onContextMenu,
 }: ProjectCardProps) {
-  const displayMembers = members.length > 0
-    ? members
-    : [
-        { id: "1", name: "Harsh", color: "#C2410C" },
-        { id: "2", name: "Rohit", color: "#7C3AED" },
-      ];
+  const displayMembers = members;
 
-  const fileText = `${clientName}  ·  ${videoCount} ${videoCount === 1 ? "file" : "files"}${
-    totalBytes > 0 ? `  ·  ${formatBytes(totalBytes)}` : ""
-  }`;
+  const details: string[] = [];
+  if (clientName) {
+    details.push(clientName);
+  }
+  if (videoCount > 0 || details.length === 0) {
+    details.push(`${videoCount} ${videoCount === 1 ? "file" : "files"}`);
+  }
+  if (totalBytes > 0) {
+    details.push(formatBytes(totalBytes));
+  }
+  const fileText = details.join("  ·  ");
 
   return (
     <div className="group relative h-[290px] w-full select-none transition-transform duration-150 hover:scale-[1.015]">

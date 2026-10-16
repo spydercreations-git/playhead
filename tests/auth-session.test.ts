@@ -86,8 +86,8 @@ async function runAuthSessionTest() {
     // Test 5: Confirm "New project" shows for an Admin
     console.log("Verifying New project button / option for Admin...");
 
-    // Open + New dropdown
-    const newButton = await page.waitForSelector('button:has-text("+ New")', { timeout: 5000 });
+    // Open New dropdown
+    const newButton = await page.waitForSelector('aside button:has-text("New")', { timeout: 5000 });
     await newButton.click();
 
     // Confirm "Project" is present in the menu

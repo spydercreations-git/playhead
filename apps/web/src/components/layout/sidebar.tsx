@@ -24,7 +24,7 @@ import {
   Table,
   Upload,
   FolderUp,
-  ChevronDown,
+  Plus,
   X,
   LogOut,
 } from "lucide-react";
@@ -175,14 +175,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="relative px-6 pt-5 pb-2">
             <button
               onClick={() => setNewMenuOpen(!newMenuOpen)}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-[10px] bg-[#4876F3] text-xs font-semibold text-white shadow hover:bg-[#3560D6] transition-colors"
+              className={`flex h-10 w-full items-center justify-center gap-2 rounded-[10px] text-xs font-semibold text-white shadow transition-colors ${
+                newMenuOpen ? "bg-[#3560D6]" : "bg-[#4876F3] hover:bg-[#3560D6]"
+              }`}
             >
-              <span>+ New</span>
-              <ChevronDown
-                className={`w-3.5 h-3.5 transition-transform ${
-                  newMenuOpen ? "rotate-180" : ""
-                }`}
-              />
+              <Plus className="w-4 h-4" />
+              <span>New</span>
             </button>
 
             {newMenuOpen && (

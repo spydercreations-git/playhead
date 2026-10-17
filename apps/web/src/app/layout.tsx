@@ -28,8 +28,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`dark ${inter.variable}`}>
-      <body className={`${inter.className} bg-background text-foreground antialiased`}>
+    <html lang="en" className={`dark ${inter.variable}`} suppressHydrationWarning>
+      <body className={`${inter.className} bg-background text-foreground antialiased`} suppressHydrationWarning>
         <Providers>
           <ContextMenuProvider>
             <AppShell>{children}</AppShell>

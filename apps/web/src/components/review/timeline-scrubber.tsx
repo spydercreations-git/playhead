@@ -128,7 +128,7 @@ export function TimelineScrubber({
           {waveformPeaks.map((peak, idx) => (
             <div
               key={idx}
-              className="flex-1 bg-[#A3A6AD] rounded-full"
+              className="flex-1 bg-[var(--text-2)] rounded-full"
               style={{ height: `${Math.max(10, Math.min(100, peak))}%` }}
             />
           ))}
@@ -141,7 +141,7 @@ export function TimelineScrubber({
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="relative h-2 w-full bg-[#212121] hover:h-3 rounded-full cursor-pointer transition-all flex items-center"
+        className="relative h-2 w-full bg-[var(--panel)] hover:h-3 rounded-full cursor-pointer transition-all flex items-center"
       >
         {/* Progress Played Bar */}
         <div
@@ -207,7 +207,7 @@ export function TimelineScrubber({
                 >
                   {initial}
                   {isTeam && (
-                    <Lock className="absolute -top-1 -right-1 w-2.5 h-2.5 text-[#FFBB56] bg-[#181818] rounded-full p-[1px]" />
+                    <Lock className="absolute -top-1 -right-1 w-2.5 h-2.5 text-[#FFBB56] bg-[var(--bg)] rounded-full p-[1px]" />
                   )}
                 </div>
               </button>
@@ -232,13 +232,13 @@ export function TimelineScrubber({
           {/* Sprite frame thumbnail if available */}
           {spriteUrl && spriteJson && (
             <div
-              className="rounded-lg border border-[#424344] shadow-overlay overflow-hidden bg-black mb-1.5"
+              className="rounded-lg border border-[var(--border-strong)] shadow-overlay overflow-hidden bg-black mb-1.5"
               style={getSpriteStyle(hoverTimeMs) || {}}
             />
           )}
 
           {/* Timecode badge */}
-          <div className="bg-[#181818]/95 text-white text-xs font-mono tabular-nums px-2 py-0.5 rounded shadow border border-[#424344]">
+          <div className="bg-[var(--bg)]/95 text-white text-xs font-mono tabular-nums px-2 py-0.5 rounded shadow border border-[var(--border-strong)]">
             {formatTimecode(hoverTimeMs, timecodeFormat, fps)}
           </div>
         </div>

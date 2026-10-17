@@ -178,12 +178,12 @@ export function ShareModal({
   if (isReadOnlyOrCommenter) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div className="w-full max-w-md bg-[#181818] border border-[#212121] rounded-xl p-6 shadow-overlay">
-          <div className="flex items-center justify-between pb-4 border-b border-[#212121]">
+        <div className="w-full max-w-md bg-[var(--bg)] border border-[var(--panel)] rounded-xl p-6 shadow-overlay">
+          <div className="flex items-center justify-between pb-4 border-b border-[var(--panel)]">
             <h3 className="text-base font-semibold text-white">Request Access</h3>
             <button
               onClick={onClose}
-              className="p-1 rounded-lg hover:bg-[#212121] text-[#A3A6AD] hover:text-white"
+              className="p-1 rounded-lg hover:bg-[var(--panel)] text-[var(--text-2)] hover:text-white"
             >
               <X className="w-5 h-5" />
             </button>
@@ -195,36 +195,36 @@ export function ShareModal({
                 <Check className="w-6 h-6" />
               </div>
               <h4 className="text-sm font-semibold text-white">Request Sent</h4>
-              <p className="text-xs text-[#A3A6AD] mt-1">
+              <p className="text-xs text-[var(--text-2)] mt-1">
                 The project owners have been notified. You will receive an email once access is granted.
               </p>
               <button
                 onClick={onClose}
-                className="mt-6 px-4 py-2 bg-[#212121] hover:bg-[#2E2F34] text-white text-xs font-medium rounded-xl"
+                className="mt-6 px-4 py-2 bg-[var(--panel)] hover:bg-[var(--border)] text-white text-xs font-medium rounded-xl"
               >
                 Done
               </button>
             </div>
           ) : (
             <div className="py-4 space-y-4">
-              <p className="text-xs text-[#A3A6AD]">
+              <p className="text-xs text-[var(--text-2)]">
                 You currently have <span className="text-white capitalize">{userAccessLevel}</span> access to <span className="text-white font-medium">{targetName}</span>. To share or manage collaborators, you need Full access.
               </p>
               <div>
-                <label className="text-xs font-medium text-[#A3A6AD]  block mb-1">
+                <label className="text-xs font-medium text-[var(--text-2)]  block mb-1">
                   Reason (optional)
                 </label>
                 <textarea
                   value={requestReason}
                   onChange={(e) => setRequestReason(e.target.value)}
                   placeholder="Need to add the client colorist to review this cut..."
-                  className="w-full h-24 bg-[#181818] border border-[#212121] rounded-xl px-3 py-2 text-xs text-white placeholder-[#A3A6AD] focus:outline-none focus:border-[#4876F3]"
+                  className="w-full h-24 bg-[var(--bg)] border border-[var(--panel)] rounded-xl px-3 py-2 text-xs text-white placeholder-[var(--text-2)] focus:outline-none focus:border-[#4876F3]"
                 />
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   onClick={onClose}
-                  className="px-3 py-2 bg-transparent hover:bg-[#212121] text-xs text-[#A3A6AD] hover:text-white rounded-xl"
+                  className="px-3 py-2 bg-transparent hover:bg-[var(--panel)] text-xs text-[var(--text-2)] hover:text-white rounded-xl"
                 >
                   Cancel
                 </button>
@@ -244,31 +244,31 @@ export function ShareModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-xl bg-[#181818] border border-[#212121] rounded-xl shadow-overlay flex flex-col max-h-[85vh]">
+      <div className="w-full max-w-xl bg-[var(--bg)] border border-[var(--panel)] rounded-xl shadow-overlay flex flex-col max-h-[85vh]">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-[#212121]">
+        <div className="flex items-center justify-between p-5 border-b border-[var(--panel)]">
           <div>
             <h3 className="text-base font-semibold text-white">Share "{targetName}"</h3>
-            <p className="text-xs text-[#A3A6AD] mt-0.5">
+            <p className="text-xs text-[var(--text-2)] mt-0.5">
               Manage people with direct access or create public share links
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-[#212121] text-[#A3A6AD] hover:text-white"
+            className="p-1.5 rounded-lg hover:bg-[var(--panel)] text-[var(--text-2)] hover:text-white"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-[#212121] px-5 bg-[#181818]">
+        <div className="flex border-b border-[var(--panel)] px-5 bg-[var(--bg)]">
           <button
             onClick={() => setActiveTab("people")}
             className={`py-3 px-4 text-xs font-medium border-b-2 transition-colors ${
               activeTab === "people"
                 ? "border-[#4876F3] text-white"
-                : "border-transparent text-[#A3A6AD] hover:text-white"
+                : "border-transparent text-[var(--text-2)] hover:text-white"
             }`}
           >
             People (Grants)
@@ -278,12 +278,12 @@ export function ShareModal({
             className={`py-3 px-4 text-xs font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
               activeTab === "links"
                 ? "border-[#4876F3] text-white"
-                : "border-transparent text-[#A3A6AD] hover:text-white"
+                : "border-transparent text-[var(--text-2)] hover:text-white"
             }`}
           >
             <span>Public Links</span>
             {shareLinks.length > 0 && (
-              <span className="px-1.5 py-0.2 bg-[#212121] text-xs rounded-full text-white">
+              <span className="px-1.5 py-0.2 bg-[var(--panel)] text-xs rounded-full text-white">
                 {shareLinks.length}
               </span>
             )}
@@ -295,7 +295,7 @@ export function ShareModal({
           {activeTab === "people" && (
             <>
               {/* Add Person Form */}
-              <div className="space-y-3 bg-[#181818] border border-[#212121] p-4 rounded-xl">
+              <div className="space-y-3 bg-[var(--bg)] border border-[var(--panel)] p-4 rounded-xl">
                 <label className="text-xs font-semibold text-white block">
                   Add collaborator
                 </label>
@@ -305,12 +305,12 @@ export function ShareModal({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="colleague@agency.com"
-                    className="flex-1 bg-[#181818] border border-[#212121] rounded-xl px-3 py-2 text-xs text-white placeholder-[#A3A6AD] focus:outline-none focus:border-[#4876F3]"
+                    className="flex-1 bg-[var(--bg)] border border-[var(--panel)] rounded-xl px-3 py-2 text-xs text-white placeholder-[var(--text-2)] focus:outline-none focus:border-[#4876F3]"
                   />
                   <select
                     value={level}
                     onChange={(e) => setLevel(e.target.value)}
-                    className="bg-[#181818] border border-[#212121] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#4876F3]"
+                    className="bg-[var(--bg)] border border-[var(--panel)] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#4876F3]"
                   >
                     <option value="viewer">Viewer</option>
                     <option value="commenter">Commenter</option>
@@ -326,13 +326,13 @@ export function ShareModal({
                   </button>
                 </div>
 
-                <div className="flex items-center gap-6 pt-1 text-xs text-[#A3A6AD]">
+                <div className="flex items-center gap-6 pt-1 text-xs text-[var(--text-2)]">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={canDownload}
                       onChange={(e) => setCanDownload(e.target.checked)}
-                      className="rounded border-[#212121] text-[#4876F3] focus:ring-0"
+                      className="rounded border-[var(--panel)] text-[#4876F3] focus:ring-0"
                     />
                     <span>Can download original files</span>
                   </label>
@@ -341,7 +341,7 @@ export function ShareModal({
                       type="checkbox"
                       checked={notify}
                       onChange={(e) => setNotify(e.target.checked)}
-                      className="rounded border-[#212121] text-[#4876F3] focus:ring-0"
+                      className="rounded border-[var(--panel)] text-[#4876F3] focus:ring-0"
                     />
                     <span>Notify by email</span>
                   </label>
@@ -356,22 +356,22 @@ export function ShareModal({
               <div>
                 <h4 className="text-xs font-semibold text-white mb-2">People with access</h4>
                 {grantsLoading ? (
-                  <div className="py-6 text-center text-xs text-[#A3A6AD]">Loading access list...</div>
+                  <div className="py-6 text-center text-xs text-[var(--text-2)]">Loading access list...</div>
                 ) : grants.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-[#A3A6AD] border border-dashed border-[#212121] rounded-xl">
+                  <div className="py-6 text-center text-xs text-[var(--text-2)] border border-dashed border-[var(--panel)] rounded-xl">
                     No custom collaborators added yet. Team members access this by company role.
                   </div>
                 ) : (
-                  <div className="divide-y divide-[#212121] border border-[#212121] rounded-xl overflow-hidden bg-[#181818]">
+                  <div className="divide-y divide-[var(--panel)] border border-[var(--panel)] rounded-xl overflow-hidden bg-[var(--bg)]">
                     {grants.map((g: any) => (
                       <div key={g.id} className="flex items-center justify-between p-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-[#212121] flex items-center justify-center text-xs font-bold text-white ">
+                          <div className="w-8 h-8 rounded-full bg-[var(--panel)] flex items-center justify-center text-xs font-bold text-white ">
                             {g.email.charAt(0)}
                           </div>
                           <div>
                             <p className="text-xs font-medium text-white">{g.email}</p>
-                            <p className="text-xs text-[#A3A6AD]">
+                            <p className="text-xs text-[var(--text-2)]">
                               {g.level.toUpperCase()} · {g.can_download ? "Downloads allowed" : "Downloads forbidden"}
                             </p>
                           </div>
@@ -380,7 +380,7 @@ export function ShareModal({
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => deleteGrantMutation.mutate(g.id)}
-                            className="p-1.5 rounded-lg hover:bg-rose-500/10 text-[#A3A6AD] hover:text-rose-400"
+                            className="p-1.5 rounded-lg hover:bg-rose-500/10 text-[var(--text-2)] hover:text-rose-400"
                             title="Remove access"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -405,19 +405,19 @@ export function ShareModal({
                 </div>
               ) : showCreateLink ? (
                 /* Create Public Link Form */
-                <div className="space-y-4 bg-[#181818] border border-[#212121] p-4 rounded-xl">
+                <div className="space-y-4 bg-[var(--bg)] border border-[var(--panel)] p-4 rounded-xl">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-semibold text-white">New Public Share Link</h4>
                     <button
                       onClick={() => setShowCreateLink(false)}
-                      className="text-xs text-[#A3A6AD] hover:text-white"
+                      className="text-xs text-[var(--text-2)] hover:text-white"
                     >
                       Cancel
                     </button>
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium text-[#A3A6AD] block mb-1">
+                    <label className="text-xs font-medium text-[var(--text-2)] block mb-1">
                       Link Name
                     </label>
                     <input
@@ -425,19 +425,19 @@ export function ShareModal({
                       value={linkName}
                       onChange={(e) => setLinkName(e.target.value)}
                       placeholder="e.g. Client Review - Rough Cut"
-                      className="w-full bg-[#181818] border border-[#212121] rounded-xl px-3 py-2 text-xs text-white placeholder-[#A3A6AD] focus:outline-none focus:border-[#4876F3]"
+                      className="w-full bg-[var(--bg)] border border-[var(--panel)] rounded-xl px-3 py-2 text-xs text-white placeholder-[var(--text-2)] focus:outline-none focus:border-[#4876F3]"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-medium text-[#A3A6AD] block mb-1">
+                      <label className="text-xs font-medium text-[var(--text-2)] block mb-1">
                         Visitor Access
                       </label>
                       <select
                         value={linkAccess}
                         onChange={(e) => setLinkAccess(e.target.value)}
-                        className="w-full bg-[#181818] border border-[#212121] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#4876F3]"
+                        className="w-full bg-[var(--bg)] border border-[var(--panel)] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#4876F3]"
                       >
                         <option value="view">View only</option>
                         <option value="comment">Comment & Review</option>
@@ -448,54 +448,54 @@ export function ShareModal({
 
                     {(linkAccess === "upload" || linkAccess === "comment_upload") && (
                       <div>
-                        <label className="text-xs font-medium text-[#A3A6AD] block mb-1">
+                        <label className="text-xs font-medium text-[var(--text-2)] block mb-1">
                           Max Upload Limit (MB)
                         </label>
                         <input
                           type="number"
                           value={linkUploadLimitMB}
                           onChange={(e) => setLinkUploadLimitMB(parseInt(e.target.value) || 100)}
-                          className="w-full bg-[#181818] border border-[#212121] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#4876F3]"
+                          className="w-full bg-[var(--bg)] border border-[var(--panel)] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#4876F3]"
                         />
                       </div>
                     )}
                   </div>
 
                   {/* Security & Access Controls */}
-                  <div className="space-y-2.5 pt-2 border-t border-[#212121]">
-                    <label className="flex items-center justify-between text-xs text-[#A3A6AD] cursor-pointer">
+                  <div className="space-y-2.5 pt-2 border-t border-[var(--panel)]">
+                    <label className="flex items-center justify-between text-xs text-[var(--text-2)] cursor-pointer">
                       <span>Allow downloads</span>
                       <input
                         type="checkbox"
                         checked={linkAllowDownload}
                         onChange={(e) => setLinkAllowDownload(e.target.checked)}
-                        className="rounded border-[#212121] text-[#4876F3] focus:ring-0"
+                        className="rounded border-[var(--panel)] text-[#4876F3] focus:ring-0"
                       />
                     </label>
 
-                    <label className="flex items-center justify-between text-xs text-[#A3A6AD] cursor-pointer">
+                    <label className="flex items-center justify-between text-xs text-[var(--text-2)] cursor-pointer">
                       <span>Always show latest version</span>
                       <input
                         type="checkbox"
                         checked={linkLatestOnly}
                         onChange={(e) => setLinkLatestOnly(e.target.checked)}
-                        className="rounded border-[#212121] text-[#4876F3] focus:ring-0"
+                        className="rounded border-[var(--panel)] text-[#4876F3] focus:ring-0"
                       />
                     </label>
 
-                    <label className="flex items-center justify-between text-xs text-[#A3A6AD] cursor-pointer">
+                    <label className="flex items-center justify-between text-xs text-[var(--text-2)] cursor-pointer">
                       <span>Ask visitor name & email before opening</span>
                       <input
                         type="checkbox"
                         checked={linkAskIdentity}
                         onChange={(e) => setLinkAskIdentity(e.target.checked)}
-                        className="rounded border-[#212121] text-[#4876F3] focus:ring-0"
+                        className="rounded border-[var(--panel)] text-[#4876F3] focus:ring-0"
                       />
                     </label>
 
                     {/* Password */}
                     <div className="pt-2">
-                      <label className="flex items-center justify-between text-xs text-[#A3A6AD] cursor-pointer">
+                      <label className="flex items-center justify-between text-xs text-[var(--text-2)] cursor-pointer">
                         <span className="flex items-center gap-1.5">
                           <Lock className="w-3.5 h-3.5" />
                           <span>Password protect</span>
@@ -504,7 +504,7 @@ export function ShareModal({
                           type="checkbox"
                           checked={linkHasPassword}
                           onChange={(e) => setLinkHasPassword(e.target.checked)}
-                          className="rounded border-[#212121] text-[#4876F3] focus:ring-0"
+                          className="rounded border-[var(--panel)] text-[#4876F3] focus:ring-0"
                         />
                       </label>
                       {linkHasPassword && (
@@ -513,14 +513,14 @@ export function ShareModal({
                           value={linkPassword}
                           onChange={(e) => setLinkPassword(e.target.value)}
                           placeholder="Enter link password"
-                          className="mt-2 w-full bg-[#181818] border border-[#212121] rounded-xl px-3 py-2 text-xs text-white placeholder-[#A3A6AD] focus:outline-none focus:border-[#4876F3]"
+                          className="mt-2 w-full bg-[var(--bg)] border border-[var(--panel)] rounded-xl px-3 py-2 text-xs text-white placeholder-[var(--text-2)] focus:outline-none focus:border-[#4876F3]"
                         />
                       )}
                     </div>
 
                     {/* Expiry */}
                     <div className="pt-2">
-                      <label className="flex items-center justify-between text-xs text-[#A3A6AD] cursor-pointer">
+                      <label className="flex items-center justify-between text-xs text-[var(--text-2)] cursor-pointer">
                         <span className="flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5" />
                           <span>Set expiry date</span>
@@ -529,7 +529,7 @@ export function ShareModal({
                           type="checkbox"
                           checked={linkHasExpiry}
                           onChange={(e) => setLinkHasExpiry(e.target.checked)}
-                          className="rounded border-[#212121] text-[#4876F3] focus:ring-0"
+                          className="rounded border-[var(--panel)] text-[#4876F3] focus:ring-0"
                         />
                       </label>
                       {linkHasExpiry && (
@@ -537,7 +537,7 @@ export function ShareModal({
                           type="datetime-local"
                           value={linkExpiry}
                           onChange={(e) => setLinkExpiry(e.target.value)}
-                          className="mt-2 w-full bg-[#181818] border border-[#212121] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#4876F3]"
+                          className="mt-2 w-full bg-[var(--bg)] border border-[var(--panel)] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#4876F3]"
                         />
                       )}
                     </div>
@@ -546,7 +546,7 @@ export function ShareModal({
                   <div className="flex items-center justify-end gap-2 pt-3">
                     <button
                       onClick={() => setShowCreateLink(false)}
-                      className="px-3 py-2 bg-transparent hover:bg-[#212121] text-xs text-[#A3A6AD] hover:text-white rounded-xl"
+                      className="px-3 py-2 bg-transparent hover:bg-[var(--panel)] text-xs text-[var(--text-2)] hover:text-white rounded-xl"
                     >
                       Cancel
                     </button>
@@ -561,7 +561,7 @@ export function ShareModal({
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-[#A3A6AD]">
+                  <p className="text-xs text-[var(--text-2)]">
                     Anyone with a link can access according to its permissions.
                   </p>
                   <button
@@ -576,9 +576,9 @@ export function ShareModal({
               {/* Links List */}
               <div className="space-y-2 pt-2">
                 {linksLoading ? (
-                  <div className="py-6 text-center text-xs text-[#A3A6AD]">Loading links...</div>
+                  <div className="py-6 text-center text-xs text-[var(--text-2)]">Loading links...</div>
                 ) : shareLinks.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-[#A3A6AD] border border-dashed border-[#212121] rounded-xl">
+                  <div className="py-6 text-center text-xs text-[var(--text-2)] border border-dashed border-[var(--panel)] rounded-xl">
                     No public links created yet.
                   </div>
                 ) : (
@@ -587,12 +587,12 @@ export function ShareModal({
                     return (
                       <div
                         key={link.id}
-                        className="p-3 bg-[#181818] border border-[#212121] rounded-xl flex items-center justify-between"
+                        className="p-3 bg-[var(--bg)] border border-[var(--panel)] rounded-xl flex items-center justify-between"
                       >
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-semibold text-white">{link.name}</span>
-                            <span className="px-2 py-0.5 text-xs bg-[#212121] text-blue-400 rounded-md  font-medium">
+                            <span className="px-2 py-0.5 text-xs bg-[var(--panel)] text-blue-400 rounded-md  font-medium">
                               {link.access}
                             </span>
                             {link.has_password && (
@@ -601,7 +601,7 @@ export function ShareModal({
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-[#A3A6AD]">
+                          <p className="text-xs text-[var(--text-2)]">
                             {link.view_count || 0} views · {link.allow_download ? "Downloads enabled" : "Downloads off"}
                             {link.expires_at ? ` · Expires ${new Date(link.expires_at).toLocaleDateString()}` : ""}
                           </p>
@@ -614,7 +614,7 @@ export function ShareModal({
                               setCopiedToken(link.id);
                               setTimeout(() => setCopiedToken(null), 2000);
                             }}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#212121] hover:bg-[#2E2F34] text-white text-xs rounded-lg transition-all"
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--panel)] hover:bg-[var(--border)] text-white text-xs rounded-lg transition-all"
                           >
                             {copiedToken === link.id ? (
                               <>
@@ -631,7 +631,7 @@ export function ShareModal({
 
                           <button
                             onClick={() => deleteLinkMutation.mutate(link.id)}
-                            className="p-1.5 rounded-lg hover:bg-rose-500/10 text-[#A3A6AD] hover:text-rose-400"
+                            className="p-1.5 rounded-lg hover:bg-rose-500/10 text-[var(--text-2)] hover:text-rose-400"
                             title="Delete link"
                           >
                             <Trash2 className="w-4 h-4" />

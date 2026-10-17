@@ -7,9 +7,9 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className = "", variant = "default", children, ...props }, ref) => {
     const variantStyles = {
-      default: "bg-[#212121] border-[#2E2F34]",
-      raised: "bg-[#26272C] border-[#2E2F34]",
-      interactive: "bg-[#212121] border-[#2E2F34] hover:border-[#424344] hover:bg-[#26272C] transition-all cursor-pointer",
+      default: "bg-[var(--panel)] border-[var(--border)]",
+      raised: "bg-[var(--panel-raised)] border-[var(--border)]",
+      interactive: "bg-[var(--panel)] border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--panel-raised)] transition-all cursor-pointer",
     }[variant];
 
     return (
@@ -48,7 +48,7 @@ export function CardDescription({
   className?: string;
 }) {
   return (
-    <p className={`text-[13px] text-[#A3A6AD] mt-1 ${className}`}>
+    <p className={`text-[13px] text-[var(--text-2)] mt-1 ${className}`}>
       {children}
     </p>
   );

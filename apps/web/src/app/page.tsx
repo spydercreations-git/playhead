@@ -139,7 +139,7 @@ function getRecentItemCategoryStyle(kind: string, category?: string) {
     case "music":
       return { color: "#9787FF", bg: "rgba(151, 135, 255, 0.16)" };
     default:
-      return { color: "#A3A6AD", bg: "rgba(163, 166, 173, 0.16)" };
+      return { color: "var(--text-2)", bg: "rgba(163, 166, 173, 0.16)" };
   }
 }
 
@@ -275,10 +275,10 @@ export default function HomePage() {
       {/* Global Drag Overlay on Home for all users */}
       {isDragging && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-none">
-          <div className="flex flex-col items-center justify-center rounded-2xl bg-[#212121] border-2 border-dashed border-[#4876F3] p-12 text-center shadow-xl">
+          <div className="flex flex-col items-center justify-center rounded-2xl bg-[var(--panel)] border-2 border-dashed border-[#4876F3] p-12 text-center shadow-xl">
             <Upload size={48} className="text-[#4876F3] animate-bounce mb-4" />
             <p className="text-xl font-bold text-white">Drop files anywhere to upload</p>
-            <p className="text-sm text-[#A3A6AD] mt-1">They go to My Drive. Only you can see them.</p>
+            <p className="text-sm text-[var(--text-2)] mt-1">They go to My Drive. Only you can see them.</p>
           </div>
         </div>
       )}
@@ -299,7 +299,7 @@ export default function HomePage() {
             ? `Welcome to Playhead, ${firstName}`
             : `${getTimeOfDayGreeting()}, ${firstName}`}
         </h1>
-        <p className="text-sm text-[#A3A6AD]">
+        <p className="text-sm text-[var(--text-2)]">
           {isFirstTime
             ? "Your private My Drive is ready. Upload something or open a project."
             : reviewCount > 0
@@ -320,7 +320,7 @@ export default function HomePage() {
 
         <button
           onClick={() => router.push("/my-drive")}
-          className="flex h-9 items-center gap-2 rounded-[8px] bg-[#2A2B30] hover:bg-[#2C2D33] border border-[#2E2F34] px-3.5 text-sm font-semibold text-white transition-colors"
+          className="flex h-9 items-center gap-2 rounded-[8px] bg-[var(--input)] hover:bg-[var(--hover)] border border-[var(--border)] px-3.5 text-sm font-semibold text-white transition-colors"
         >
           <FolderPlus size={18} />
           <span>New folder</span>
@@ -328,7 +328,7 @@ export default function HomePage() {
 
         <button
           onClick={() => setShowNewDoc(true)}
-          className="flex h-9 items-center gap-2 rounded-[8px] bg-[#2A2B30] hover:bg-[#2C2D33] border border-[#2E2F34] px-3.5 text-sm font-semibold text-white transition-colors"
+          className="flex h-9 items-center gap-2 rounded-[8px] bg-[var(--input)] hover:bg-[var(--hover)] border border-[var(--border)] px-3.5 text-sm font-semibold text-white transition-colors"
         >
           <FileText size={18} />
           <span>New document</span>
@@ -336,7 +336,7 @@ export default function HomePage() {
 
         <button
           onClick={() => setShowNewSheet(true)}
-          className="flex h-9 items-center gap-2 rounded-[8px] bg-[#2A2B30] hover:bg-[#2C2D33] border border-[#2E2F34] px-3.5 text-sm font-semibold text-white transition-colors"
+          className="flex h-9 items-center gap-2 rounded-[8px] bg-[var(--input)] hover:bg-[var(--hover)] border border-[var(--border)] px-3.5 text-sm font-semibold text-white transition-colors"
         >
           <TableChart size={18} />
           <span>New spreadsheet</span>
@@ -345,7 +345,7 @@ export default function HomePage() {
         {!isClient && hasPermission("projects.create") && (
           <button
             onClick={() => setShowNewProject(true)}
-            className="flex h-9 items-center gap-2 rounded-[8px] bg-[#2A2B30] hover:bg-[#2C2D33] border border-[#2E2F34] px-3.5 text-sm font-semibold text-white transition-colors"
+            className="flex h-9 items-center gap-2 rounded-[8px] bg-[var(--input)] hover:bg-[var(--hover)] border border-[var(--border)] px-3.5 text-sm font-semibold text-white transition-colors"
           >
             <FolderOpen size={18} />
             <span>New project</span>
@@ -360,7 +360,7 @@ export default function HomePage() {
             <h2 className="text-base font-semibold text-white">My Drive</h2>
             <Link
               href="/my-drive"
-              className="text-[13px] font-medium text-[#A3A6AD] hover:text-white transition-colors"
+              className="text-[13px] font-medium text-[var(--text-2)] hover:text-white transition-colors"
             >
               Open My Drive
             </Link>
@@ -389,7 +389,7 @@ export default function HomePage() {
             <h2 className="text-base font-semibold text-white">Recent folders</h2>
             <Link
               href="/my-drive"
-              className="text-[13px] font-medium text-[#A3A6AD] hover:text-white transition-colors"
+              className="text-[13px] font-medium text-[var(--text-2)] hover:text-white transition-colors"
             >
               View all
             </Link>
@@ -431,13 +431,13 @@ export default function HomePage() {
             <h2 className="text-base font-semibold text-white">Recent files</h2>
             <Link
               href="/my-drive"
-              className="text-[13px] font-medium text-[#A3A6AD] hover:text-white transition-colors"
+              className="text-[13px] font-medium text-[var(--text-2)] hover:text-white transition-colors"
             >
               View all
             </Link>
           </div>
 
-          <div className="rounded-[12px] bg-[#212121] border border-[#2E2F34] divide-y divide-[#2E2F34] overflow-hidden">
+          <div className="rounded-[12px] bg-[var(--panel)] border border-[var(--border)] divide-y divide-[var(--border)] overflow-hidden">
             {recentFiles.slice(0, 6).map((item) => {
               const IconComp = getRecentItemIcon(item.item_kind, item.category);
               const style = getRecentItemCategoryStyle(item.item_kind, item.category);
@@ -453,7 +453,7 @@ export default function HomePage() {
                       router.push("/my-drive");
                     }
                   }}
-                  className="flex items-center justify-between h-14 px-4 hover:bg-[#2C2D33] cursor-pointer transition-colors"
+                  className="flex items-center justify-between h-14 px-4 hover:bg-[var(--hover)] cursor-pointer transition-colors"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     <div
@@ -464,7 +464,7 @@ export default function HomePage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-white truncate">{item.item_name}</p>
-                      <p className="text-xs text-[#7C7F87] truncate">
+                      <p className="text-xs text-[var(--text-3)] truncate">
                         {location}
                         {item.total_bytes > 0 && `  ·  ${formatBytes(item.total_bytes)}`}
                       </p>
@@ -472,7 +472,7 @@ export default function HomePage() {
                   </div>
 
                   <div className="flex items-center gap-4 shrink-0">
-                    <span className="text-xs text-[#7C7F87]">
+                    <span className="text-xs text-[var(--text-3)]">
                       {formatRelativeTime(item.viewed_at)}
                     </span>
                     <button
@@ -480,7 +480,7 @@ export default function HomePage() {
                       onClick={(e) => {
                         e.stopPropagation();
                       }}
-                      className="h-7 w-7 rounded-md flex items-center justify-center text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
+                      className="h-7 w-7 rounded-md flex items-center justify-center text-[var(--text-2)] hover:text-white hover:bg-[var(--input)] transition-colors"
                     >
                       <MoreHorizontal size={16} />
                     </button>
@@ -498,13 +498,13 @@ export default function HomePage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h2 className="text-base font-semibold text-white">Waiting for review</h2>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#2A2B30] text-[#A3A6AD]">
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--input)] text-[var(--text-2)]">
                 {reviewItems.length}
               </span>
             </div>
             <Link
               href="/reviews"
-              className="text-[13px] font-medium text-[#A3A6AD] hover:text-white transition-colors"
+              className="text-[13px] font-medium text-[var(--text-2)] hover:text-white transition-colors"
             >
               Open Reviews
             </Link>
@@ -530,12 +530,12 @@ export default function HomePage() {
                       router.push(`/projects/${rev.project_id}?item=${rev.id}`);
                     }
                   }}
-                  className="group relative flex flex-col justify-between h-[224px] rounded-[12px] bg-[#212121] border border-[#2E2F34] hover:border-[#424344] p-2.5 cursor-pointer transition-all duration-150 hover:scale-[1.015] active:scale-[0.98]"
+                  className="group relative flex flex-col justify-between h-[224px] rounded-[12px] bg-[var(--panel)] border border-[var(--border)] hover:border-[var(--border-strong)] p-2.5 cursor-pointer transition-all duration-150 hover:scale-[1.015] active:scale-[0.98]"
                 >
                   {/* Thumbnail slot */}
                   <div className="relative h-[136px] w-full rounded-[8px] bg-black overflow-hidden flex items-center justify-center">
-                    <div className="w-full h-full bg-[#2C2D33] flex items-center justify-center text-[#7C7F87]">
-                      <VideoFileIcon size={32} className="text-[#7C7F87]" />
+                    <div className="w-full h-full bg-[var(--hover)] flex items-center justify-center text-[var(--text-3)]">
+                      <VideoFileIcon size={32} className="text-[var(--text-3)]" />
                     </div>
 
                     {/* Version chip (bottom-left) */}
@@ -565,7 +565,7 @@ export default function HomePage() {
                       <p className="text-sm font-semibold text-white truncate group-hover:text-[#4876F3] transition-colors">
                         {rev.name}
                       </p>
-                      <p className="text-xs text-[#7C7F87] truncate mt-0.5">
+                      <p className="text-xs text-[var(--text-3)] truncate mt-0.5">
                         {rev.project_name || "Project"}
                         {rev.unresolved_comment_count > 0 &&
                           ` · ${rev.unresolved_comment_count} new comment${
@@ -594,7 +594,7 @@ export default function HomePage() {
                         onClick={(e) => {
                           e.stopPropagation();
                         }}
-                        className="h-6 w-6 rounded-md flex items-center justify-center text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
+                        className="h-6 w-6 rounded-md flex items-center justify-center text-[var(--text-2)] hover:text-white hover:bg-[var(--input)] transition-colors"
                       >
                         <MoreHorizontal size={14} />
                       </button>
@@ -613,11 +613,11 @@ export default function HomePage() {
           onClick={handleUploadClick}
           className="flex flex-col items-center justify-center h-[220px] w-full rounded-[12px] border border-dashed border-[#4876F3] bg-[#4876F3]/[0.04] hover:bg-[#4876F3]/[0.08] transition-all p-6 text-center cursor-pointer"
         >
-          <div className="flex h-16 w-16 items-center justify-center rounded-[16px] bg-[#2C2D33] text-[#A3A6AD] mb-3">
+          <div className="flex h-16 w-16 items-center justify-center rounded-[16px] bg-[var(--hover)] text-[var(--text-2)] mb-3">
             <Upload size={32} />
           </div>
           <p className="text-base font-semibold text-white">Drop files anywhere to upload</p>
-          <p className="text-sm text-[#A3A6AD] mt-1 mb-4">They go to My Drive. Only you can see them.</p>
+          <p className="text-sm text-[var(--text-2)] mt-1 mb-4">They go to My Drive. Only you can see them.</p>
           <button
             type="button"
             onClick={(e) => {
@@ -639,7 +639,7 @@ export default function HomePage() {
           {projects.length > 0 && (
             <Link
               href="/projects"
-              className="text-[13px] font-medium text-[#A3A6AD] hover:text-white transition-colors"
+              className="text-[13px] font-medium text-[var(--text-2)] hover:text-white transition-colors"
             >
               View all
             </Link>
@@ -664,8 +664,8 @@ export default function HomePage() {
           </div>
         ) : (
           /* Empty State matching P05: You haven't been added to a project yet. When an Admin adds you, it shows up here. */
-          <div className="flex items-center gap-4 rounded-[12px] bg-[#212121] border border-[#2E2F34] p-5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-[10px] bg-[#2A2B30] text-[#7C7F87] shrink-0">
+          <div className="flex items-center gap-4 rounded-[12px] bg-[var(--panel)] border border-[var(--border)] p-5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-[10px] bg-[var(--input)] text-[var(--text-3)] shrink-0">
               <FolderOpen size={24} />
             </div>
             <div>
@@ -674,7 +674,7 @@ export default function HomePage() {
                   ? "Loading your projects..."
                   : "You haven't been added to a project yet."}
               </p>
-              <p className="text-[13px] text-[#7C7F87] mt-0.5">
+              <p className="text-[13px] text-[var(--text-3)] mt-0.5">
                 When an Admin adds you, it shows up here.
               </p>
             </div>

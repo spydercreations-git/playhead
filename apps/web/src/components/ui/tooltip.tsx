@@ -12,7 +12,7 @@ export interface TooltipProps {
 /**
  * Playhead Tooltip Component
  * Boards/02 Components:
- * - Radius 6, fill #26272C, border #2E2F34, text 12 Medium
+ * - Radius 6, fill var(--panel-raised), border var(--border), text 12 Medium
  */
 export function Tooltip({
   content,
@@ -41,7 +41,7 @@ export function Tooltip({
       {isVisible && content && (
         <div
           role="tooltip"
-          className={`absolute z-50 pointer-events-none whitespace-nowrap rounded-[6px] bg-[#26272C] border border-[#2E2F34] px-2.5 py-1 text-xs font-medium text-white shadow-lg animate-in fade-in-0 zoom-in-95 duration-100 ${positionClasses} ${className}`}
+          className={`absolute z-50 pointer-events-none whitespace-nowrap rounded-[6px] bg-[var(--panel-raised)] border border-[var(--border)] px-2.5 py-1 text-xs font-medium text-white shadow-lg animate-in fade-in-0 zoom-in-95 duration-100 ${positionClasses} ${className}`}
         >
           {content}
         </div>

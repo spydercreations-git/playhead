@@ -64,30 +64,30 @@ export function ProjectCard({
           {/* Tab: top-left, 129 wide, 18 high, corners 10, sloped right edge. Stays fixed inside card width. */}
           <path
             d="M0 22 V12 q0 -10 10 -10 h80 q8 0 13 5 l6 6 q4 4 10 4 V22 H0z"
-            fill="#26272C"
-            stroke="#2E2F34"
+            fill="var(--panel-raised)"
+            stroke="var(--border)"
             strokeWidth="1"
-            className="transition-colors group-hover:stroke-[#424344]"
+            className="transition-colors group-hover:stroke-[var(--border-strong)]"
           />
-          {/* Body: radius 12, fill #212121, border #2E2F34. Stretches with width */}
+          {/* Body: radius 12, fill var(--panel), border var(--border). Stretches with width */}
           <rect
             x="0"
             y="18"
             width="100%"
             height="272"
             rx="12"
-            fill="#212121"
-            stroke="#2E2F34"
+            fill="var(--panel)"
+            stroke="var(--border)"
             strokeWidth="1"
-            className="transition-colors group-hover:stroke-[#424344]"
+            className="transition-colors group-hover:stroke-[var(--border-strong)]"
           />
         </svg>
 
-        {/* Preview Container: If no files, show Empty preview (folder icon on #2C2D33) as in Boards/02 Components Empty */}
+        {/* Preview Container: If no files, show Empty preview (folder icon on var(--hover)) as in Boards/02 Components Empty */}
         <div className="relative h-[150px] w-full">
           {thumbnails.length === 0 ? (
-            <div className="relative z-10 h-[150px] w-full rounded-[8px] bg-[#2C2D33] flex items-center justify-center text-[#7C7F87]">
-              <FolderOpen size={36} className="text-[#7C7F87]" />
+            <div className="relative z-10 h-[150px] w-full rounded-[8px] bg-[var(--hover)] flex items-center justify-center text-[var(--text-3)]">
+              <FolderOpen size={36} className="text-[var(--text-3)]" />
             </div>
           ) : (
             <div className="relative z-10 h-[150px] w-full flex gap-1.5">
@@ -100,8 +100,8 @@ export function ProjectCard({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-[#2C2D33] flex items-center justify-center text-[#7C7F87]">
-                    <FolderOpen size={24} className="text-[#7C7F87]" />
+                  <div className="w-full h-full bg-[var(--hover)] flex items-center justify-center text-[var(--text-3)]">
+                    <FolderOpen size={24} className="text-[var(--text-3)]" />
                   </div>
                 )}
               </div>
@@ -116,7 +116,7 @@ export function ProjectCard({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-[#2C2D33]" />
+                    <div className="w-full h-full bg-[var(--hover)]" />
                   )}
                 </div>
                 <div className="h-[72px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
@@ -127,7 +127,7 @@ export function ProjectCard({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-[#2C2D33]" />
+                    <div className="w-full h-full bg-[var(--hover)]" />
                   )}
                 </div>
               </div>
@@ -148,7 +148,7 @@ export function ProjectCard({
             <h3 className="text-base font-semibold text-white group-hover:text-[#4876F3] transition-colors truncate">
               {name}
             </h3>
-            <p className="text-[13px] text-[#7C7F87] truncate mt-0.5">
+            <p className="text-[13px] text-[var(--text-3)] truncate mt-0.5">
               {fileText}
             </p>
           </div>
@@ -160,7 +160,7 @@ export function ProjectCard({
                 <div
                   key={m.id || idx}
                   style={{ backgroundColor: m.color || "#4876F3" }}
-                  className="inline-flex h-[22px] w-[22px] rounded-full ring-2 ring-[#212121] text-xs font-semibold text-white items-center justify-center"
+                  className="inline-flex h-[22px] w-[22px] rounded-full ring-2 ring-[var(--panel)] text-xs font-semibold text-white items-center justify-center"
                 >
                   {(m.name || m.email || "U").slice(0, 1).toUpperCase()}
                 </div>
@@ -175,7 +175,7 @@ export function ProjectCard({
                 e.stopPropagation();
                 if (onContextMenu) onContextMenu(e);
               }}
-              className="h-7 w-7 rounded-md flex items-center justify-center text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
+              className="h-7 w-7 rounded-md flex items-center justify-center text-[var(--text-2)] hover:text-white hover:bg-[var(--input)] transition-colors"
             >
               <MoreHorizontal size={18} />
             </button>

@@ -341,28 +341,28 @@ export function VideoPlayer({
   return (
     <div
       ref={containerRef}
-      className="flex flex-col w-full h-full bg-[#181818] text-white select-none overflow-hidden"
+      className="flex flex-col w-full h-full bg-[var(--bg)] text-white select-none overflow-hidden"
     >
       {/* Matte Black Video Canvas Area */}
-      <div className="relative flex-1 flex items-center justify-center p-4 bg-[#181818] overflow-hidden min-h-0">
+      <div className="relative flex-1 flex items-center justify-center p-4 bg-[var(--bg)] overflow-hidden min-h-0">
         {/* Error message fallback */}
         {errorMessage ? (
-          <div className="p-8 text-center max-w-md bg-[#181818] border border-[#212121] rounded-xl shadow-xl">
+          <div className="p-8 text-center max-w-md bg-[var(--bg)] border border-[var(--panel)] rounded-xl shadow-xl">
             <Sparkles className="w-10 h-10 text-[#FFBB56] mx-auto mb-3" />
             <h3 className="text-sm font-semibold mb-1 text-white">Media Processing</h3>
-            <p className="text-xs text-[#A3A6AD] mb-4">{errorMessage}</p>
+            <p className="text-xs text-[var(--text-2)] mb-4">{errorMessage}</p>
           </div>
         ) : isAudio ? (
           /* Audio player visualization */
-          <div className="flex flex-col items-center justify-center w-full max-w-xl p-8 bg-[#181818] border border-[#212121] rounded-xl shadow-overlay">
+          <div className="flex flex-col items-center justify-center w-full max-w-xl p-8 bg-[var(--bg)] border border-[var(--panel)] rounded-xl shadow-overlay">
             <div className="w-20 h-20 rounded-xl bg-[#FFBB56]/10 border border-[#FFBB56]/20 flex items-center justify-center mb-6">
               <Music className="w-10 h-10 text-[#FFBB56]" />
             </div>
             <h3 className="text-base font-semibold text-white mb-1 truncate max-w-md">{fileName}</h3>
-            <span className="text-xs text-[#A3A6AD] mb-8 font-mono">v{versionNumber} &middot; Audio Track</span>
+            <span className="text-xs text-[var(--text-2)] mb-8 font-mono">v{versionNumber} &middot; Audio Track</span>
 
             {/* Audio Waveform visualization */}
-            <div className="w-full h-24 flex items-center justify-between gap-[2px] bg-[#181818] p-4 rounded-xl border border-[#212121] mb-6">
+            <div className="w-full h-24 flex items-center justify-between gap-[2px] bg-[var(--bg)] p-4 rounded-xl border border-[var(--panel)] mb-6">
               {(waveformPeaks || Array.from({ length: 64 }, (_, i) => Math.sin(i / 4) * 40 + 50)).map(
                 (peak, idx) => (
                   <div
@@ -389,7 +389,7 @@ export function VideoPlayer({
         ) : (
           /* Video Canvas Element with Native Aspect Ratio */
           <div
-            className="relative max-h-full max-w-full flex items-center justify-center shadow-overlay rounded-lg overflow-hidden border border-[#212121]"
+            className="relative max-h-full max-w-full flex items-center justify-center shadow-overlay rounded-lg overflow-hidden border border-[var(--panel)]"
             style={aspectRatioStyle}
           >
             <video
@@ -418,7 +418,7 @@ export function VideoPlayer({
       </div>
 
       {/* Scrubber Timeline Area */}
-      <div className="px-6 pt-2 bg-[#181818] border-t border-[#212121]">
+      <div className="px-6 pt-2 bg-[var(--bg)] border-t border-[var(--panel)]">
         <TimelineScrubber
           currentTimeMs={currentTimeMs}
           durationMs={durationMs}
@@ -435,7 +435,7 @@ export function VideoPlayer({
       </div>
 
       {/* Main Player Controls Bar */}
-      <div className="flex items-center justify-between h-14 px-6 bg-[#181818] border-b border-[#212121]">
+      <div className="flex items-center justify-between h-14 px-6 bg-[var(--bg)] border-b border-[var(--panel)]">
         {/* Left: Playback, Frame Step, Volume */}
         <div className="flex items-center gap-3">
           {/* Play / Pause button */}
@@ -450,7 +450,7 @@ export function VideoPlayer({
           {/* Jump 5s Back */}
           <button
             onClick={() => jumpSeconds(-5)}
-            className="p-1.5 rounded-lg text-[#A3A6AD] hover:text-white hover:bg-[#181818] transition-colors"
+            className="p-1.5 rounded-lg text-[var(--text-2)] hover:text-white hover:bg-[var(--bg)] transition-colors"
             title="Rewind 5s (J)"
           >
             <RotateCcw className="w-4 h-4" />
@@ -459,7 +459,7 @@ export function VideoPlayer({
           {/* Frame Step Back */}
           <button
             onClick={() => stepFrame(false)}
-            className="px-2 py-1 rounded text-xs font-mono text-[#A3A6AD] hover:text-white hover:bg-[#181818] transition-colors"
+            className="px-2 py-1 rounded text-xs font-mono text-[var(--text-2)] hover:text-white hover:bg-[var(--bg)] transition-colors"
             title="Step Back 1 Frame (Left Arrow)"
           >
             &lt; 1f
@@ -468,7 +468,7 @@ export function VideoPlayer({
           {/* Frame Step Forward */}
           <button
             onClick={() => stepFrame(true)}
-            className="px-2 py-1 rounded text-xs font-mono text-[#A3A6AD] hover:text-white hover:bg-[#181818] transition-colors"
+            className="px-2 py-1 rounded text-xs font-mono text-[var(--text-2)] hover:text-white hover:bg-[var(--bg)] transition-colors"
             title="Step Forward 1 Frame (Right Arrow)"
           >
             1f &gt;
@@ -478,7 +478,7 @@ export function VideoPlayer({
           <div className="flex items-center gap-2 group/vol pl-2">
             <button
               onClick={toggleMute}
-              className="text-[#A3A6AD] hover:text-white transition-colors"
+              className="text-[var(--text-2)] hover:text-white transition-colors"
               title="Mute / Unmute (M)"
             >
               {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -490,7 +490,7 @@ export function VideoPlayer({
               step="0.05"
               value={isMuted ? 0 : volume}
               onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-              className="w-16 h-1 bg-[#212121] rounded-lg appearance-none cursor-pointer accent-[#FFBB56]"
+              className="w-16 h-1 bg-[var(--panel)] rounded-lg appearance-none cursor-pointer accent-[#FFBB56]"
             />
           </div>
         </div>
@@ -499,24 +499,24 @@ export function VideoPlayer({
         <div className="relative">
           <button
             onClick={() => setShowTimecodeMenu(!showTimecodeMenu)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#181818] hover:bg-[#212121] border border-[#2E2F34] text-xs font-mono tabular-nums tracking-wider transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg)] hover:bg-[var(--panel)] border border-[var(--border)] text-xs font-mono tabular-nums tracking-wider transition-colors"
           >
             <span className="text-white font-semibold tabular-nums">{formatTimecode(currentTimeMs, timecodeFormat, fps)}</span>
-            <span className="text-[#A3A6AD]">/</span>
-            <span className="text-[#A3A6AD] tabular-nums">{formatTimecode(durationMs, timecodeFormat, fps)}</span>
-            <ChevronDown className="w-3 h-3 text-[#A3A6AD] ml-1" />
+            <span className="text-[var(--text-2)]">/</span>
+            <span className="text-[var(--text-2)] tabular-nums">{formatTimecode(durationMs, timecodeFormat, fps)}</span>
+            <ChevronDown className="w-3 h-3 text-[var(--text-2)] ml-1" />
           </button>
 
           {/* Timecode Format Dropdown */}
           {showTimecodeMenu && (
-            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-44 bg-[#181818] border border-[#2E2F34] rounded-xl shadow-overlay p-1 z-50">
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-44 bg-[var(--bg)] border border-[var(--border)] rounded-xl shadow-overlay p-1 z-50">
               <button
                 onClick={() => {
                   setTimecodeFormat("smpte");
                   setShowTimecodeMenu(false);
                 }}
                 className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-mono ${
-                  timecodeFormat === "smpte" ? "bg-[#FFBB56] text-white" : "text-[#A3A6AD] hover:bg-[#212121]"
+                  timecodeFormat === "smpte" ? "bg-[#FFBB56] text-white" : "text-[var(--text-2)] hover:bg-[var(--panel)]"
                 }`}
               >
                 Timecode SMPTE
@@ -527,7 +527,7 @@ export function VideoPlayer({
                   setShowTimecodeMenu(false);
                 }}
                 className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-mono ${
-                  timecodeFormat === "frames" ? "bg-[#FFBB56] text-white" : "text-[#A3A6AD] hover:bg-[#212121]"
+                  timecodeFormat === "frames" ? "bg-[#FFBB56] text-white" : "text-[var(--text-2)] hover:bg-[var(--panel)]"
                 }`}
               >
                 Frames (f)
@@ -538,7 +538,7 @@ export function VideoPlayer({
                   setShowTimecodeMenu(false);
                 }}
                 className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-mono ${
-                  timecodeFormat === "seconds" ? "bg-[#FFBB56] text-white" : "text-[#A3A6AD] hover:bg-[#212121]"
+                  timecodeFormat === "seconds" ? "bg-[#FFBB56] text-white" : "text-[var(--text-2)] hover:bg-[var(--panel)]"
                 }`}
               >
                 Seconds (s)
@@ -553,7 +553,7 @@ export function VideoPlayer({
           <button
             onClick={() => setIsLooping(!isLooping)}
             className={`p-1.5 rounded-lg transition-colors text-xs ${
-              isLooping ? "bg-[#FFBB56]/20 text-[#FFBB56] border border-[#FFBB56]/30" : "text-[#A3A6AD] hover:text-white"
+              isLooping ? "bg-[#FFBB56]/20 text-[#FFBB56] border border-[#FFBB56]/30" : "text-[var(--text-2)] hover:text-white"
             }`}
             title="Toggle Loop"
           >
@@ -564,19 +564,19 @@ export function VideoPlayer({
           <div className="relative">
             <button
               onClick={() => setShowSpeedMenu(!showSpeedMenu)}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-mono text-[#A3A6AD] hover:text-white hover:bg-[#181818] transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-mono text-[var(--text-2)] hover:text-white hover:bg-[var(--bg)] transition-colors"
               title="Playback speed"
             >
               <span>{playbackRate}x</span>
             </button>
             {showSpeedMenu && (
-              <div className="absolute bottom-10 right-0 w-24 bg-[#181818] border border-[#2E2F34] rounded-xl shadow-overlay p-1 z-50">
+              <div className="absolute bottom-10 right-0 w-24 bg-[var(--bg)] border border-[var(--border)] rounded-xl shadow-overlay p-1 z-50">
                 {[0.5, 1, 1.25, 1.5, 2].map((rate) => (
                   <button
                     key={rate}
                     onClick={() => handleSpeedChange(rate)}
                     className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-mono ${
-                      playbackRate === rate ? "bg-[#FFBB56] text-white" : "text-[#A3A6AD] hover:bg-[#212121]"
+                      playbackRate === rate ? "bg-[#FFBB56] text-white" : "text-[var(--text-2)] hover:bg-[var(--panel)]"
                     }`}
                   >
                     {rate}x
@@ -591,17 +591,17 @@ export function VideoPlayer({
             <div className="relative">
               <button
                 onClick={() => setShowQualityMenu(!showQualityMenu)}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-mono text-[#A3A6AD] hover:text-white hover:bg-[#181818] transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-mono text-[var(--text-2)] hover:text-white hover:bg-[var(--bg)] transition-colors"
                 title="Resolution quality"
               >
                 <span>{currentQuality === -1 ? "Auto" : qualityLevels[currentQuality]?.name}</span>
               </button>
               {showQualityMenu && (
-                <div className="absolute bottom-10 right-0 w-28 bg-[#181818] border border-[#2E2F34] rounded-xl shadow-overlay p-1 z-50">
+                <div className="absolute bottom-10 right-0 w-28 bg-[var(--bg)] border border-[var(--border)] rounded-xl shadow-overlay p-1 z-50">
                   <button
                     onClick={() => handleQualityChange(-1)}
                     className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-mono ${
-                      currentQuality === -1 ? "bg-[#FFBB56] text-white" : "text-[#A3A6AD] hover:bg-[#212121]"
+                      currentQuality === -1 ? "bg-[#FFBB56] text-white" : "text-[var(--text-2)] hover:bg-[var(--panel)]"
                     }`}
                   >
                     Auto
@@ -611,7 +611,7 @@ export function VideoPlayer({
                       key={lvl.id}
                       onClick={() => handleQualityChange(lvl.id)}
                       className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-mono ${
-                        currentQuality === lvl.id ? "bg-[#FFBB56] text-white" : "text-[#A3A6AD] hover:bg-[#212121]"
+                        currentQuality === lvl.id ? "bg-[#FFBB56] text-white" : "text-[var(--text-2)] hover:bg-[var(--panel)]"
                       }`}
                     >
                       {lvl.name}
@@ -626,7 +626,7 @@ export function VideoPlayer({
           <button
             onClick={() => setShowMarkers(!showMarkers)}
             className={`p-1.5 rounded-lg transition-colors ${
-              showMarkers ? "text-[#FFBB56]" : "text-[#A3A6AD] hover:text-[#A3A6AD]"
+              showMarkers ? "text-[#FFBB56]" : "text-[var(--text-2)] hover:text-[var(--text-2)]"
             }`}
             title={showMarkers ? "Hide Comment Markers" : "Show Comment Markers"}
           >
@@ -638,7 +638,7 @@ export function VideoPlayer({
             <button
               onClick={onToggleCompare}
               className={`p-1.5 rounded-lg transition-colors ${
-                isComparing ? "bg-[#FFBB56] text-white" : "text-[#A3A6AD] hover:text-white hover:bg-[#181818]"
+                isComparing ? "bg-[#FFBB56] text-white" : "text-[var(--text-2)] hover:text-white hover:bg-[var(--bg)]"
               }`}
               title="Side-by-side Version Compare"
             >
@@ -649,7 +649,7 @@ export function VideoPlayer({
           {/* Fullscreen toggle */}
           <button
             onClick={toggleFullscreen}
-            className="p-1.5 rounded-lg text-[#A3A6AD] hover:text-white hover:bg-[#181818] transition-colors"
+            className="p-1.5 rounded-lg text-[var(--text-2)] hover:text-white hover:bg-[var(--bg)] transition-colors"
             title="Fullscreen (F)"
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -658,9 +658,9 @@ export function VideoPlayer({
       </div>
 
       {/* Metadata Strip directly beneath controls */}
-      <div className="flex items-center justify-between px-6 py-2 bg-[#181818] border-t border-[#181818] text-xs text-[#A3A6AD] font-mono">
+      <div className="flex items-center justify-between px-6 py-2 bg-[var(--bg)] border-t border-[var(--bg)] text-xs text-[var(--text-2)] font-mono">
         <div className="flex items-center gap-3">
-          <span className="rounded bg-[#212121] px-1.5 py-0.5 font-bold text-white">v{versionNumber}</span>
+          <span className="rounded bg-[var(--panel)] px-1.5 py-0.5 font-bold text-white">v{versionNumber}</span>
           {uploaderName && <span>Uploaded by {uploaderName}</span>}
           {uploadDate && <span>&middot; {uploadDate}</span>}
         </div>

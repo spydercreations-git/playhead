@@ -328,7 +328,7 @@ export default function MyDrivePage() {
   );
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#181818] text-white select-none">
+    <div className="flex flex-col min-h-screen bg-[var(--bg)] text-white select-none">
       <input
         type="file"
         ref={fileInputRef}
@@ -341,7 +341,7 @@ export default function MyDrivePage() {
         <div className="flex items-center justify-between">
           <div>
             {currentFolder ? (
-              <div className="flex items-center gap-2 text-sm text-[#A3A6AD]">
+              <div className="flex items-center gap-2 text-sm text-[var(--text-2)]">
                 <button
                   onClick={() => setCurrentFolder(null)}
                   className="hover:text-white transition-colors flex items-center gap-1 font-medium"
@@ -349,13 +349,13 @@ export default function MyDrivePage() {
                   <HardDrive size={16} />
                   <span>My Drive</span>
                 </button>
-                <ChevronRight size={14} className="text-[#7C7F87]" />
+                <ChevronRight size={14} className="text-[var(--text-3)]" />
                 <span className="text-white font-semibold">{currentFolder.name}</span>
               </div>
             ) : (
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-white">My Drive</h1>
-                <p className="text-sm text-[#A3A6AD] mt-1">
+                <p className="text-sm text-[var(--text-2)] mt-1">
                   Private to you. Move or copy anything into a project when it&apos;s ready.
                 </p>
               </div>
@@ -365,7 +365,7 @@ export default function MyDrivePage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsNewFolderOpen(true)}
-              className="flex items-center gap-2 h-9 px-3.5 rounded-lg bg-[#2A2B30] border border-[#2E2F34] hover:bg-[#3A3C44] text-sm font-medium text-white transition-colors"
+              className="flex items-center gap-2 h-9 px-3.5 rounded-lg bg-[var(--input)] border border-[var(--border)] hover:bg-[#3A3C44] text-sm font-medium text-white transition-colors"
             >
               <FolderPlus size={16} />
               <span>New folder</span>
@@ -382,7 +382,7 @@ export default function MyDrivePage() {
 
         {/* Lock Subheader with Real Storage Stats */}
         {!currentFolder && (
-          <div className="flex items-center gap-2 text-xs text-[#7C7F87] mt-3">
+          <div className="flex items-center gap-2 text-xs text-[var(--text-3)] mt-3">
             <Lock size={13} className="shrink-0" />
             <span>Only you can see My Drive · {formatBytes(totalDriveBytes)} used</span>
           </div>
@@ -403,22 +403,22 @@ export default function MyDrivePage() {
           <div className="relative w-72">
             <Search
               size={15}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7C7F87]"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]"
             />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search My Drive"
-              className="w-full h-9 pl-9 pr-4 rounded-lg bg-[#2A2B30] border border-[#2E2F34] focus:border-[#3B67E0] focus:outline-none text-sm text-white placeholder-[#7C7F87]"
+              className="w-full h-9 pl-9 pr-4 rounded-lg bg-[var(--input)] border border-[var(--border)] focus:border-[#3B67E0] focus:outline-none text-sm text-white placeholder-[var(--text-3)]"
             />
           </div>
 
-          <div className="flex items-center gap-1 bg-[#2A2B30] p-0.5 rounded-lg border border-[#2E2F34]">
+          <div className="flex items-center gap-1 bg-[var(--input)] p-0.5 rounded-lg border border-[var(--border)]">
             <button
               onClick={() => setViewMode("grid")}
               className={`p-1.5 rounded-md transition-colors ${
-                viewMode === "grid" ? "bg-[#3A3C44] text-white" : "text-[#7C7F87] hover:text-white"
+                viewMode === "grid" ? "bg-[#3A3C44] text-white" : "text-[var(--text-3)] hover:text-white"
               }`}
               title="Grid view"
             >
@@ -427,7 +427,7 @@ export default function MyDrivePage() {
             <button
               onClick={() => setViewMode("list")}
               className={`p-1.5 rounded-md transition-colors ${
-                viewMode === "list" ? "bg-[#3A3C44] text-white" : "text-[#7C7F87] hover:text-white"
+                viewMode === "list" ? "bg-[#3A3C44] text-white" : "text-[var(--text-3)] hover:text-white"
               }`}
               title="List view"
             >
@@ -442,7 +442,7 @@ export default function MyDrivePage() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
             {[1, 2, 3, 4].map((n) => (
-              <div key={n} className="h-44 rounded-xl bg-[#212121] animate-pulse border border-[#2E2F34]" />
+              <div key={n} className="h-44 rounded-xl bg-[var(--panel)] animate-pulse border border-[var(--border)]" />
             ))}
           </div>
         ) : !currentFolder ? (
@@ -450,16 +450,16 @@ export default function MyDrivePage() {
           <div>
             <div className="flex items-center justify-between mb-4 mt-2">
               <h2 className="text-sm font-semibold text-white">Folders</h2>
-              <span className="text-xs text-[#7C7F87] font-mono">{filteredFolders.length}</span>
+              <span className="text-xs text-[var(--text-3)] font-mono">{filteredFolders.length}</span>
             </div>
 
             {filteredFolders.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-12 h-12 rounded-full bg-[#212121] border border-[#2E2F34] flex items-center justify-center text-[#7C7F87] mb-3">
+                <div className="w-12 h-12 rounded-full bg-[var(--panel)] border border-[var(--border)] flex items-center justify-center text-[var(--text-3)] mb-3">
                   <FolderIcon size={22} />
                 </div>
                 <h3 className="text-sm font-semibold text-white">No folders found</h3>
-                <p className="text-xs text-[#7C7F87] mt-1 max-w-sm">
+                <p className="text-xs text-[var(--text-3)] mt-1 max-w-sm">
                   Create a new folder or upload files to organize your personal drive.
                 </p>
               </div>
@@ -488,7 +488,7 @@ export default function MyDrivePage() {
                         e.stopPropagation();
                         setActionMenuTarget(actionMenuTarget?.id === folder.id ? null : folder);
                       }}
-                      className="folder-menu-btn absolute top-6 right-3 p-1.5 rounded-md bg-[#2A2B30]/80 hover:bg-[#3A3C44] text-[#A3A6AD] hover:text-white transition-opacity opacity-0 group-hover:opacity-100"
+                      className="folder-menu-btn absolute top-6 right-3 p-1.5 rounded-md bg-[var(--input)]/80 hover:bg-[#3A3C44] text-[var(--text-2)] hover:text-white transition-opacity opacity-0 group-hover:opacity-100"
                     >
                       <MoreHorizontal size={15} />
                     </button>
@@ -497,10 +497,10 @@ export default function MyDrivePage() {
               </div>
             ) : (
               /* List View (P07) */
-              <div className="rounded-xl border border-[#2E2F34] overflow-hidden bg-[#212121]">
+              <div className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--panel)]">
                 <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-[#2E2F34] text-xs font-semibold text-[#7C7F87]">
+                    <tr className="border-b border-[var(--border)] text-xs font-semibold text-[var(--text-3)]">
                       <th className="py-3 px-4">Name</th>
                       <th className="py-3 px-4">Items</th>
                       <th className="py-3 px-4">Size</th>
@@ -508,35 +508,35 @@ export default function MyDrivePage() {
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#2E2F34]">
+                  <tbody className="divide-y divide-[var(--border)]">
                     {filteredFolders.map((folder) => (
                       <tr
                         key={folder.id}
                         onDoubleClick={() => setCurrentFolder(folder)}
-                        className="hover:bg-[#2A2B30]/50 cursor-pointer transition-colors"
+                        className="hover:bg-[var(--input)]/50 cursor-pointer transition-colors"
                       >
                         <td className="py-3 px-4 flex items-center gap-2.5">
                           <FolderIcon size={16} className="text-[#3FCF8E]" />
                           <span className="font-medium text-white">{folder.name}</span>
                           {folder.is_default_folder && (
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-[#2E2F34] text-[#7C7F87] font-mono">
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-[var(--border)] text-[var(--text-3)] font-mono">
                               Default
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-xs text-[#A3A6AD] font-mono">
+                        <td className="py-3 px-4 text-xs text-[var(--text-2)] font-mono">
                           {folder.file_count} {folder.file_count === 1 ? "file" : "files"}
                         </td>
-                        <td className="py-3 px-4 text-xs text-[#A3A6AD] font-mono">
+                        <td className="py-3 px-4 text-xs text-[var(--text-2)] font-mono">
                           {formatBytes(folder.total_bytes)}
                         </td>
-                        <td className="py-3 px-4 text-xs text-[#7C7F87] font-mono">
+                        <td className="py-3 px-4 text-xs text-[var(--text-3)] font-mono">
                           {formatDate(folder.updated_at)}
                         </td>
                         <td className="py-3 px-4 text-right">
                           <button
                             onClick={() => setActionMenuTarget(folder)}
-                            className="p-1 rounded text-[#7C7F87] hover:text-white"
+                            className="p-1 rounded text-[var(--text-3)] hover:text-white"
                           >
                             <MoreHorizontal size={16} />
                           </button>
@@ -553,19 +553,19 @@ export default function MyDrivePage() {
           <div>
             {filteredItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-12 h-12 rounded-full bg-[#212121] border border-[#2E2F34] flex items-center justify-center text-[#7C7F87] mb-3">
+                <div className="w-12 h-12 rounded-full bg-[var(--panel)] border border-[var(--border)] flex items-center justify-center text-[var(--text-3)] mb-3">
                   <Upload size={22} />
                 </div>
                 <h3 className="text-sm font-semibold text-white">This folder is empty</h3>
-                <p className="text-xs text-[#7C7F87] mt-1 max-w-sm">
+                <p className="text-xs text-[var(--text-3)] mt-1 max-w-sm">
                   Drag and drop files here, or use the Upload button above.
                 </p>
               </div>
             ) : (
-              <div className="rounded-xl border border-[#2E2F34] overflow-hidden bg-[#212121]">
+              <div className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--panel)]">
                 <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-[#2E2F34] text-xs font-semibold text-[#7C7F87]">
+                    <tr className="border-b border-[var(--border)] text-xs font-semibold text-[var(--text-3)]">
                       <th className="py-3 px-4">Name</th>
                       <th className="py-3 px-4">Type</th>
                       <th className="py-3 px-4">Size</th>
@@ -573,11 +573,11 @@ export default function MyDrivePage() {
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#2E2F34]">
+                  <tbody className="divide-y divide-[var(--border)]">
                     {filteredItems.map((item) => (
                       <tr
                         key={item.id}
-                        className="hover:bg-[#2A2B30]/50 cursor-pointer transition-colors"
+                        className="hover:bg-[var(--input)]/50 cursor-pointer transition-colors"
                       >
                         <td className="py-3 px-4 flex items-center gap-2.5">
                           {item.kind === "folder" ? (
@@ -593,19 +593,19 @@ export default function MyDrivePage() {
                           )}
                           <span className="font-medium text-white">{item.name}</span>
                         </td>
-                        <td className="py-3 px-4 text-xs text-[#A3A6AD] capitalize">
+                        <td className="py-3 px-4 text-xs text-[var(--text-2)] capitalize">
                           {item.kind === "folder" ? "Folder" : item.category || "File"}
                         </td>
-                        <td className="py-3 px-4 text-xs text-[#A3A6AD] font-mono">
+                        <td className="py-3 px-4 text-xs text-[var(--text-2)] font-mono">
                           {formatBytes(item.total_bytes)}
                         </td>
-                        <td className="py-3 px-4 text-xs text-[#7C7F87] font-mono">
+                        <td className="py-3 px-4 text-xs text-[var(--text-3)] font-mono">
                           {formatDate(item.updated_at)}
                         </td>
                         <td className="py-3 px-4 text-right">
                           <button
                             onClick={() => setActionMenuTarget(item)}
-                            className="p-1 rounded text-[#7C7F87] hover:text-white"
+                            className="p-1 rounded text-[var(--text-3)] hover:text-white"
                           >
                             <MoreHorizontal size={16} />
                           </button>
@@ -627,19 +627,19 @@ export default function MyDrivePage() {
           onClick={() => setActionMenuTarget(null)}
         >
           <div
-            className="w-64 rounded-xl bg-[#212121] border border-[#2E2F34] shadow-xl p-2 flex flex-col gap-1 text-sm select-none"
+            className="w-64 rounded-xl bg-[var(--panel)] border border-[var(--border)] shadow-xl p-2 flex flex-col gap-1 text-sm select-none"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-3 py-2 border-b border-[#2E2F34] mb-1">
+            <div className="px-3 py-2 border-b border-[var(--border)] mb-1">
               <p className="font-semibold text-white truncate">{actionMenuTarget.name}</p>
-              <p className="text-xs text-[#7C7F87]">Options</p>
+              <p className="text-xs text-[var(--text-3)]">Options</p>
             </div>
 
             {/* Move to Project */}
             {!actionMenuTarget.is_default_folder && (
               <button
                 onClick={() => openProjectModal(actionMenuTarget, "move")}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-white hover:bg-[#2A2B30] transition-colors"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-white hover:bg-[var(--input)] transition-colors"
               >
                 <FolderInput size={15} className="text-[#4876F3]" />
                 <span>Move to project</span>
@@ -649,7 +649,7 @@ export default function MyDrivePage() {
             {/* Copy to Project */}
             <button
               onClick={() => openProjectModal(actionMenuTarget, "copy")}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-white hover:bg-[#2A2B30] transition-colors"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-white hover:bg-[var(--input)] transition-colors"
             >
               <FolderOutput size={15} className="text-[#3FCF8E]" />
               <span>Copy to project</span>
@@ -664,13 +664,13 @@ export default function MyDrivePage() {
                   setIsRenameOpen(true);
                   setActionMenuTarget(null);
                 }}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-white hover:bg-[#2A2B30] transition-colors"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-white hover:bg-[var(--input)] transition-colors"
               >
-                <Edit3 size={15} className="text-[#A3A6AD]" />
+                <Edit3 size={15} className="text-[var(--text-2)]" />
                 <span>Rename</span>
               </button>
             ) : (
-              <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[#7C7F87] cursor-not-allowed">
+              <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[var(--text-3)] cursor-not-allowed">
                 <Edit3 size={15} />
                 <span>Cannot rename default folder</span>
               </div>
@@ -686,7 +686,7 @@ export default function MyDrivePage() {
                 <span>Move to trash</span>
               </button>
             ) : (
-              <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[#7C7F87] cursor-not-allowed">
+              <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[var(--text-3)] cursor-not-allowed">
                 <Trash2 size={15} />
                 <span>Cannot delete default folder</span>
               </div>
@@ -700,10 +700,10 @@ export default function MyDrivePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <form
             onSubmit={handleCreateFolder}
-            className="w-full max-w-sm rounded-xl bg-[#212121] border border-[#2E2F34] shadow-xl p-5"
+            className="w-full max-w-sm rounded-xl bg-[var(--panel)] border border-[var(--border)] shadow-xl p-5"
           >
             <h3 className="text-base font-semibold text-white">Create new folder</h3>
-            <p className="text-xs text-[#7C7F87] mt-1">
+            <p className="text-xs text-[var(--text-3)] mt-1">
               Add a custom folder to organize your private drive.
             </p>
             <input
@@ -712,13 +712,13 @@ export default function MyDrivePage() {
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
               placeholder="Folder name"
-              className="w-full h-10 mt-4 px-3 rounded-lg bg-[#2A2B30] border border-[#2E2F34] focus:border-[#3B67E0] focus:outline-none text-sm text-white"
+              className="w-full h-10 mt-4 px-3 rounded-lg bg-[var(--input)] border border-[var(--border)] focus:border-[#3B67E0] focus:outline-none text-sm text-white"
             />
             <div className="flex items-center justify-end gap-2 mt-5">
               <button
                 type="button"
                 onClick={() => setIsNewFolderOpen(false)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#A3A6AD] hover:text-white"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-2)] hover:text-white"
               >
                 Cancel
               </button>
@@ -739,7 +739,7 @@ export default function MyDrivePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <form
             onSubmit={handleRename}
-            className="w-full max-w-sm rounded-xl bg-[#212121] border border-[#2E2F34] shadow-xl p-5"
+            className="w-full max-w-sm rounded-xl bg-[var(--panel)] border border-[var(--border)] shadow-xl p-5"
           >
             <h3 className="text-base font-semibold text-white">Rename item</h3>
             <input
@@ -747,13 +747,13 @@ export default function MyDrivePage() {
               autoFocus
               value={renameInput}
               onChange={(e) => setRenameInput(e.target.value)}
-              className="w-full h-10 mt-4 px-3 rounded-lg bg-[#2A2B30] border border-[#2E2F34] focus:border-[#3B67E0] focus:outline-none text-sm text-white"
+              className="w-full h-10 mt-4 px-3 rounded-lg bg-[var(--input)] border border-[var(--border)] focus:border-[#3B67E0] focus:outline-none text-sm text-white"
             />
             <div className="flex items-center justify-end gap-2 mt-5">
               <button
                 type="button"
                 onClick={() => setIsRenameOpen(false)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#A3A6AD] hover:text-white"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-2)] hover:text-white"
               >
                 Cancel
               </button>
@@ -772,11 +772,11 @@ export default function MyDrivePage() {
       {/* Move / Copy to Project Modal */}
       {isProjectModalOpen && projectModalTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-xl bg-[#212121] border border-[#2E2F34] shadow-xl p-5">
+          <div className="w-full max-w-md rounded-xl bg-[var(--panel)] border border-[var(--border)] shadow-xl p-5">
             <h3 className="text-base font-semibold text-white">
               {projectModalMode === "move" ? "Move to project" : "Copy to project"}
             </h3>
-            <p className="text-xs text-[#7C7F87] mt-1">
+            <p className="text-xs text-[var(--text-3)] mt-1">
               Select the destination project for &quot;{projectModalTarget.name}&quot;. All subfolders and renditions will be included.
             </p>
 
@@ -785,7 +785,7 @@ export default function MyDrivePage() {
                 No active projects found. Create a project first.
               </p>
             ) : (
-              <div className="mt-4 max-h-48 overflow-y-auto space-y-1.5 border border-[#2E2F34] rounded-lg p-2 bg-[#181818]">
+              <div className="mt-4 max-h-48 overflow-y-auto space-y-1.5 border border-[var(--border)] rounded-lg p-2 bg-[var(--bg)]">
                 {projectsList.map((p) => (
                   <button
                     key={p.id}
@@ -793,7 +793,7 @@ export default function MyDrivePage() {
                     className={`w-full flex items-center justify-between p-2.5 rounded-md text-sm text-left transition-colors ${
                       selectedProjectId === p.id
                         ? "bg-[#3B67E0]/20 text-[#3B67E0] border border-[#3B67E0]/40"
-                        : "text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white"
+                        : "text-[var(--text-2)] hover:bg-[var(--input)] hover:text-white"
                     }`}
                   >
                     <span>{p.name}</span>
@@ -807,7 +807,7 @@ export default function MyDrivePage() {
               <button
                 type="button"
                 onClick={() => setIsProjectModalOpen(false)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#A3A6AD] hover:text-white"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-2)] hover:text-white"
               >
                 Cancel
               </button>

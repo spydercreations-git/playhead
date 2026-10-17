@@ -62,9 +62,9 @@ function getFileIcon(item: UploadItem) {
     return <ImageIcon size={18} className="text-[#FFBB56]" />;
   }
   if (name.endsWith(".zip") || name.endsWith(".tar") || name.endsWith(".gz") || name.endsWith(".rar")) {
-    return <FolderArchive size={18} className="text-[#A3A6AD]" />;
+    return <FolderArchive size={18} className="text-[var(--text-2)]" />;
   }
-  return <FileText size={18} className="text-[#A3A6AD]" />;
+  return <FileText size={18} className="text-[var(--text-2)]" />;
 }
 
 export function UploadPanel() {
@@ -124,7 +124,7 @@ export function UploadPanel() {
     return (
       <aside
         aria-label="Upload progress"
-        className="fixed bottom-6 right-6 z-50 w-[320px] h-[48px] rounded-[12px] bg-[#26272C] border border-[#2E2F34] shadow-overlay flex items-center px-3.5 gap-3 select-none"
+        className="fixed bottom-6 right-6 z-50 w-[320px] h-[48px] rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-overlay flex items-center px-3.5 gap-3 select-none"
       >
         {/* Circular Progress Ring */}
         <div className="relative w-6 h-6 shrink-0 flex items-center justify-center">
@@ -134,7 +134,7 @@ export function UploadPanel() {
               cy="14"
               r={radius}
               fill="none"
-              stroke="#424344"
+              stroke="var(--border-strong)"
               strokeWidth="2.5"
             />
             <circle
@@ -161,7 +161,7 @@ export function UploadPanel() {
         <button
           onClick={toggleMinimized}
           title="Expand"
-          className="p-1 rounded text-[#A3A6AD] hover:text-white transition-colors"
+          className="p-1 rounded text-[var(--text-2)] hover:text-white transition-colors"
         >
           <ChevronUp size={18} />
         </button>
@@ -170,7 +170,7 @@ export function UploadPanel() {
         <button
           onClick={() => setOpen(false)}
           title="Close"
-          className="p-1 rounded text-[#A3A6AD] hover:text-white transition-colors"
+          className="p-1 rounded text-[var(--text-2)] hover:text-white transition-colors"
         >
           <X size={18} />
         </button>
@@ -182,7 +182,7 @@ export function UploadPanel() {
   return (
     <aside
       aria-label="Uploads panel"
-      className="fixed bottom-6 right-6 z-50 w-[384px] max-w-[calc(100vw-32px)] rounded-[12px] bg-[#26272C] border border-[#2E2F34] shadow-overlay overflow-hidden font-sans select-none"
+      className="fixed bottom-6 right-6 z-50 w-[384px] max-w-[calc(100vw-32px)] rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-overlay overflow-hidden font-sans select-none"
     >
       <input
         ref={fileInputRef}
@@ -204,7 +204,7 @@ export function UploadPanel() {
             {completedCount > 0 && activeUploads.length === 0 && (
               <button
                 onClick={clearCompleted}
-                className="text-[12px] font-medium text-[#7C7F87] hover:text-white px-1.5 py-0.5 rounded transition-colors"
+                className="text-[12px] font-medium text-[var(--text-3)] hover:text-white px-1.5 py-0.5 rounded transition-colors"
               >
                 Clear
               </button>
@@ -212,21 +212,21 @@ export function UploadPanel() {
             <button
               onClick={toggleMinimized}
               title="Minimize"
-              className="p-1 rounded text-[#A3A6AD] hover:text-white transition-colors"
+              className="p-1 rounded text-[var(--text-2)] hover:text-white transition-colors"
             >
               <ChevronDown size={18} />
             </button>
             <button
               onClick={() => setOpen(false)}
               title="Close"
-              className="p-1 rounded text-[#A3A6AD] hover:text-white transition-colors"
+              className="p-1 rounded text-[var(--text-2)] hover:text-white transition-colors"
             >
               <X size={18} />
             </button>
           </div>
         </div>
 
-        <p className="text-[12px] text-[#7C7F87] mt-0.5">
+        <p className="text-[12px] text-[var(--text-3)] mt-0.5">
           {activeUploads.length > 0 ? (
             <>
               {formatTimeLeft(remainingBytes, totalSpeed)} · {formatSpeed(totalSpeed)}
@@ -239,7 +239,7 @@ export function UploadPanel() {
         </p>
 
         {/* Global Progress Bar under header */}
-        <div className="h-[3px] w-full bg-[#2A2B30] rounded-full overflow-hidden mt-3">
+        <div className="h-[3px] w-full bg-[var(--input)] rounded-full overflow-hidden mt-3">
           <div
             className="h-full bg-[#4876F3] transition-all duration-300"
             style={{ width: `${overallPercent}%` }}
@@ -248,7 +248,7 @@ export function UploadPanel() {
       </div>
 
       {/* Upload Items List */}
-      <div className="max-h-[340px] overflow-y-auto divide-y divide-[#2E2F34]/60 px-3 py-1">
+      <div className="max-h-[340px] overflow-y-auto divide-y divide-[var(--border)]/60 px-3 py-1">
         {uploads.map((item) => {
           const isUploading = item.status === "uploading";
           const isPaused = item.status === "paused";
@@ -260,7 +260,7 @@ export function UploadPanel() {
           return (
             <div key={item.id} className="py-2.5 px-1 flex items-center gap-3">
               {/* Thumbnail / Type Icon */}
-              <div className="w-10 h-10 rounded-[6px] bg-[#2C2D33] flex items-center justify-center shrink-0 overflow-hidden">
+              <div className="w-10 h-10 rounded-[6px] bg-[var(--hover)] flex items-center justify-center shrink-0 overflow-hidden">
                 {getFileIcon(item)}
               </div>
 
@@ -276,7 +276,7 @@ export function UploadPanel() {
                     <p className="text-[12px] text-[#4876F3] font-medium mt-0.5">
                       {item.progressPercent}% · {formatTimeLeft(bytesLeft, item.speedBytesPerSec)}
                     </p>
-                    <div className="h-[3px] w-full bg-[#2A2B30] rounded-full overflow-hidden mt-1.5">
+                    <div className="h-[3px] w-full bg-[var(--input)] rounded-full overflow-hidden mt-1.5">
                       <div
                         className="h-full bg-[#4876F3] transition-all duration-300"
                         style={{ width: `${Math.max(2, item.progressPercent)}%` }}
@@ -286,7 +286,7 @@ export function UploadPanel() {
                 )}
 
                 {item.status === "pending" && (
-                  <p className="text-[12px] text-[#7C7F87] font-medium mt-0.5">
+                  <p className="text-[12px] text-[var(--text-3)] font-medium mt-0.5">
                     Waiting
                   </p>
                 )}
@@ -302,7 +302,7 @@ export function UploadPanel() {
                     <p className="text-[12px] text-[#FFBB56] font-medium mt-0.5">
                       {item.errorMsg || "Paused, reconnecting"}
                     </p>
-                    <div className="h-[3px] w-full bg-[#2A2B30] rounded-full overflow-hidden mt-1.5">
+                    <div className="h-[3px] w-full bg-[var(--input)] rounded-full overflow-hidden mt-1.5">
                       <div
                         className="h-full bg-[#FFBB56]"
                         style={{ width: `${Math.max(2, item.progressPercent)}%` }}
@@ -324,7 +324,7 @@ export function UploadPanel() {
                   <button
                     onClick={() => pauseUpload(item.id)}
                     title="Pause"
-                    className="p-1 rounded text-[#A3A6AD] hover:text-white transition-colors"
+                    className="p-1 rounded text-[var(--text-2)] hover:text-white transition-colors"
                   >
                     <Pause size={16} />
                   </button>
@@ -374,7 +374,7 @@ export function UploadPanel() {
                   <button
                     onClick={() => cancelUpload(item.id)}
                     title="Cancel"
-                    className="p-1 rounded text-[#A3A6AD] hover:text-[#F0506E] transition-colors"
+                    className="p-1 rounded text-[var(--text-2)] hover:text-[#F0506E] transition-colors"
                   >
                     <X size={16} />
                   </button>

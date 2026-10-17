@@ -48,7 +48,7 @@ export function Dialog({
       <div
         role="dialog"
         aria-modal="true"
-        className={`relative z-10 w-full ${maxWidth} rounded-xl border border-[#2E2F34] bg-[#212121] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.35)] text-white animate-in fade-in-0 zoom-in-[0.98] duration-160 ease-out motion-reduce:animate-none ${className}`}
+        className={`relative z-10 w-full ${maxWidth} rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.35)] text-white animate-in fade-in-0 zoom-in-[0.98] duration-160 ease-out motion-reduce:animate-none ${className}`}
       >
         {children}
       </div>
@@ -66,13 +66,13 @@ export function DialogHeader({
   onClose?: () => void;
 }) {
   return (
-    <div className={`flex items-start justify-between pb-4 border-b border-[#2E2F34] mb-5 ${className}`}>
+    <div className={`flex items-start justify-between pb-4 border-b border-[var(--border)] mb-5 ${className}`}>
       <div className="space-y-1">{children}</div>
       {onClose && (
         <button
           type="button"
           onClick={onClose}
-          className="rounded-[8px] p-1.5 text-[#A3A6AD] hover:bg-[#2C2D33] hover:text-white transition-colors"
+          className="rounded-[8px] p-1.5 text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white transition-colors"
           aria-label="Close dialog"
         >
           <X className="h-4 w-4" />
@@ -104,7 +104,7 @@ export function DialogDescription({
   className?: string;
 }) {
   return (
-    <p className={`text-[13px] text-[#A3A6AD] ${className}`}>
+    <p className={`text-[13px] text-[var(--text-2)] ${className}`}>
       {children}
     </p>
   );
@@ -118,7 +118,7 @@ export function DialogFooter({
   className?: string;
 }) {
   return (
-    <div className={`flex items-center justify-end gap-3 pt-4 border-t border-[#2E2F34] mt-6 ${className}`}>
+    <div className={`flex items-center justify-end gap-3 pt-4 border-t border-[var(--border)] mt-6 ${className}`}>
       {children}
     </div>
   );

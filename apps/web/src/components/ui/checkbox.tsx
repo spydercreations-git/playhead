@@ -14,7 +14,7 @@ export interface CheckboxProps {
  * Playhead Standard Checkbox Component
  * Boards/02 Components:
  * - 18x18, radius 5
- * - Off: stroke #7C7F87 (1.5px)
+ * - Off: stroke var(--text-3) (1.5px)
  * - On: fill #4876F3 with checkmark
  * - Indeterminate: fill #4876F3 with minus bar
  */
@@ -44,7 +44,7 @@ export function Checkbox({
       className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] transition-all duration-150 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4876F3]/50 disabled:opacity-45 disabled:pointer-events-none ${
         isChecked || isIndeterminate
           ? "bg-[#4876F3] text-white"
-          : "border-[1.5px] border-[#7C7F87] bg-transparent hover:border-[#A3A6AD]"
+          : "border-[1.5px] border-[var(--text-3)] bg-transparent hover:border-[var(--text-2)]"
       } ${className}`}
     >
       {isChecked && (

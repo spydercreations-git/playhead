@@ -161,7 +161,7 @@ export default function ClientDetailPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center text-center">
         <h2 className="text-lg font-bold text-white">Access Restricted</h2>
-        <p className="mt-1 text-sm text-[#A3A6AD]">
+        <p className="mt-1 text-sm text-[var(--text-2)]">
           You do not have access to view this client.
         </p>
       </div>
@@ -171,8 +171,8 @@ export default function ClientDetailPage() {
   if (isLoading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-20 rounded-xl bg-[#212121] border border-[#424344]" />
-        <div className="h-64 rounded-xl bg-[#212121] border border-[#424344]" />
+        <div className="h-20 rounded-xl bg-[var(--panel)] border border-[var(--border-strong)]" />
+        <div className="h-64 rounded-xl bg-[var(--panel)] border border-[var(--border-strong)]" />
       </div>
     );
   }
@@ -201,7 +201,7 @@ export default function ClientDetailPage() {
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="rounded-xl border border-[#2E2F34] bg-[#212121] p-6 shadow-sm">
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="relative group">
@@ -216,7 +216,7 @@ export default function ClientDetailPage() {
                 <img
                   src={client.logo_key.String}
                   alt={client?.name || "Client"}
-                  className="h-14 w-14 shrink-0 rounded-xl object-cover border border-[#2E2F34]"
+                  className="h-14 w-14 shrink-0 rounded-xl object-cover border border-[var(--border)]"
                 />
               ) : (
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#4876F3]/20 text-xl font-bold text-[#4876F3]">
@@ -251,7 +251,7 @@ export default function ClientDetailPage() {
                   </a>
                 )}
               </div>
-              <p className="mt-1 text-xs text-[#A3A6AD]">
+              <p className="mt-1 text-xs text-[var(--text-2)]">
                 {projects.length} projects · {formatBytes(totalSize)}
               </p>
             </div>
@@ -260,7 +260,7 @@ export default function ClientDetailPage() {
           <div className="flex items-center gap-2 relative">
             <button
               onClick={() => setShowEditClient(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-[#2E2F34] bg-[#2A2B30] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#2E2F34] transition-colors"
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--input)] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[var(--border)] transition-colors"
             >
               <Edit className="w-3.5 h-3.5" />
               <span>Edit</span>
@@ -270,7 +270,7 @@ export default function ClientDetailPage() {
             <div className="relative">
               <button
                 onClick={() => setShowMoreMenu(!showMoreMenu)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2E2F34] bg-[#2A2B30] text-[#A3A6AD] hover:text-white transition-colors"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--input)] text-[var(--text-2)] hover:text-white transition-colors"
               >
                 <MoreHorizontal className="w-4 h-4" />
               </button>
@@ -281,13 +281,13 @@ export default function ClientDetailPage() {
                     className="fixed inset-0 z-30"
                     onClick={() => setShowMoreMenu(false)}
                   />
-                  <div className="absolute right-0 top-10 z-40 w-44 rounded-xl border border-[#2E2F34] bg-[#212121] py-1 shadow-overlay">
+                  <div className="absolute right-0 top-10 z-40 w-44 rounded-xl border border-[var(--border)] bg-[var(--panel)] py-1 shadow-overlay">
                     <button
                       onClick={() => {
                         setShowMoreMenu(false);
                         setShowEditClient(true);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-white hover:bg-[var(--input)] transition-colors"
                     >
                       <Edit className="w-3.5 h-3.5" />
                       <span>Rename</span>
@@ -297,7 +297,7 @@ export default function ClientDetailPage() {
                         setShowMoreMenu(false);
                         setShowDeleteConfirm(true);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-rose-400 hover:bg-[#2A2B30] transition-colors"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-rose-400 hover:bg-[var(--input)] transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Delete</span>
@@ -319,13 +319,13 @@ export default function ClientDetailPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="mt-6 flex border-b border-[#2E2F34] gap-6 text-xs font-semibold">
+        <div className="mt-6 flex border-b border-[var(--border)] gap-6 text-xs font-semibold">
           <button
             onClick={() => setActiveTab("projects")}
             className={`pb-3 border-b-2 transition-colors ${
               activeTab === "projects"
                 ? "border-[#4876F3] text-white"
-                : "border-transparent text-[#A3A6AD] hover:text-white"
+                : "border-transparent text-[var(--text-2)] hover:text-white"
             }`}
           >
             Projects ({projects.length})
@@ -335,7 +335,7 @@ export default function ClientDetailPage() {
             className={`pb-3 border-b-2 transition-colors ${
               activeTab === "contacts"
                 ? "border-[#4876F3] text-white"
-                : "border-transparent text-[#A3A6AD] hover:text-white"
+                : "border-transparent text-[var(--text-2)] hover:text-white"
             }`}
           >
             Contacts ({contacts.length})
@@ -345,7 +345,7 @@ export default function ClientDetailPage() {
             className={`pb-3 border-b-2 transition-colors ${
               activeTab === "notes"
                 ? "border-[#4876F3] text-white"
-                : "border-transparent text-[#A3A6AD] hover:text-white"
+                : "border-transparent text-[var(--text-2)] hover:text-white"
             }`}
           >
             Notes
@@ -357,23 +357,23 @@ export default function ClientDetailPage() {
       {activeTab === "projects" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[#A3A6AD]">
+            <span className="text-xs font-medium text-[var(--text-2)]">
               Showing {filteredProjects.length} projects
             </span>
-            <label className="flex items-center gap-2 text-xs text-[#A3A6AD] cursor-pointer">
+            <label className="flex items-center gap-2 text-xs text-[var(--text-2)] cursor-pointer">
               <input
                 type="checkbox"
                 checked={showArchived}
                 onChange={(e) => setShowArchived(e.target.checked)}
-                className="rounded border-[#424344]"
+                className="rounded border-[var(--border-strong)]"
               />
               Show archived
             </label>
           </div>
 
           {filteredProjects.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[#424344] bg-[#212121]/50 p-12 text-center">
-              <p className="text-xs text-[#A3A6AD]">
+            <div className="rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--panel)]/50 p-12 text-center">
+              <p className="text-xs text-[var(--text-2)]">
                 No projects found for this client.
               </p>
               <button
@@ -402,11 +402,11 @@ export default function ClientDetailPage() {
 
       {/* Tab: Contacts */}
       {activeTab === "contacts" && (
-        <div className="rounded-xl border border-[#424344] bg-[#212121] p-5 space-y-4">
+        <div className="rounded-xl border border-[var(--border-strong)] bg-[var(--panel)] p-5 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold text-white">Client Contacts</h3>
-              <p className="text-xs text-[#A3A6AD]">
+              <p className="text-xs text-[var(--text-2)]">
                 Set default permissions that automatically apply to all projects of {client?.name}
               </p>
             </div>
@@ -420,9 +420,9 @@ export default function ClientDetailPage() {
             )}
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-[#424344]">
+          <div className="overflow-hidden rounded-lg border border-[var(--border-strong)]">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-[#424344] bg-[#2E2F34] text-[#A3A6AD]">
+              <thead className="border-b border-[var(--border-strong)] bg-[var(--border)] text-[var(--text-2)]">
                 <tr>
                   <th className="py-2.5 px-3 font-medium">Name</th>
                   <th className="py-2.5 px-3 font-medium">Email</th>
@@ -431,20 +431,20 @@ export default function ClientDetailPage() {
                   <th className="py-2.5 px-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#424344]/40">
+              <tbody className="divide-y divide-[var(--border-strong)]/40">
                 {contacts.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-6 text-center text-[#A3A6AD]">
+                    <td colSpan={5} className="py-6 text-center text-[var(--text-2)]">
                       No contacts added yet.
                     </td>
                   </tr>
                 ) : (
                   contacts.map((c: any) => (
-                    <tr key={c.id} className="hover:bg-[#2E2F34]/30">
+                    <tr key={c.id} className="hover:bg-[var(--border)]/30">
                       <td className="py-3 px-3 text-white font-medium">
                         {c.name}
                       </td>
-                      <td className="py-3 px-3 text-[#A3A6AD]">{c.email}</td>
+                      <td className="py-3 px-3 text-[var(--text-2)]">{c.email}</td>
                       <td className="py-3 px-3">
                         <select
                           value={c.default_level}
@@ -454,7 +454,7 @@ export default function ClientDetailPage() {
                               level: e.target.value,
                             })
                           }
-                          className="rounded bg-[#2E2F34] border border-[#424344] px-2 py-1 text-xs text-white focus:outline-none"
+                          className="rounded bg-[var(--border)] border border-[var(--border-strong)] px-2 py-1 text-xs text-white focus:outline-none"
                         >
                           <option value="none">None</option>
                           <option value="viewer">Viewer</option>
@@ -464,7 +464,7 @@ export default function ClientDetailPage() {
                         </select>
                       </td>
                       <td className="py-3 px-3">
-                        <label className="flex items-center gap-1.5 text-xs text-[#A3A6AD] cursor-pointer">
+                        <label className="flex items-center gap-1.5 text-xs text-[var(--text-2)] cursor-pointer">
                           <input
                             type="checkbox"
                             checked={c.can_download}
@@ -474,7 +474,7 @@ export default function ClientDetailPage() {
                                 canDownload: e.target.checked,
                               })
                             }
-                            className="rounded border-[#424344]"
+                            className="rounded border-[var(--border-strong)]"
                           />
                           Allow download
                         </label>
@@ -498,13 +498,13 @@ export default function ClientDetailPage() {
 
       {/* Tab: Notes */}
       {activeTab === "notes" && (
-        <div className="rounded-xl border border-[#424344] bg-[#212121] p-6 space-y-4">
+        <div className="rounded-xl border border-[var(--border-strong)] bg-[var(--panel)] p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-white">Client Notes</h3>
             {!isEditingNotes ? (
               <button
                 onClick={() => setIsEditingNotes(true)}
-                className="rounded bg-[#2E2F34] px-3 py-1 text-xs text-white hover:bg-[#2E2F34]"
+                className="rounded bg-[var(--border)] px-3 py-1 text-xs text-white hover:bg-[var(--border)]"
               >
                 Edit Notes
               </button>
@@ -512,7 +512,7 @@ export default function ClientDetailPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsEditingNotes(false)}
-                  className="px-2 text-xs text-[#A3A6AD] hover:text-white"
+                  className="px-2 text-xs text-[var(--text-2)] hover:text-white"
                 >
                   Cancel
                 </button>
@@ -533,12 +533,12 @@ export default function ClientDetailPage() {
               value={notesText}
               onChange={(e) => setNotesText(e.target.value)}
               placeholder="Record agency client briefing, video format preferences, feedback contacts..."
-              className="w-full rounded-lg border border-[#424344] bg-[#2E2F34] p-3 text-sm text-white focus:border-[#4876F3] focus:outline-none"
+              className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--border)] p-3 text-sm text-white focus:border-[#4876F3] focus:outline-none"
             />
           ) : (
-            <div className="rounded-lg bg-[#2E2F34]/50 border border-[#424344] p-4 text-xs text-white min-h-[120px] whitespace-pre-wrap">
+            <div className="rounded-lg bg-[var(--border)]/50 border border-[var(--border-strong)] p-4 text-xs text-white min-h-[120px] whitespace-pre-wrap">
               {notesText || (
-                <span className="text-[#A3A6AD]">
+                <span className="text-[var(--text-2)]">
                   No notes recorded yet. Click &quot;Edit Notes&quot; to write instructions and preferences.
                 </span>
               )}
@@ -550,22 +550,22 @@ export default function ClientDetailPage() {
       {/* Add Contact Modal */}
       {showAddContact && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-          <div className="w-full max-w-md rounded-xl border border-[#2E2F34] bg-[#212121] p-6 shadow-overlay space-y-4 relative">
-            <div className="flex items-center justify-between pb-3 border-b border-[#2E2F34]">
+          <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-overlay space-y-4 relative">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
               <h3 className="text-base font-bold text-white">
                 Add Contact to {client?.name}
               </h3>
               <button
                 type="button"
                 onClick={() => setShowAddContact(false)}
-                className="p-1 rounded-lg text-[#7C7F87] hover:text-white hover:bg-[#2A2B30] transition-colors"
+                className="p-1 rounded-lg text-[var(--text-3)] hover:text-white hover:bg-[var(--input)] transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+              <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
                 Name
               </label>
               <input
@@ -573,12 +573,12 @@ export default function ClientDetailPage() {
                 value={newContactName}
                 onChange={(e) => setNewContactName(e.target.value)}
                 placeholder="Sarah Connor"
-                className="w-full h-10 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3.5 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
+                className="w-full h-10 rounded-[10px] bg-[var(--input)] border border-[var(--border)] px-3.5 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3] transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+              <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
                 Email
               </label>
               <input
@@ -587,19 +587,19 @@ export default function ClientDetailPage() {
                 value={newContactEmail}
                 onChange={(e) => setNewContactEmail(e.target.value)}
                 placeholder="contact@company.com"
-                className="w-full h-10 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3.5 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
+                className="w-full h-10 rounded-[10px] bg-[var(--input)] border border-[var(--border)] px-3.5 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3] transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+              <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
                 Default Access to all projects
               </label>
               <div className="relative">
                 <select
                   value={newContactLevel}
                   onChange={(e) => setNewContactLevel(e.target.value)}
-                  className="w-full h-10 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3.5 pr-9 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors"
+                  className="w-full h-10 rounded-[10px] bg-[var(--input)] border border-[var(--border)] px-3.5 pr-9 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors"
                 >
                   <option value="none">None (explicit project assignment only)</option>
                   <option value="viewer">Viewer</option>
@@ -607,27 +607,27 @@ export default function ClientDetailPage() {
                   <option value="uploader">Uploader</option>
                   <option value="full">Full access</option>
                 </select>
-                <ChevronDown className="w-[14px] h-[14px] text-[#7C7F87] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <ChevronDown className="w-[14px] h-[14px] text-[var(--text-3)] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
             <div>
-              <label className="flex items-center gap-2 text-xs text-[#A3A6AD] cursor-pointer">
+              <label className="flex items-center gap-2 text-xs text-[var(--text-2)] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={newContactDownload}
                   onChange={(e) => setNewContactDownload(e.target.checked)}
-                  className="rounded border-[#2E2F34] text-[#4876F3] focus:ring-[#4876F3]"
+                  className="rounded border-[var(--border)] text-[#4876F3] focus:ring-[#4876F3]"
                 />
                 Allow downloading video cuts and source files
               </label>
             </div>
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-[#2E2F34]">
+            <div className="flex justify-end gap-3 pt-3 border-t border-[var(--border)]">
               <button
                 type="button"
                 onClick={() => setShowAddContact(false)}
-                className="px-3.5 py-2 text-xs font-semibold text-[#A3A6AD] hover:text-white rounded-[10px]"
+                className="px-3.5 py-2 text-xs font-semibold text-[var(--text-2)] hover:text-white rounded-[10px]"
               >
                 Cancel
               </button>

@@ -22,7 +22,7 @@ interface HeaderProps {
  * Playhead Top Bar Component
  * P03 Home & Foundations:
  * - Height: 56px (h-14)
- * - Background: #181818, border-b #2E2F34
+ * - Background: var(--bg), border-b var(--border)
  * - Left: Page title 14 SemiBold
  * - Right: 320px search input with ⌘K badge, help icon, user avatar
  */
@@ -77,12 +77,12 @@ export function Header({ onOpenSidebar }: HeaderProps) {
   }, [user]);
 
   return (
-    <header className="flex h-14 w-full items-center justify-between px-6 border-b border-[#2E2F34] bg-[#181818] shrink-0 select-none">
+    <header className="flex h-14 w-full items-center justify-between px-6 border-b border-[var(--border)] bg-[var(--bg)] shrink-0 select-none">
       {/* Left side: Hamburger (mobile) + Page Title */}
       <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={onOpenSidebar}
-          className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[#A3A6AD] hover:bg-[#2C2D33] hover:text-white md:hidden shrink-0"
+          className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white md:hidden shrink-0"
           title="Open menu"
         >
           <Menu size={18} />
@@ -95,19 +95,19 @@ export function Header({ onOpenSidebar }: HeaderProps) {
 
       {/* Right side: 320px Search Input with ⌘K badge, Help icon, Avatar */}
       <div className="flex items-center gap-3.5 shrink-0">
-        {/* Search Input matching P03 Top Bar (x=976, w=320, h=36, rx=8, bg=#2A2B30) */}
+        {/* Search Input matching P03 Top Bar (x=976, w=320, h=36, rx=8, bg=var(--input)) */}
         <div
           onClick={() => router.push("/search")}
-          className="hidden sm:flex h-9 w-[320px] items-center justify-between rounded-[8px] bg-[#2A2B30] px-3 text-[#7C7F87] cursor-pointer hover:border-[#424344] border border-transparent transition-all"
+          className="hidden sm:flex h-9 w-[320px] items-center justify-between rounded-[8px] bg-[var(--input)] px-3 text-[var(--text-3)] cursor-pointer hover:border-[var(--border-strong)] border border-transparent transition-all"
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <Search size={18} className="text-[#7C7F87] shrink-0" />
-            <span className="text-sm text-[#7C7F87] truncate">
+            <Search size={18} className="text-[var(--text-3)] shrink-0" />
+            <span className="text-sm text-[var(--text-3)] truncate">
               Search files, projects, clients
             </span>
           </div>
 
-          <kbd className="flex items-center justify-center h-[22px] px-2 rounded-[6px] bg-[#212121] text-xs font-medium text-[#7C7F87] shrink-0">
+          <kbd className="flex items-center justify-center h-[22px] px-2 rounded-[6px] bg-[var(--panel)] text-xs font-medium text-[var(--text-3)] shrink-0">
             ⌘K
           </kbd>
         </div>
@@ -120,8 +120,8 @@ export function Header({ onOpenSidebar }: HeaderProps) {
             onClick={toggleOpen}
             className={`relative flex h-8 w-8 items-center justify-center rounded-[8px] transition-colors shrink-0 ${
               isOpen
-                ? "bg-[#2C2D33] text-[#4876F3]"
-                : "text-[#A3A6AD] hover:bg-[#2C2D33] hover:text-white"
+                ? "bg-[var(--hover)] text-[#4876F3]"
+                : "text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white"
             }`}
           >
             <Upload size={20} />
@@ -139,7 +139,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
           type="button"
           title="Help & documentation"
           onClick={() => window.open("https://github.com/spydercreations-git/playhead", "_blank")}
-          className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[#A3A6AD] hover:bg-[#2C2D33] hover:text-white transition-colors shrink-0"
+          className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white transition-colors shrink-0"
         >
           <Help size={20} />
         </button>

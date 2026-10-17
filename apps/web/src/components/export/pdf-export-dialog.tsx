@@ -18,8 +18,8 @@ export interface PdfExportDialogProps {
 const BG_PRESETS = [
   { id: "white", label: "White", hex: "#ffffff", dark: false },
   { id: "light_grey", label: "Light grey", hex: "#f8f9fa", dark: false },
-  { id: "dark", label: "Dark", hex: "#181818", dark: true },
-  { id: "custom", label: "Custom", hex: "#212121", dark: true },
+  { id: "dark", label: "Dark", hex: "var(--bg)", dark: true },
+  { id: "custom", label: "Custom", hex: "var(--panel)", dark: true },
 ];
 
 const THEME_PRESETS = [
@@ -29,7 +29,7 @@ const THEME_PRESETS = [
   { hex: "#8B5CF6", label: "Violet" },
   { hex: "#F59E0B", label: "Amber" },
   { hex: "#EF4444", label: "Crimson" },
-  { hex: "#181818", label: "Monochrome" },
+  { hex: "var(--bg)", label: "Monochrome" },
 ];
 
 export function PdfExportDialog({
@@ -43,7 +43,7 @@ export function PdfExportDialog({
 }: PdfExportDialogProps) {
   // Config state
   const [bgChoice, setBgChoice] = useState<string>("white");
-  const [customBg, setCustomBg] = useState<string>("#212121");
+  const [customBg, setCustomBg] = useState<string>("var(--panel)");
   const [themeColor, setThemeColor] = useState<string>("#3B67E0");
   const [pageSize, setPageSize] = useState<"A4" | "Letter">("A4");
   const [margins, setMargins] = useState<"normal" | "narrow">("normal");
@@ -188,9 +188,9 @@ export function PdfExportDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-      <div className="w-full max-w-5xl h-[88vh] max-h-[850px] bg-[#181818] border border-[#2A2B30] p-0 flex flex-col overflow-hidden text-white rounded-xl shadow-overlay relative">
+      <div className="w-full max-w-5xl h-[88vh] max-h-[850px] bg-[var(--bg)] border border-[var(--input)] p-0 flex flex-col overflow-hidden text-white rounded-xl shadow-overlay relative">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-[#2A2B30] flex flex-row items-center justify-between">
+        <div className="px-6 py-4 border-b border-[var(--input)] flex flex-row items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-[#4876F3]/10 border border-[#4876F3]/20 flex items-center justify-center text-[#4876F3]">
               {itemType === "document" ? (
@@ -203,7 +203,7 @@ export function PdfExportDialog({
               <h2 className="text-base font-semibold text-white">
                 Download as PDF
               </h2>
-              <p className="text-xs text-[#A3A6AD] mt-0.5 truncate max-w-md">
+              <p className="text-xs text-[var(--text-2)] mt-0.5 truncate max-w-md">
                 {title}
               </p>
             </div>
@@ -228,7 +228,7 @@ export function PdfExportDialog({
             </button>
             <button
               onClick={() => onOpenChange(false)}
-              className="p-1.5 text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] rounded-lg transition-colors"
+              className="p-1.5 text-[var(--text-2)] hover:text-white hover:bg-[var(--input)] rounded-lg transition-colors"
               title="Close"
             >
               <X className="w-4 h-4" />
@@ -239,10 +239,10 @@ export function PdfExportDialog({
         {/* Content Body: Split Layout */}
         <div className="flex-1 flex min-h-0 overflow-hidden">
           {/* Controls Sidebar */}
-          <div className="w-[330px] border-r border-[#2A2B30] p-6 overflow-y-auto space-y-6 flex-shrink-0 bg-[#181818]/50">
+          <div className="w-[330px] border-r border-[var(--input)] p-6 overflow-y-auto space-y-6 flex-shrink-0 bg-[var(--bg)]/50">
             {/* Page Background */}
             <div>
-              <label className="block text-xs font-semibold text-[#A3A6AD]  mb-2.5">
+              <label className="block text-xs font-semibold text-[var(--text-2)]  mb-2.5">
                 Page Background
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -254,7 +254,7 @@ export function PdfExportDialog({
                     className={`flex items-center gap-2 px-3 py-2 rounded-[10px] border text-xs font-medium transition-all ${
                       bgChoice === preset.id
                         ? "border-[#4876F3] bg-[#4876F3]/10 text-white"
-                        : "border-[#2A2B30] bg-[#181818] text-[#A3A6AD] hover:border-[#2E2F34] hover:text-white"
+                        : "border-[var(--input)] bg-[var(--bg)] text-[var(--text-2)] hover:border-[var(--border)] hover:text-white"
                     }`}
                   >
                     <span
@@ -271,14 +271,14 @@ export function PdfExportDialog({
                     type="color"
                     value={customBg}
                     onChange={(e) => setCustomBg(e.target.value)}
-                    className="w-8 h-8 rounded-lg border border-[#2A2B30] bg-transparent cursor-pointer p-0.5"
+                    className="w-8 h-8 rounded-lg border border-[var(--input)] bg-transparent cursor-pointer p-0.5"
                   />
                   <input
                     type="text"
                     value={customBg}
                     onChange={(e) => setCustomBg(e.target.value)}
-                    placeholder="#212121"
-                    className="flex-1 px-3 py-1.5 text-xs bg-[#181818] border border-[#2A2B30] rounded-lg text-white font-mono focus:outline-none focus:border-[#4876F3]"
+                    placeholder="var(--panel)"
+                    className="flex-1 px-3 py-1.5 text-xs bg-[var(--bg)] border border-[var(--input)] rounded-lg text-white font-mono focus:outline-none focus:border-[#4876F3]"
                   />
                 </div>
               )}
@@ -286,10 +286,10 @@ export function PdfExportDialog({
 
             {/* Theme Color */}
             <div>
-              <label className="block text-xs font-semibold text-[#A3A6AD]  mb-1">
+              <label className="block text-xs font-semibold text-[var(--text-2)]  mb-1">
                 Theme Color
               </label>
-              <p className="text-xs text-[#A3A6AD] mb-2.5">
+              <p className="text-xs text-[var(--text-2)] mb-2.5">
                 Headings, links, and table headers
               </p>
               <div className="flex flex-wrap gap-2">
@@ -301,7 +301,7 @@ export function PdfExportDialog({
                     title={t.label}
                     className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                       themeColor.toLowerCase() === t.hex.toLowerCase()
-                        ? "ring-2 ring-[#4876F3] ring-offset-2 ring-offset-[#181818] scale-[1.015]"
+                        ? "ring-2 ring-[#4876F3] ring-offset-2 ring-offset-[var(--bg)] scale-[1.015]"
                         : "hover:scale-[1.015]"
                     }`}
                     style={{ backgroundColor: t.hex }}
@@ -317,7 +317,7 @@ export function PdfExportDialog({
                     value={themeColor}
                     onChange={(e) => setThemeColor(e.target.value)}
                     title="Custom theme color"
-                    className="w-7 h-7 rounded-full border border-[#2A2B30] bg-transparent cursor-pointer p-0.5"
+                    className="w-7 h-7 rounded-full border border-[var(--input)] bg-transparent cursor-pointer p-0.5"
                   />
                 </div>
               </div>
@@ -326,17 +326,17 @@ export function PdfExportDialog({
             {/* Page Size & Margins */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-[#A3A6AD]  mb-2">
+                <label className="block text-xs font-semibold text-[var(--text-2)]  mb-2">
                   Page Size
                 </label>
-                <div className="flex rounded-lg border border-[#2A2B30] p-0.5 bg-[#181818]">
+                <div className="flex rounded-lg border border-[var(--input)] p-0.5 bg-[var(--bg)]">
                   <button
                     type="button"
                     onClick={() => setPageSize("A4")}
                     className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
                       pageSize === "A4"
                         ? "bg-[#4876F3] text-white shadow-sm"
-                        : "text-[#A3A6AD] hover:text-white"
+                        : "text-[var(--text-2)] hover:text-white"
                     }`}
                   >
                     A4
@@ -347,7 +347,7 @@ export function PdfExportDialog({
                     className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
                       pageSize === "Letter"
                         ? "bg-[#4876F3] text-white shadow-sm"
-                        : "text-[#A3A6AD] hover:text-white"
+                        : "text-[var(--text-2)] hover:text-white"
                     }`}
                   >
                     Letter
@@ -356,17 +356,17 @@ export function PdfExportDialog({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#A3A6AD]  mb-2">
+                <label className="block text-xs font-semibold text-[var(--text-2)]  mb-2">
                   Margins
                 </label>
-                <div className="flex rounded-lg border border-[#2A2B30] p-0.5 bg-[#181818]">
+                <div className="flex rounded-lg border border-[var(--input)] p-0.5 bg-[var(--bg)]">
                   <button
                     type="button"
                     onClick={() => setMargins("normal")}
                     className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
                       margins === "normal"
                         ? "bg-[#4876F3] text-white shadow-sm"
-                        : "text-[#A3A6AD] hover:text-white"
+                        : "text-[var(--text-2)] hover:text-white"
                     }`}
                   >
                     Normal
@@ -377,7 +377,7 @@ export function PdfExportDialog({
                     className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
                       margins === "narrow"
                         ? "bg-[#4876F3] text-white shadow-sm"
-                        : "text-[#A3A6AD] hover:text-white"
+                        : "text-[var(--text-2)] hover:text-white"
                     }`}
                   >
                     Narrow
@@ -388,19 +388,19 @@ export function PdfExportDialog({
 
             {/* Spreadsheet Specific: Orientation & Fit to Width */}
             {itemType === "spreadsheet" && (
-              <div className="space-y-4 pt-2 border-t border-[#2A2B30]/60">
+              <div className="space-y-4 pt-2 border-t border-[var(--input)]/60">
                 <div>
-                  <label className="block text-xs font-semibold text-[#A3A6AD]  mb-2">
+                  <label className="block text-xs font-semibold text-[var(--text-2)]  mb-2">
                     Orientation
                   </label>
-                  <div className="flex rounded-lg border border-[#2A2B30] p-0.5 bg-[#181818]">
+                  <div className="flex rounded-lg border border-[var(--input)] p-0.5 bg-[var(--bg)]">
                     <button
                       type="button"
                       onClick={() => setOrientation("landscape")}
                       className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
                         orientation === "landscape"
                           ? "bg-[#4876F3] text-white shadow-sm"
-                          : "text-[#A3A6AD] hover:text-white"
+                          : "text-[var(--text-2)] hover:text-white"
                       }`}
                     >
                       Landscape
@@ -411,7 +411,7 @@ export function PdfExportDialog({
                       className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
                         orientation === "portrait"
                           ? "bg-[#4876F3] text-white shadow-sm"
-                          : "text-[#A3A6AD] hover:text-white"
+                          : "text-[var(--text-2)] hover:text-white"
                       }`}
                     >
                       Portrait
@@ -424,7 +424,7 @@ export function PdfExportDialog({
                     type="checkbox"
                     checked={fitToWidth}
                     onChange={(e) => setFitToWidth(e.target.checked)}
-                    className="w-4 h-4 rounded border-[#2A2B30] text-[#4876F3] bg-[#181818] focus:ring-[#4876F3] focus:ring-offset-0"
+                    className="w-4 h-4 rounded border-[var(--input)] text-[#4876F3] bg-[var(--bg)] focus:ring-[#4876F3] focus:ring-offset-0"
                   />
                   <span className="text-xs text-white">Fit tables to width</span>
                 </label>
@@ -433,19 +433,19 @@ export function PdfExportDialog({
 
             {/* Team Notes Toggle (strictly team members only) */}
             {isTeamMember && (
-              <div className="pt-2 border-t border-[#2A2B30]/60">
+              <div className="pt-2 border-t border-[var(--input)]/60">
                 <label className="flex items-start gap-2.5 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={includeTeamNotes}
                     onChange={(e) => setIncludeTeamNotes(e.target.checked)}
-                    className="w-4 h-4 mt-0.5 rounded border-[#2A2B30] text-[#4876F3] bg-[#181818] focus:ring-[#4876F3] focus:ring-offset-0"
+                    className="w-4 h-4 mt-0.5 rounded border-[var(--input)] text-[#4876F3] bg-[var(--bg)] focus:ring-[#4876F3] focus:ring-offset-0"
                   />
                   <div>
                     <span className="text-xs font-medium text-white block">
                       Include team notes
                     </span>
-                    <span className="text-xs text-[#A3A6AD] leading-tight block mt-0.5">
+                    <span className="text-xs text-[var(--text-2)] leading-tight block mt-0.5">
                       Renders internal team note callouts (hidden from clients)
                     </span>
                   </div>
@@ -455,15 +455,15 @@ export function PdfExportDialog({
           </div>
 
           {/* Live Preview Panel */}
-          <div className="flex-1 bg-[#181818] p-6 flex flex-col items-center justify-center overflow-auto relative">
-            <div className="absolute top-4 left-6 flex items-center gap-2 text-xs text-[#A3A6AD]">
+          <div className="flex-1 bg-[var(--bg)] p-6 flex flex-col items-center justify-center overflow-auto relative">
+            <div className="absolute top-4 left-6 flex items-center gap-2 text-xs text-[var(--text-2)]">
               <Eye className="w-3.5 h-3.5" />
               <span>Live Page Preview</span>
             </div>
 
             {loadingPreview && (
-              <div className="absolute inset-0 bg-[#181818]/60 backdrop-blur-[2px] z-10 flex items-center justify-center">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#181818] border border-[#2A2B30] text-xs text-[#A3A6AD]">
+              <div className="absolute inset-0 bg-[var(--bg)]/60 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--bg)] border border-[var(--input)] text-xs text-[var(--text-2)]">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-[#4876F3]" />
                   <span>Updating preview...</span>
                 </div>
@@ -472,7 +472,7 @@ export function PdfExportDialog({
 
             {/* Simulated Paper Sheet */}
             <div
-              className={`rounded shadow-overlay transition-all duration-200 overflow-hidden border border-[#2A2B30]/80 ${
+              className={`rounded shadow-overlay transition-all duration-200 overflow-hidden border border-[var(--input)]/80 ${
                 orientation === "landscape"
                   ? "w-full max-w-[800px] aspect-[1.414/1]"
                   : "w-full max-w-[550px] aspect-[1/1.414]"
@@ -487,7 +487,7 @@ export function PdfExportDialog({
                   sandbox="allow-same-origin"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs text-[#A3A6AD]">
+                <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-2)]">
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
                   Generating preview...
                 </div>

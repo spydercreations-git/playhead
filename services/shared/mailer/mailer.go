@@ -420,3 +420,46 @@ func (m *Mailer) SendReviewNotificationEmail(toEmail, toName, reviewerName, item
 	return m.send(toEmail, subject, html)
 }
 
+// SendClientPersonInviteEmail sends an onboarding invite email to a client person with their temporary password and Google sign-in options.
+func (m *Mailer) SendClientPersonInviteEmail(toEmail, toName, clientName, companyName, tempPassword, loginURL string) error {
+	subject := fmt.Sprintf("You've been invited to %s on Playhead", clientName)
+	if toName == "" {
+		toName = strings.Split(toEmail, "@")[0]
+	}
+	if loginURL == "" {
+		loginURL = fmt.Sprintf("%s/login", strings.TrimRight(m.FrontendURL, "/"))
+	}
+
+	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>%s</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0A0A0B; color: #FFFFFF; padding: 40px 20px; margin: 0;">
+  <div style="max-width: 520px; margin: 0 auto; background-color: #111113; border: 1px solid #232327; border-radius: 12px; padding: 32px;">
+    <div style="margin-bottom: 24px;">
+      <span style="font-size: 20px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">playhead</span>
+    </div>
+    <h1 style="font-size: 18px; font-weight: 600; color: #FFFFFF; margin: 0 0 12px 0;">Welcome, %s</h1>
+    <p style="font-size: 14px; line-height: 22px; color: #A1A1AA; margin: 0 0 20px 0;">
+      <strong>%s</strong> has added you to <strong>%s</strong> on Playhead to review creative projects and files.
+    </p>
+    <div style="background-color: #1A1A1E; border: 1px solid #232327; border-radius: 8px; padding: 16px; margin: 0 0 24px 0;">
+      <p style="font-size: 12px; color: #71717A; margin: 0 0 6px 0;">Your temporary login password:</p>
+      <p style="font-size: 16px; font-family: monospace; font-weight: 700; color: #FFFFFF; margin: 0 0 8px 0; letter-spacing: 1px;">%s</p>
+      <p style="font-size: 12px; color: #A1A1AA; margin: 0;">You can also sign in instantly using <strong>Sign in with Google</strong> with this email address.</p>
+    </div>
+    <div style="text-align: center; margin: 0 0 24px 0;">
+      <a href="%s" style="display: inline-block; background-color: #3B67E0; color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 28px; border-radius: 8px;">Sign in to Playhead</a>
+    </div>
+    <p style="font-size: 12px; line-height: 18px; color: #71717A; margin: 0;">
+      This temporary password expires in 7 days. Once you sign in, you can set your permanent password and profile details.
+    </p>
+  </div>
+</body>
+</html>`, subject, toName, companyName, clientName, tempPassword, loginURL)
+
+	return m.send(toEmail, subject, htmlBody)
+}
+

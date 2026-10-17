@@ -45,9 +45,9 @@ const CATEGORY_STYLES = {
 /**
  * Playhead My Drive Folder Card Component
  * Boards/02 Components:
- * - 300x88 (stretches), radius 12, fill #212121, border #2E2F34
+ * - 300x88 (stretches), radius 12, fill var(--panel), border var(--border)
  * - 40x40 icon badge rx 10
- * - Motion: hover scale 1.015, border #424344
+ * - Motion: hover scale 1.015, border var(--border-strong)
  */
 export function DriveFolderCard({
   id: _id,
@@ -79,7 +79,7 @@ export function DriveFolderCard({
     <div
       onClick={onOpen}
       onContextMenu={onContextMenu}
-      className={`group flex items-center justify-between h-[88px] w-full rounded-[12px] bg-[#212121] border border-[#2E2F34] hover:border-[#424344] p-4 select-none cursor-pointer transition-all duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] ${className}`}
+      className={`group flex items-center justify-between h-[88px] w-full rounded-[12px] bg-[var(--panel)] border border-[var(--border)] hover:border-[var(--border-strong)] p-4 select-none cursor-pointer transition-all duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] ${className}`}
     >
       <div className="flex items-center gap-3.5 min-w-0">
         {/* 40x40 Icon Badge */}
@@ -93,7 +93,7 @@ export function DriveFolderCard({
         {/* Texts */}
         <div className="min-w-0">
           <p className="text-sm font-semibold text-white truncate">{name}</p>
-          <p className="text-xs text-[#7C7F87] truncate mt-0.5">
+          <p className="text-xs text-[var(--text-3)] truncate mt-0.5">
             {subtitleText}
           </p>
         </div>
@@ -106,7 +106,7 @@ export function DriveFolderCard({
           e.stopPropagation();
           onContextMenu?.(e);
         }}
-        className="rounded-[6px] p-1.5 text-[#A3A6AD] hover:bg-[#2C2D33] hover:text-white transition-colors shrink-0"
+        className="rounded-[6px] p-1.5 text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white transition-colors shrink-0"
         aria-label="Folder options"
       >
         <MoreHorizontal size={18} />

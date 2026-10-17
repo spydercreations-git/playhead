@@ -83,17 +83,17 @@ export function DocumentCard({
         >
           <path
             d={bodyPath}
-            fill="#212121"
-            stroke="#2E2F34"
+            fill="var(--panel)"
+            stroke="var(--border)"
             strokeWidth="1"
-            className="transition-colors group-hover:stroke-[#424344]"
+            className="transition-colors group-hover:stroke-[var(--border-strong)]"
           />
           <path
             d={foldPath}
-            fill="#2E2F34"
-            stroke="#2E2F34"
+            fill="var(--border)"
+            stroke="var(--border)"
             strokeLinejoin="round"
-            className="transition-colors group-hover:stroke-[#424344]"
+            className="transition-colors group-hover:stroke-[var(--border-strong)]"
           />
         </svg>
 
@@ -135,18 +135,18 @@ export function DocumentCard({
                   e.stopPropagation();
                   if (onContextMenu) onContextMenu(e);
                 }}
-                className="h-6 w-6 rounded-md flex items-center justify-center text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors shrink-0"
+                className="h-6 w-6 rounded-md flex items-center justify-center text-[var(--text-2)] hover:text-white hover:bg-[var(--input)] transition-colors shrink-0"
               >
                 <MoreHorizontal size={16} />
               </button>
             </div>
-            <p className="text-[13px] text-[#A3A6AD] truncate mt-0.5">
+            <p className="text-[13px] text-[var(--text-2)] truncate mt-0.5">
               {document.project_name || document.client_name || "My Drive"}
             </p>
           </div>
 
           <div className="flex items-center justify-between pt-1">
-            <p className="text-xs text-[#7C7F87] truncate">
+            <p className="text-xs text-[var(--text-3)] truncate">
               {authorDate}
             </p>
 
@@ -156,7 +156,7 @@ export function DocumentCard({
                 <div
                   key={m.id || idx}
                   style={{ backgroundColor: m.color || "#4876F3" }}
-                  className="inline-flex h-5 w-5 rounded-full ring-2 ring-[#212121] text-xs font-semibold text-white items-center justify-center"
+                  className="inline-flex h-5 w-5 rounded-full ring-2 ring-[var(--panel)] text-xs font-semibold text-white items-center justify-center"
                 >
                   {(m.name || "U").slice(0, 1).toUpperCase()}
                 </div>

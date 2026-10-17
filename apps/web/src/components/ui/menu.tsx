@@ -192,16 +192,16 @@ export function Menu({
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
                   transition={menuTransition}
-                  className="relative z-50 w-full rounded-t-xl border-t border-[#2E2F34] bg-[#212121] p-4 shadow-overlay max-h-[85vh] overflow-y-auto"
+                  className="relative z-50 w-full rounded-t-xl border-t border-[var(--border)] bg-[var(--panel)] p-4 shadow-overlay max-h-[85vh] overflow-y-auto"
                 >
-                  <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#2E2F34]" />
-                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#2E2F34]">
-                    <span className="text-xs font-semibold text-[#7C7F87] ">
+                  <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--border)]" />
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-[var(--border)]">
+                    <span className="text-xs font-semibold text-[var(--text-3)] ">
                       Options
                     </span>
                     <button
                       onClick={() => setIsOpen(false)}
-                      className="p-1 text-[#7C7F87] hover:text-white"
+                      className="p-1 text-[var(--text-3)] hover:text-white"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -213,7 +213,7 @@ export function Menu({
                       );
                       if (groupItems.length === 0) return null;
                       return (
-                        <div key={gIdx} className={gIdx > 0 ? "pt-2 mt-2 border-t border-[#2E2F34]" : ""}>
+                        <div key={gIdx} className={gIdx > 0 ? "pt-2 mt-2 border-t border-[var(--border)]" : ""}>
                           {groupItems.map((item, iIdx) => (
                             <button
                               key={iIdx}
@@ -229,19 +229,19 @@ export function Menu({
                                   ? "opacity-40 cursor-not-allowed"
                                   : item.danger
                                   ? "text-red-400 active:bg-red-500/10"
-                                  : "text-white active:bg-[#2A2B30]"
+                                  : "text-white active:bg-[var(--input)]"
                               }`}
                             >
                               <div className="flex items-center gap-3">
                                 {item.icon && (
-                                  <span className={item.danger ? "text-red-400" : "text-[#A3A6AD]"}>
+                                  <span className={item.danger ? "text-red-400" : "text-[var(--text-2)]"}>
                                     {item.icon}
                                   </span>
                                 )}
                                 <span>{item.label}</span>
                               </div>
                               {item.shortcut && (
-                                <span className="font-mono text-xs text-[#7C7F87]">
+                                <span className="font-mono text-xs text-[var(--text-3)]">
                                   {item.shortcut}
                                 </span>
                               )}
@@ -270,7 +270,7 @@ export function Menu({
                   {...getFloatingProps({
                     onKeyDown: handleKeyDown,
                   })}
-                  className={`z-50 w-56 rounded-[10px] border border-[#2E2F34] bg-[#212121] p-1.5 shadow-overlay outline-none max-h-[min(480px,80vh)] overflow-y-auto ${className}`}
+                  className={`z-50 w-56 rounded-[10px] border border-[var(--border)] bg-[var(--panel)] p-1.5 shadow-overlay outline-none max-h-[min(480px,80vh)] overflow-y-auto ${className}`}
                 >
                   {groups.map((group, gIdx) => {
                     const groupItems = group.items.filter(
@@ -282,7 +282,7 @@ export function Menu({
                         key={gIdx}
                         className={
                           gIdx > 0
-                            ? "my-1 pt-1 border-t border-[#2E2F34]"
+                            ? "my-1 pt-1 border-t border-[var(--border)]"
                             : "space-y-0.5"
                         }
                       >
@@ -303,14 +303,14 @@ export function Menu({
                               onMouseEnter={() => setActiveIndex(globalIndex)}
                               className={`flex h-9 w-full items-center justify-between rounded-[8px] px-2.5 text-sm font-normal transition-colors outline-none ${
                                 item.disabled
-                                  ? "opacity-40 cursor-not-allowed text-[#7C7F87]"
+                                  ? "opacity-40 cursor-not-allowed text-[var(--text-3)]"
                                   : item.danger
                                   ? isFocused
                                     ? "bg-[#F0506E]/15 text-[#F0506E]"
                                     : "text-[#F0506E] hover:bg-[#F0506E]/10"
                                   : isFocused
-                                  ? "bg-[#2C2D33] text-white"
-                                  : "text-white hover:bg-[#2C2D33]"
+                                  ? "bg-[var(--hover)] text-white"
+                                  : "text-white hover:bg-[var(--hover)]"
                               }`}
                             >
                               <div className="flex items-center gap-2.5 truncate">
@@ -321,7 +321,7 @@ export function Menu({
                                         ? "text-[#F0506E]"
                                         : isFocused
                                         ? "text-white"
-                                        : "text-[#A3A6AD]"
+                                        : "text-[var(--text-2)]"
                                     }`}
                                   >
                                     {item.icon}
@@ -330,7 +330,7 @@ export function Menu({
                                 <span className="truncate">{item.label}</span>
                               </div>
                               {item.shortcut && (
-                                <span className="shrink-0 font-mono text-xs text-[#7C7F87] pl-2">
+                                <span className="shrink-0 font-mono text-xs text-[var(--text-3)] pl-2">
                                   {item.shortcut}
                                 </span>
                               )}
@@ -617,16 +617,16 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
                   transition={menuTransition}
-                  className="relative z-50 w-full rounded-t-xl border-t border-[#2E2F34] bg-[#212121] p-4 shadow-overlay max-h-[85vh] overflow-y-auto"
+                  className="relative z-50 w-full rounded-t-xl border-t border-[var(--border)] bg-[var(--panel)] p-4 shadow-overlay max-h-[85vh] overflow-y-auto"
                 >
-                  <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#2E2F34]" />
-                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#2E2F34]">
-                    <span className="text-xs font-semibold text-[#7C7F87] ">
+                  <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--border)]" />
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-[var(--border)]">
+                    <span className="text-xs font-semibold text-[var(--text-3)] ">
                       Actions
                     </span>
                     <button
                       onClick={closeContextMenu}
-                      className="p-1 text-[#7C7F87] hover:text-white"
+                      className="p-1 text-[var(--text-3)] hover:text-white"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -636,7 +636,7 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                       const groupItems = group.items.filter((item) => item.show !== false);
                       if (groupItems.length === 0) return null;
                       return (
-                        <div key={gIdx} className={gIdx > 0 ? "pt-2 mt-2 border-t border-[#2E2F34]" : ""}>
+                        <div key={gIdx} className={gIdx > 0 ? "pt-2 mt-2 border-t border-[var(--border)]" : ""}>
                           {groupItems.map((item, iIdx) => (
                             <button
                               key={iIdx}
@@ -652,19 +652,19 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                                   ? "opacity-40 cursor-not-allowed"
                                   : item.danger
                                   ? "text-red-400 active:bg-red-500/10"
-                                  : "text-white active:bg-[#2A2B30]"
+                                  : "text-white active:bg-[var(--input)]"
                               }`}
                             >
                               <div className="flex items-center gap-3">
                                 {item.icon && (
-                                  <span className={item.danger ? "text-red-400" : "text-[#A3A6AD]"}>
+                                  <span className={item.danger ? "text-red-400" : "text-[var(--text-2)]"}>
                                     {item.icon}
                                   </span>
                                 )}
                                 <span>{item.label}</span>
                               </div>
                               {item.shortcut && (
-                                <span className="font-mono text-xs text-[#7C7F87]">
+                                <span className="font-mono text-xs text-[var(--text-3)]">
                                   {item.shortcut}
                                 </span>
                               )}
@@ -692,7 +692,7 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                   {...getFloatingProps({
                     onKeyDown: handleKeyDown,
                   })}
-                  className="z-50 w-56 rounded-[10px] border border-[#2E2F34] bg-[#212121] p-1.5 shadow-overlay outline-none max-h-[min(480px,80vh)] overflow-y-auto"
+                  className="z-50 w-56 rounded-[10px] border border-[var(--border)] bg-[var(--panel)] p-1.5 shadow-overlay outline-none max-h-[min(480px,80vh)] overflow-y-auto"
                 >
                   {state.groups.map((group, gIdx) => {
                     const groupItems = group.items.filter((item) => item.show !== false);
@@ -702,7 +702,7 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                         key={gIdx}
                         className={
                           gIdx > 0
-                            ? "my-1 pt-1 border-t border-[#2E2F34]"
+                            ? "my-1 pt-1 border-t border-[var(--border)]"
                             : "space-y-0.5"
                         }
                       >
@@ -723,14 +723,14 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                               onMouseEnter={() => setActiveIndex(globalIndex)}
                               className={`flex h-9 w-full items-center justify-between rounded-[8px] px-2.5 text-sm font-normal transition-colors outline-none ${
                                 item.disabled
-                                  ? "opacity-40 cursor-not-allowed text-[#7C7F87]"
+                                  ? "opacity-40 cursor-not-allowed text-[var(--text-3)]"
                                   : item.danger
                                   ? isFocused
                                     ? "bg-[#F0506E]/15 text-[#F0506E]"
                                     : "text-[#F0506E] hover:bg-[#F0506E]/10"
                                   : isFocused
-                                  ? "bg-[#2C2D33] text-white"
-                                  : "text-white hover:bg-[#2C2D33]"
+                                  ? "bg-[var(--hover)] text-white"
+                                  : "text-white hover:bg-[var(--hover)]"
                               }`}
                             >
                               <div className="flex items-center gap-2.5 truncate">
@@ -741,7 +741,7 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                                         ? "text-[#F0506E]"
                                         : isFocused
                                         ? "text-white"
-                                        : "text-[#A3A6AD]"
+                                        : "text-[var(--text-2)]"
                                     }`}
                                   >
                                     {item.icon}
@@ -750,7 +750,7 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                                 <span className="truncate">{item.label}</span>
                               </div>
                               {item.shortcut && (
-                                <span className="shrink-0 font-mono text-xs text-[#7C7F87] pl-2">
+                                <span className="shrink-0 font-mono text-xs text-[var(--text-3)] pl-2">
                                   {item.shortcut}
                                 </span>
                               )}

@@ -815,8 +815,8 @@ export default function ProjectWorkspacePage() {
 
   if (isLoading && !workspaceData) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#181818]">
-        <div className="flex items-center gap-2 text-xs text-[#A3A6AD]">
+      <div className="flex h-screen items-center justify-center bg-[var(--bg)]">
+        <div className="flex items-center gap-2 text-xs text-[var(--text-2)]">
           <Loader2 className="w-4 h-4 animate-spin text-[#4876F3]" />
           <span>Loading project workspace...</span>
         </div>
@@ -826,7 +826,7 @@ export default function ProjectWorkspacePage() {
 
   if (error || !workspaceData) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center bg-[#181818] text-white">
+      <div className="flex h-screen flex-col items-center justify-center bg-[var(--bg)] text-white">
         <h2 className="text-lg font-bold">Project not found or access denied</h2>
         <Link href="/projects" className="mt-4 px-4 py-2 bg-[#4876F3] text-xs font-semibold rounded-xl">
           Back to Projects
@@ -1086,7 +1086,7 @@ export default function ProjectWorkspacePage() {
         onDragOver={handleWindowDragOver}
         onDragLeave={handleWindowDragLeave}
         onDrop={handleWindowDrop}
-        className="flex flex-col h-screen w-full bg-[#181818] text-[#FFFFFF] font-sans antialiased overflow-hidden select-none relative"
+        className="flex flex-col h-screen w-full bg-[var(--bg)] text-[#FFFFFF] font-sans antialiased overflow-hidden select-none relative"
       >
       {/* Hidden File & Folder Inputs */}
       <input
@@ -1116,40 +1116,40 @@ export default function ProjectWorkspacePage() {
       {/* =========================================================================
           TOP BAR (Height: 48px, Panel Toggle, Breadcrumbs, Right Search)
           ========================================================================= */}
-      <div className="h-12 border-b border-[#2E2F34] bg-[#181818] px-4 flex items-center justify-between shrink-0 z-20">
+      <div className="h-12 border-b border-[var(--border)] bg-[var(--bg)] px-4 flex items-center justify-between shrink-0 z-20">
         <div className="flex items-center min-w-0">
           <button
             onClick={() => setIsProjectPanelOpen(!isProjectPanelOpen)}
             title={isProjectPanelOpen ? "Collapse project panel" : "Expand project panel"}
-            className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white transition-colors mr-2 shrink-0"
+            className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[var(--text-2)] hover:bg-[var(--input)] hover:text-white transition-colors mr-2 shrink-0"
           >
             <PanelLeft className="w-4 h-4" />
           </button>
 
-          <div className="h-4 w-[1px] bg-[#2E2F34] mr-3 shrink-0" />
+          <div className="h-4 w-[1px] bg-[var(--border)] mr-3 shrink-0" />
 
           {/* Breadcrumbs: All projects / {Client} / {Project} [/ {Folder}] */}
           <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs truncate">
             <Link
               href="/projects"
-              className="text-[#A3A6AD] hover:text-white transition-colors shrink-0"
+              className="text-[var(--text-2)] hover:text-white transition-colors shrink-0"
             >
               All projects
             </Link>
-            <span className="text-[#7C7F87] shrink-0">/</span>
+            <span className="text-[var(--text-3)] shrink-0">/</span>
             {project.client_id ? (
               <Link
                 href={`/clients/${project.client_id}`}
-                className="text-[#A3A6AD] hover:text-white transition-colors truncate max-w-[140px]"
+                className="text-[var(--text-2)] hover:text-white transition-colors truncate max-w-[140px]"
               >
                 {project.client_name || "Client"}
               </Link>
             ) : (
-              <span className="text-[#A3A6AD] truncate max-w-[140px]">
+              <span className="text-[var(--text-2)] truncate max-w-[140px]">
                 {project.client_name || "Workspace"}
               </span>
             )}
-            <span className="text-[#7C7F87] shrink-0">/</span>
+            <span className="text-[var(--text-3)] shrink-0">/</span>
             <DroppableTarget
               id="crumb-root"
               data={{ type: "root", id: null, name: project.name || "Files" }}
@@ -1162,7 +1162,7 @@ export default function ProjectWorkspacePage() {
                     ? "bg-[#4876F3]/20 ring-1 ring-[#4876F3] text-white"
                     : !currentFolderId && breadcrumbs.length === 0
                     ? "text-white font-semibold"
-                    : "text-[#A3A6AD] hover:text-white"
+                    : "text-[var(--text-2)] hover:text-white"
                 }`}
               >
                 {project.name}
@@ -1172,7 +1172,7 @@ export default function ProjectWorkspacePage() {
               const isLast = idx === breadcrumbs.length - 1;
               return (
                 <React.Fragment key={b.id}>
-                  <span className="text-[#7C7F87] shrink-0">/</span>
+                  <span className="text-[var(--text-3)] shrink-0">/</span>
                   <DroppableTarget
                     id={`crumb-${b.id}`}
                     data={{ type: "folder", id: b.id, name: b.name }}
@@ -1186,7 +1186,7 @@ export default function ProjectWorkspacePage() {
                           ? "bg-[#4876F3]/20 ring-1 ring-[#4876F3] text-white"
                           : isLast
                           ? "text-white font-semibold"
-                          : "text-[#A3A6AD] hover:text-white"
+                          : "text-[var(--text-2)] hover:text-white"
                       }`}
                     >
                       {b.name}
@@ -1200,14 +1200,14 @@ export default function ProjectWorkspacePage() {
 
         {/* Search on the right */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 h-8 px-2.5 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] text-xs text-[#7C7F87] focus-within:border-[#4876F3] transition-colors w-44 sm:w-60">
-            <Search className="w-3.5 h-3.5 text-[#7C7F87] shrink-0" />
+          <div className="flex items-center gap-2 h-8 px-2.5 rounded-[10px] bg-[var(--input)] border border-[var(--border)] text-xs text-[var(--text-3)] focus-within:border-[#4876F3] transition-colors w-44 sm:w-60">
+            <Search className="w-3.5 h-3.5 text-[var(--text-3)] shrink-0" />
             <input
               type="text"
               placeholder="Search in project..."
               value={searchInProject}
               onChange={(e) => setSearchInProject(e.target.value)}
-              className="w-full bg-transparent text-white placeholder-[#7C7F87] focus:outline-none text-xs"
+              className="w-full bg-transparent text-white placeholder-[var(--text-3)] focus:outline-none text-xs"
             />
             {searchInProject && (
               <button onClick={() => setSearchInProject("")} className="hover:text-white">
@@ -1223,14 +1223,14 @@ export default function ProjectWorkspacePage() {
             PROJECT PANEL (280px, Collapsible)
             ========================================================================= */}
         {isProjectPanelOpen && (
-          <aside className="w-[280px] min-w-[280px] max-w-[280px] h-full border-r border-[#2E2F34] bg-[#212121] flex flex-col justify-between shrink-0 overflow-hidden select-none z-10 relative">
+          <aside className="w-[280px] min-w-[280px] max-w-[280px] h-full border-r border-[var(--border)] bg-[var(--panel)] flex flex-col justify-between shrink-0 overflow-hidden select-none z-10 relative">
             <div className="flex-1 flex flex-col overflow-y-auto">
               {/* Project Switcher */}
-              <div className="relative border-b border-[#2E2F34]">
+              <div className="relative border-b border-[var(--border)]">
                 <button
                   type="button"
                   onClick={() => setProjectSwitcherOpen(!projectSwitcherOpen)}
-                  className="w-full p-3.5 flex items-center justify-between hover:bg-[#2A2B30] transition-colors text-left"
+                  className="w-full p-3.5 flex items-center justify-between hover:bg-[var(--input)] transition-colors text-left"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-7 h-7 rounded-[8px] bg-[#4876F3]/20 text-[#4876F3] font-bold text-xs flex items-center justify-center shrink-0  border border-[#4876F3]/30">
@@ -1247,16 +1247,16 @@ export default function ProjectWorkspacePage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-[#A3A6AD] truncate leading-tight mt-0.5">
+                      <p className="text-xs text-[var(--text-2)] truncate leading-tight mt-0.5">
                         {project.client_name || "Workspace"}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                    <span className="rounded-full bg-[#2A2B30] border border-[#2E2F34] px-1.5 py-0.5 text-xs font-medium text-[#A3A6AD]">
+                    <span className="rounded-full bg-[var(--input)] border border-[var(--border)] px-1.5 py-0.5 text-xs font-medium text-[var(--text-2)]">
                       {membersList.length || 1}
                     </span>
-                    <ChevronsUpDown className="w-3.5 h-3.5 text-[#7C7F87]" />
+                    <ChevronsUpDown className="w-3.5 h-3.5 text-[var(--text-3)]" />
                   </div>
                 </button>
 
@@ -1267,25 +1267,25 @@ export default function ProjectWorkspacePage() {
                       className="fixed inset-0 z-30"
                       onClick={() => setProjectSwitcherOpen(false)}
                     />
-                    <div className="absolute left-2 right-2 top-14 z-40 rounded-xl border border-[#2E2F34] bg-[#212121] p-2 shadow-overlay space-y-2">
+                    <div className="absolute left-2 right-2 top-14 z-40 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-2 shadow-overlay space-y-2">
                       <div className="px-2 pt-1 pb-1">
-                        <p className="text-xs font-bold  text-[#7C7F87]">
+                        <p className="text-xs font-bold  text-[var(--text-3)]">
                           {project.client_name ? `${project.client_name}'s Projects` : "Client Projects"}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 h-8 px-2 rounded-lg bg-[#2A2B30] border border-[#2E2F34] text-xs text-[#7C7F87]">
+                      <div className="flex items-center gap-2 h-8 px-2 rounded-lg bg-[var(--input)] border border-[var(--border)] text-xs text-[var(--text-3)]">
                         <Search className="w-3.5 h-3.5 shrink-0" />
                         <input
                           type="text"
                           placeholder="Search projects..."
                           value={projectSwitcherQuery}
                           onChange={(e) => setProjectSwitcherQuery(e.target.value)}
-                          className="w-full bg-transparent text-white placeholder-[#7C7F87] focus:outline-none text-xs"
+                          className="w-full bg-transparent text-white placeholder-[var(--text-3)] focus:outline-none text-xs"
                         />
                       </div>
                       <div className="max-h-48 overflow-y-auto space-y-0.5 pt-1">
                         {clientProjects.length === 0 ? (
-                          <p className="text-xs text-[#7C7F87] px-2 py-2">No projects found</p>
+                          <p className="text-xs text-[var(--text-3)] px-2 py-2">No projects found</p>
                         ) : (
                           clientProjects.map((p: any) => {
                             const isCurrent = p.id === projectId;
@@ -1299,7 +1299,7 @@ export default function ProjectWorkspacePage() {
                                 className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
                                   isCurrent
                                     ? "bg-[#4876F3] text-white font-semibold"
-                                    : "text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white"
+                                    : "text-[var(--text-2)] hover:bg-[var(--input)] hover:text-white"
                                 }`}
                               >
                                 <div className="flex items-center gap-1.5 truncate">
@@ -1323,13 +1323,13 @@ export default function ProjectWorkspacePage() {
 
               {/* Files Root & Folder Tree */}
               <div className="p-3 space-y-1">
-                <div className="flex items-center justify-between px-2 py-1 text-xs font-bold  text-[#A3A6AD]">
+                <div className="flex items-center justify-between px-2 py-1 text-xs font-bold  text-[var(--text-2)]">
                   <span>Files</span>
                   {canUpload && (
                     <button
                       onClick={triggerInlineNewFolder}
                       title="New folder at root"
-                      className="text-[#7C7F87] hover:text-white transition-colors"
+                      className="text-[var(--text-3)] hover:text-white transition-colors"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
@@ -1349,15 +1349,15 @@ export default function ProjectWorkspacePage() {
                       overDropTargetId === "tree-root"
                         ? "bg-[#4876F3]/20 ring-1 ring-[#4876F3] text-white font-semibold"
                         : !currentFolderId
-                        ? "bg-[#2A2B30] text-white font-semibold border border-[#2E2F34]"
-                        : "text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30]/60"
+                        ? "bg-[var(--input)] text-white font-semibold border border-[var(--border)]"
+                        : "text-[var(--text-2)] hover:text-white hover:bg-[var(--input)]/60"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
                       <Folder className="w-4 h-4 text-[#4876F3]" />
                       <span className="truncate">Files</span>
                     </div>
-                    <span className="text-xs text-[#7C7F87] tabular-nums">
+                    <span className="text-xs text-[var(--text-3)] tabular-nums">
                       {overDropTargetId === "tree-root" ? "Move here" : (project.file_count || 0)}
                     </span>
                   </button>
@@ -1382,15 +1382,15 @@ export default function ProjectWorkspacePage() {
                           isOver
                             ? "bg-[#4876F3]/20 ring-1 ring-[#4876F3] text-white font-semibold"
                             : isActive
-                            ? "bg-[#2A2B30] text-white font-semibold border border-[#2E2F34]"
-                            : "text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30]/60"
+                            ? "bg-[var(--input)] text-white font-semibold border border-[var(--border)]"
+                            : "text-[var(--text-2)] hover:text-white hover:bg-[var(--input)]/60"
                         }`}
                       >
                         <div className="flex items-center gap-2 truncate">
-                          <Folder className={`w-3.5 h-3.5 ${isActive || isOver ? "text-[#4876F3]" : "text-[#7C7F87]"}`} />
+                          <Folder className={`w-3.5 h-3.5 ${isActive || isOver ? "text-[#4876F3]" : "text-[var(--text-3)]"}`} />
                           <span className="truncate">{f.name}</span>
                         </div>
-                        <span className="text-xs text-[#7C7F87] tabular-nums">
+                        <span className="text-xs text-[var(--text-3)] tabular-nums">
                           {isOver ? "Move here" : (f.file_count || 0)}
                         </span>
                       </button>
@@ -1400,21 +1400,21 @@ export default function ProjectWorkspacePage() {
               </div>
 
               {/* Sheets and Docs (Tracker first) */}
-              <div className="p-3 pt-2 space-y-1 border-t border-[#2E2F34]">
-                <div className="flex items-center justify-between px-2 py-1 text-xs font-bold  text-[#A3A6AD]">
+              <div className="p-3 pt-2 space-y-1 border-t border-[var(--border)]">
+                <div className="flex items-center justify-between px-2 py-1 text-xs font-bold  text-[var(--text-2)]">
                   <span>Sheets and docs</span>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => setShowNewSheetModal(true)}
                       title="New spreadsheet"
-                      className="text-[#7C7F87] hover:text-emerald-400 transition-colors"
+                      className="text-[var(--text-3)] hover:text-emerald-400 transition-colors"
                     >
                       <FileSpreadsheet className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => setShowNewDocModal(true)}
                       title="New document"
-                      className="text-[#7C7F87] hover:text-blue-400 transition-colors"
+                      className="text-[var(--text-3)] hover:text-blue-400 transition-colors"
                     >
                       <FileText className="w-3.5 h-3.5" />
                     </button>
@@ -1425,7 +1425,7 @@ export default function ProjectWorkspacePage() {
                 {trackerSheet ? (
                   <button
                     onClick={() => router.push(`/spreadsheets/${trackerSheet.id}`)}
-                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs text-[#A3A6AD] hover:bg-[#2A2B30]/60 hover:text-white transition-colors"
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs text-[var(--text-2)] hover:bg-[var(--input)]/60 hover:text-white transition-colors"
                   >
                     <div className="flex items-center gap-2 truncate">
                       <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -1438,7 +1438,7 @@ export default function ProjectWorkspacePage() {
                 ) : (
                   <button
                     onClick={() => setShowNewSheetModal(true)}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[10px] text-xs text-[#7C7F87] hover:bg-[#2A2B30]/60 hover:text-white transition-colors"
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[10px] text-xs text-[var(--text-3)] hover:bg-[var(--input)]/60 hover:text-white transition-colors"
                   >
                     <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span className="truncate">+ Create Project Tracker</span>
@@ -1450,7 +1450,7 @@ export default function ProjectWorkspacePage() {
                   <button
                     key={s.id}
                     onClick={() => router.push(`/spreadsheets/${s.id}`)}
-                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs text-[#A3A6AD] hover:bg-[#2A2B30]/60 hover:text-white transition-colors"
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs text-[var(--text-2)] hover:bg-[var(--input)]/60 hover:text-white transition-colors"
                   >
                     <div className="flex items-center gap-2 truncate">
                       <FileSpreadsheet className="w-4 h-4 text-emerald-400/80 shrink-0" />
@@ -1464,7 +1464,7 @@ export default function ProjectWorkspacePage() {
                   <button
                     key={d.id}
                     onClick={() => router.push(`/documents/${d.id}`)}
-                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs text-[#A3A6AD] hover:bg-[#2A2B30]/60 hover:text-white transition-colors"
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs text-[var(--text-2)] hover:bg-[var(--input)]/60 hover:text-white transition-colors"
                   >
                     <div className="flex items-center gap-2 truncate">
                       <FileText className="w-4 h-4 text-blue-400 shrink-0" />
@@ -1475,8 +1475,8 @@ export default function ProjectWorkspacePage() {
               </div>
 
               {/* Share links section */}
-              <div className="p-3 pt-2 space-y-1 border-t border-[#2E2F34]">
-                <div className="flex items-center justify-between px-2 py-1 text-xs font-bold  text-[#A3A6AD]">
+              <div className="p-3 pt-2 space-y-1 border-t border-[var(--border)]">
+                <div className="flex items-center justify-between px-2 py-1 text-xs font-bold  text-[var(--text-2)]">
                   <span>Share links</span>
                   <div className="flex items-center gap-1.5">
                     <button
@@ -1484,7 +1484,7 @@ export default function ProjectWorkspacePage() {
                         setShareLinksSort(shareLinksSort === "newest" ? "name" : "newest")
                       }
                       title={`Sort: ${shareLinksSort}`}
-                      className="text-[#7C7F87] hover:text-white transition-colors"
+                      className="text-[var(--text-3)] hover:text-white transition-colors"
                     >
                       <ArrowUpDown className="w-3 h-3" />
                     </button>
@@ -1494,20 +1494,20 @@ export default function ProjectWorkspacePage() {
                         setShowShareModal(true);
                       }}
                       title="New share link"
-                      className="text-[#7C7F87] hover:text-[#4876F3] transition-colors"
+                      className="text-[var(--text-3)] hover:text-[#4876F3] transition-colors"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
 
-                <p className="px-2 text-xs text-[#7C7F87]">
+                <p className="px-2 text-xs text-[var(--text-3)]">
                   All share links ({sortedShareLinks.length})
                 </p>
 
                 <div className="space-y-0.5 pt-1">
                   {sortedShareLinks.length === 0 ? (
-                    <p className="text-xs text-[#7C7F87] px-2 py-1 italic">No share links yet</p>
+                    <p className="text-xs text-[var(--text-3)] px-2 py-1 italic">No share links yet</p>
                   ) : (
                     sortedShareLinks.map((link: any) => (
                       <button
@@ -1516,15 +1516,15 @@ export default function ProjectWorkspacePage() {
                           setShareTargetItem({ id: projectId, name: project.name, type: "project" });
                           setShowShareModal(true);
                         }}
-                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs text-[#A3A6AD] hover:bg-[#2A2B30]/60 hover:text-white transition-colors group"
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs text-[var(--text-2)] hover:bg-[var(--input)]/60 hover:text-white transition-colors group"
                       >
                         <div className="flex items-center gap-2 truncate">
-                          <div className="w-4 h-4 rounded bg-[#2A2B30] border border-[#2E2F34] flex items-center justify-center shrink-0">
+                          <div className="w-4 h-4 rounded bg-[var(--input)] border border-[var(--border)] flex items-center justify-center shrink-0">
                             <Share2 className="w-2.5 h-2.5 text-[#4876F3]" />
                           </div>
                           <span className="truncate">{link.name || "Share link"}</span>
                         </div>
-                        <span className="text-xs text-[#7C7F87] group-hover:text-white tabular-nums">
+                        <span className="text-xs text-[var(--text-3)] group-hover:text-white tabular-nums">
                           {link.view_count || 0} views
                         </span>
                       </button>
@@ -1535,12 +1535,12 @@ export default function ProjectWorkspacePage() {
             </div>
 
             {/* Bottom: Recently deleted */}
-            <div className="p-3 border-t border-[#2E2F34]">
+            <div className="p-3 border-t border-[var(--border)]">
               <Link
                 href="/trash"
-                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[10px] text-xs font-medium text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white transition-colors"
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[10px] text-xs font-medium text-[var(--text-2)] hover:bg-[var(--input)] hover:text-white transition-colors"
               >
-                <Trash2 className="w-4 h-4 text-[#7C7F87]" />
+                <Trash2 className="w-4 h-4 text-[var(--text-3)]" />
                 <span>Recently deleted</span>
               </Link>
             </div>
@@ -1581,19 +1581,19 @@ export default function ProjectWorkspacePage() {
         {/* =========================================================================
             MAIN WORKSPACE AREA
             ========================================================================= */}
-        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#181818]">
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[var(--bg)]">
           {/* Main Toolbar */}
-          <div className="h-12 border-b border-[#2E2F34] bg-[#181818] px-6 flex items-center justify-between shrink-0 select-none">
+          <div className="h-12 border-b border-[var(--border)] bg-[var(--bg)] px-6 flex items-center justify-between shrink-0 select-none">
             {/* Left Toolbar Controls */}
             <div className="flex items-center gap-3">
               {/* View Toggle (Grid / List) */}
-              <div className="flex items-center rounded-[8px] bg-[#212121] border border-[#2E2F34] p-0.5">
+              <div className="flex items-center rounded-[8px] bg-[var(--panel)] border border-[var(--border)] p-0.5">
                 <button
                   type="button"
                   onClick={() => setViewMode("grid")}
                   title="Grid view"
                   className={`p-1.5 rounded-[6px] transition-colors ${
-                    viewMode === "grid" ? "bg-[#2A2B30] text-white" : "text-[#7C7F87] hover:text-white"
+                    viewMode === "grid" ? "bg-[var(--input)] text-white" : "text-[var(--text-3)] hover:text-white"
                   }`}
                 >
                   <LayoutGrid className="w-3.5 h-3.5" />
@@ -1603,7 +1603,7 @@ export default function ProjectWorkspacePage() {
                   onClick={() => setViewMode("list")}
                   title="List view"
                   className={`p-1.5 rounded-[6px] transition-colors ${
-                    viewMode === "list" ? "bg-[#2A2B30] text-white" : "text-[#7C7F87] hover:text-white"
+                    viewMode === "list" ? "bg-[var(--input)] text-white" : "text-[var(--text-3)] hover:text-white"
                   }`}
                 >
                   <List className="w-3.5 h-3.5" />
@@ -1612,14 +1612,14 @@ export default function ProjectWorkspacePage() {
 
               {/* Card size selector */}
               {viewMode === "grid" && (
-                <div className="hidden sm:flex items-center rounded-[8px] bg-[#212121] border border-[#2E2F34] p-0.5 text-xs font-bold">
+                <div className="hidden sm:flex items-center rounded-[8px] bg-[var(--panel)] border border-[var(--border)] p-0.5 text-xs font-bold">
                   {(["compact", "normal", "large"] as const).map((s) => (
                     <button
                       key={s}
                       type="button"
                       onClick={() => setCardSize(s)}
                       className={`px-2 py-1 rounded-[6px] transition-colors  ${
-                        cardSize === s ? "bg-[#2A2B30] text-white" : "text-[#7C7F87] hover:text-white"
+                        cardSize === s ? "bg-[var(--input)] text-white" : "text-[var(--text-3)] hover:text-white"
                       }`}
                     >
                       {s === "compact" ? "S" : s === "normal" ? "M" : "L"}
@@ -1628,15 +1628,15 @@ export default function ProjectWorkspacePage() {
                 </div>
               )}
 
-              <div className="h-4 w-[1px] bg-[#2E2F34]" />
+              <div className="h-4 w-[1px] bg-[var(--border)]" />
 
               {/* Sort Selector */}
-              <div className="flex items-center gap-1.5 text-xs text-[#A3A6AD]">
-                <ArrowUpDown className="w-3.5 h-3.5 text-[#7C7F87]" />
+              <div className="flex items-center gap-1.5 text-xs text-[var(--text-2)]">
+                <ArrowUpDown className="w-3.5 h-3.5 text-[var(--text-3)]" />
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="bg-[#212121] border border-[#2E2F34] rounded-[8px] px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#4876F3]"
+                  className="bg-[var(--panel)] border border-[var(--border)] rounded-[8px] px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#4876F3]"
                 >
                   <option value="name">Name</option>
                   <option value="modified">Date modified</option>
@@ -1644,7 +1644,7 @@ export default function ProjectWorkspacePage() {
                 </select>
               </div>
 
-              <div className="h-4 w-[1px] bg-[#2E2F34]" />
+              <div className="h-4 w-[1px] bg-[var(--border)]" />
 
               {/* + Menu Button */}
               {canUpload && (
@@ -1675,19 +1675,19 @@ export default function ProjectWorkspacePage() {
                   setShowShareModal(true);
                 }}
                 title="Manage project access"
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#212121] hover:bg-[#2A2B30] border border-[#2E2F34] transition-colors"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[var(--panel)] hover:bg-[var(--input)] border border-[var(--border)] transition-colors"
               >
                 <div className="flex -space-x-1.5 overflow-hidden">
                   {membersList.slice(0, 3).map((m: any, idx: number) => (
                     <div
                       key={m.id || idx}
-                      className="inline-block h-5 w-5 rounded-full ring-2 ring-[#212121] bg-[#4876F3] text-xs font-bold text-white flex items-center justify-center  shrink-0"
+                      className="inline-block h-5 w-5 rounded-full ring-2 ring-[var(--panel)] bg-[#4876F3] text-xs font-bold text-white flex items-center justify-center  shrink-0"
                     >
                       {(m.email || "U").slice(0, 1).toUpperCase()}
                     </div>
                   ))}
                 </div>
-                <span className="text-xs font-semibold text-[#A3A6AD]">
+                <span className="text-xs font-semibold text-[var(--text-2)]">
                   {membersList.length > 0 ? membersList.length : 1}
                 </span>
               </button>
@@ -1893,10 +1893,10 @@ export default function ProjectWorkspacePage() {
                     </AnimatePresence>
                   </motion.div>
                 ) : (
-                  <div className="rounded-xl border border-[#2E2F34] overflow-hidden bg-[#212121]">
+                  <div className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--panel)]">
                     <table className="w-full text-left text-sm">
                       <thead>
-                        <tr className="border-b border-[#2E2F34] text-xs font-semibold text-[#7C7F87]">
+                        <tr className="border-b border-[var(--border)] text-xs font-semibold text-[var(--text-3)]">
                           <th className="py-2.5 px-3 w-10"></th>
                           <th className="py-2.5 px-3">Name</th>
                           <th className="py-2.5 px-3">Items</th>
@@ -1905,7 +1905,7 @@ export default function ProjectWorkspacePage() {
                           <th className="py-2.5 px-3 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#2E2F34]">
+                      <tbody className="divide-y divide-[var(--border)]">
                         {foldersList.map((folder: any) => {
                           const isSelected = selectedItemIds.includes(folder.id);
                           return (
@@ -1921,7 +1921,7 @@ export default function ProjectWorkspacePage() {
                               }}
                               onDoubleClick={() => router.push(`/projects/${projectId}?folder=${folder.id}`)}
                               onContextMenu={(e) => handleItemContextMenu(e, folder)}
-                              className={`group hover:bg-[#2A2B30]/50 cursor-pointer transition-colors ${
+                              className={`group hover:bg-[var(--input)]/50 cursor-pointer transition-colors ${
                                 isSelected ? "bg-[#4876F3]/10" : ""
                               }`}
                             >
@@ -1936,20 +1936,20 @@ export default function ProjectWorkspacePage() {
                                       setSelectedItemIds([...selectedItemIds, folder.id]);
                                     }
                                   }}
-                                  className="rounded border-[#424344] text-[#4876F3] focus:ring-0"
+                                  className="rounded border-[var(--border-strong)] text-[#4876F3] focus:ring-0"
                                 />
                               </td>
                               <td className="py-2.5 px-3 flex items-center gap-2.5 min-w-0">
                                 <Folder className="w-4 h-4 text-[#4876F3] shrink-0" />
                                 <span className="font-medium text-white truncate text-xs">{folder.name}</span>
                               </td>
-                              <td className="py-2.5 px-3 text-xs text-[#A3A6AD] tabular-nums">
+                              <td className="py-2.5 px-3 text-xs text-[var(--text-2)] tabular-nums">
                                 {folder.file_count || 0} {folder.file_count === 1 ? "file" : "files"}
                               </td>
-                              <td className="py-2.5 px-3 text-xs text-[#A3A6AD] tabular-nums">
+                              <td className="py-2.5 px-3 text-xs text-[var(--text-2)] tabular-nums">
                                 {formatBytes(folder.total_bytes || 0)}
                               </td>
-                              <td className="py-2.5 px-3 text-xs text-[#7C7F87] tabular-nums">
+                              <td className="py-2.5 px-3 text-xs text-[var(--text-3)] tabular-nums">
                                 {folder.updated_at ? new Date(folder.updated_at).toLocaleDateString() : "—"}
                               </td>
                               <td className="py-2.5 px-3 text-right">
@@ -1959,7 +1959,7 @@ export default function ProjectWorkspacePage() {
                                     e.stopPropagation();
                                     handleItemContextMenu(e, folder);
                                   }}
-                                  className="item-menu-btn p-1.5 rounded-md hover:bg-[#2A2B30] text-[#A3A6AD] hover:text-white transition-colors"
+                                  className="item-menu-btn p-1.5 rounded-md hover:bg-[var(--input)] text-[var(--text-2)] hover:text-white transition-colors"
                                   aria-label="Item options"
                                 >
                                   <MoreHorizontal className="w-4 h-4" />
@@ -2006,9 +2006,9 @@ export default function ProjectWorkspacePage() {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="rounded-xl border border-[#4876F3]/50 bg-[#212121] p-4 flex flex-col justify-between shadow-lg relative overflow-hidden"
+                        className="rounded-xl border border-[#4876F3]/50 bg-[var(--panel)] p-4 flex flex-col justify-between shadow-lg relative overflow-hidden"
                       >
-                        <div className="h-32 w-full rounded-xl bg-[#181818] flex flex-col items-center justify-center gap-2 mb-3">
+                        <div className="h-32 w-full rounded-xl bg-[var(--bg)] flex flex-col items-center justify-center gap-2 mb-3">
                           <Upload className="w-8 h-8 text-[#4876F3] animate-bounce" />
                           <span className="text-xs font-semibold text-[#4876F3]">
                             {upload.progressPercent}%
@@ -2019,7 +2019,7 @@ export default function ProjectWorkspacePage() {
                           <h4 className="text-xs font-medium text-white truncate">
                             {upload.filename}
                           </h4>
-                          <div className="w-full bg-[#2E2F34] h-1.5 rounded-full overflow-hidden">
+                          <div className="w-full bg-[var(--border)] h-1.5 rounded-full overflow-hidden">
                             <div
                               className="bg-[#4876F3] h-full transition-all duration-200"
                               style={{ width: `${upload.progressPercent}%` }}
@@ -2084,7 +2084,7 @@ export default function ProjectWorkspacePage() {
                           className={`group relative rounded-xl border transition-all cursor-pointer p-4 flex flex-col justify-between ${
                             isSelected
                               ? "bg-[#4876F3]/15 border-[#4876F3] shadow-md"
-                              : "bg-[#181818] border-[#212121] hover:border-[#424344]"
+                              : "bg-[var(--bg)] border-[var(--panel)] hover:border-[var(--border-strong)]"
                           }`}
                         >
                           {/* Checkbox */}
@@ -2092,14 +2092,14 @@ export default function ProjectWorkspacePage() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => {}}
-                            className="absolute top-4 left-4 rounded border-[#424344] text-[#4876F3] focus:ring-0 z-10"
+                            className="absolute top-4 left-4 rounded border-[var(--border-strong)] text-[#4876F3] focus:ring-0 z-10"
                           />
 
                           {/* Preview Area */}
-                          <div className="relative h-32 w-full rounded-xl bg-[#181818] border border-[#212121] flex items-center justify-center overflow-hidden mb-3">
+                          <div className="relative h-32 w-full rounded-xl bg-[var(--bg)] border border-[var(--panel)] flex items-center justify-center overflow-hidden mb-3">
                             {isVideo ? (
                               <>
-                                <div className="w-full h-full bg-[#181818] flex items-center justify-center">
+                                <div className="w-full h-full bg-[var(--bg)] flex items-center justify-center">
                                   <Film className="w-10 h-10 text-violet-400" />
                                 </div>
                                 <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-[#4876F3] text-xs font-bold text-white ">
@@ -2114,7 +2114,7 @@ export default function ProjectWorkspacePage() {
                                 </div>
                               </>
                             ) : isSheet ? (
-                              <div className="w-full h-full bg-[#212121] flex flex-col justify-between p-3">
+                              <div className="w-full h-full bg-[var(--panel)] flex flex-col justify-between p-3">
                                 <span className="text-xs font-bold text-emerald-400 ">SHEET</span>
                                 <div className="space-y-1">
                                   <div className="h-1.5 w-full bg-emerald-500/20 rounded" />
@@ -2123,13 +2123,13 @@ export default function ProjectWorkspacePage() {
                                 <span className="text-xs text-emerald-400">Tracker | Summary</span>
                               </div>
                             ) : (
-                              <div className="w-full h-full bg-[#181818] flex flex-col justify-between p-3">
+                              <div className="w-full h-full bg-[var(--bg)] flex flex-col justify-between p-3">
                                 <span className="text-xs font-bold text-blue-400 ">DOC</span>
                                 <div className="space-y-1.5">
                                   <div className="h-1.5 w-full bg-blue-500/20 rounded" />
                                   <div className="h-1.5 w-4/5 bg-blue-500/10 rounded" />
                                 </div>
-                                <span className="text-xs text-[#A3A6AD]">PDF Preview</span>
+                                <span className="text-xs text-[var(--text-2)]">PDF Preview</span>
                               </div>
                             )}
                           </div>
@@ -2160,14 +2160,14 @@ export default function ProjectWorkspacePage() {
                                     setRenamingItemId(null);
                                   }
                                 }}
-                                className="w-full h-7 rounded bg-[#2A2B30] border border-[#4876F3] px-2 text-xs text-white focus:outline-none"
+                                className="w-full h-7 rounded bg-[var(--input)] border border-[#4876F3] px-2 text-xs text-white focus:outline-none"
                               />
                             ) : (
                               <>
                                 <h3 className="text-xs font-semibold text-white truncate" title={file.name}>
                                   {file.name}
                                 </h3>
-                                <p className="text-xs text-[#A3A6AD] mt-0.5">
+                                <p className="text-xs text-[var(--text-2)] mt-0.5">
                                   {file.created_by_name || "Editor"} · Oct 14
                                 </p>
                               </>
@@ -2184,7 +2184,7 @@ export default function ProjectWorkspacePage() {
                                   e.stopPropagation();
                                   handleItemContextMenu(e, file);
                                 }}
-                                className="p-1 rounded-lg hover:bg-[#212121] text-[#A3A6AD] hover:text-white"
+                                className="p-1 rounded-lg hover:bg-[var(--panel)] text-[var(--text-2)] hover:text-white"
                               >
                                 <MoreHorizontal className="w-4 h-4" />
                               </button>
@@ -2197,10 +2197,10 @@ export default function ProjectWorkspacePage() {
                   </AnimatePresence>
                 </motion.div>
                 ) : (
-                  <div className="rounded-xl border border-[#2E2F34] overflow-hidden bg-[#212121]">
+                  <div className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--panel)]">
                     <table className="w-full text-left text-sm">
                       <thead>
-                        <tr className="border-b border-[#2E2F34] text-xs font-semibold text-[#7C7F87]">
+                        <tr className="border-b border-[var(--border)] text-xs font-semibold text-[var(--text-3)]">
                           <th className="py-2.5 px-3 w-10"></th>
                           <th className="py-2.5 px-3">Name</th>
                           <th className="py-2.5 px-3">Type</th>
@@ -2210,7 +2210,7 @@ export default function ProjectWorkspacePage() {
                           <th className="py-2.5 px-3 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#2E2F34]">
+                      <tbody className="divide-y divide-[var(--border)]">
                         {regularFilesList.map((file: any) => {
                           const isSelected = selectedItemIds.includes(file.id);
                           const isVideo = file.name?.endsWith(".mp4") || file.name?.endsWith(".mov");
@@ -2230,7 +2230,7 @@ export default function ProjectWorkspacePage() {
                               }}
                               onDoubleClick={() => setActiveViewerItem(file)}
                               onContextMenu={(e) => handleItemContextMenu(e, file)}
-                              className={`group hover:bg-[#2A2B30]/50 cursor-pointer transition-colors ${
+                              className={`group hover:bg-[var(--input)]/50 cursor-pointer transition-colors ${
                                 isSelected ? "bg-[#4876F3]/10" : ""
                               }`}
                             >
@@ -2245,7 +2245,7 @@ export default function ProjectWorkspacePage() {
                                       setSelectedItemIds([...selectedItemIds, file.id]);
                                     }
                                   }}
-                                  className="rounded border-[#424344] text-[#4876F3] focus:ring-0"
+                                  className="rounded border-[var(--border-strong)] text-[#4876F3] focus:ring-0"
                                 />
                               </td>
                               <td className="py-2.5 px-3 flex items-center gap-2.5 min-w-0">
@@ -2260,18 +2260,18 @@ export default function ProjectWorkspacePage() {
                                 )}
                                 <span className="font-medium text-white truncate text-xs">{file.name}</span>
                                 {file.version && (
-                                  <span className="text-xs px-1 py-0.5 rounded bg-[#2A2B30] text-[#A3A6AD] tabular-nums shrink-0">
+                                  <span className="text-xs px-1 py-0.5 rounded bg-[var(--input)] text-[var(--text-2)] tabular-nums shrink-0">
                                     v{file.version}
                                   </span>
                                 )}
                               </td>
-                              <td className="py-2.5 px-3 text-xs text-[#A3A6AD] capitalize">
+                              <td className="py-2.5 px-3 text-xs text-[var(--text-2)] capitalize">
                                 {file.type ? file.type.split("/").pop() : "File"}
                               </td>
-                              <td className="py-2.5 px-3 text-xs text-[#A3A6AD] tabular-nums">
+                              <td className="py-2.5 px-3 text-xs text-[var(--text-2)] tabular-nums">
                                 {formatBytes(file.size_bytes || file.latest_size_bytes || 0)}
                               </td>
-                              <td className="py-2.5 px-3 text-xs text-[#7C7F87] tabular-nums">
+                              <td className="py-2.5 px-3 text-xs text-[var(--text-3)] tabular-nums">
                                 {file.updated_at ? new Date(file.updated_at).toLocaleDateString() : "—"}
                               </td>
                               <td className="py-2.5 px-3">
@@ -2287,7 +2287,7 @@ export default function ProjectWorkspacePage() {
                                     e.stopPropagation();
                                     handleItemContextMenu(e, file);
                                   }}
-                                  className="item-menu-btn p-1.5 rounded-md hover:bg-[#2A2B30] text-[#A3A6AD] hover:text-white transition-colors"
+                                  className="item-menu-btn p-1.5 rounded-md hover:bg-[var(--input)] text-[var(--text-2)] hover:text-white transition-colors"
                                   aria-label="Item options"
                                 >
                                   <MoreHorizontal className="w-4 h-4" />
@@ -2308,7 +2308,7 @@ export default function ProjectWorkspacePage() {
           {documentsSectionList.length > 0 && (
             <>
               {(foldersList.length > 0 || regularFilesList.length > 0 || activeUploadsHere.length > 0) && (
-                <div className="h-px bg-[#2E2F34] my-6" />
+                <div className="h-px bg-[var(--border)] my-6" />
               )}
               <div className="space-y-3">
                 <SectionHeader
@@ -2350,16 +2350,16 @@ export default function ProjectWorkspacePage() {
                               className={`group relative rounded-xl border transition-all cursor-pointer p-4 flex flex-col justify-between ${
                                 isSelected
                                   ? "bg-[#4876F3]/15 border-[#4876F3] shadow-md"
-                                  : "bg-[#181818] border-[#212121] hover:border-[#424344]"
+                                  : "bg-[var(--bg)] border-[var(--panel)] hover:border-[var(--border-strong)]"
                               }`}
                             >
                               <input
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => {}}
-                                className="absolute top-4 left-4 rounded border-[#424344] text-[#4876F3] focus:ring-0 z-10"
+                                className="absolute top-4 left-4 rounded border-[var(--border-strong)] text-[#4876F3] focus:ring-0 z-10"
                               />
-                              <div className="relative h-32 w-full rounded-xl bg-[#212121] border border-[#2E2F34] flex flex-col justify-between p-3.5 mb-3">
+                              <div className="relative h-32 w-full rounded-xl bg-[var(--panel)] border border-[var(--border)] flex flex-col justify-between p-3.5 mb-3">
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-bold text-blue-400 tracking-wider">Document</span>
                                   <FileText className="w-5 h-5 text-blue-400/80" />
@@ -2369,7 +2369,7 @@ export default function ProjectWorkspacePage() {
                                   <div className="h-1.5 w-4/5 bg-blue-500/15 rounded" />
                                   <div className="h-1.5 w-3/5 bg-blue-500/10 rounded" />
                                 </div>
-                                <span className="text-xs text-[#A3A6AD]">
+                                <span className="text-xs text-[var(--text-2)]">
                                   {doc.word_count ? `${doc.word_count} words` : "Rich document"}
                                 </span>
                               </div>
@@ -2377,7 +2377,7 @@ export default function ProjectWorkspacePage() {
                                 <h4 className="text-xs font-medium text-white truncate" title={doc.name}>
                                   {doc.name}
                                 </h4>
-                                <div className="flex items-center justify-between mt-1 text-xs text-[#7C7F87]">
+                                <div className="flex items-center justify-between mt-1 text-xs text-[var(--text-3)]">
                                   <span>{doc.updated_at ? new Date(doc.updated_at).toLocaleDateString() : "—"}</span>
                                   <button
                                     type="button"
@@ -2385,7 +2385,7 @@ export default function ProjectWorkspacePage() {
                                       e.stopPropagation();
                                       handleItemContextMenu(e, doc);
                                     }}
-                                    className="item-menu-btn p-1 rounded hover:bg-[#2A2B30] text-[#7C7F87] hover:text-white transition-colors"
+                                    className="item-menu-btn p-1 rounded hover:bg-[var(--input)] text-[var(--text-3)] hover:text-white transition-colors"
                                   >
                                     <MoreHorizontal className="w-3.5 h-3.5" />
                                   </button>
@@ -2397,10 +2397,10 @@ export default function ProjectWorkspacePage() {
                       </AnimatePresence>
                     </motion.div>
                   ) : (
-                    <div className="rounded-xl border border-[#2E2F34] bg-[#212121] overflow-hidden">
+                    <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] overflow-hidden">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="border-b border-[#2E2F34] bg-[#181818]/60 text-xs text-[#7C7F87]">
+                          <tr className="border-b border-[var(--border)] bg-[var(--bg)]/60 text-xs text-[var(--text-3)]">
                             <th className="py-2.5 px-3 w-8"></th>
                             <th className="py-2.5 px-3 font-medium">Name</th>
                             <th className="py-2.5 px-3 font-medium">Kind</th>
@@ -2410,7 +2410,7 @@ export default function ProjectWorkspacePage() {
                             <th className="py-2.5 px-3 w-10 text-right"></th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#2E2F34]/50">
+                        <tbody className="divide-y divide-[var(--border)]/50">
                           {documentsSectionList.map((doc: any) => {
                             const isSelected = selectedItemIds.includes(doc.id);
                             return (
@@ -2426,7 +2426,7 @@ export default function ProjectWorkspacePage() {
                                 }}
                                 onDoubleClick={() => router.push(`/documents/${doc.id}`)}
                                 onContextMenu={(e) => handleItemContextMenu(e, doc)}
-                                className={`group hover:bg-[#2A2B30]/50 cursor-pointer transition-colors ${
+                                className={`group hover:bg-[var(--input)]/50 cursor-pointer transition-colors ${
                                   isSelected ? "bg-[#4876F3]/10" : ""
                                 }`}
                               >
@@ -2441,18 +2441,18 @@ export default function ProjectWorkspacePage() {
                                         setSelectedItemIds([...selectedItemIds, doc.id]);
                                       }
                                     }}
-                                    className="rounded border-[#424344] text-[#4876F3] focus:ring-0"
+                                    className="rounded border-[var(--border-strong)] text-[#4876F3] focus:ring-0"
                                   />
                                 </td>
                                 <td className="py-2.5 px-3 flex items-center gap-2.5 min-w-0">
                                   <FileText className="w-4 h-4 text-blue-400 shrink-0" />
                                   <span className="font-medium text-white truncate text-xs">{doc.name}</span>
                                 </td>
-                                <td className="py-2.5 px-3 text-xs text-[#A3A6AD]">Document</td>
-                                <td className="py-2.5 px-3 text-xs text-[#A3A6AD] tabular-nums">
+                                <td className="py-2.5 px-3 text-xs text-[var(--text-2)]">Document</td>
+                                <td className="py-2.5 px-3 text-xs text-[var(--text-2)] tabular-nums">
                                   {doc.word_count ? `${doc.word_count} words` : "—"}
                                 </td>
-                                <td className="py-2.5 px-3 text-xs text-[#7C7F87] tabular-nums">
+                                <td className="py-2.5 px-3 text-xs text-[var(--text-3)] tabular-nums">
                                   {doc.updated_at ? new Date(doc.updated_at).toLocaleDateString() : "—"}
                                 </td>
                                 <td className="py-2.5 px-3">
@@ -2468,7 +2468,7 @@ export default function ProjectWorkspacePage() {
                                       e.stopPropagation();
                                       handleItemContextMenu(e, doc);
                                     }}
-                                    className="item-menu-btn p-1.5 rounded-md hover:bg-[#2A2B30] text-[#A3A6AD] hover:text-white transition-colors"
+                                    className="item-menu-btn p-1.5 rounded-md hover:bg-[var(--input)] text-[var(--text-2)] hover:text-white transition-colors"
                                     aria-label="Item options"
                                   >
                                     <MoreHorizontal className="w-4 h-4" />
@@ -2490,7 +2490,7 @@ export default function ProjectWorkspacePage() {
           {spreadsheetsSectionList.length > 0 && (
             <>
               {(foldersList.length > 0 || regularFilesList.length > 0 || documentsSectionList.length > 0 || activeUploadsHere.length > 0) && (
-                <div className="h-px bg-[#2E2F34] my-6" />
+                <div className="h-px bg-[var(--border)] my-6" />
               )}
               <div className="space-y-3">
                 <SectionHeader
@@ -2532,16 +2532,16 @@ export default function ProjectWorkspacePage() {
                               className={`group relative rounded-xl border transition-all cursor-pointer p-4 flex flex-col justify-between ${
                                 isSelected
                                   ? "bg-[#4876F3]/15 border-[#4876F3] shadow-md"
-                                  : "bg-[#181818] border-[#212121] hover:border-[#424344]"
+                                  : "bg-[var(--bg)] border-[var(--panel)] hover:border-[var(--border-strong)]"
                               }`}
                             >
                               <input
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => {}}
-                                className="absolute top-4 left-4 rounded border-[#424344] text-[#4876F3] focus:ring-0 z-10"
+                                className="absolute top-4 left-4 rounded border-[var(--border-strong)] text-[#4876F3] focus:ring-0 z-10"
                               />
-                              <div className="relative h-32 w-full rounded-xl bg-[#212121] border border-[#2E2F34] flex flex-col justify-between p-3.5 mb-3">
+                              <div className="relative h-32 w-full rounded-xl bg-[var(--panel)] border border-[var(--border)] flex flex-col justify-between p-3.5 mb-3">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-1.5">
                                     <span className="text-xs font-bold text-emerald-400 tracking-wider">Spreadsheet</span>
@@ -2566,7 +2566,7 @@ export default function ProjectWorkspacePage() {
                                 <h4 className="text-xs font-medium text-white truncate" title={sheet.name}>
                                   {sheet.name}
                                 </h4>
-                                <div className="flex items-center justify-between mt-1 text-xs text-[#7C7F87]">
+                                <div className="flex items-center justify-between mt-1 text-xs text-[var(--text-3)]">
                                   <span>{sheet.updated_at ? new Date(sheet.updated_at).toLocaleDateString() : "—"}</span>
                                   <button
                                     type="button"
@@ -2574,7 +2574,7 @@ export default function ProjectWorkspacePage() {
                                       e.stopPropagation();
                                       handleItemContextMenu(e, sheet);
                                     }}
-                                    className="item-menu-btn p-1 rounded hover:bg-[#2A2B30] text-[#7C7F87] hover:text-white transition-colors"
+                                    className="item-menu-btn p-1 rounded hover:bg-[var(--input)] text-[var(--text-3)] hover:text-white transition-colors"
                                   >
                                     <MoreHorizontal className="w-3.5 h-3.5" />
                                   </button>
@@ -2586,10 +2586,10 @@ export default function ProjectWorkspacePage() {
                       </AnimatePresence>
                     </motion.div>
                   ) : (
-                    <div className="rounded-xl border border-[#2E2F34] bg-[#212121] overflow-hidden">
+                    <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] overflow-hidden">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="border-b border-[#2E2F34] bg-[#181818]/60 text-xs text-[#7C7F87]">
+                          <tr className="border-b border-[var(--border)] bg-[var(--bg)]/60 text-xs text-[var(--text-3)]">
                             <th className="py-2.5 px-3 w-8"></th>
                             <th className="py-2.5 px-3 font-medium">Name</th>
                             <th className="py-2.5 px-3 font-medium">Kind</th>
@@ -2599,7 +2599,7 @@ export default function ProjectWorkspacePage() {
                             <th className="py-2.5 px-3 w-10 text-right"></th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#2E2F34]/50">
+                        <tbody className="divide-y divide-[var(--border)]/50">
                           {spreadsheetsSectionList.map((sheet: any) => {
                             const isSelected = selectedItemIds.includes(sheet.id);
                             return (
@@ -2615,7 +2615,7 @@ export default function ProjectWorkspacePage() {
                                 }}
                                 onDoubleClick={() => router.push(`/spreadsheets/${sheet.id}`)}
                                 onContextMenu={(e) => handleItemContextMenu(e, sheet)}
-                                className={`group hover:bg-[#2A2B30]/50 cursor-pointer transition-colors ${
+                                className={`group hover:bg-[var(--input)]/50 cursor-pointer transition-colors ${
                                   isSelected ? "bg-[#4876F3]/10" : ""
                                 }`}
                               >
@@ -2630,7 +2630,7 @@ export default function ProjectWorkspacePage() {
                                         setSelectedItemIds([...selectedItemIds, sheet.id]);
                                       }
                                     }}
-                                    className="rounded border-[#424344] text-[#4876F3] focus:ring-0"
+                                    className="rounded border-[var(--border-strong)] text-[#4876F3] focus:ring-0"
                                   />
                                 </td>
                                 <td className="py-2.5 px-3 flex items-center gap-2.5 min-w-0">
@@ -2642,11 +2642,11 @@ export default function ProjectWorkspacePage() {
                                     </span>
                                   )}
                                 </td>
-                                <td className="py-2.5 px-3 text-xs text-[#A3A6AD]">Spreadsheet</td>
-                                <td className="py-2.5 px-3 text-xs text-[#A3A6AD] tabular-nums">
+                                <td className="py-2.5 px-3 text-xs text-[var(--text-2)]">Spreadsheet</td>
+                                <td className="py-2.5 px-3 text-xs text-[var(--text-2)] tabular-nums">
                                   {sheet.cell_count ? `${sheet.cell_count} cells` : "—"}
                                 </td>
-                                <td className="py-2.5 px-3 text-xs text-[#7C7F87] tabular-nums">
+                                <td className="py-2.5 px-3 text-xs text-[var(--text-3)] tabular-nums">
                                   {sheet.updated_at ? new Date(sheet.updated_at).toLocaleDateString() : "—"}
                                 </td>
                                 <td className="py-2.5 px-3">
@@ -2662,7 +2662,7 @@ export default function ProjectWorkspacePage() {
                                       e.stopPropagation();
                                       handleItemContextMenu(e, sheet);
                                     }}
-                                    className="item-menu-btn p-1.5 rounded-md hover:bg-[#2A2B30] text-[#A3A6AD] hover:text-white transition-colors"
+                                    className="item-menu-btn p-1.5 rounded-md hover:bg-[var(--input)] text-[var(--text-2)] hover:text-white transition-colors"
                                     aria-label="Item options"
                                   >
                                     <MoreHorizontal className="w-4 h-4" />
@@ -2682,12 +2682,12 @@ export default function ProjectWorkspacePage() {
 
           {/* Empty Project Root with 0 Folders (Addition 6) */}
           {!currentFolderId && foldersList.length === 0 && !isCreatingInlineFolder && (
-            <div className="py-20 text-center border border-dashed border-[#2E2F34] rounded-xl flex flex-col items-center justify-center p-8">
-              <div className="w-12 h-12 rounded-xl bg-[#212121] border border-[#2E2F34] flex items-center justify-center mb-3">
+            <div className="py-20 text-center border border-dashed border-[var(--border)] rounded-xl flex flex-col items-center justify-center p-8">
+              <div className="w-12 h-12 rounded-xl bg-[var(--panel)] border border-[var(--border)] flex items-center justify-center mb-3">
                 <FolderPlus className="w-6 h-6 text-[#4876F3]" />
               </div>
               <h3 className="text-sm font-semibold text-white">Create a folder to start uploading</h3>
-              <p className="text-xs text-[#A3A6AD] mt-1 max-w-sm">
+              <p className="text-xs text-[var(--text-2)] mt-1 max-w-sm">
                 Projects are organized into folders. Create your first folder to begin adding media, documents, and spreadsheets.
               </p>
               {canUpload && (
@@ -2704,10 +2704,10 @@ export default function ProjectWorkspacePage() {
 
           {/* Empty Subfolder State */}
           {currentFolderId && foldersList.length === 0 && regularFilesList.length === 0 && documentsSectionList.length === 0 && spreadsheetsSectionList.length === 0 && !isCreatingInlineFolder && (
-            <div className="py-20 text-center border border-dashed border-[#212121] rounded-xl flex flex-col items-center justify-center p-8">
-              <Folder className="w-10 h-10 text-[#7C7F87] mb-2" />
+            <div className="py-20 text-center border border-dashed border-[var(--panel)] rounded-xl flex flex-col items-center justify-center p-8">
+              <Folder className="w-10 h-10 text-[var(--text-3)] mb-2" />
               <h3 className="text-sm font-semibold text-white">This folder is empty</h3>
-              <p className="text-xs text-[#A3A6AD] mt-1">
+              <p className="text-xs text-[var(--text-2)] mt-1">
                 Right-click anywhere to upload files or create subfolders.
               </p>
             </div>
@@ -2929,7 +2929,7 @@ export default function ProjectWorkspacePage() {
               Array.from(e.dataTransfer.files).forEach((f) => startFileUpload(f));
             }
           }}
-          className="fixed inset-0 z-50 bg-[#181818]/90 backdrop-blur-sm border-2 border-dashed border-[#4876F3] flex flex-col items-center justify-center p-6 text-center select-none cursor-copy animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 bg-[var(--bg)]/90 backdrop-blur-sm border-2 border-dashed border-[#4876F3] flex flex-col items-center justify-center p-6 text-center select-none cursor-copy animate-in fade-in duration-150"
         >
           <div className="w-16 h-16 rounded-xl bg-[#4876F3]/10 border border-[#4876F3]/30 flex items-center justify-center mb-4 text-[#4876F3] shadow-lg animate-bounce">
             <Upload className="w-8 h-8" />
@@ -2937,7 +2937,7 @@ export default function ProjectWorkspacePage() {
           <h3 className="text-xl font-bold text-white mb-1">
             Drop to upload to {currentFolderName}
           </h3>
-          <p className="text-xs text-[#A3A6AD] max-w-sm">
+          <p className="text-xs text-[var(--text-2)] max-w-sm">
             Release anywhere to upload into this folder, or drop directly onto a folder card below to upload into that folder.
           </p>
         </div>

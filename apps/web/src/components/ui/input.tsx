@@ -15,10 +15,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       <input
         ref={ref}
         type={type}
-        className={`flex h-10 w-full rounded-[8px] border bg-[#2A2B30] px-3.5 py-2 text-sm text-white placeholder:text-[#7C7F87] transition-colors focus:outline-none focus:ring-2 focus:ring-[#4876F3]/25 focus:border-[#4876F3] disabled:cursor-not-allowed disabled:opacity-50 ${
+        className={`flex h-10 w-full rounded-[8px] border bg-[var(--input)] px-3.5 py-2 text-sm text-white placeholder:text-[var(--text-3)] transition-colors focus:outline-none focus:ring-2 focus:ring-[#4876F3]/25 focus:border-[#4876F3] disabled:cursor-not-allowed disabled:opacity-50 ${
           error
             ? "border-[#F0506E] focus:ring-[#F0506E]/25 focus:border-[#F0506E]"
-            : "border-[#2E2F34] hover:border-[#424344]"
+            : "border-[var(--border)] hover:border-[var(--border-strong)]"
         } ${className}`}
         {...props}
       />

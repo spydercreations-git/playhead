@@ -13,7 +13,7 @@ interface AuthContainerProps {
 
 export function AuthContainer({ children, showBack, onBack }: AuthContainerProps) {
   return (
-    <div className="flex min-h-screen w-full bg-[#181818] font-sans text-white">
+    <div className="flex min-h-screen w-full bg-[var(--bg)] font-sans text-white">
       {/* Left Column (Form) */}
       <div className="flex flex-col justify-between p-6 sm:p-10 lg:p-12 w-full lg:w-[480px] xl:w-[540px] shrink-0 max-w-[440px] lg:max-w-none mx-auto lg:mx-0">
         {/* Top Header / Logo / Back */}
@@ -22,7 +22,7 @@ export function AuthContainer({ children, showBack, onBack }: AuthContainerProps
             <button
               type="button"
               onClick={onBack}
-              className="inline-flex items-center gap-2 text-xs text-[#A3A6AD] hover:text-white transition cursor-pointer mb-6"
+              className="inline-flex items-center gap-2 text-xs text-[var(--text-2)] hover:text-white transition cursor-pointer mb-6"
             >
               <svg
                 width="14"
@@ -43,7 +43,7 @@ export function AuthContainer({ children, showBack, onBack }: AuthContainerProps
               <Link href="/" className="inline-block">
                 <PlayheadLogoWithText width={140} color="#FFFFFF" />
               </Link>
-              <p className="mt-1 text-xs text-[#7C7F87] font-normal tracking-normal">
+              <p className="mt-1 text-xs text-[var(--text-3)] font-normal tracking-normal">
                 by Idyll Productions
               </p>
             </div>
@@ -57,7 +57,7 @@ export function AuthContainer({ children, showBack, onBack }: AuthContainerProps
 
         {/* Footer */}
         <div className="pt-6">
-          <div className="flex items-center gap-6 text-xs text-[#7C7F87]">
+          <div className="flex items-center gap-6 text-xs text-[var(--text-3)]">
             <Link href="/privacy" className="hover:text-white transition">
               Privacy
             </Link>

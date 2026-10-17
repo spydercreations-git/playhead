@@ -46,7 +46,7 @@ const Workbook = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full w-full items-center justify-center bg-[#181818] text-[#8E8F90]">
+      <div className="flex h-full w-full items-center justify-center bg-[var(--bg)] text-[#8E8F90]">
         <div className="flex flex-col items-center gap-2">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3B67E0] border-t-transparent" />
           <span className="text-xs">Loading spreadsheet engine...</span>
@@ -66,7 +66,7 @@ interface SpreadsheetEditorProps {
 
 // 6 Status colors and chip styles per spec Section 6.11
 export const STATUS_OPTIONS = [
-  { name: "Not started", bg: "#2A2B30", border: "#3F4045", text: "#9CA3AF", dot: "#6B7280" },
+  { name: "Not started", bg: "var(--input)", border: "#3F4045", text: "#9CA3AF", dot: "#6B7280" },
   { name: "Editing", bg: "#1E293B", border: "#2563EB", text: "#60A5FA", dot: "#3B82F6" },
   { name: "Needs review", bg: "#451A03", border: "#D97706", text: "#FBBF24", dot: "#F59E0B" },
   { name: "Changes requested", bg: "#450A0A", border: "#DC2626", text: "#F87171", dot: "#EF4444" },
@@ -599,7 +599,7 @@ export function SpreadsheetEditor({
         );
         if (matched) {
           // Clear cell background on canvas
-          ctx.fillStyle = "#181818";
+          ctx.fillStyle = "var(--bg)";
           ctx.fillRect(startX + 1, startY + 1, w - 2, h - 2);
 
           const chipW = Math.min(w - 12, 130);
@@ -633,7 +633,7 @@ export function SpreadsheetEditor({
       // 2. Render Person Cell with Avatar
       else if (colName === "Editor" || colMeta?.type === "person") {
         if (strVal) {
-          ctx.fillStyle = "#181818";
+          ctx.fillStyle = "var(--bg)";
           ctx.fillRect(startX + 1, startY + 1, w - 2, h - 2);
 
           const circleX = startX + 14;
@@ -660,7 +660,7 @@ export function SpreadsheetEditor({
       // 3. Render File Link Cell with Thumbnail & Version
       else if (colName === "File" || colMeta?.type === "file") {
         if (strVal) {
-          ctx.fillStyle = "#181818";
+          ctx.fillStyle = "var(--bg)";
           ctx.fillRect(startX + 1, startY + 1, w - 2, h - 2);
 
           const hasAccess = !strVal.toLowerCase().includes("no access");
@@ -677,7 +677,7 @@ export function SpreadsheetEditor({
             ctx.fillText(displayName, startX + 22, startY + h / 2);
 
             // Version badge
-            ctx.fillStyle = "#2A2B30";
+            ctx.fillStyle = "var(--input)";
             ctx.beginPath();
             ctx.roundRect(endX - 34, startY + (h - 16) / 2, 26, 16, 4);
             ctx.fill();
@@ -701,7 +701,7 @@ export function SpreadsheetEditor({
   const activeSheet = sheets.find((s) => s.id === activeSheetId) || sheets[0];
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-[#181818] text-[#E0E0E0] select-none font-sans">
+    <div className="flex h-screen w-screen flex-col bg-[var(--bg)] text-[#E0E0E0] select-none font-sans">
       {/* Notification Toast */}
       {notification && (
         <div
@@ -717,11 +717,11 @@ export function SpreadsheetEditor({
       )}
 
       {/* Top Header Bar */}
-      <header className="flex h-14 items-center justify-between border-b border-[#2D2F34] bg-[#212121] px-4">
+      <header className="flex h-14 items-center justify-between border-b border-[#2D2F34] bg-[var(--panel)] px-4">
         <div className="flex items-center gap-3">
           <Link
             href="/spreadsheets"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#8E8F90] hover:bg-[#2A2B30] hover:text-white transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#8E8F90] hover:bg-[var(--input)] hover:text-white transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -736,7 +736,7 @@ export function SpreadsheetEditor({
               value={title}
               disabled={!isTeamMember || !canEdit}
               onChange={(e) => setTitle(e.target.value)}
-              className="bg-transparent text-sm font-semibold text-white focus:outline-none focus:bg-[#2A2B30] px-1.5 py-0.5 rounded transition-colors w-64 truncate"
+              className="bg-transparent text-sm font-semibold text-white focus:outline-none focus:bg-[var(--input)] px-1.5 py-0.5 rounded transition-colors w-64 truncate"
             />
           </div>
 
@@ -757,7 +757,7 @@ export function SpreadsheetEditor({
           {isTeamMember && (
             <button
               onClick={() => setShowColumnConfig(true)}
-              className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[#2A2B30] hover:bg-[#34353B] text-xs font-medium text-white transition-colors"
+              className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[var(--input)] hover:bg-[#34353B] text-xs font-medium text-white transition-colors"
               title="Configure Column Locks & Visibility"
             >
               <Shield className="h-3.5 w-3.5 text-[#4876F3]" />
@@ -768,7 +768,7 @@ export function SpreadsheetEditor({
           {isTeamMember && (
             <button
               onClick={loadVersions}
-              className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[#2A2B30] hover:bg-[#34353B] text-xs font-medium text-white transition-colors"
+              className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[var(--input)] hover:bg-[#34353B] text-xs font-medium text-white transition-colors"
               title="Version History"
             >
               <History className="h-3.5 w-3.5 text-[#8E8F90]" />
@@ -778,7 +778,7 @@ export function SpreadsheetEditor({
 
           <button
             onClick={loadComments}
-            className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[#2A2B30] hover:bg-[#34353B] text-xs font-medium text-white transition-colors"
+            className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-[var(--input)] hover:bg-[#34353B] text-xs font-medium text-white transition-colors"
             title="Cell Comments"
           >
             <MessageSquare className="h-3.5 w-3.5 text-[#8E8F90]" />
@@ -797,17 +797,17 @@ export function SpreadsheetEditor({
             </button>
 
             {showExportMenu && (
-              <div className="absolute right-0 mt-1 w-44 rounded-xl border border-[#2E2F34] bg-[#212121] p-1 shadow-overlay z-50">
+              <div className="absolute right-0 mt-1 w-44 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-1 shadow-overlay z-50">
                 <button
                   onClick={exportToExcel}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-white hover:bg-[#2C2D33] rounded-lg transition-colors"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-white hover:bg-[var(--hover)] rounded-lg transition-colors"
                 >
                   <FileSpreadsheet className="h-3.5 w-3.5 text-[#3FCF8E]" />
                   <span>Excel (.xlsx)</span>
                 </button>
                 <button
                   onClick={exportToCsv}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-white hover:bg-[#2C2D33] rounded-lg transition-colors"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-white hover:bg-[var(--hover)] rounded-lg transition-colors"
                 >
                   <Download className="h-3.5 w-3.5 text-[#FFBB56]" />
                   <span>CSV (.csv)</span>
@@ -817,7 +817,7 @@ export function SpreadsheetEditor({
                     setShowExportMenu(false);
                     setShowPdfExportDialog(true);
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-white hover:bg-[#2C2D33] rounded-lg transition-colors"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-white hover:bg-[var(--hover)] rounded-lg transition-colors"
                 >
                   <Printer className="h-3.5 w-3.5 text-[#4876F3]" />
                   <span>Download as PDF</span>
@@ -829,7 +829,7 @@ export function SpreadsheetEditor({
       </header>
 
       {/* Main Grid Area */}
-      <div className="relative flex-1 w-full overflow-hidden bg-[#181818] tabular-nums">
+      <div className="relative flex-1 w-full overflow-hidden bg-[var(--bg)] tabular-nums">
         {sheets.length > 0 && (
           <Workbook
             ref={workbookRef}
@@ -851,16 +851,16 @@ export function SpreadsheetEditor({
         {/* Custom Cell Floating Popups */}
         {cellPopup?.visible && (
           <div
-            className="fixed z-50 rounded-xl border border-[#2E2F34] bg-[#212121] p-2 shadow-overlay animate-in fade-in zoom-in-95 duration-150 w-52"
+            className="fixed z-50 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-2 shadow-overlay animate-in fade-in zoom-in-95 duration-150 w-52"
             style={{ top: cellPopup.y, left: cellPopup.x }}
           >
-            <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#2E2F34]">
-              <span className="text-xs font-medium text-[#A3A6AD]">
+            <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[var(--border)]">
+              <span className="text-xs font-medium text-[var(--text-2)]">
                 Select {cellPopup.type}
               </span>
               <button
                 onClick={() => setCellPopup(null)}
-                className="text-[#8E8F90] hover:text-white p-1 rounded hover:bg-[#2A2B30] transition-colors"
+                className="text-[#8E8F90] hover:text-white p-1 rounded hover:bg-[var(--input)] transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -880,7 +880,7 @@ export function SpreadsheetEditor({
                         fc: opt.text,
                       })
                     }
-                    className="flex w-full items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-[#2A2B30] transition-colors"
+                    className="flex w-full items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-[var(--input)] transition-colors"
                     style={{ color: opt.text }}
                   >
                     <span
@@ -907,7 +907,7 @@ export function SpreadsheetEditor({
                           editor_id: member.user_id,
                         })
                       }
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-white hover:bg-[#2A2B30] transition-colors text-left"
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-white hover:bg-[var(--input)] transition-colors text-left"
                     >
                       <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#3B67E0] text-xs font-bold text-white">
                         {(member.name || member.email).charAt(0).toUpperCase()}
@@ -943,7 +943,7 @@ export function SpreadsheetEditor({
                           status: vid.review_status || "needs_review",
                         })
                       }
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-white hover:bg-[#2A2B30] transition-colors text-left"
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-white hover:bg-[var(--input)] transition-colors text-left"
                     >
                       <Video className="h-3.5 w-3.5 text-[#4876F3] shrink-0" />
                       <span className="truncate">{vid.name}</span>
@@ -960,7 +960,7 @@ export function SpreadsheetEditor({
                           status: "Approved",
                         })
                       }
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-white hover:bg-[#2A2B30] transition-colors"
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-white hover:bg-[var(--input)] transition-colors"
                     >
                       <Video className="h-3.5 w-3.5 text-[#4876F3]" />
                       <span>Brand_Film_v2.mp4</span>
@@ -973,7 +973,7 @@ export function SpreadsheetEditor({
                           no_access: true,
                         })
                       }
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-red-400 hover:bg-[#2A2B30] transition-colors"
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-red-400 hover:bg-[var(--input)] transition-colors"
                     >
                       <Lock className="h-3.5 w-3.5" />
                       <span>No access</span>
@@ -994,7 +994,7 @@ export function SpreadsheetEditor({
                       setCustomCellValue(e.target.value);
                     }
                   }}
-                  className="w-full rounded bg-[#2A2B30] border border-[#34353B] text-white text-xs px-2 py-1.5 focus:outline-none focus:border-[#4876F3]"
+                  className="w-full rounded bg-[var(--input)] border border-[#34353B] text-white text-xs px-2 py-1.5 focus:outline-none focus:border-[#4876F3]"
                 />
               </div>
             )}
@@ -1005,21 +1005,21 @@ export function SpreadsheetEditor({
       {/* Column Config Modal (Lock & Hide Columns) */}
       {showColumnConfig && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-xl border border-[#2E2F34] bg-[#212121] p-6 shadow-overlay">
-            <div className="flex items-center justify-between pb-4 border-b border-[#2E2F34]">
+          <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-overlay">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
               <div className="flex items-center gap-2 text-white font-semibold text-sm">
                 <Shield className="h-4 w-4 text-[#4876F3]" />
                 <span>Column Permissions & Visibility</span>
               </div>
               <button
                 onClick={() => setShowColumnConfig(false)}
-                className="text-[#A3A6AD] hover:text-white p-1 rounded hover:bg-[#2C2D33] transition-colors"
+                className="text-[var(--text-2)] hover:text-white p-1 rounded hover:bg-[var(--hover)] transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <p className="text-xs text-[#A3A6AD] mt-3 mb-4">
+            <p className="text-xs text-[var(--text-2)] mt-3 mb-4">
               Lock columns to prevent non-team clients from editing sensitive rates, or hide columns entirely from client view and search.
             </p>
 
@@ -1032,39 +1032,39 @@ export function SpreadsheetEditor({
                 return (
                   <div
                     key={colId}
-                    className="flex items-center justify-between p-3 rounded-xl bg-[#2A2B30] border border-[#424344]"
+                    className="flex items-center justify-between p-3 rounded-xl bg-[var(--input)] border border-[var(--border-strong)]"
                   >
                     <div>
                       <span className="text-xs font-semibold text-white block">
                         {colName} ({colLetter})
                       </span>
-                      <span className="text-xs text-[#A3A6AD]">
+                      <span className="text-xs text-[var(--text-2)]">
                         Type: {meta.type || "General"}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-1.5 text-xs text-[#A3A6AD] cursor-pointer">
+                      <label className="flex items-center gap-1.5 text-xs text-[var(--text-2)] cursor-pointer">
                         <input
                           type="checkbox"
                           checked={!!meta.locked}
                           onChange={(e) =>
                             handleSaveColumnMeta(colId, e.target.checked, !!meta.hidden)
                           }
-                          className="rounded border-[#424344] bg-[#181818] text-[#4876F3]"
+                          className="rounded border-[var(--border-strong)] bg-[var(--bg)] text-[#4876F3]"
                         />
                         <Lock className="h-3 w-3 text-[#FFBB56]" />
                         <span>Lock</span>
                       </label>
 
-                      <label className="flex items-center gap-1.5 text-xs text-[#A3A6AD] cursor-pointer">
+                      <label className="flex items-center gap-1.5 text-xs text-[var(--text-2)] cursor-pointer">
                         <input
                           type="checkbox"
                           checked={!!meta.hidden_from_clients || !!meta.hidden}
                           onChange={(e) =>
                             handleSaveColumnMeta(colId, !!meta.locked, e.target.checked, e.target.checked)
                           }
-                          className="rounded border-[#424344] bg-[#181818] text-[#4876F3]"
+                          className="rounded border-[var(--border-strong)] bg-[var(--bg)] text-[#4876F3]"
                         />
                         <EyeOff className="h-3 w-3 text-[#F0506E]" />
                         <span>Hide from clients</span>
@@ -1080,15 +1080,15 @@ export function SpreadsheetEditor({
 
       {/* Version History Drawer */}
       {showVersions && (
-        <div className="fixed inset-y-0 right-0 z-50 w-80 border-l border-[#2E2F34] bg-[#212121] p-5 shadow-overlay flex flex-col">
-          <div className="flex items-center justify-between pb-3 border-b border-[#2E2F34]">
+        <div className="fixed inset-y-0 right-0 z-50 w-80 border-l border-[var(--border)] bg-[var(--panel)] p-5 shadow-overlay flex flex-col">
+          <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
             <div className="flex items-center gap-2 text-white font-semibold text-sm">
               <History className="h-4 w-4 text-[#4876F3]" />
               <span>Version History</span>
             </div>
             <button
               onClick={() => setShowVersions(false)}
-              className="text-[#A3A6AD] hover:text-white p-1 rounded hover:bg-[#2C2D33] transition-colors"
+              className="text-[var(--text-2)] hover:text-white p-1 rounded hover:bg-[var(--hover)] transition-colors"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -1098,13 +1098,13 @@ export function SpreadsheetEditor({
             {versions.map((ver) => (
               <div
                 key={ver.id}
-                className="p-3 rounded-xl bg-[#2A2B30] border border-[#424344] flex flex-col gap-1.5"
+                className="p-3 rounded-xl bg-[var(--input)] border border-[var(--border-strong)] flex flex-col gap-1.5"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-white">
                     {ver.name || "Automatic version"}
                   </span>
-                  <span className="text-xs text-[#A3A6AD]">
+                  <span className="text-xs text-[var(--text-2)]">
                     {new Date(ver.created_at).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -1112,7 +1112,7 @@ export function SpreadsheetEditor({
                   </span>
                 </div>
                 <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs text-[#A3A6AD]">
+                  <span className="text-xs text-[var(--text-2)]">
                     {ver.created_by_name || "Team Member"}
                   </span>
                   <button
@@ -1131,15 +1131,15 @@ export function SpreadsheetEditor({
 
       {/* Cell Comments Drawer */}
       {showComments && (
-        <div className="fixed inset-y-0 right-0 z-50 w-80 border-l border-[#2E2F34] bg-[#212121] p-5 shadow-overlay flex flex-col">
-          <div className="flex items-center justify-between pb-3 border-b border-[#2E2F34]">
+        <div className="fixed inset-y-0 right-0 z-50 w-80 border-l border-[var(--border)] bg-[var(--panel)] p-5 shadow-overlay flex flex-col">
+          <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
             <div className="flex items-center gap-2 text-white font-semibold text-sm">
               <MessageSquare className="h-4 w-4 text-[#4876F3]" />
               <span>Cell Comments</span>
             </div>
             <button
               onClick={() => setShowComments(false)}
-              className="text-[#A3A6AD] hover:text-white p-1 rounded hover:bg-[#2C2D33] transition-colors"
+              className="text-[var(--text-2)] hover:text-white p-1 rounded hover:bg-[var(--hover)] transition-colors"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -1149,7 +1149,7 @@ export function SpreadsheetEditor({
             {comments.map((comm) => (
               <div
                 key={comm.id}
-                className="p-3 rounded-xl bg-[#2A2B30] border border-[#34353B] space-y-1"
+                className="p-3 rounded-xl bg-[var(--input)] border border-[#34353B] space-y-1"
               >
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-white">
@@ -1174,7 +1174,7 @@ export function SpreadsheetEditor({
               value={newCommentText}
               onChange={(e) => setNewCommentText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
-              className="flex-1 rounded-lg bg-[#2A2B30] px-3 py-1.5 text-xs text-white border border-[#34353B] focus:outline-none focus:border-[#4876F3]"
+              className="flex-1 rounded-lg bg-[var(--input)] px-3 py-1.5 text-xs text-white border border-[#34353B] focus:outline-none focus:border-[#4876F3]"
             />
             <button
               onClick={handleAddComment}

@@ -305,11 +305,11 @@ export default function TeamPage() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-bold tracking-tight text-white">Team & Permissions</h1>
-            <span className="rounded-full bg-[#2E2F34] px-2.5 py-0.5 text-xs font-semibold text-[#A3A6AD]">
+            <span className="rounded-full bg-[var(--border)] px-2.5 py-0.5 text-xs font-semibold text-[var(--text-2)]">
               {totalSeatsUsed} of {maxTrialSeats} seats
             </span>
           </div>
-          <p className="mt-1 text-xs text-[#A3A6AD]">
+          <p className="mt-1 text-xs text-[var(--text-2)]">
             Manage members, invitations, and custom access roles in <span className="text-white font-medium">{companyName || "Workspace"}</span>.
           </p>
         </div>
@@ -339,13 +339,13 @@ export default function TeamPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-[#424344]/60">
+      <div className="flex border-b border-[var(--border-strong)]/60">
         <button
           onClick={() => setActiveTab("members")}
           className={`py-3 px-4 text-xs font-semibold border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === "members"
               ? "border-[#4876F3] text-white"
-              : "border-transparent text-[#A3A6AD] hover:text-white"
+              : "border-transparent text-[var(--text-2)] hover:text-white"
           }`}
         >
           <Users className="w-4 h-4" />
@@ -356,7 +356,7 @@ export default function TeamPage() {
           className={`py-3 px-4 text-xs font-semibold border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === "roles"
               ? "border-[#4876F3] text-white"
-              : "border-transparent text-[#A3A6AD] hover:text-white"
+              : "border-transparent text-[var(--text-2)] hover:text-white"
           }`}
         >
           <Shield className="w-4 h-4" />
@@ -373,18 +373,18 @@ export default function TeamPage() {
       {/* TAB 1: MEMBERS */}
       {activeTab === "members" && (
         <div className="space-y-6">
-          <div className="overflow-hidden rounded-xl border border-[#424344] bg-[#212121]">
-            <div className="border-b border-[#424344] px-6 py-4 flex items-center justify-between">
+          <div className="overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--panel)]">
+            <div className="border-b border-[var(--border-strong)] px-6 py-4 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-white">Active Members</h2>
-              <span className="text-xs text-[#A3A6AD]">{(members || []).length} people</span>
+              <span className="text-xs text-[var(--text-2)]">{(members || []).length} people</span>
             </div>
 
             {loading ? (
-              <div className="py-12 text-center text-xs text-[#A3A6AD]">Loading members...</div>
+              <div className="py-12 text-center text-xs text-[var(--text-2)]">Loading members...</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="border-b border-[#424344] bg-[#181818]/50 text-[#A3A6AD]">
+                  <thead className="border-b border-[var(--border-strong)] bg-[var(--bg)]/50 text-[var(--text-2)]">
                     <tr>
                       <th className="px-6 py-3 font-medium">User</th>
                       <th className="px-6 py-3 font-medium">Role</th>
@@ -392,11 +392,11 @@ export default function TeamPage() {
                       <th className="px-6 py-3 text-right font-medium">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#424344]">
+                  <tbody className="divide-y divide-[var(--border-strong)]">
                     {(members || []).map((m) => {
                       const isSelf = m.user_id === currentUserId;
                       return (
-                        <tr key={m.user_id} className="hover:bg-[#2E2F34]/30">
+                        <tr key={m.user_id} className="hover:bg-[var(--border)]/30">
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <div className="h-8 w-8 rounded-full bg-[#4876F3]/20 text-[#4876F3] flex items-center justify-center font-bold text-xs ">
@@ -406,7 +406,7 @@ export default function TeamPage() {
                                 <div className="font-semibold text-white">
                                   {m.name || "Anonymous"} {isSelf && "(You)"}
                                 </div>
-                                <div className="text-xs text-[#A3A6AD]">{m.email}</div>
+                                <div className="text-xs text-[var(--text-2)]">{m.email}</div>
                               </div>
                             </div>
                           </td>
@@ -415,7 +415,7 @@ export default function TeamPage() {
                               <select
                                 value={m.role}
                                 onChange={(e) => handleUpdateRole(m.user_id, e.target.value)}
-                                className="bg-[#181818] border border-[#424344] rounded-lg px-2.5 py-1 text-xs text-white"
+                                className="bg-[var(--bg)] border border-[var(--border-strong)] rounded-lg px-2.5 py-1 text-xs text-white"
                               >
                                 <option value="CEO">CEO</option>
                                 <option value="COO">COO</option>
@@ -433,12 +433,12 @@ export default function TeamPage() {
                                   ))}
                               </select>
                             ) : (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#2A2B30] text-xs font-medium text-white border border-[#2E2F34]">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[var(--input)] text-xs font-medium text-white border border-[var(--border)]">
                                 {m.role}
                               </span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-[#A3A6AD]">
+                          <td className="px-6 py-4 text-[var(--text-2)]">
                             {m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "Active"}
                           </td>
                           <td className="px-6 py-4 text-right">
@@ -462,14 +462,14 @@ export default function TeamPage() {
 
           {/* Pending Invitations */}
           {(invites || []).length > 0 && (
-            <div className="overflow-hidden rounded-xl border border-[#424344] bg-[#212121]">
-              <div className="border-b border-[#424344] px-6 py-4 flex items-center justify-between">
+            <div className="overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--panel)]">
+              <div className="border-b border-[var(--border-strong)] px-6 py-4 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-white">Pending Invitations</h2>
-                <span className="text-xs text-[#A3A6AD]">{invites.length} pending</span>
+                <span className="text-xs text-[var(--text-2)]">{invites.length} pending</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="border-b border-[#424344] bg-[#181818]/50 text-[#A3A6AD]">
+                  <thead className="border-b border-[var(--border-strong)] bg-[var(--bg)]/50 text-[var(--text-2)]">
                     <tr>
                       <th className="px-6 py-3 font-medium">Email</th>
                       <th className="px-6 py-3 font-medium">Role</th>
@@ -477,16 +477,16 @@ export default function TeamPage() {
                       <th className="px-6 py-3 text-right font-medium">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#424344]">
+                  <tbody className="divide-y divide-[var(--border-strong)]">
                     {invites.map((inv) => (
-                      <tr key={inv.id} className="hover:bg-[#2E2F34]/30">
+                      <tr key={inv.id} className="hover:bg-[var(--border)]/30">
                         <td className="px-6 py-4 font-medium text-white">{inv.email}</td>
                         <td className="px-6 py-4">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#2A2B30] text-xs font-medium text-[#A3A6AD] border border-[#2E2F34]">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[var(--input)] text-xs font-medium text-[var(--text-2)] border border-[var(--border)]">
                             {inv.role}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-[#A3A6AD]">
+                        <td className="px-6 py-4 text-[var(--text-2)]">
                           {inv.created_at ? new Date(inv.created_at).toLocaleDateString() : "Pending"}
                         </td>
                         <td className="px-6 py-4 text-right">
@@ -509,7 +509,7 @@ export default function TeamPage() {
             {(roles || []).map((role) => (
               <div
                 key={role.id}
-                className="bg-[#212121] border border-[#424344] rounded-xl p-5 space-y-4 flex flex-col justify-between"
+                className="bg-[var(--panel)] border border-[var(--border-strong)] rounded-xl p-5 space-y-4 flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between">
@@ -520,7 +520,7 @@ export default function TeamPage() {
                       />
                       <h3 className="text-sm font-semibold text-white">{role.name}</h3>
                       {role.is_system && (
-                        <span className="px-2 py-0.5 bg-[#2E2F34] text-xs font-medium text-[#A3A6AD] rounded-md">
+                        <span className="px-2 py-0.5 bg-[var(--border)] text-xs font-medium text-[var(--text-2)] rounded-md">
                           System
                         </span>
                       )}
@@ -529,7 +529,7 @@ export default function TeamPage() {
                     {!role.is_system && (
                       <button
                         onClick={() => setRoleToDelete({ id: role.id, name: role.name })}
-                        className="p-1 rounded hover:bg-[#F0506E]/10 text-[#A3A6AD] hover:text-[#F0506E]"
+                        className="p-1 rounded hover:bg-[#F0506E]/10 text-[var(--text-2)] hover:text-[#F0506E]"
                         title="Delete Role"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -537,13 +537,13 @@ export default function TeamPage() {
                     )}
                   </div>
 
-                  <p className="text-xs text-[#A3A6AD] mt-1">
+                  <p className="text-xs text-[var(--text-2)] mt-1">
                     {role.member_count} {role.member_count === 1 ? "member assigned" : "members assigned"}
                   </p>
 
                   {/* Permissions count or list */}
-                  <div className="mt-4 pt-3 border-t border-[#424344]/50">
-                    <p className="text-xs font-medium text-[#A3A6AD]  mb-2">
+                  <div className="mt-4 pt-3 border-t border-[var(--border-strong)]/50">
+                    <p className="text-xs font-medium text-[var(--text-2)]  mb-2">
                       Permissions ({role.permissions?.length || 0})
                     </p>
                     <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
@@ -551,13 +551,13 @@ export default function TeamPage() {
                         role.permissions.map((p) => (
                           <span
                             key={p}
-                            className="px-2 py-0.5 bg-[#181818] border border-[#424344]/40 text-xs text-zinc-300 rounded"
+                            className="px-2 py-0.5 bg-[var(--bg)] border border-[var(--border-strong)]/40 text-xs text-zinc-300 rounded"
                           >
                             {p}
                           </span>
                         ))
                       ) : (
-                        <span className="text-xs text-[#A3A6AD]">No elevated permissions</span>
+                        <span className="text-xs text-[var(--text-2)]">No elevated permissions</span>
                       )}
                     </div>
                   </div>
@@ -573,19 +573,19 @@ export default function TeamPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <form
             onSubmit={handleCreateRole}
-            className="w-full max-w-2xl bg-[#212121] border border-[#2E2F34] rounded-xl shadow-overlay flex flex-col max-h-[90vh]"
+            className="w-full max-w-2xl bg-[var(--panel)] border border-[var(--border)] rounded-xl shadow-overlay flex flex-col max-h-[90vh]"
           >
-            <div className="flex items-center justify-between p-5 border-b border-[#2E2F34]">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--border)]">
               <div>
                 <h3 className="text-base font-semibold text-white">New Role</h3>
-                <p className="text-xs text-[#A3A6AD] mt-0.5">
+                <p className="text-xs text-[var(--text-2)] mt-0.5">
                   Define a tailored permission profile for team members
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setRoleModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-[#2A2B30] text-[#7C7F87] hover:text-white transition-colors"
+                className="p-1 rounded-lg hover:bg-[var(--input)] text-[var(--text-3)] hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -609,7 +609,7 @@ export default function TeamPage() {
                     onChange={(e) => setRoleName(e.target.value)}
                     required
                     placeholder="e.g. Lead Colorist"
-                    className="w-full h-10 bg-[#2A2B30] border border-[#2E2F34] rounded-[10px] px-3.5 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
+                    className="w-full h-10 bg-[var(--input)] border border-[var(--border)] rounded-[10px] px-3.5 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3] transition-colors"
                   />
                 </div>
 
@@ -634,8 +634,8 @@ export default function TeamPage() {
               </div>
 
               {/* 17 Permissions Matrix */}
-              <div className="space-y-4 pt-2 border-t border-[#212121]">
-                <h4 className="text-xs font-bold  text-[#A3A6AD]">
+              <div className="space-y-4 pt-2 border-t border-[var(--panel)]">
+                <h4 className="text-xs font-bold  text-[var(--text-2)]">
                   Permissions ({selectedPerms.length} selected)
                 </h4>
 
@@ -652,7 +652,7 @@ export default function TeamPage() {
                               className={`p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-colors ${
                                 isChecked
                                   ? "bg-[#4876F3]/10 border-[#4876F3] text-white"
-                                  : "bg-[#181818] border-[#212121] text-[#A3A6AD] hover:text-white"
+                                  : "bg-[var(--bg)] border-[var(--panel)] text-[var(--text-2)] hover:text-white"
                               }`}
                             >
                               <span>{p.label}</span>
@@ -660,7 +660,7 @@ export default function TeamPage() {
                                 type="checkbox"
                                 checked={isChecked}
                                 onChange={() => togglePerm(p.id)}
-                                className="rounded border-[#212121] text-[#4876F3] focus:ring-0 ml-2"
+                                className="rounded border-[var(--panel)] text-[#4876F3] focus:ring-0 ml-2"
                               />
                             </label>
                           );
@@ -672,11 +672,11 @@ export default function TeamPage() {
               </div>
             </div>
 
-            <div className="p-4 border-t border-[#212121] flex items-center justify-end gap-2 bg-[#181818]">
+            <div className="p-4 border-t border-[var(--panel)] flex items-center justify-end gap-2 bg-[var(--bg)]">
               <button
                 type="button"
                 onClick={() => setRoleModalOpen(false)}
-                className="px-4 py-2 bg-transparent hover:bg-[#212121] text-xs text-[#A3A6AD] hover:text-white rounded-xl"
+                className="px-4 py-2 bg-transparent hover:bg-[var(--panel)] text-xs text-[var(--text-2)] hover:text-white rounded-xl"
               >
                 Cancel
               </button>
@@ -697,14 +697,14 @@ export default function TeamPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <form
             onSubmit={handleSendInvite}
-            className="w-full max-w-md bg-[#212121] border border-[#2E2F34] rounded-xl p-6 shadow-overlay space-y-4"
+            className="w-full max-w-md bg-[var(--panel)] border border-[var(--border)] rounded-xl p-6 shadow-overlay space-y-4"
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[#2E2F34]">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
               <h3 className="text-base font-semibold text-white">Invite Team Member</h3>
               <button
                 type="button"
                 onClick={() => setInviteModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-[#2A2B30] text-[#7C7F87] hover:text-white transition-colors"
+                className="p-1 rounded-lg hover:bg-[var(--input)] text-[var(--text-3)] hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -724,7 +724,7 @@ export default function TeamPage() {
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 placeholder="colleague@agency.com"
-                className="w-full h-10 bg-[#2A2B30] border border-[#2E2F34] rounded-[10px] px-3.5 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
+                className="w-full h-10 bg-[var(--input)] border border-[var(--border)] rounded-[10px] px-3.5 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3] transition-colors"
               />
             </div>
 
@@ -734,7 +734,7 @@ export default function TeamPage() {
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value)}
-                  className="w-full h-10 bg-[#2A2B30] border border-[#2E2F34] rounded-[10px] px-3.5 pr-9 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors"
+                  className="w-full h-10 bg-[var(--input)] border border-[var(--border)] rounded-[10px] px-3.5 pr-9 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors"
                 >
                   {canChangeRoles && (
                     <>
@@ -755,15 +755,15 @@ export default function TeamPage() {
                       </option>
                     ))}
                 </select>
-                <ChevronDown className="w-[14px] h-[14px] text-[#7C7F87] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <ChevronDown className="w-[14px] h-[14px] text-[var(--text-3)] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#2E2F34]">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border)]">
               <button
                 type="button"
                 onClick={() => setInviteModalOpen(false)}
-                className="px-3.5 py-2 text-xs font-medium text-[#A3A6AD] hover:text-white rounded-[10px]"
+                className="px-3.5 py-2 text-xs font-medium text-[var(--text-2)] hover:text-white rounded-[10px]"
               >
                 Cancel
               </button>

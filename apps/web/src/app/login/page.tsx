@@ -238,7 +238,7 @@ function LoginForm() {
           <h1 className="text-[28px] font-semibold text-white tracking-tight leading-tight mb-1.5">
             Check your email
           </h1>
-          <div className="flex items-center gap-1.5 text-sm text-[#7C7F87] mb-6">
+          <div className="flex items-center gap-1.5 text-sm text-[var(--text-3)] mb-6">
             <span>We sent a 6-digit code to</span>
             <span className="font-medium text-white truncate max-w-[190px]">
               {email}
@@ -249,7 +249,7 @@ function LoginForm() {
                 setScreen("email");
                 setError(null);
               }}
-              className="text-[#7C7F87] hover:text-[#4876F3] transition p-0.5 ml-0.5"
+              className="text-[var(--text-3)] hover:text-[#4876F3] transition p-0.5 ml-0.5"
               title="Edit email"
             >
               <svg
@@ -288,7 +288,7 @@ function LoginForm() {
                 onKeyDown={(e) => handleKeyDown(idx, e)}
                 onPaste={handlePaste}
                 autoFocus={idx === 0}
-                className="w-12 h-14 sm:w-[50px] sm:h-[56px] rounded-[8px] bg-[#2A2B30] border border-[#2E2F34] text-center text-xl font-bold font-mono tabular-nums text-white focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition-all"
+                className="w-12 h-14 sm:w-[50px] sm:h-[56px] rounded-[8px] bg-[var(--input)] border border-[var(--border)] text-center text-xl font-bold font-mono tabular-nums text-white focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition-all"
               />
             ))}
           </div>
@@ -311,11 +311,11 @@ function LoginForm() {
           </button>
 
           {/* Countdown & Resend */}
-          <div className="text-center text-xs text-[#7C7F87] space-y-1">
+          <div className="text-center text-xs text-[var(--text-3)] space-y-1">
             <p>
               Didn&apos;t get it? Check spam, or{" "}
               {countdown > 0 ? (
-                <span className="text-[#A3A6AD] font-mono tabular-nums">
+                <span className="text-[var(--text-2)] font-mono tabular-nums">
                   resend in {countdown}s
                 </span>
               ) : (
@@ -328,7 +328,7 @@ function LoginForm() {
                 </button>
               )}
             </p>
-            <p className="text-xs text-[#7C7F87]">
+            <p className="text-xs text-[var(--text-3)]">
               The code works for 10 minutes.
             </p>
           </div>
@@ -341,7 +341,7 @@ function LoginForm() {
           <h1 className="text-[28px] font-semibold text-white tracking-tight leading-tight mb-1.5">
             Sign in to Playhead
           </h1>
-          <p className="text-sm text-[#7C7F87] mb-6 font-normal">
+          <p className="text-sm text-[var(--text-3)] mb-6 font-normal">
             Use the email Idyll invited.
           </p>
 
@@ -349,7 +349,7 @@ function LoginForm() {
           <button
             type="button"
             onClick={handleGoogleLogin}
-            className="w-full h-[44px] rounded-[8px] bg-white hover:bg-neutral-100 text-[#181818] font-medium text-sm transition flex items-center justify-center gap-2.5 shadow-sm"
+            className="w-full h-[44px] rounded-[8px] bg-white hover:bg-neutral-100 text-[var(--bg)] font-medium text-sm transition flex items-center justify-center gap-2.5 shadow-sm"
           >
             {/* Google Icon */}
             <svg width="18" height="18" viewBox="0 0 24 24">
@@ -375,8 +375,8 @@ function LoginForm() {
 
           {/* Divider "or" */}
           <div className="relative my-6 flex items-center justify-center">
-            <div className="w-full border-t border-[#2E2F34]"></div>
-            <span className="absolute bg-[#181818] px-3 text-xs text-[#7C7F87]">
+            <div className="w-full border-t border-[var(--border)]"></div>
+            <span className="absolute bg-[var(--bg)] px-3 text-xs text-[var(--text-3)]">
               or
             </span>
           </div>
@@ -392,11 +392,11 @@ function LoginForm() {
           {screen === "email" ? (
             <form onSubmit={handleSendCode} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+                <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
                   Email
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7C7F87]">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--text-3)]">
                     <svg
                       width="16"
                       height="16"
@@ -418,7 +418,7 @@ function LoginForm() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@company.com"
-                    className="w-full h-[44px] rounded-[8px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
+                    className="w-full h-[44px] rounded-[8px] bg-[var(--input)] border border-[var(--border)] pl-10 pr-4 text-sm text-white placeholder-[var(--text-3)] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
                   />
                 </div>
               </div>
@@ -431,11 +431,11 @@ function LoginForm() {
                 <span>{loading ? "Sending code..." : "Email me a sign in code"}</span>
               </button>
 
-              <p className="text-center text-xs text-[#7C7F87] pt-1">
+              <p className="text-center text-xs text-[var(--text-3)] pt-1">
                 Playhead is invite only.
               </p>
 
-              <div className="pt-2 text-center text-xs text-[#7C7F87]">
+              <div className="pt-2 text-center text-xs text-[var(--text-3)]">
                 <span>Team member? </span>
                 <button
                   type="button"
@@ -443,7 +443,7 @@ function LoginForm() {
                     setScreen("password");
                     setError(null);
                   }}
-                  className="text-[#A3A6AD] hover:text-white transition font-medium cursor-pointer"
+                  className="text-[var(--text-2)] hover:text-white transition font-medium cursor-pointer"
                 >
                   Sign in with password
                 </button>
@@ -453,11 +453,11 @@ function LoginForm() {
             /* PASSWORD MODE */
             <form onSubmit={handlePasswordLogin} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+                <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
                   Email
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7C7F87]">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--text-3)]">
                     <svg
                       width="16"
                       height="16"
@@ -478,14 +478,14 @@ function LoginForm() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@company.com"
-                    className="w-full h-[44px] rounded-[8px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
+                    className="w-full h-[44px] rounded-[8px] bg-[var(--input)] border border-[var(--border)] pl-10 pr-4 text-sm text-white placeholder-[var(--text-3)] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
                   />
                 </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-medium text-[#A3A6AD]">
+                  <label className="text-xs font-medium text-[var(--text-2)]">
                     Password
                   </label>
                   <Link
@@ -496,7 +496,7 @@ function LoginForm() {
                   </Link>
                 </div>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7C7F87]">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--text-3)]">
                     <svg
                       width="16"
                       height="16"
@@ -518,7 +518,7 @@ function LoginForm() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full h-[44px] rounded-[8px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
+                    className="w-full h-[44px] rounded-[8px] bg-[var(--input)] border border-[var(--border)] pl-10 pr-4 text-sm text-white placeholder-[var(--text-3)] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
                   />
                 </div>
               </div>
@@ -531,7 +531,7 @@ function LoginForm() {
                 <span>{loading ? "Signing in..." : "Sign in with password"}</span>
               </button>
 
-              <div className="pt-2 text-center text-xs text-[#7C7F87]">
+              <div className="pt-2 text-center text-xs text-[var(--text-3)]">
                 <span>Client or fast login? </span>
                 <button
                   type="button"
@@ -539,7 +539,7 @@ function LoginForm() {
                     setScreen("email");
                     setError(null);
                   }}
-                  className="text-[#A3A6AD] hover:text-white transition font-medium cursor-pointer"
+                  className="text-[var(--text-2)] hover:text-white transition font-medium cursor-pointer"
                 >
                   Sign in with email code
                 </button>
@@ -554,7 +554,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#181818]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[var(--bg)]" />}>
       <LoginForm />
     </Suspense>
   );

@@ -92,41 +92,41 @@ export function TrackerAccessDialog({
           initial={{ opacity: 0, scale: 0.98, y: 6 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.98, y: 6 }}
-          className="relative w-full max-w-lg rounded-2xl border border-[#2E2F34] bg-[#181818] p-6 shadow-overlay z-10 flex flex-col max-h-[85vh]"
+          className="relative w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-6 shadow-overlay z-10 flex flex-col max-h-[85vh]"
         >
           {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-[#2E2F34]">
+          <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
                 <Shield className="w-4 h-4" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-white">Manage Tracker Access</h3>
-                <p className="text-xs text-[#A3A6AD] truncate max-w-xs">{targetName}</p>
+                <p className="text-xs text-[var(--text-2)] truncate max-w-xs">{targetName}</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-1 rounded-lg text-[#7C7F87] hover:text-white hover:bg-[#2A2B30] transition-colors"
+              className="p-1 rounded-lg text-[var(--text-3)] hover:text-white hover:bg-[var(--input)] transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
           {/* Description */}
-          <div className="py-3 text-xs text-[#A3A6AD]">
+          <div className="py-3 text-xs text-[var(--text-2)]">
             Only members with access to this project can view or edit the tracker. Configure individual member permissions below:
           </div>
 
           {/* Member List */}
           <div className="flex-1 overflow-y-auto space-y-2 py-2 pr-1 min-h-[160px]">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-12 text-[#7C7F87] gap-2">
+              <div className="flex flex-col items-center justify-center py-12 text-[var(--text-3)] gap-2">
                 <Loader2 className="w-6 h-6 animate-spin text-[#4876F3]" />
                 <span className="text-xs">Loading project members...</span>
               </div>
             ) : members.length === 0 ? (
-              <div className="text-center py-8 text-xs text-[#7C7F87]">
+              <div className="text-center py-8 text-xs text-[var(--text-3)]">
                 No members found in this project.
               </div>
             ) : (
@@ -135,13 +135,13 @@ export function TrackerAccessDialog({
                 return (
                   <div
                     key={member.id}
-                    className="flex items-center justify-between p-3 rounded-xl bg-[#212121] border border-[#2E2F34]/60 hover:border-[#2E2F34] transition-colors"
+                    className="flex items-center justify-between p-3 rounded-xl bg-[var(--panel)] border border-[var(--border)]/60 hover:border-[var(--border)] transition-colors"
                   >
                     <div className="min-w-0 pr-3">
                       <p className="text-xs font-semibold text-white truncate">
                         {member.name || member.email}
                       </p>
-                      <p className="text-xs text-[#7C7F87] truncate">{member.email}</p>
+                      <p className="text-xs text-[var(--text-3)] truncate">{member.email}</p>
                     </div>
 
                     <select
@@ -152,7 +152,7 @@ export function TrackerAccessDialog({
                           [member.id]: e.target.value as "none" | "viewer" | "editor",
                         }))
                       }
-                      className="bg-[#181818] border border-[#2E2F34] rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#4876F3] cursor-pointer"
+                      className="bg-[var(--bg)] border border-[var(--border)] rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#4876F3] cursor-pointer"
                     >
                       <option value="none">No access</option>
                       <option value="viewer">View</option>
@@ -165,11 +165,11 @@ export function TrackerAccessDialog({
           </div>
 
           {/* Footer */}
-          <div className="pt-4 mt-2 border-t border-[#2E2F34] flex items-center justify-end gap-2.5">
+          <div className="pt-4 mt-2 border-t border-[var(--border)] flex items-center justify-end gap-2.5">
             <button
               onClick={onClose}
               disabled={updateMutation.isPending}
-              className="px-3.5 py-1.5 text-xs font-medium text-[#A3A6AD] hover:text-white transition-colors"
+              className="px-3.5 py-1.5 text-xs font-medium text-[var(--text-2)] hover:text-white transition-colors"
             >
               Cancel
             </button>

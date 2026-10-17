@@ -12,29 +12,29 @@ import { OnboardingDialog } from "@/components/onboarding/onboarding-dialog";
 function AppSkeleton() {
   return (
     <div
-      className="flex min-h-screen bg-[#181818] select-none pointer-events-none"
+      className="flex min-h-screen bg-[var(--bg)] select-none pointer-events-none"
       aria-busy="true"
       aria-label="Loading Playhead"
     >
       {/* Sidebar Skeleton: exactly 232px width */}
-      <aside className="hidden md:flex w-[232px] flex-col border-r border-[#2E2F34] bg-[#212121] shrink-0">
-        <div className="flex h-14 items-center px-5 border-b border-[#2E2F34]">
-          <div className="h-6 w-28 rounded-[6px] bg-[#2A2B30] animate-pulse" />
+      <aside className="hidden md:flex w-[232px] flex-col border-r border-[var(--border)] bg-[var(--panel)] shrink-0">
+        <div className="flex h-14 items-center px-5 border-b border-[var(--border)]">
+          <div className="h-6 w-28 rounded-[6px] bg-[var(--input)] animate-pulse" />
         </div>
         <div className="px-4 pt-4 pb-2">
-          <div className="h-10 w-[200px] mx-auto rounded-[10px] bg-[#2A2B30] animate-pulse" />
+          <div className="h-10 w-[200px] mx-auto rounded-[10px] bg-[var(--input)] animate-pulse" />
         </div>
         <div className="flex-1 px-2 py-2 space-y-1">
           {[...Array(8)].map((_, i) => (
-            <div key={i} className="h-9 w-[216px] mx-auto rounded-[8px] bg-[#2A2B30]/60 animate-pulse" />
+            <div key={i} className="h-9 w-[216px] mx-auto rounded-[8px] bg-[var(--input)]/60 animate-pulse" />
           ))}
         </div>
-        <div className="p-3 border-t border-[#2E2F34]">
-          <div className="flex h-14 w-[208px] mx-auto items-center gap-2.5 rounded-[10px] bg-[#2A2B30] px-2.5 animate-pulse">
-            <div className="h-8 w-8 rounded-full bg-[#2C2D33]" />
+        <div className="p-3 border-t border-[var(--border)]">
+          <div className="flex h-14 w-[208px] mx-auto items-center gap-2.5 rounded-[10px] bg-[var(--input)] px-2.5 animate-pulse">
+            <div className="h-8 w-8 rounded-full bg-[var(--hover)]" />
             <div className="flex flex-col gap-1.5 flex-1">
-              <div className="h-3 w-20 rounded bg-[#2C2D33]" />
-              <div className="h-2.5 w-16 rounded bg-[#2C2D33]" />
+              <div className="h-3 w-20 rounded bg-[var(--hover)]" />
+              <div className="h-2.5 w-16 rounded bg-[var(--hover)]" />
             </div>
           </div>
         </div>
@@ -42,22 +42,22 @@ function AppSkeleton() {
 
       {/* Main Content Area Skeleton */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <header className="flex h-14 w-full items-center justify-between px-6 border-b border-[#2E2F34] bg-[#181818] shrink-0">
-          <div className="h-4 w-32 rounded bg-[#2A2B30] animate-pulse" />
+        <header className="flex h-14 w-full items-center justify-between px-6 border-b border-[var(--border)] bg-[var(--bg)] shrink-0">
+          <div className="h-4 w-32 rounded bg-[var(--input)] animate-pulse" />
           <div className="flex items-center gap-3.5">
-            <div className="h-9 w-[320px] rounded-[8px] bg-[#2A2B30] animate-pulse hidden sm:block" />
-            <div className="h-8 w-8 rounded-full bg-[#2A2B30] animate-pulse" />
+            <div className="h-9 w-[320px] rounded-[8px] bg-[var(--input)] animate-pulse hidden sm:block" />
+            <div className="h-8 w-8 rounded-full bg-[var(--input)] animate-pulse" />
           </div>
         </header>
-        <main className="flex-1 p-6 md:p-8 bg-[#181818]">
+        <main className="flex-1 p-6 md:p-8 bg-[var(--bg)]">
           <div className="w-full max-w-[1920px] mx-auto space-y-6">
-            <div className="h-8 w-44 rounded-[8px] bg-[#2A2B30] animate-pulse" />
+            <div className="h-8 w-44 rounded-[8px] bg-[var(--input)] animate-pulse" />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-36 rounded-[10px] bg-[#212121] border border-[#2E2F34] p-4 animate-pulse" />
+                <div key={i} className="h-36 rounded-[10px] bg-[var(--panel)] border border-[var(--border)] p-4 animate-pulse" />
               ))}
             </div>
-            <div className="h-64 rounded-[10px] bg-[#212121] border border-[#2E2F34] p-4 animate-pulse" />
+            <div className="h-64 rounded-[10px] bg-[var(--panel)] border border-[var(--border)] p-4 animate-pulse" />
           </div>
         </main>
       </div>
@@ -97,9 +97,9 @@ function ProtectedAppShell({
   if (isProjectWorkspace) {
     return (
       <>
-        <div className="flex h-screen w-screen overflow-hidden bg-[#181818]">
+        <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg)]">
           <ProjectIconRail />
-          <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#181818]">
+          <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[var(--bg)]">
             {children}
           </main>
           <UploadPanel />
@@ -116,7 +116,7 @@ function ProtectedAppShell({
   if (isFullscreenEditor) {
     return (
       <>
-        <main className="h-screen w-screen overflow-hidden bg-[#181818]">
+        <main className="h-screen w-screen overflow-hidden bg-[var(--bg)]">
           {children}
           <UploadPanel />
         </main>
@@ -125,13 +125,23 @@ function ProtectedAppShell({
     );
   }
 
+  const isReviewPage = pathname?.startsWith("/reviews");
+  const noGlow = isReviewPage;
+
   return (
     <>
-      <div className="flex h-screen overflow-hidden bg-[#181818]">
+      <div className="relative flex h-screen overflow-hidden bg-[var(--bg)]">
+        {!noGlow && (
+          <div
+            className="fixed inset-0 pointer-events-none z-0"
+            style={{ background: "var(--bg-glow)" }}
+            aria-hidden="true"
+          />
+        )}
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex flex-1 flex-col overflow-hidden min-w-0 h-full">
+        <div className="relative z-10 flex flex-1 flex-col overflow-hidden min-w-0 h-full">
           <Header onOpenSidebar={() => setSidebarOpen(true)} />
-          <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8 bg-[#181818]">
+          <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8 bg-transparent">
             <div className="w-full max-w-[1920px] mx-auto">{children}</div>
           </main>
         </div>
@@ -146,6 +156,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
 
+  const isShareViewer = pathname?.startsWith("/s/");
   const isPublicRoute =
     pathname?.startsWith("/login") ||
     pathname?.startsWith("/signup") ||
@@ -153,11 +164,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/forgot-password") ||
     pathname?.startsWith("/reset-password") ||
     pathname?.startsWith("/invite") ||
-    pathname?.startsWith("/s/") ||
+    isShareViewer ||
     pathname?.startsWith("/test-sheet-benchmark");
 
   if (isPublicRoute) {
-    return <main className="min-h-screen bg-[#181818]">{children}</main>;
+    return (
+      <main className="relative min-h-screen bg-[var(--bg)] overflow-hidden">
+        {!isShareViewer && (
+          <div
+            className="fixed inset-0 pointer-events-none z-0"
+            style={{ background: "var(--bg-glow)" }}
+            aria-hidden="true"
+          />
+        )}
+        <div className="relative z-10">{children}</div>
+      </main>
+    );
   }
 
   return (

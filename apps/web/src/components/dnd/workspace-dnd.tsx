@@ -122,16 +122,16 @@ export function WorkspaceDragGhost({
     <div className="relative pointer-events-none select-none z-50">
       {/* If multiple items, render card stack behind */}
       {count > 1 && (
-        <div className="absolute -inset-1.5 translate-x-1.5 translate-y-1.5 bg-[#2A2B30] rounded-xl border border-[#2E2F34] opacity-50 shadow-lg" />
+        <div className="absolute -inset-1.5 translate-x-1.5 translate-y-1.5 bg-[var(--input)] rounded-xl border border-[var(--border)] opacity-50 shadow-lg" />
       )}
       {count > 2 && (
-        <div className="absolute -inset-3 translate-x-3 translate-y-3 bg-[#212121] rounded-xl border border-[#2E2F34] opacity-30 shadow-lg" />
+        <div className="absolute -inset-3 translate-x-3 translate-y-3 bg-[var(--panel)] rounded-xl border border-[var(--border)] opacity-30 shadow-lg" />
       )}
 
       {/* Main Ghost Card */}
-      <div className="w-56 p-3 rounded-xl bg-[#212121]/95 border-2 border-[#4876F3] shadow-overlay backdrop-blur-md flex items-center justify-between gap-3 text-white">
+      <div className="w-56 p-3 rounded-xl bg-[var(--panel)]/95 border-2 border-[#4876F3] shadow-overlay backdrop-blur-md flex items-center justify-between gap-3 text-white">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-[#2A2B30] border border-[#2E2F34] flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-[var(--input)] border border-[var(--border)] flex items-center justify-center shrink-0">
             {isFolder ? (
               <Folder className="w-4 h-4 text-[#4876F3]" />
             ) : activeItem.name.endsWith(".mp4") || activeItem.name.endsWith(".mov") ? (
@@ -141,14 +141,14 @@ export function WorkspaceDragGhost({
             ) : activeItem.name.endsWith(".mp3") || activeItem.name.endsWith(".wav") ? (
               <Music className="w-4 h-4 text-amber-400" />
             ) : (
-              <FileText className="w-4 h-4 text-[#7C7F87]" />
+              <FileText className="w-4 h-4 text-[var(--text-3)]" />
             )}
           </div>
           <div className="min-w-0">
             <p className="text-xs font-semibold text-white truncate leading-tight">
               {activeItem.name}
             </p>
-            <p className="text-xs text-[#A3A6AD] truncate mt-0.5">
+            <p className="text-xs text-[var(--text-2)] truncate mt-0.5">
               {isFolder ? "Folder" : "File"}
             </p>
           </div>

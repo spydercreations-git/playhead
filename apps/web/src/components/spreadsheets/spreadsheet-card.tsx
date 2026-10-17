@@ -33,12 +33,12 @@ export function SpreadsheetCard({ sheet, onContextMenu }: SpreadsheetCardProps) 
     <Link
       href={`/sheet/${sheet.id}`}
       onContextMenu={onContextMenu}
-      className="group relative flex flex-col justify-between h-[272px] w-full rounded-[12px] bg-[#212121] border border-[#2E2F34] hover:border-[#424344] hover:scale-[1.015] transition-all p-3 select-none cursor-pointer"
+      className="group relative flex flex-col justify-between h-[272px] w-full rounded-[12px] bg-[var(--panel)] border border-[var(--border)] hover:border-[var(--border-strong)] hover:scale-[1.015] transition-all p-3 select-none cursor-pointer"
     >
-      {/* Mini Sheet Preview (150 high, radius 6, header #3FCF8E at 22%, grid lines #2E2F34) */}
-      <div className="relative h-[150px] w-full rounded-[6px] bg-[#1B1C20] border border-[#2E2F34] overflow-hidden flex flex-col">
+      {/* Mini Sheet Preview (150 high, radius 6, header #3FCF8E at 22%, grid lines var(--border)) */}
+      <div className="relative h-[150px] w-full rounded-[6px] bg-[#1B1C20] border border-[var(--border)] overflow-hidden flex flex-col">
         {/* Header Row */}
-        <div className="h-[21.4px] bg-[#3FCF8E]/[0.22] border-b border-[#2E2F34] flex items-center px-2.5 divide-x divide-[#2E2F34]">
+        <div className="h-[21.4px] bg-[#3FCF8E]/[0.22] border-b border-[var(--border)] flex items-center px-2.5 divide-x divide-[var(--border)]">
           <div className="w-[38%] pr-2">
             <div className="h-[5px] w-10 bg-[#3FCF8E] rounded-[2px]" />
           </div>
@@ -51,7 +51,7 @@ export function SpreadsheetCard({ sheet, onContextMenu }: SpreadsheetCardProps) 
         </div>
 
         {/* Row 1 */}
-        <div className="h-[21.4px] border-b border-[#2E2F34] flex items-center px-2.5 divide-x divide-[#2E2F34]">
+        <div className="h-[21.4px] border-b border-[var(--border)] flex items-center px-2.5 divide-x divide-[var(--border)]">
           <div className="w-[38%] pr-2">
             <div className="h-1 w-8 bg-[#3A3C44] rounded-[2px]" />
           </div>
@@ -64,7 +64,7 @@ export function SpreadsheetCard({ sheet, onContextMenu }: SpreadsheetCardProps) 
         </div>
 
         {/* Row 2 */}
-        <div className="h-[21.4px] border-b border-[#2E2F34] flex items-center px-2.5 divide-x divide-[#2E2F34]">
+        <div className="h-[21.4px] border-b border-[var(--border)] flex items-center px-2.5 divide-x divide-[var(--border)]">
           <div className="w-[38%] pr-2">
             <div className="h-1 w-10 bg-[#3A3C44] rounded-[2px]" />
           </div>
@@ -77,7 +77,7 @@ export function SpreadsheetCard({ sheet, onContextMenu }: SpreadsheetCardProps) 
         </div>
 
         {/* Row 3 */}
-        <div className="h-[21.4px] border-b border-[#2E2F34] flex items-center px-2.5 divide-x divide-[#2E2F34]">
+        <div className="h-[21.4px] border-b border-[var(--border)] flex items-center px-2.5 divide-x divide-[var(--border)]">
           <div className="w-[38%] pr-2">
             <div className="h-1 w-12 bg-[#3A3C44] rounded-[2px]" />
           </div>
@@ -90,7 +90,7 @@ export function SpreadsheetCard({ sheet, onContextMenu }: SpreadsheetCardProps) 
         </div>
 
         {/* Row 4 */}
-        <div className="h-[21.4px] border-b border-[#2E2F34] flex items-center px-2.5 divide-x divide-[#2E2F34]">
+        <div className="h-[21.4px] border-b border-[var(--border)] flex items-center px-2.5 divide-x divide-[var(--border)]">
           <div className="w-[38%] pr-2">
             <div className="h-1 w-8 bg-[#3A3C44] rounded-[2px]" />
           </div>
@@ -103,7 +103,7 @@ export function SpreadsheetCard({ sheet, onContextMenu }: SpreadsheetCardProps) 
         </div>
 
         {/* Row 5 */}
-        <div className="h-[21.4px] border-b border-[#2E2F34] flex items-center px-2.5 divide-x divide-[#2E2F34]">
+        <div className="h-[21.4px] border-b border-[var(--border)] flex items-center px-2.5 divide-x divide-[var(--border)]">
           <div className="w-[38%] pr-2">
             <div className="h-1 w-10 bg-[#3A3C44] rounded-[2px]" />
           </div>
@@ -116,7 +116,7 @@ export function SpreadsheetCard({ sheet, onContextMenu }: SpreadsheetCardProps) 
         </div>
 
         {/* Row 6 */}
-        <div className="h-[21.4px] flex items-center px-2.5 divide-x divide-[#2E2F34]">
+        <div className="h-[21.4px] flex items-center px-2.5 divide-x divide-[var(--border)]">
           <div className="w-[38%] pr-2">
             <div className="h-1 w-12 bg-[#3A3C44] rounded-[2px]" />
           </div>
@@ -151,19 +151,19 @@ export function SpreadsheetCard({ sheet, onContextMenu }: SpreadsheetCardProps) 
                   e.stopPropagation();
                   onContextMenu(e);
                 }}
-                className="h-6 w-6 rounded-md flex items-center justify-center text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors shrink-0"
+                className="h-6 w-6 rounded-md flex items-center justify-center text-[var(--text-2)] hover:text-white hover:bg-[var(--input)] transition-colors shrink-0"
               >
                 <MoreHorizontal size={16} />
               </button>
             )}
           </div>
-          <p className="text-[13px] text-[#A3A6AD] truncate mt-0.5">
+          <p className="text-[13px] text-[var(--text-2)] truncate mt-0.5">
             {sheet.project_name || sheet.client_name || "My Drive"}
           </p>
         </div>
 
         <div className="flex items-center justify-between pt-1">
-          <p className="text-xs text-[#7C7F87] truncate">
+          <p className="text-xs text-[var(--text-3)] truncate">
             {authorDate}
           </p>
 
@@ -173,7 +173,7 @@ export function SpreadsheetCard({ sheet, onContextMenu }: SpreadsheetCardProps) 
               <div
                 key={m.id || idx}
                 style={{ backgroundColor: m.color || "#4876F3" }}
-                className="inline-flex h-5 w-5 rounded-full ring-2 ring-[#212121] text-xs font-semibold text-white items-center justify-center"
+                className="inline-flex h-5 w-5 rounded-full ring-2 ring-[var(--panel)] text-xs font-semibold text-white items-center justify-center"
               >
                 {(m.name || "U").slice(0, 1).toUpperCase()}
               </div>

@@ -46,9 +46,9 @@ function formatDuration(sec?: number): string {
 /**
  * Playhead File Card Component
  * Boards/02 Components:
- * - 232x224 (stretches), radius 12, fill #212121, border #2E2F34
+ * - 232x224 (stretches), radius 12, fill var(--panel), border var(--border)
  * - Thumbnail: 136px height, radius 8
- * - Motion: hover scale 1.015, border #424344
+ * - Motion: hover scale 1.015, border var(--border-strong)
  */
 export function FileCard({
   file,
@@ -76,14 +76,14 @@ export function FileCard({
         onToggleSelect?.();
       }}
       onContextMenu={onContextMenu}
-      className={`group relative flex flex-col justify-between h-[224px] w-full rounded-[12px] bg-[#212121] border p-2 select-none cursor-pointer transition-all duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] ${
+      className={`group relative flex flex-col justify-between h-[224px] w-full rounded-[12px] bg-[var(--panel)] border p-2 select-none cursor-pointer transition-all duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] ${
         isSelected
           ? "border-[#4876F3] ring-1 ring-[#4876F3]"
-          : "border-[#2E2F34] hover:border-[#424344]"
+          : "border-[var(--border)] hover:border-[var(--border-strong)]"
       } ${className}`}
     >
       {/* Thumbnail Area (136px height, rx 8) */}
-      <div className="relative h-[136px] w-full rounded-[8px] bg-[#181818] overflow-hidden flex items-center justify-center">
+      <div className="relative h-[136px] w-full rounded-[8px] bg-[var(--bg)] overflow-hidden flex items-center justify-center">
         {file.thumbnail_url ? (
           <img
             src={file.thumbnail_url}
@@ -91,7 +91,7 @@ export function FileCard({
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex flex-col items-center justify-center text-[#7C7F87]">
+          <div className="flex flex-col items-center justify-center text-[var(--text-3)]">
             {isVideo && <VideoFileIcon size={36} className="text-[#FFBB56]" />}
             {isImage && <ImageFileIcon size={36} className="text-[#FA457B]" />}
             {isAudio && <AudioFileIcon size={36} className="text-[#9787FF]" />}
@@ -141,7 +141,7 @@ export function FileCard({
           <p className="text-sm font-semibold text-white truncate" title={file.name}>
             {file.name}
           </p>
-          <p className="text-xs text-[#7C7F87] truncate mt-0.5">
+          <p className="text-xs text-[var(--text-3)] truncate mt-0.5">
             {normType.split("/").pop()?.toUpperCase() || "FILE"}  ·  {sizeText}
           </p>
         </div>
@@ -152,7 +152,7 @@ export function FileCard({
             e.stopPropagation();
             onContextMenu?.(e.currentTarget);
           }}
-          className="file-menu-btn rounded-[6px] p-1 text-[#A3A6AD] hover:bg-[#2C2D33] hover:text-white transition-colors"
+          className="file-menu-btn rounded-[6px] p-1 text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white transition-colors"
           aria-label="More options"
         >
           <MoreHorizontal size={18} />

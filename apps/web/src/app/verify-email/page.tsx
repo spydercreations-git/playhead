@@ -47,19 +47,19 @@ function VerifyEmailContent() {
   }, [token]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12 bg-[#181818]">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12 bg-[var(--bg)]">
       <div className="mb-8 flex justify-center">
         <Link href="/">
           <PlayheadLogoWithText width={170} color="#FFFFFF" />
         </Link>
       </div>
 
-      <div className="w-full max-w-[420px] rounded-xl border border-[#424344] bg-[#212121] p-8 text-center shadow-overlay">
+      <div className="w-full max-w-[420px] rounded-xl border border-[var(--border-strong)] bg-[var(--panel)] p-8 text-center shadow-overlay">
         {status === "loading" && (
           <div className="py-6">
             <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-[#4876F3] border-t-transparent" />
             <h2 className="text-lg font-bold text-white mb-1">Verifying your email</h2>
-            <p className="text-sm text-[#A3A6AD]">Please wait a moment...</p>
+            <p className="text-sm text-[var(--text-2)]">Please wait a moment...</p>
           </div>
         )}
 
@@ -71,7 +71,7 @@ function VerifyEmailContent() {
               </svg>
             </div>
             <h2 className="text-xl font-bold text-white mb-2">Email verified</h2>
-            <p className="text-sm text-[#A3A6AD] mb-6">
+            <p className="text-sm text-[var(--text-2)] mb-6">
               Your email has been confirmed. You can now set up your company workspace and start your 14-day trial.
             </p>
             <Link
@@ -92,7 +92,7 @@ function VerifyEmailContent() {
               </svg>
             </div>
             <h2 className="text-xl font-bold text-white mb-2">Verification failed</h2>
-            <p className="text-sm text-[#A3A6AD] mb-6">{errorMessage}</p>
+            <p className="text-sm text-[var(--text-2)] mb-6">{errorMessage}</p>
             <div className="flex flex-col gap-3">
               <Link
                 href="/signup"
@@ -102,7 +102,7 @@ function VerifyEmailContent() {
               </Link>
               <Link
                 href="/login"
-                className="inline-flex w-full items-center justify-center rounded-lg bg-[#2E2F34] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#2E2F34] transition-colors"
+                className="inline-flex w-full items-center justify-center rounded-lg bg-[var(--border)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--border)] transition-colors"
               >
                 Log in
               </Link>
@@ -118,7 +118,7 @@ export default function VerifyEmailPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#181818]">
+        <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#4876F3] border-t-transparent" />
         </div>
       }

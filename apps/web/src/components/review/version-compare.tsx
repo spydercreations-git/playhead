@@ -104,18 +104,18 @@ export function VersionCompare({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#181818] text-white">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)] text-white">
       {/* Top Bar */}
-      <div className="flex h-14 items-center justify-between px-6 border-b border-[#212121] bg-[#181818]">
+      <div className="flex h-14 items-center justify-between px-6 border-b border-[var(--panel)] bg-[var(--bg)]">
         <div className="flex items-center gap-4">
           <span className="font-semibold text-sm">Side-by-side Version Compare</span>
-          <span className="text-xs text-[#A3A6AD]">Synchronized scrubbing</span>
+          <span className="text-xs text-[var(--text-2)]">Synchronized scrubbing</span>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#A3A6AD] hover:text-white hover:bg-[#181818]"
+            className="p-1.5 rounded-lg text-[var(--text-2)] hover:text-white hover:bg-[var(--bg)]"
           >
             <X className="w-4 h-4" />
           </button>
@@ -123,18 +123,18 @@ export function VersionCompare({
       </div>
 
       {/* Side-by-Side Split Canvas */}
-      <div className="flex-1 grid grid-cols-2 gap-2 p-4 bg-[#181818] overflow-hidden">
+      <div className="flex-1 grid grid-cols-2 gap-2 p-4 bg-[var(--bg)] overflow-hidden">
         {/* Left Side: Version A */}
-        <div className="flex flex-col items-center justify-center relative bg-[#181818] border border-[#212121] rounded-xl overflow-hidden p-2">
-          <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-[#181818]/90 px-3 py-1.5 rounded-lg border border-[#212121]">
-            <span className="text-xs font-semibold text-[#A3A6AD]">Compare:</span>
+        <div className="flex flex-col items-center justify-center relative bg-[var(--bg)] border border-[var(--panel)] rounded-xl overflow-hidden p-2">
+          <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-[var(--bg)]/90 px-3 py-1.5 rounded-lg border border-[var(--panel)]">
+            <span className="text-xs font-semibold text-[var(--text-2)]">Compare:</span>
             <select
               value={versionA}
               onChange={(e) => setVersionA(parseInt(e.target.value))}
               className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer"
             >
               {versions.map((v) => (
-                <option key={v.id} value={v.number} className="bg-[#181818]">
+                <option key={v.id} value={v.number} className="bg-[var(--bg)]">
                   Version v{v.number}
                 </option>
               ))}
@@ -149,16 +149,16 @@ export function VersionCompare({
         </div>
 
         {/* Right Side: Version B */}
-        <div className="flex flex-col items-center justify-center relative bg-[#181818] border border-[#212121] rounded-xl overflow-hidden p-2">
-          <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-[#181818]/90 px-3 py-1.5 rounded-lg border border-[#212121]">
-            <span className="text-xs font-semibold text-[#A3A6AD]">Compare:</span>
+        <div className="flex flex-col items-center justify-center relative bg-[var(--bg)] border border-[var(--panel)] rounded-xl overflow-hidden p-2">
+          <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-[var(--bg)]/90 px-3 py-1.5 rounded-lg border border-[var(--panel)]">
+            <span className="text-xs font-semibold text-[var(--text-2)]">Compare:</span>
             <select
               value={versionB}
               onChange={(e) => setVersionB(parseInt(e.target.value))}
               className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer"
             >
               {versions.map((v) => (
-                <option key={v.id} value={v.number} className="bg-[#181818]">
+                <option key={v.id} value={v.number} className="bg-[var(--bg)]">
                   Version v{v.number}
                 </option>
               ))}
@@ -173,7 +173,7 @@ export function VersionCompare({
       </div>
 
       {/* Synchronized Control Bar */}
-      <div className="h-16 px-6 bg-[#181818] border-t border-[#212121] flex items-center gap-4">
+      <div className="h-16 px-6 bg-[var(--bg)] border-t border-[var(--panel)] flex items-center gap-4">
         <button
           onClick={togglePlay}
           className="flex items-center justify-center w-9 h-9 rounded-full bg-[#FFBB56] hover:bg-[#FFBB56] text-white shadow"
@@ -187,7 +187,7 @@ export function VersionCompare({
           max={durationMs}
           value={currentTimeMs}
           onChange={handleSeek}
-          className="flex-1 h-1.5 bg-[#212121] rounded-lg appearance-none cursor-pointer accent-[#FFBB56]"
+          className="flex-1 h-1.5 bg-[var(--panel)] rounded-lg appearance-none cursor-pointer accent-[#FFBB56]"
         />
 
         <div className="text-xs font-mono tabular-nums text-white">

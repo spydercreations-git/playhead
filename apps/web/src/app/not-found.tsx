@@ -7,7 +7,7 @@ import { ArrowLeft, FileQuestion } from "@/components/ui/icon";
 export default function NotFound() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
-      <div className="h-16 w-16 rounded-xl bg-[#2A2B30] border border-[#2E2F34] text-[#4876F3] flex items-center justify-center mb-6">
+      <div className="h-16 w-16 rounded-xl bg-[var(--input)] border border-[var(--border)] text-[#4876F3] flex items-center justify-center mb-6">
         <FileQuestion className="w-8 h-8" />
       </div>
 
@@ -17,7 +17,7 @@ export default function NotFound() {
       <h1 className="text-3xl font-bold tracking-tight text-white mb-3">
         Page Not Found
       </h1>
-      <p className="text-sm text-[#A3A6AD] max-w-md mb-8">
+      <p className="text-sm text-[var(--text-2)] max-w-md mb-8">
         The page you are looking for does not exist or may have been moved.
       </p>
 

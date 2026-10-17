@@ -96,9 +96,9 @@ export function DownloadTray({
   const completedCount = session.files.filter((f) => f.status === "completed").length;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-96 rounded-xl border border-[#424344] bg-[#212121] shadow-overlay overflow-hidden font-sans">
+    <div className="fixed bottom-6 right-6 z-50 w-96 rounded-xl border border-[var(--border-strong)] bg-[var(--panel)] shadow-overlay overflow-hidden font-sans">
       {/* Header Bar */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[#181818] border-b border-[#424344]/60">
+      <div className="flex items-center justify-between px-4 py-3 bg-[var(--bg)] border-b border-[var(--border-strong)]/60">
         <div className="flex items-center gap-2 min-w-0">
           {session.status === "downloading" ? (
             <div className="w-2.5 h-2.5 rounded-full bg-[#4876F3] animate-pulse shrink-0" />
@@ -122,14 +122,14 @@ export function DownloadTray({
           {session.status === "completed" && (
             <button
               onClick={onClose}
-              className="text-xs text-[#A3A6AD] hover:text-white px-1.5 py-0.5 rounded hover:bg-[#2E2F34]"
+              className="text-xs text-[var(--text-2)] hover:text-white px-1.5 py-0.5 rounded hover:bg-[var(--border)]"
             >
               Close
             </button>
           )}
           <button
             onClick={() => setMinimized(!minimized)}
-            className="text-[#A3A6AD] hover:text-white p-1"
+            className="text-[var(--text-2)] hover:text-white p-1"
           >
             {minimized ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
@@ -151,7 +151,7 @@ export function DownloadTray({
                 </span>
               )}
             </div>
-            <div className="h-1.5 w-full bg-[#2E2F34] rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-[var(--border)] rounded-full overflow-hidden">
               <div
                 className={`h-full transition-all duration-200 ${
                   session.status === "completed"
@@ -167,15 +167,15 @@ export function DownloadTray({
 
           {/* Action buttons */}
           {session.status !== "completed" && (
-            <div className="flex items-center justify-between pt-1 border-t border-[#424344]/40">
-              <span className="text-xs text-[#A3A6AD]">
+            <div className="flex items-center justify-between pt-1 border-t border-[var(--border-strong)]/40">
+              <span className="text-xs text-[var(--text-2)]">
                 {session.mode === "folder" ? "Saving directly into folder" : "Streaming zip directly to disk"}
               </span>
               <div className="flex items-center gap-2">
                 {session.status === "downloading" ? (
                   <button
                     onClick={onPause}
-                    className="flex items-center gap-1 rounded bg-[#2E2F34] px-2 py-1 text-xs text-neutral-300 hover:text-white"
+                    className="flex items-center gap-1 rounded bg-[var(--border)] px-2 py-1 text-xs text-neutral-300 hover:text-white"
                   >
                     <Pause className="h-3 w-3" />
                     Pause
@@ -201,7 +201,7 @@ export function DownloadTray({
           )}
 
           {/* Files List */}
-          <div className="max-h-48 overflow-y-auto divide-y divide-[#424344]/30 space-y-1.5 pr-1">
+          <div className="max-h-48 overflow-y-auto divide-y divide-[var(--border-strong)]/30 space-y-1.5 pr-1">
             {session.files.map((file) => {
               const filePercent =
                 file.sizeBytes > 0
@@ -216,7 +216,7 @@ export function DownloadTray({
                     <span className="truncate text-neutral-300 font-medium" title={file.path}>
                       {file.name}
                     </span>
-                    <span className="shrink-0 text-xs text-[#A3A6AD]">
+                    <span className="shrink-0 text-xs text-[var(--text-2)]">
                       {file.status === "completed" ? (
                         <span className="text-emerald-400">Done</span>
                       ) : file.status === "downloading" ? (
@@ -227,7 +227,7 @@ export function DownloadTray({
                     </span>
                   </div>
                   {file.status === "downloading" && (
-                    <div className="mt-1 h-1 w-full bg-[#2E2F34] rounded-full overflow-hidden">
+                    <div className="mt-1 h-1 w-full bg-[var(--border)] rounded-full overflow-hidden">
                       <div
                         className="h-full bg-[#4876F3] transition-all duration-150"
                         style={{ width: `${filePercent}%` }}

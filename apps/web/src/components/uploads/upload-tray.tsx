@@ -76,9 +76,9 @@ export function UploadTray({
   const completedCount = uploads.filter((u) => u.status === "completed").length;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-96 rounded-xl border border-[#424344] bg-[#212121] shadow-overlay overflow-hidden font-sans">
+    <div className="fixed bottom-6 right-6 z-50 w-96 rounded-xl border border-[var(--border-strong)] bg-[var(--panel)] shadow-overlay overflow-hidden font-sans">
       {/* Header Bar */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[#181818] border-b border-[#424344]/60">
+      <div className="flex items-center justify-between px-4 py-3 bg-[var(--bg)] border-b border-[var(--border-strong)]/60">
         <div className="flex items-center gap-2">
           {activeCount > 0 ? (
             <div className="w-2.5 h-2.5 rounded-full bg-[#4876F3] animate-pulse" />
@@ -96,14 +96,14 @@ export function UploadTray({
           {completedCount > 0 && activeCount === 0 && (
             <button
               onClick={onClearCompleted}
-              className="text-xs text-[#A3A6AD] hover:text-white transition-colors"
+              className="text-xs text-[var(--text-2)] hover:text-white transition-colors"
             >
               Clear
             </button>
           )}
           <button
             onClick={() => setMinimized(!minimized)}
-            className="text-xs text-[#A3A6AD] hover:text-white px-1"
+            className="text-xs text-[var(--text-2)] hover:text-white px-1"
           >
             {minimized ? "▲" : "▼"}
           </button>
@@ -112,7 +112,7 @@ export function UploadTray({
 
       {/* Content List */}
       {!minimized && (
-        <div className="max-h-72 overflow-y-auto divide-y divide-[#424344]/30 p-2 space-y-2">
+        <div className="max-h-72 overflow-y-auto divide-y divide-[var(--border-strong)]/30 p-2 space-y-2">
           {uploads.map((item) => {
             const bytesUploaded = (item.sizeBytes * item.progressPercent) / 100;
             const bytesLeft = item.sizeBytes - bytesUploaded;
@@ -124,7 +124,7 @@ export function UploadTray({
                     <p className="font-medium text-white truncate" title={item.filename}>
                       {item.filename}
                     </p>
-                    <p className="text-xs text-[#A3A6AD] mt-0.5">
+                    <p className="text-xs text-[var(--text-2)] mt-0.5">
                       {formatBytes(bytesUploaded)} of {formatBytes(item.sizeBytes)} •{" "}
                       {item.status === "uploading" && (
                         <>
@@ -174,7 +174,7 @@ export function UploadTray({
                           <button
                             onClick={() => onPause(item.id)}
                             title="Pause"
-                            className="px-2 py-0.5 rounded bg-[#2E2F34] text-[#A3A6AD] hover:text-white hover:bg-[#2E2F34]"
+                            className="px-2 py-0.5 rounded bg-[var(--border)] text-[var(--text-2)] hover:text-white hover:bg-[var(--border)]"
                           >
                             ⏸
                           </button>
@@ -183,7 +183,7 @@ export function UploadTray({
                           <button
                             onClick={() => onResume(item.id)}
                             title="Resume"
-                            className="px-2 py-0.5 rounded bg-[#2E2F34] text-emerald-400 hover:text-white hover:bg-[#2E2F34]"
+                            className="px-2 py-0.5 rounded bg-[var(--border)] text-emerald-400 hover:text-white hover:bg-[var(--border)]"
                           >
                             ▶
                           </button>
@@ -194,7 +194,7 @@ export function UploadTray({
                       <button
                         onClick={() => onCancel(item.id)}
                         title="Cancel"
-                        className="p-1 rounded bg-[#2E2F34] text-[#A3A6AD] hover:text-red-400 hover:bg-[#2E2F34]"
+                        className="p-1 rounded bg-[var(--border)] text-[var(--text-2)] hover:text-red-400 hover:bg-[var(--border)]"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -203,7 +203,7 @@ export function UploadTray({
                 </div>
 
                 {/* Progress Bar */}
-                <div className="w-full bg-[#2E2F34] h-1.5 rounded-full overflow-hidden">
+                <div className="w-full bg-[var(--border)] h-1.5 rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all duration-300 rounded-full ${
                       item.status === "completed"

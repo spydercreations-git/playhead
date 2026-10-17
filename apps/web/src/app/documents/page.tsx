@@ -100,11 +100,11 @@ export default function DocumentsPage() {
   if (!authLoading && user && !company && !isClient) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <div className="w-16 h-16 rounded-full bg-[#2A2B30] border border-[#2E2F34] flex items-center justify-center mb-4 text-[#A3A6AD]">
-          <FileText className="w-8 h-8 text-[#A3A6AD]" />
+        <div className="w-16 h-16 rounded-full bg-[var(--input)] border border-[var(--border)] flex items-center justify-center mb-4 text-[var(--text-2)]">
+          <FileText className="w-8 h-8 text-[var(--text-2)]" />
         </div>
         <h2 className="text-xl font-bold text-white mb-2">Documents</h2>
-        <p className="text-sm text-[#A3A6AD] max-w-md">
+        <p className="text-sm text-[var(--text-2)] max-w-md">
           Your account isn&apos;t part of a team yet. Ask an Admin to invite you.
         </p>
       </div>
@@ -189,13 +189,13 @@ export default function DocumentsPage() {
 
           {/* Search Bar */}
           <div className="relative max-w-md">
-            <Search className="w-4 h-4 text-[#7C7F87] absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[var(--text-3)] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search by title or project..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#2A2B30] border border-[#2E2F34] rounded-[10px] pl-9 pr-4 py-2 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors shadow-sm"
+              className="w-full bg-[var(--input)] border border-[var(--border)] rounded-[10px] pl-9 pr-4 py-2 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3] transition-colors shadow-sm"
             />
           </div>
         </div>

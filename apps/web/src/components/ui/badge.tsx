@@ -18,12 +18,12 @@ export function Badge({
     : "text-xs px-2.5 py-1 rounded-[8px] font-medium";
 
   const variantClasses = {
-    default: "bg-[#26272C] text-[#A3A6AD] border border-[#2E2F34]",
+    default: "bg-[var(--panel-raised)] text-[var(--text-2)] border border-[var(--border)]",
     accent: "bg-[#4876F3]/15 text-[#4876F3] border border-[#4876F3]/30",
     success: "bg-[#3FCF8E]/15 text-[#3FCF8E] border border-[#3FCF8E]/30",
     warning: "bg-[#FFBB56]/15 text-[#FFBB56] border border-[#FFBB56]/30",
     danger: "bg-[#F0506E]/15 text-[#F0506E] border border-[#F0506E]/30",
-    chip: "bg-[#26272C] text-white border border-[#2E2F34]",
+    chip: "bg-[var(--panel-raised)] text-white border border-[var(--border)]",
   }[variant];
 
   return (

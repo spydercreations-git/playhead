@@ -110,13 +110,13 @@ export default function TrashPage() {
 
         {items.length > 0 && (
           <div className="relative w-full max-w-xs">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#7C7F87]" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-[var(--text-3)]" />
             <input
               type="text"
               placeholder="Search trash..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-[10px] border border-[#2E2F34] bg-[#2A2B30] py-2 pl-9 pr-3 text-xs text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none transition-colors"
+              className="w-full rounded-[10px] border border-[var(--border)] bg-[var(--input)] py-2 pl-9 pr-3 text-xs text-white placeholder-[var(--text-3)] focus:border-[#4876F3] focus:outline-none transition-colors"
             />
           </div>
         )}
@@ -128,7 +128,7 @@ export default function TrashPage() {
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="h-16 animate-pulse rounded-xl border border-[#2E2F34] bg-[#181818]"
+              className="h-16 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--bg)]"
             />
           ))}
         </div>
@@ -137,7 +137,7 @@ export default function TrashPage() {
           <p className="text-sm font-medium text-red-400">Failed to load trash items.</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#2E2F34] bg-[#181818] py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg)] py-16 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-neutral-800 text-neutral-400 mb-4">
             <Trash2 className="h-7 w-7" />
           </div>
@@ -151,18 +151,18 @@ export default function TrashPage() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[#212121] bg-[#181818]">
-          <div className="grid grid-cols-12 border-b border-[#212121] px-4 py-3 text-xs font-medium  text-neutral-400">
+        <div className="overflow-hidden rounded-xl border border-[var(--panel)] bg-[var(--bg)]">
+          <div className="grid grid-cols-12 border-b border-[var(--panel)] px-4 py-3 text-xs font-medium  text-neutral-400">
             <div className="col-span-5 sm:col-span-5">Name</div>
             <div className="hidden col-span-2 sm:block">Size</div>
             <div className="col-span-4 sm:col-span-3">Deleted</div>
             <div className="col-span-3 sm:col-span-2 text-right">Actions</div>
           </div>
-          <div className="divide-y divide-[#212121]">
+          <div className="divide-y divide-[var(--panel)]">
             {filtered.map((item) => (
               <div
                 key={item.id}
-                className="grid grid-cols-12 items-center px-4 py-3 hover:bg-[#181818] transition-colors group"
+                className="grid grid-cols-12 items-center px-4 py-3 hover:bg-[var(--bg)] transition-colors group"
               >
                 <div className="col-span-5 flex items-center gap-3 min-w-0 pr-2">
                   {getItemIcon(item.type, item.name)}
@@ -178,7 +178,7 @@ export default function TrashPage() {
                   <button
                     onClick={() => restoreMutation.mutate(item.id)}
                     disabled={restoreMutation.isPending}
-                    className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-white hover:bg-[#212121] transition-colors"
+                    className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-white hover:bg-[var(--panel)] transition-colors"
                     title="Restore item"
                   >
                     <RotateCcw className="h-3.5 w-3.5 text-neutral-300" />
@@ -202,7 +202,7 @@ export default function TrashPage() {
       {/* Permanent Delete Confirmation Modal */}
       {deletingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-xl border border-[#2E2F34] bg-[#181818] p-6 shadow-overlay">
+          <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--bg)] p-6 shadow-overlay">
             <div className="flex items-center gap-3 text-red-400 mb-4">
               <AlertTriangle className="h-6 w-6" />
               <h3 className="text-lg font-bold text-white">Permanently delete?</h3>
@@ -213,7 +213,7 @@ export default function TrashPage() {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeletingId(null)}
-                className="rounded-lg border border-[#2E2F34] px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-[#212121]"
+                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-[var(--panel)]"
               >
                 Cancel
               </button>

@@ -193,10 +193,10 @@ export function Select({
         {...getReferenceProps({
           onClick: () => !disabled && setIsOpen(!isOpen),
         })}
-        className={`group relative flex h-10 w-full items-center justify-between rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-3.5 pr-9 text-left text-xs text-white transition-colors focus:outline-none focus:border-[#4876F3] ${
+        className={`group relative flex h-10 w-full items-center justify-between rounded-[10px] bg-[var(--input)] border border-[var(--border)] pl-3.5 pr-9 text-left text-xs text-white transition-colors focus:outline-none focus:border-[#4876F3] ${
           disabled
             ? "opacity-50 cursor-not-allowed"
-            : "cursor-pointer hover:border-[#2E2F34]"
+            : "cursor-pointer hover:border-[var(--border)]"
         } ${triggerClassName}`}
       >
         <span className="truncate flex items-center gap-2">
@@ -210,13 +210,13 @@ export function Select({
               </span>
             </>
           ) : (
-            <span className="text-[#7C7F87] truncate">{placeholder}</span>
+            <span className="text-[var(--text-3)] truncate">{placeholder}</span>
           )}
         </span>
 
         {/* Custom Chevron 12px from right */}
         <ChevronDown
-          className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#7C7F87] transition-transform duration-150 ${
+          className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-3)] transition-transform duration-150 ${
             isOpen ? "rotate-180 text-white" : ""
           }`}
         />
@@ -242,16 +242,16 @@ export function Select({
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
                   transition={openTransition}
-                  className="relative z-50 w-full rounded-t-xl border-t border-[#2E2F34] bg-[#212121] p-4 shadow-overlay max-h-[85vh] overflow-y-auto"
+                  className="relative z-50 w-full rounded-t-xl border-t border-[var(--border)] bg-[var(--panel)] p-4 shadow-overlay max-h-[85vh] overflow-y-auto"
                 >
-                  <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#424344]" />
-                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#2E2F34]">
-                    <span className="text-[13px] font-medium text-[#A3A6AD]">
+                  <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--border-strong)]" />
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-[var(--border)]">
+                    <span className="text-[13px] font-medium text-[var(--text-2)]">
                       {placeholder}
                     </span>
                     <button
                       onClick={() => setIsOpen(false)}
-                      className="p-1 text-[#7C7F87] hover:text-white"
+                      className="p-1 text-[var(--text-3)] hover:text-white"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -259,28 +259,28 @@ export function Select({
 
                   {shouldSearch && (
                     <div className="relative mb-3">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7C7F87]" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-3)]" />
                       <input
                         ref={searchInputRef}
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search..."
-                        className="w-full h-10 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-9 pr-3 text-sm text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3]"
+                        className="w-full h-10 rounded-[10px] bg-[var(--input)] border border-[var(--border)] pl-9 pr-3 text-sm text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3]"
                       />
                     </div>
                   )}
 
                   <div className="space-y-1 max-h-[50vh] overflow-y-auto">
                     {filteredOptions.length === 0 ? (
-                      <div className="py-6 text-center text-xs text-[#7C7F87]">
+                      <div className="py-6 text-center text-xs text-[var(--text-3)]">
                         No options found.
                       </div>
                     ) : (
                       Array.from(groupedOptions.entries()).map(([grp, opts]) => (
                         <div key={grp} className="mb-2">
                           {grp && (
-                            <div className="px-2 py-1 text-[13px] font-medium text-[#A3A6AD]">
+                            <div className="px-2 py-1 text-[13px] font-medium text-[var(--text-2)]">
                               {grp}
                             </div>
                           )}
@@ -296,7 +296,7 @@ export function Select({
                                 className={`flex h-11 w-full items-center justify-between rounded-[10px] px-3 text-sm transition-colors ${
                                   isSelected
                                     ? "bg-[#4876F3]/20 text-[#4876F3] font-semibold"
-                                    : "text-white active:bg-[#2A2B30]"
+                                    : "text-white active:bg-[var(--input)]"
                                 }`}
                               >
                                 <div className="flex items-center gap-3 truncate">
@@ -317,13 +317,13 @@ export function Select({
                   </div>
 
                   {actionButton && (
-                    <div className="pt-3 mt-3 border-t border-[#2E2F34]">
+                    <div className="pt-3 mt-3 border-t border-[var(--border)]">
                       <button
                         onClick={() => {
                           actionButton.onClick();
                           setIsOpen(false);
                         }}
-                        className="flex h-11 w-full items-center justify-center gap-2 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] text-xs font-semibold text-[#4876F3] hover:text-white"
+                        className="flex h-11 w-full items-center justify-center gap-2 rounded-[10px] bg-[var(--input)] border border-[var(--border)] text-xs font-semibold text-[#4876F3] hover:text-white"
                       >
                         {actionButton.icon}
                         <span>{actionButton.label}</span>
@@ -345,32 +345,32 @@ export function Select({
                   {...getFloatingProps({
                     onKeyDown: handleKeyDown,
                   })}
-                  className="z-50 min-w-[200px] max-w-sm rounded-[10px] border border-[#2E2F34] bg-[#212121] p-1.5 shadow-overlay outline-none"
+                  className="z-50 min-w-[200px] max-w-sm rounded-[10px] border border-[var(--border)] bg-[var(--panel)] p-1.5 shadow-overlay outline-none"
                 >
                   {shouldSearch && (
                     <div className="relative mb-1.5 px-1 pt-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#7C7F87]" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-3)]" />
                       <input
                         ref={searchInputRef}
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search options..."
-                        className="w-full h-8 rounded-[8px] bg-[#2A2B30] border border-[#2E2F34] pl-8 pr-3 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3]"
+                        className="w-full h-8 rounded-[8px] bg-[var(--input)] border border-[var(--border)] pl-8 pr-3 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3]"
                       />
                     </div>
                   )}
 
                   <div className="max-h-60 overflow-y-auto space-y-0.5">
                     {filteredOptions.length === 0 ? (
-                      <div className="py-4 text-center text-xs text-[#7C7F87]">
+                      <div className="py-4 text-center text-xs text-[var(--text-3)]">
                         No options found.
                       </div>
                     ) : (
                       Array.from(groupedOptions.entries()).map(([grp, opts]) => (
                         <div key={grp}>
                           {grp && (
-                            <div className="px-2.5 py-1 text-[13px] font-medium text-[#A3A6AD]">
+                            <div className="px-2.5 py-1 text-[13px] font-medium text-[var(--text-2)]">
                               {grp}
                             </div>
                           )}
@@ -392,8 +392,8 @@ export function Select({
                                   isSelected
                                     ? "bg-[#4876F3]/15 text-[#4876F3] font-semibold"
                                     : isFocused
-                                    ? "bg-[#2A2B30] text-white"
-                                    : "text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white"
+                                    ? "bg-[var(--input)] text-white"
+                                    : "text-[var(--text-2)] hover:bg-[var(--input)] hover:text-white"
                                 }`}
                               >
                                 <div className="flex items-center gap-2 truncate">
@@ -414,14 +414,14 @@ export function Select({
                   </div>
 
                   {actionButton && (
-                    <div className="pt-1.5 mt-1.5 border-t border-[#2E2F34]">
+                    <div className="pt-1.5 mt-1.5 border-t border-[var(--border)]">
                       <button
                         type="button"
                         onClick={() => {
                           actionButton.onClick();
                           setIsOpen(false);
                         }}
-                        className="flex h-8 w-full items-center justify-center gap-1.5 rounded-[8px] bg-[#2A2B30] border border-[#2E2F34] text-xs font-medium text-[#4876F3] hover:text-white transition-colors"
+                        className="flex h-8 w-full items-center justify-center gap-1.5 rounded-[8px] bg-[var(--input)] border border-[var(--border)] text-xs font-medium text-[#4876F3] hover:text-white transition-colors"
                       >
                         {actionButton.icon}
                         <span>{actionButton.label}</span>

@@ -101,23 +101,23 @@ export function ManageAccessDialog({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98 }}
         transition={{ duration: 0.18, ease: "easeOut" }}
-        className="relative z-10 w-full max-w-lg rounded-xl border border-[#2E2F34] bg-[#212121] shadow-overlay flex flex-col overflow-hidden max-h-[90vh]"
+        className="relative z-10 w-full max-w-lg rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-overlay flex flex-col overflow-hidden max-h-[90vh]"
       >
         {/* Header with Project Logo and "Add to {name}" */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2E2F34] bg-[#212121]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] bg-[var(--panel)]">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-xl bg-[#4876F3]/15 border border-[#4876F3]/30 flex items-center justify-center text-[#4876F3] font-bold text-xs">
               {targetName.slice(0, 2)}
             </div>
             <div>
               <h3 className="text-sm font-bold text-white">Add to {targetName}</h3>
-              <p className="text-xs text-[#A3A6AD]">Manage access and permissions</p>
+              <p className="text-xs text-[var(--text-2)]">Manage access and permissions</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
+            className="p-1.5 rounded-lg text-[var(--text-2)] hover:text-white hover:bg-[var(--input)] transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -137,13 +137,13 @@ export function ManageAccessDialog({
                     setQuery(e.target.value);
                   }}
                   placeholder="Name or email"
-                  className="w-full h-9 rounded-xl bg-[#2A2B30] border border-[#2E2F34] px-3 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3]"
+                  className="w-full h-9 rounded-xl bg-[var(--input)] border border-[var(--border)] px-3 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3]"
                 />
                 {selectedContact && (
                   <button
                     type="button"
                     onClick={() => setSelectedContact(null)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#7C7F87] hover:text-white"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-3)] hover:text-white"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -155,7 +155,7 @@ export function ManageAccessDialog({
                 <select
                   value={accessLevel}
                   onChange={(e) => setAccessLevel(e.target.value as any)}
-                  className="h-9 rounded-xl bg-[#2A2B30] border border-[#2E2F34] pl-3 pr-7 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none"
+                  className="h-9 rounded-xl bg-[var(--input)] border border-[var(--border)] pl-3 pr-7 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none"
                 >
                   <option value="full">Full</option>
                   <option value="editor">Editor</option>
@@ -163,19 +163,19 @@ export function ManageAccessDialog({
                   <option value="commenter">Commenter</option>
                   <option value="viewer">Viewer</option>
                 </select>
-                <ChevronDown className="w-3 h-3 text-[#7C7F87] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <ChevronDown className="w-3 h-3 text-[var(--text-3)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
             {/* Hint + Can Download switch */}
-            <div className="flex items-center justify-between text-xs text-[#A3A6AD] px-1">
+            <div className="flex items-center justify-between text-xs text-[var(--text-2)] px-1">
               <span>Add a new or existing member</span>
               <label className="flex items-center gap-1.5 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={canDownload}
                   onChange={(e) => setCanDownload(e.target.checked)}
-                  className="rounded border-[#2E2F34] text-[#4876F3] focus:ring-0"
+                  className="rounded border-[var(--border)] text-[#4876F3] focus:ring-0"
                 />
                 <span>Can download</span>
               </label>
@@ -185,10 +185,10 @@ export function ManageAccessDialog({
           {/* Suggested List (team and client contacts) */}
           {filteredSuggested.length > 0 && !selectedContact && (
             <div className="space-y-1.5">
-              <span className="text-xs font-semibold text-[#7C7F87]">
+              <span className="text-xs font-semibold text-[var(--text-3)]">
                 Suggested
               </span>
-              <div className="space-y-1 max-h-32 overflow-y-auto rounded-xl border border-[#2E2F34] bg-[#181818] p-1.5">
+              <div className="space-y-1 max-h-32 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1.5">
                 {filteredSuggested.slice(0, 4).map((s) => (
                   <div
                     key={s.id}
@@ -196,7 +196,7 @@ export function ManageAccessDialog({
                       setSelectedContact(s);
                       setQuery("");
                     }}
-                    className="flex items-center justify-between p-2 rounded-lg hover:bg-[#2A2B30] cursor-pointer transition-colors"
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--input)] cursor-pointer transition-colors"
                   >
                     <div className="flex items-center gap-2.5">
                       <div className="h-6 w-6 rounded-full bg-[#4876F3] text-white text-xs font-bold flex items-center justify-center">
@@ -204,11 +204,11 @@ export function ManageAccessDialog({
                       </div>
                       <div>
                         <p className="text-xs font-semibold text-white leading-none">{s.name}</p>
-                        <p className="text-xs text-[#7C7F87] leading-none mt-1">{s.email}</p>
+                        <p className="text-xs text-[var(--text-3)] leading-none mt-1">{s.email}</p>
                       </div>
                     </div>
                     {s.role && (
-                      <span className="text-xs px-2 py-0.5 rounded bg-[#2E2F34] text-[#A3A6AD]">
+                      <span className="text-xs px-2 py-0.5 rounded bg-[var(--border)] text-[var(--text-2)]">
                         {s.role}
                       </span>
                     )}
@@ -225,12 +225,12 @@ export function ManageAccessDialog({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Add a message (optional)"
-              className="w-full rounded-xl bg-[#2A2B30] border border-[#2E2F34] p-3 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] resize-none"
+              className="w-full rounded-xl bg-[var(--input)] border border-[var(--border)] p-3 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3] resize-none"
             />
           </div>
 
           {/* Separate Card: "{n} members · Manage" */}
-          <div className="rounded-xl border border-[#2E2F34] bg-[#181818] p-3.5 space-y-3">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3.5 space-y-3">
             <div
               onClick={() => setIsManagingMembers(!isManagingMembers)}
               className="flex items-center justify-between cursor-pointer select-none"
@@ -248,9 +248,9 @@ export function ManageAccessDialog({
 
             {/* Expanded Members List */}
             {isManagingMembers && (
-              <div className="space-y-2 pt-2 border-t border-[#2E2F34]">
+              <div className="space-y-2 pt-2 border-t border-[var(--border)]">
                 {members.length === 0 ? (
-                  <p className="text-xs text-[#7C7F87] text-center py-2">
+                  <p className="text-xs text-[var(--text-3)] text-center py-2">
                     No individual members added.
                   </p>
                 ) : (
@@ -260,7 +260,7 @@ export function ManageAccessDialog({
                       <div
                         key={m.id}
                         className={`flex items-center justify-between p-2 rounded-lg ${
-                          isInherited ? "opacity-60 bg-[#212121]" : "bg-[#2A2B30]"
+                          isInherited ? "opacity-60 bg-[var(--panel)]" : "bg-[var(--input)]"
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
@@ -272,7 +272,7 @@ export function ManageAccessDialog({
                               {m.name || m.email}
                             </p>
                             {isInherited && (
-                              <p className="text-xs text-[#7C7F87] leading-none mt-1">
+                              <p className="text-xs text-[var(--text-3)] leading-none mt-1">
                                 Inherited from {m.inherited_from}
                               </p>
                             )}
@@ -281,7 +281,7 @@ export function ManageAccessDialog({
 
                         <div className="flex items-center gap-2 shrink-0">
                           {isInherited ? (
-                            <span className="text-xs text-[#A3A6AD] capitalize px-2">
+                            <span className="text-xs text-[var(--text-2)] capitalize px-2">
                               {m.level}
                             </span>
                           ) : (
@@ -291,7 +291,7 @@ export function ManageAccessDialog({
                                 onChange={(e) =>
                                   onUpdateMemberLevel?.(m.id, e.target.value)
                                 }
-                                className="h-7 rounded-lg bg-[#212121] border border-[#2E2F34] px-2 text-xs text-white focus:outline-none"
+                                className="h-7 rounded-lg bg-[var(--panel)] border border-[var(--border)] px-2 text-xs text-white focus:outline-none"
                               >
                                 <option value="full">Full</option>
                                 <option value="editor">Editor</option>
@@ -303,7 +303,7 @@ export function ManageAccessDialog({
                                 <button
                                   type="button"
                                   onClick={() => onRemoveMember(m.id)}
-                                  className="p-1 rounded text-[#7C7F87] hover:text-rose-400"
+                                  className="p-1 rounded text-[var(--text-3)] hover:text-rose-400"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -321,11 +321,11 @@ export function ManageAccessDialog({
         </div>
 
         {/* Footer: Cancel and Add */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#2E2F34] bg-[#212121]">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[var(--border)] bg-[var(--panel)]">
           <button
             type="button"
             onClick={onClose}
-            className="h-9 px-4 rounded-xl border border-[#2E2F34] bg-[#2A2B30] text-xs font-semibold text-[#A3A6AD] hover:bg-[#2E2F34] hover:text-white transition-colors"
+            className="h-9 px-4 rounded-xl border border-[var(--border)] bg-[var(--input)] text-xs font-semibold text-[var(--text-2)] hover:bg-[var(--border)] hover:text-white transition-colors"
           >
             Cancel
           </button>

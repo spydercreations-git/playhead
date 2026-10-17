@@ -141,12 +141,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Sidebar: exactly 232px width from Foundations & P pages */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[232px] h-full flex-col border-r border-[#2E2F34] bg-[#212121] select-none transition-transform duration-200 ease-in-out md:static md:translate-x-0 shrink-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-[232px] h-full flex-col border-r border-[var(--border)] bg-[var(--panel)] select-none transition-transform duration-200 ease-in-out md:static md:translate-x-0 shrink-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Top Header: Official Playhead Logo (h-14 / 56px) */}
-        <div className="flex h-14 items-center justify-between px-5 border-b border-[#2E2F34] shrink-0">
+        <div className="flex h-14 items-center justify-between px-5 border-b border-[var(--border)] shrink-0">
           <Link href="/" className="flex items-center">
             <PlayheadLogoWithText width={139} color="#FFFFFF" />
           </Link>
@@ -154,7 +154,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <button
             onClick={onClose}
             title="Close menu"
-            className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[#7C7F87] hover:bg-[#2A2B30] hover:text-white md:hidden"
+            className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[var(--text-3)] hover:bg-[var(--input)] hover:text-white md:hidden"
           >
             <X size={18} />
           </button>
@@ -173,15 +173,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <span>New</span>
             </button>
 
-            {/* P04 New Menu (width 200px, rx 10, fill #26272C, border #2E2F34) */}
+            {/* P04 New Menu (width 200px, rx 10, fill var(--panel-raised), border var(--border)) */}
             {newMenuOpen && (
               <>
                 <div
                   className="fixed inset-0 z-30"
                   onClick={() => setNewMenuOpen(false)}
                 />
-                <div className="absolute left-4 right-4 top-[62px] z-40 rounded-[10px] border border-[#2E2F34] bg-[#26272C] py-2 shadow-[0_8px_24px_rgba(0,0,0,0.5)] animate-in fade-in-0 zoom-in-[0.98] duration-160 ease-out">
-                  <div className="px-3.5 pb-1 text-xs font-medium text-[#7C7F87]">
+                <div className="absolute left-4 right-4 top-[62px] z-40 rounded-[10px] border border-[var(--border)] bg-[var(--panel-raised)] py-2 shadow-[0_8px_24px_rgba(0,0,0,0.5)] animate-in fade-in-0 zoom-in-[0.98] duration-160 ease-out">
+                  <div className="px-3.5 pb-1 text-xs font-medium text-[var(--text-3)]">
                     Create in My Drive
                   </div>
 
@@ -190,9 +190,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       setNewMenuOpen(false);
                       router.push("/my-drive");
                     }}
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[#2C2D33] transition-colors"
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
                   >
-                    <CreateNewFolder size={18} className="text-[#A3A6AD]" />
+                    <CreateNewFolder size={18} className="text-[var(--text-2)]" />
                     <span>New folder</span>
                   </button>
 
@@ -201,9 +201,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       setNewMenuOpen(false);
                       setShowNewDoc(true);
                     }}
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[#2C2D33] transition-colors"
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
                   >
-                    <Description size={18} className="text-[#A3A6AD]" />
+                    <Description size={18} className="text-[var(--text-2)]" />
                     <span>New document</span>
                   </button>
 
@@ -212,22 +212,22 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       setNewMenuOpen(false);
                       setShowNewSheet(true);
                     }}
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[#2C2D33] transition-colors"
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
                   >
-                    <TableChart size={18} className="text-[#A3A6AD]" />
+                    <TableChart size={18} className="text-[var(--text-2)]" />
                     <span>New spreadsheet</span>
                   </button>
 
-                  <div className="my-1.5 border-t border-[#2E2F34]" />
+                  <div className="my-1.5 border-t border-[var(--border)]" />
 
                   <button
                     onClick={() => {
                       setNewMenuOpen(false);
                       router.push("/my-drive");
                     }}
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[#2C2D33] transition-colors"
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
                   >
-                    <UploadFile size={18} className="text-[#A3A6AD]" />
+                    <UploadFile size={18} className="text-[var(--text-2)]" />
                     <span>Upload files</span>
                   </button>
 
@@ -236,13 +236,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       setNewMenuOpen(false);
                       router.push("/my-drive");
                     }}
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[#2C2D33] transition-colors"
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
                   >
-                    <DriveFolderUpload size={18} className="text-[#A3A6AD]" />
+                    <DriveFolderUpload size={18} className="text-[var(--text-2)]" />
                     <span>Upload folder</span>
                   </button>
 
-                  <div className="my-1.5 border-t border-[#2E2F34]" />
+                  <div className="my-1.5 border-t border-[var(--border)]" />
 
                   {hasPermission("projects.create") && (
                     <button
@@ -250,9 +250,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         setNewMenuOpen(false);
                         setShowNewProject(true);
                       }}
-                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[#2C2D33] transition-colors"
+                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
                     >
-                      <FolderOpen size={18} className="text-[#A3A6AD]" />
+                      <FolderOpen size={18} className="text-[var(--text-2)]" />
                       <span>New project</span>
                     </button>
                   )}
@@ -263,9 +263,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         setNewMenuOpen(false);
                         setShowNewClient(true);
                       }}
-                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[#2C2D33] transition-colors"
+                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
                     >
-                      <PersonAdd size={18} className="text-[#A3A6AD]" />
+                      <PersonAdd size={18} className="text-[var(--text-2)]" />
                       <span>New client</span>
                     </button>
                   )}
@@ -291,15 +291,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   href={item.href}
                   className={`flex h-9 w-[216px] mx-auto items-center justify-between rounded-[8px] px-3 text-sm transition-colors duration-150 ${
                     isActive
-                      ? "bg-[#2C2D33] text-white font-semibold"
-                      : "text-[#A3A6AD] font-medium hover:bg-[#2C2D33]/60 hover:text-white"
+                      ? "bg-[var(--hover)] text-white font-semibold"
+                      : "text-[var(--text-2)] font-medium hover:bg-[var(--hover)]/60 hover:text-white"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <item.icon
                       size={20}
                       filled={isActive}
-                      className={isActive ? "text-white" : "text-[#A3A6AD]"}
+                      className={isActive ? "text-white" : "text-[var(--text-2)]"}
                     />
                     <span>{item.name}</span>
                   </div>
@@ -315,7 +315,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Bottom Navigation: Team, Settings, Storage */}
-        <div className="px-2 pt-2 pb-1 border-t border-[#2E2F34] shrink-0 space-y-0.5">
+        <div className="px-2 pt-2 pb-1 border-t border-[var(--border)] shrink-0 space-y-0.5">
           {bottomNavItems
             .filter((item) => item.show)
             .map((item) => {
@@ -326,14 +326,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   href={item.href}
                   className={`flex h-9 w-[216px] mx-auto items-center gap-3 rounded-[8px] px-3 text-sm transition-colors duration-150 ${
                     isActive
-                      ? "bg-[#2C2D33] text-white font-semibold"
-                      : "text-[#A3A6AD] font-medium hover:bg-[#2C2D33]/60 hover:text-white"
+                      ? "bg-[var(--hover)] text-white font-semibold"
+                      : "text-[var(--text-2)] font-medium hover:bg-[var(--hover)]/60 hover:text-white"
                   }`}
                 >
                   <item.icon
                     size={20}
                     filled={isActive}
-                    className={isActive ? "text-white" : "text-[#A3A6AD]"}
+                    className={isActive ? "text-white" : "text-[var(--text-2)]"}
                   />
                   <span>{item.name}</span>
                 </Link>
@@ -345,7 +345,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="relative p-3 shrink-0">
           <div
             onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-            className="flex h-14 w-[208px] mx-auto items-center justify-between rounded-[10px] px-2.5 cursor-pointer hover:bg-[#2C2D33] transition-colors duration-150"
+            className="flex h-14 w-[208px] mx-auto items-center justify-between rounded-[10px] px-2.5 cursor-pointer hover:bg-[var(--hover)] transition-colors duration-150"
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <Avatar name={displayName} size="md" />
@@ -353,13 +353,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <span className="text-sm font-semibold text-white truncate">
                   {displayName}
                 </span>
-                <span className="text-xs text-[#7C7F87] truncate">
+                <span className="text-xs text-[var(--text-3)] truncate">
                   {displayRole}
                 </span>
               </div>
             </div>
 
-            <UnfoldMore size={18} className="text-[#7C7F87] shrink-0" />
+            <UnfoldMore size={18} className="text-[var(--text-3)] shrink-0" />
           </div>
 
           {profileMenuOpen && (
@@ -368,29 +368,29 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 className="fixed inset-0 z-30"
                 onClick={() => setProfileMenuOpen(false)}
               />
-              <div className="absolute bottom-[72px] left-3 right-3 z-40 rounded-[10px] border border-[#2E2F34] bg-[#26272C] py-1 shadow-[0_8px_24px_rgba(0,0,0,0.5)] animate-in fade-in-0 zoom-in-[0.98] duration-160 ease-out">
+              <div className="absolute bottom-[72px] left-3 right-3 z-40 rounded-[10px] border border-[var(--border)] bg-[var(--panel-raised)] py-1 shadow-[0_8px_24px_rgba(0,0,0,0.5)] animate-in fade-in-0 zoom-in-[0.98] duration-160 ease-out">
                 {process.env.NODE_ENV === "development" && (
-                  <div className="mx-2 mb-1 p-2 rounded bg-[#2A2B30] border border-[#2E2F34] text-xs">
-                    <div className="flex items-center justify-between text-[#A3A6AD] font-semibold mb-1">
+                  <div className="mx-2 mb-1 p-2 rounded bg-[var(--input)] border border-[var(--border)] text-xs">
+                    <div className="flex items-center justify-between text-[var(--text-2)] font-semibold mb-1">
                       <span>Dev account</span>
                       <span className="text-[#3FCF8E] bg-[#3FCF8E]/10 px-1 py-0.5 rounded font-mono">dev</span>
                     </div>
                     <div className="text-white font-medium truncate">{user?.email || "harsh@idyllproductions.com"}</div>
-                    <div className="text-[#A3A6AD] text-xs mt-0.5">Role: <span className="text-[#4876F3] font-medium">{role || (isClient ? "Client" : "None")}</span></div>
+                    <div className="text-[var(--text-2)] text-xs mt-0.5">Role: <span className="text-[#4876F3] font-medium">{role || (isClient ? "Client" : "None")}</span></div>
                   </div>
                 )}
                 <Link
                   href="/settings"
                   onClick={() => setProfileMenuOpen(false)}
-                  className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[#2C2D33] transition-colors"
+                  className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
                 >
-                  <Settings size={18} className="text-[#A3A6AD]" />
+                  <Settings size={18} className="text-[var(--text-2)]" />
                   <span>Settings</span>
                 </Link>
-                <div className="my-1 border-t border-[#2E2F34]" />
+                <div className="my-1 border-t border-[var(--border)]" />
                 <button
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-[#F0506E] hover:bg-[#2C2D33] transition-colors"
+                  className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-[#F0506E] hover:bg-[var(--hover)] transition-colors"
                 >
                   <LogOut size={18} className="text-[#F0506E]" />
                   <span>Sign out</span>

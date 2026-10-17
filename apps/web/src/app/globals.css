@@ -5,16 +5,16 @@
 
 :root {
   /* Playhead Design System Tokens */
-  --bg: #181818;
-  --panel: #212121;
-  --panel-raised: #26272C;
-  --input: #2A2B30;
-  --hover: #2C2D33;
-  --border: #2E2F34;
-  --border-strong: #424344;
+  --bg: #0A0A0B;
+  --panel: #111113;
+  --panel-raised: #17171A;
+  --input: #1A1A1E;
+  --hover: #1E1E22;
+  --border: #232327;
+  --border-strong: #34343A;
   --text: #FFFFFF;
-  --text-2: #A3A6AD;
-  --text-3: #7C7F87;
+  --text-2: #A1A1AA;
+  --text-3: #71717A;
   --accent: #4876F3;
   --button: #3B67E0;
   --button-hover: #3560D6;
@@ -23,6 +23,9 @@
   --danger: #F0506E;
   --purple: #9787FF;
   --pink: #FA457B;
+
+  /* Ambient bottom glow: blue #3B5BDB at 22%, purple #5B3FD6 at 7%, fading to transparent */
+  --bg-glow: radial-gradient(circle 900px at 50% 100%, rgba(59, 91, 219, 0.22) 0%, rgba(91, 63, 214, 0.07) 45%, transparent 75%);
 
   /* Semantic aliases */
   --bg-page: var(--bg);
@@ -92,9 +95,9 @@ body {
   background: var(--bg-page);
 }
 ::-webkit-scrollbar-thumb {
-  background: #2E2F34;
+  background: var(--border);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #424344;
+  background: var(--border-strong);
 }

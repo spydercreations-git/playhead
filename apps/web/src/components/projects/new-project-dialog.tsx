@@ -181,10 +181,10 @@ export function NewProjectDialog({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.98, y: 4 }}
           transition={dialogTransition}
-          className="relative z-10 w-full max-w-3xl rounded-xl border border-[#2E2F34] bg-[#212121] shadow-overlay overflow-hidden flex flex-col max-h-[90vh]"
+          className="relative z-10 w-full max-w-3xl rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-overlay overflow-hidden flex flex-col max-h-[90vh]"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[#2E2F34] bg-[#212121]">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] bg-[var(--panel)]">
             <h2 className="text-base font-semibold text-white tracking-tight">
               New project
             </h2>
@@ -192,7 +192,7 @@ export function NewProjectDialog({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1 rounded-lg text-[#7C7F87] hover:text-white hover:bg-[#2A2B30] transition-colors"
+                className="p-1 rounded-lg text-[var(--text-3)] hover:text-white hover:bg-[var(--input)] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -216,15 +216,15 @@ export function NewProjectDialog({
                 <h3 className="text-sm font-semibold text-white">
                   Setting up &ldquo;{name}&rdquo;
                 </h3>
-                <p className="text-xs text-[#A3A6AD]">
+                <p className="text-xs text-[var(--text-2)]">
                   Configuring project structure and real-time collaboration tracker
                 </p>
               </div>
 
-              <div className="w-full max-w-sm rounded-xl border border-[#2E2F34] bg-[#2A2B30] p-4 space-y-3">
+              <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--input)] p-4 space-y-3">
                 {template === "video_project" && (
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#A3A6AD] flex items-center gap-2">
+                    <span className="text-[var(--text-2)] flex items-center gap-2">
                       <Folder className="w-3.5 h-3.5 text-[#4876F3]" />
                       <span>Creating folders (Briefs, Raw, Edits, Deliverables)</span>
                     </span>
@@ -233,13 +233,13 @@ export function NewProjectDialog({
                         <Check className="w-3 h-3" />
                       </span>
                     ) : (
-                      <Loader2 className="w-3.5 h-3.5 text-[#A3A6AD] animate-spin" />
+                      <Loader2 className="w-3.5 h-3.5 text-[var(--text-2)] animate-spin" />
                     )}
                   </div>
                 )}
 
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#A3A6AD] flex items-center gap-2">
+                  <span className="text-[var(--text-2)] flex items-center gap-2">
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Creating Tracker</span>
                   </span>
@@ -248,7 +248,7 @@ export function NewProjectDialog({
                       <Check className="w-3 h-3" />
                     </span>
                   ) : (
-                    <Loader2 className="w-3.5 h-3.5 text-[#A3A6AD] animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 text-[var(--text-2)] animate-spin" />
                   )}
                 </div>
               </div>
@@ -256,10 +256,10 @@ export function NewProjectDialog({
           ) : (
             // Frame.io-style 2-Column Form
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-0 divide-y md:divide-y-0 md:divide-x divide-[#2E2F34]">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-0 divide-y md:divide-y-0 md:divide-x divide-[var(--border)]">
                 {/* Left Column: Start with (5 cols) */}
-                <div className="md:col-span-5 p-6 space-y-3.5 bg-[#181818]">
-                  <div className="text-[13px] font-medium text-[#A3A6AD]">
+                <div className="md:col-span-5 p-6 space-y-3.5 bg-[var(--bg)]">
+                  <div className="text-[13px] font-medium text-[var(--text-2)]">
                     Start with
                   </div>
 
@@ -270,12 +270,12 @@ export function NewProjectDialog({
                       className={`cursor-pointer rounded-xl border p-4 transition-all ${
                         template === "video_project"
                           ? "border-[#4876F3] bg-[#4876F3]/10"
-                          : "border-[#2E2F34] bg-[#2A2B30] hover:border-[#2E2F34]"
+                          : "border-[var(--border)] bg-[var(--input)] hover:border-[var(--border)]"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-[#212121] border border-[#2E2F34] flex items-center justify-center shrink-0">
+                          <div className="w-7 h-7 rounded-lg bg-[var(--panel)] border border-[var(--border)] flex items-center justify-center shrink-0">
                             <Film className="w-3.5 h-3.5 text-[#4876F3]" />
                           </div>
                           <span className="text-sm font-semibold text-white">
@@ -287,17 +287,17 @@ export function NewProjectDialog({
                             <Check className="w-2.5 h-2.5 text-white" />
                           </div>
                         ) : (
-                          <div className="w-4 h-4 rounded-full border border-[#424344]" />
+                          <div className="w-4 h-4 rounded-full border border-[var(--border-strong)]" />
                         )}
                       </div>
-                      <p className="text-[13px] text-[#A3A6AD] leading-relaxed">
+                      <p className="text-[13px] text-[var(--text-2)] leading-relaxed">
                         Standard production workspace with folders and Tracker.
                       </p>
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         {["Briefs", "Raw footage", "Edits", "Deliverables"].map((f) => (
                           <span
                             key={f}
-                            className="inline-flex items-center gap-1 rounded bg-[#212121] px-2 py-0.5 text-xs text-[#A3A6AD] border border-[#2E2F34]"
+                            className="inline-flex items-center gap-1 rounded bg-[var(--panel)] px-2 py-0.5 text-xs text-[var(--text-2)] border border-[var(--border)]"
                           >
                             <Folder className="w-2.5 h-2.5 text-[#4876F3]" />
                             {f}
@@ -312,12 +312,12 @@ export function NewProjectDialog({
                       className={`cursor-pointer rounded-xl border p-4 transition-all ${
                         template === "blank"
                           ? "border-[#4876F3] bg-[#4876F3]/10"
-                          : "border-[#2E2F34] bg-[#2A2B30] hover:border-[#2E2F34]"
+                          : "border-[var(--border)] bg-[var(--input)] hover:border-[var(--border)]"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-[#212121] border border-[#2E2F34] flex items-center justify-center shrink-0">
+                          <div className="w-7 h-7 rounded-lg bg-[var(--panel)] border border-[var(--border)] flex items-center justify-center shrink-0">
                             <Folder className="w-3.5 h-3.5 text-zinc-400" />
                           </div>
                           <span className="text-sm font-semibold text-white">
@@ -329,10 +329,10 @@ export function NewProjectDialog({
                             <Check className="w-2.5 h-2.5 text-white" />
                           </div>
                         ) : (
-                          <div className="w-4 h-4 rounded-full border border-[#424344]" />
+                          <div className="w-4 h-4 rounded-full border border-[var(--border-strong)]" />
                         )}
                       </div>
-                      <p className="text-[13px] text-[#A3A6AD] leading-relaxed">
+                      <p className="text-[13px] text-[var(--text-2)] leading-relaxed">
                         Clean workspace to organize your own way.
                       </p>
                     </div>
@@ -340,11 +340,11 @@ export function NewProjectDialog({
                 </div>
 
                 {/* Right Column: Preview Card, Client, People (7 cols) */}
-                <div className="md:col-span-7 p-6 space-y-4 bg-[#212121]">
+                <div className="md:col-span-7 p-6 space-y-4 bg-[var(--panel)]">
                   {/* Preview Card with Cover + Input inside */}
-                  <div className="rounded-xl border border-[#2E2F34] bg-[#181818] p-4">
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
                     {/* Dashed Add cover area */}
-                    <div className="border border-dashed border-[#2E2F34] rounded-lg py-5 px-4 flex items-center justify-center gap-2 text-[13px] text-[#7C7F87] hover:border-[#2E2F34] hover:text-[#A3A6AD] cursor-pointer transition-colors">
+                    <div className="border border-dashed border-[var(--border)] rounded-lg py-5 px-4 flex items-center justify-center gap-2 text-[13px] text-[var(--text-3)] hover:border-[var(--border)] hover:text-[var(--text-2)] cursor-pointer transition-colors">
                       <ImageIcon className="w-4 h-4" />
                       <span>Add cover (optional)</span>
                     </div>
@@ -358,14 +358,14 @@ export function NewProjectDialog({
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Project name"
-                        className="w-full bg-transparent border-0 p-0 text-base font-medium text-white placeholder-[#7C7F87] focus:outline-none focus:ring-0 transition-colors"
+                        className="w-full bg-transparent border-0 p-0 text-base font-medium text-white placeholder-[var(--text-3)] focus:outline-none focus:ring-0 transition-colors"
                       />
                     </div>
                   </div>
 
                   {/* Client Select */}
                   <div>
-                    <label className="block text-[13px] font-medium text-[#A3A6AD] mb-1.5">
+                    <label className="block text-[13px] font-medium text-[var(--text-2)] mb-1.5">
                       Client
                     </label>
                     <Select
@@ -376,7 +376,7 @@ export function NewProjectDialog({
                         value: c.id,
                         label: c.name,
                         icon: (
-                          <div className="w-5 h-5 rounded bg-[#2E2F34] flex items-center justify-center text-xs font-semibold text-[#A3A6AD] shrink-0">
+                          <div className="w-5 h-5 rounded bg-[var(--border)] flex items-center justify-center text-xs font-semibold text-[var(--text-2)] shrink-0">
                             {c.name.charAt(0).toUpperCase()}
                           </div>
                         ),
@@ -398,7 +398,7 @@ export function NewProjectDialog({
 
                   {/* People Section */}
                   <div>
-                    <label className="block text-[13px] font-medium text-[#A3A6AD] mb-1.5">
+                    <label className="block text-[13px] font-medium text-[var(--text-2)] mb-1.5">
                       People
                     </label>
 
@@ -415,13 +415,13 @@ export function NewProjectDialog({
                             handleAddPersonEmail();
                           }
                         }}
-                        className="flex-1 h-9 rounded-[10px] border border-[#2E2F34] bg-[#2A2B30] px-3 text-xs text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none transition-colors"
+                        className="flex-1 h-9 rounded-[10px] border border-[var(--border)] bg-[var(--input)] px-3 text-xs text-white placeholder-[var(--text-3)] focus:border-[#4876F3] focus:outline-none transition-colors"
                       />
                       <button
                         type="button"
                         onClick={handleAddPersonEmail}
                         disabled={!personEmailInput.trim()}
-                        className="h-9 px-3.5 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] text-xs font-medium text-white hover:bg-[#2E2F34] disabled:opacity-40 transition-colors shrink-0"
+                        className="h-9 px-3.5 rounded-[10px] bg-[var(--input)] border border-[var(--border)] text-xs font-medium text-white hover:bg-[var(--border)] disabled:opacity-40 transition-colors shrink-0"
                       >
                         Add
                       </button>
@@ -429,7 +429,7 @@ export function NewProjectDialog({
 
                     {/* Added People List or Grey Line */}
                     {people.length === 0 ? (
-                      <p className="text-[13px] text-[#7C7F87] mt-2">
+                      <p className="text-[13px] text-[var(--text-3)] mt-2">
                         Admins and Managers always have access.
                       </p>
                     ) : (
@@ -437,7 +437,7 @@ export function NewProjectDialog({
                         {people.map((p, idx) => (
                           <div
                             key={idx}
-                            className="flex items-center gap-2 rounded-[10px] bg-[#2A2B30] p-2 border border-[#2E2F34]"
+                            className="flex items-center gap-2 rounded-[10px] bg-[var(--input)] p-2 border border-[var(--border)]"
                           >
                             <span className="flex-1 text-xs text-white truncate pl-1">
                               {p.email}
@@ -448,19 +448,19 @@ export function NewProjectDialog({
                                 onChange={(e) =>
                                   handleUpdatePerson(idx, "level", e.target.value)
                                 }
-                                className="h-7 rounded-[7px] bg-[#212121] border border-[#2E2F34] pl-2 pr-6 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none"
+                                className="h-7 rounded-[7px] bg-[var(--panel)] border border-[var(--border)] pl-2 pr-6 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none"
                               >
                                 <option value="viewer">Viewer</option>
                                 <option value="commenter">Commenter</option>
                                 <option value="uploader">Uploader</option>
                                 <option value="full">Full access</option>
                               </select>
-                              <ChevronDown className="w-3 h-3 text-[#7C7F87] absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              <ChevronDown className="w-3 h-3 text-[var(--text-3)] absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                             </div>
                             <button
                               type="button"
                               onClick={() => handleRemovePerson(idx)}
-                              className="p-1 text-[#7C7F87] hover:text-red-400 text-xs transition-colors"
+                              className="p-1 text-[var(--text-3)] hover:text-red-400 text-xs transition-colors"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -473,8 +473,8 @@ export function NewProjectDialog({
               </div>
 
               {/* Dialog Footer */}
-              <div className="flex items-center justify-between p-4 px-6 border-t border-[#2E2F34] bg-[#181818]">
-                <div className="text-[13px] text-[#7C7F87]">
+              <div className="flex items-center justify-between p-4 px-6 border-t border-[var(--border)] bg-[var(--bg)]">
+                <div className="text-[13px] text-[var(--text-3)]">
                   {template === "video_project"
                     ? "Creates 4 folders and a Tracker sheet"
                     : ""}
@@ -484,7 +484,7 @@ export function NewProjectDialog({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-3 py-2 text-[14px] font-medium text-[#A3A6AD] hover:text-white transition-colors"
+                    className="px-3 py-2 text-[14px] font-medium text-[var(--text-2)] hover:text-white transition-colors"
                   >
                     Cancel
                   </button>

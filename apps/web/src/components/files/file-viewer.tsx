@@ -159,13 +159,13 @@ export function FileViewer({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#181818]/95 text-white font-sans animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]/95 text-white font-sans animate-in fade-in duration-200">
       {/* Top Header Bar */}
-      <div className="flex h-14 items-center justify-between border-b border-[#424344]/60 px-6 bg-[#181818]">
+      <div className="flex h-14 items-center justify-between border-b border-[var(--border-strong)]/60 px-6 bg-[var(--bg)]">
         <div className="flex items-center gap-4">
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#A3A6AD] hover:bg-[#2E2F34] hover:text-white transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-2)] hover:bg-[var(--border)] hover:text-white transition-colors"
             title="Close (Esc)"
           >
             ←
@@ -175,7 +175,7 @@ export function FileViewer({
             <span className="font-semibold text-sm max-w-md truncate" title={item.name}>
               {item.name}
             </span>
-            <span className="rounded bg-[#2E2F34] px-1.5 py-0.5 text-xs font-mono text-[#A3A6AD]">
+            <span className="rounded bg-[var(--border)] px-1.5 py-0.5 text-xs font-mono text-[var(--text-2)]">
               v{item.version_number || 1}
             </span>
           </div>
@@ -184,19 +184,19 @@ export function FileViewer({
         {/* Action Controls */}
         <div className="flex items-center gap-3">
           {/* Previous / Next Arrows */}
-          <div className="flex items-center bg-[#2E2F34] rounded-lg p-0.5">
+          <div className="flex items-center bg-[var(--border)] rounded-lg p-0.5">
             <button
               onClick={onSelectPrev}
               title="Previous file (Left Arrow)"
-              className="px-2.5 py-1 text-xs text-[#A3A6AD] hover:text-white transition-colors"
+              className="px-2.5 py-1 text-xs text-[var(--text-2)] hover:text-white transition-colors"
             >
               ◀
             </button>
-            <span className="text-xs text-[#424344]">|</span>
+            <span className="text-xs text-[var(--border-strong)]">|</span>
             <button
               onClick={onSelectNext}
               title="Next file (Right Arrow)"
-              className="px-2.5 py-1 text-xs text-[#A3A6AD] hover:text-white transition-colors"
+              className="px-2.5 py-1 text-xs text-[var(--text-2)] hover:text-white transition-colors"
             >
               ▶
             </button>
@@ -204,7 +204,7 @@ export function FileViewer({
 
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2E2F34] text-xs font-medium text-[#A3A6AD] hover:text-white transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--border)] text-xs font-medium text-[var(--text-2)] hover:text-white transition-colors"
           >
             <LinkIcon className="w-3.5 h-3.5" />
             <span>{copiedLink ? "Copied!" : "Copy link"}</span>
@@ -226,7 +226,7 @@ export function FileViewer({
             className={`flex items-center justify-center h-8 w-8 rounded-lg text-xs transition-colors ${
               showDetails
                 ? "bg-[#4876F3] text-white"
-                : "bg-[#2E2F34] text-[#A3A6AD] hover:text-white"
+                : "bg-[var(--border)] text-[var(--text-2)] hover:text-white"
             }`}
             title="Toggle Details"
           >
@@ -238,7 +238,7 @@ export function FileViewer({
       {/* Main Body */}
       <div className="flex flex-1 overflow-hidden">
         {/* Main Content Area */}
-        <div className="flex-1 flex items-center justify-center p-8 overflow-auto bg-[#181818]/50">
+        <div className="flex-1 flex items-center justify-center p-8 overflow-auto bg-[var(--bg)]/50">
           {isVideo && (
             <div className="max-w-4xl w-full flex flex-col items-center">
               {viewUrl ? (
@@ -246,10 +246,10 @@ export function FileViewer({
                   src={viewUrl}
                   controls
                   autoPlay
-                  className="w-full max-h-[75vh] rounded-xl shadow-overlay bg-black border border-[#424344]"
+                  className="w-full max-h-[75vh] rounded-xl shadow-overlay bg-black border border-[var(--border-strong)]"
                 />
               ) : (
-                <div className="p-8 text-center text-[#A3A6AD]">
+                <div className="p-8 text-center text-[var(--text-2)]">
                   Loading video stream...
                 </div>
               )}
@@ -262,33 +262,33 @@ export function FileViewer({
                 <img
                   src={viewUrl}
                   alt={item.name}
-                  className="max-h-[75vh] max-w-full object-contain rounded-lg shadow-overlay border border-[#424344]"
+                  className="max-h-[75vh] max-w-full object-contain rounded-lg shadow-overlay border border-[var(--border-strong)]"
                 />
               ) : (
-                <div className="text-[#A3A6AD]">Loading image...</div>
+                <div className="text-[var(--text-2)]">Loading image...</div>
               )}
             </div>
           )}
 
           {isAudio && (
-            <div className="max-w-md w-full bg-[#212121] border border-[#424344] rounded-xl p-8 shadow-overlay text-center space-y-6">
-              <div className="w-20 h-20 mx-auto rounded-full bg-[#2E2F34] flex items-center justify-center">
+            <div className="max-w-md w-full bg-[var(--panel)] border border-[var(--border-strong)] rounded-xl p-8 shadow-overlay text-center space-y-6">
+              <div className="w-20 h-20 mx-auto rounded-full bg-[var(--border)] flex items-center justify-center">
                 <Music className="w-10 h-10 text-emerald-400" />
               </div>
               <div>
                 <h3 className="font-semibold text-white text-base truncate">{item.name}</h3>
-                <p className="text-xs text-[#A3A6AD] mt-1">{formatBytes(item.size_bytes)}</p>
+                <p className="text-xs text-[var(--text-2)] mt-1">{formatBytes(item.size_bytes)}</p>
               </div>
               {viewUrl ? (
                 <audio src={viewUrl} controls className="w-full" autoPlay />
               ) : (
-                <p className="text-xs text-[#A3A6AD]">Loading audio...</p>
+                <p className="text-xs text-[var(--text-2)]">Loading audio...</p>
               )}
             </div>
           )}
 
           {isPDF && (
-            <div className="w-full h-full max-w-5xl bg-[#212121] border border-[#424344] rounded-xl overflow-hidden shadow-overlay">
+            <div className="w-full h-full max-w-5xl bg-[var(--panel)] border border-[var(--border-strong)] rounded-xl overflow-hidden shadow-overlay">
               {viewUrl ? (
                 <iframe
                   src={viewUrl}
@@ -296,19 +296,19 @@ export function FileViewer({
                   title={item.name}
                 />
               ) : (
-                <div className="p-8 text-center text-[#A3A6AD]">Loading PDF...</div>
+                <div className="p-8 text-center text-[var(--text-2)]">Loading PDF...</div>
               )}
             </div>
           )}
 
           {!isVideo && !isImage && !isAudio && !isPDF && (
-            <div className="max-w-sm w-full bg-[#212121] border border-[#424344] rounded-xl p-8 text-center space-y-6 shadow-overlay">
-              <div className="w-20 h-20 mx-auto rounded-xl bg-[#2E2F34] flex items-center justify-center">
+            <div className="max-w-sm w-full bg-[var(--panel)] border border-[var(--border-strong)] rounded-xl p-8 text-center space-y-6 shadow-overlay">
+              <div className="w-20 h-20 mx-auto rounded-xl bg-[var(--border)] flex items-center justify-center">
                 <FileText className="w-10 h-10 text-blue-400" />
               </div>
               <div>
                 <h3 className="font-semibold text-white text-base truncate">{item.name}</h3>
-                <p className="text-xs text-[#A3A6AD] mt-1">
+                <p className="text-xs text-[var(--text-2)] mt-1">
                   {formatBytes(item.size_bytes)} • {item.mime || "Generic File"}
                 </p>
               </div>
@@ -323,7 +323,7 @@ export function FileViewer({
                   <span>Download file</span>
                 </a>
               ) : (
-                <p className="text-xs text-[#A3A6AD]">
+                <p className="text-xs text-[var(--text-2)]">
                   {!canDownload ? "Download restricted by permissions" : "Preparing file..."}
                 </p>
               )}
@@ -333,43 +333,43 @@ export function FileViewer({
 
         {/* Right Details Panel */}
         {showDetails && (
-          <div className="w-80 border-l border-[#424344]/60 bg-[#181818] p-6 space-y-6 overflow-y-auto">
+          <div className="w-80 border-l border-[var(--border-strong)]/60 bg-[var(--bg)] p-6 space-y-6 overflow-y-auto">
             <div>
-              <h3 className="text-xs font-bold  text-[#A3A6AD]">
+              <h3 className="text-xs font-bold  text-[var(--text-2)]">
                 File Details
               </h3>
             </div>
 
             <div className="space-y-4 text-xs">
               <div>
-                <span className="text-[#A3A6AD] block">Name</span>
+                <span className="text-[var(--text-2)] block">Name</span>
                 <span className="text-white font-medium break-all">{item.name}</span>
               </div>
 
               <div>
-                <span className="text-[#A3A6AD] block">Size</span>
+                <span className="text-[var(--text-2)] block">Size</span>
                 <span className="text-white font-medium">{formatBytes(item.size_bytes)}</span>
               </div>
 
               <div>
-                <span className="text-[#A3A6AD] block">Type</span>
+                <span className="text-[var(--text-2)] block">Type</span>
                 <span className="text-white font-mono break-all">{item.mime || "application/octet-stream"}</span>
               </div>
 
               <div>
-                <span className="text-[#A3A6AD] block">Version</span>
+                <span className="text-[var(--text-2)] block">Version</span>
                 <span className="text-white font-medium">v{item.version_number || 1}</span>
               </div>
 
               {item.created_by_name && (
                 <div>
-                  <span className="text-[#A3A6AD] block">Uploaded by</span>
+                  <span className="text-[var(--text-2)] block">Uploaded by</span>
                   <span className="text-white font-medium">{item.created_by_name}</span>
                 </div>
               )}
 
               <div>
-                <span className="text-[#A3A6AD] block">Date added</span>
+                <span className="text-[var(--text-2)] block">Date added</span>
                 <span className="text-white font-medium">
                   {item.created_at ? new Date(item.created_at).toLocaleString() : "Recently"}
                 </span>
@@ -377,8 +377,8 @@ export function FileViewer({
 
               {item.storage_key && (
                 <div>
-                  <span className="text-[#A3A6AD] block">Storage Key (ID only)</span>
-                  <span className="text-[#A3A6AD] font-mono text-xs break-all">{item.storage_key}</span>
+                  <span className="text-[var(--text-2)] block">Storage Key (ID only)</span>
+                  <span className="text-[var(--text-2)] font-mono text-xs break-all">{item.storage_key}</span>
                 </div>
               )}
             </div>

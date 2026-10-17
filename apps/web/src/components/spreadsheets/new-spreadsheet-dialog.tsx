@@ -114,12 +114,12 @@ export function NewSpreadsheetDialog({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-[#212121] border border-[#2E2F34] rounded-xl max-w-md w-full p-6 shadow-overlay relative">
+      <div className="bg-[var(--panel)] border border-[var(--border)] rounded-xl max-w-md w-full p-6 shadow-overlay relative">
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 p-1 rounded-lg text-[#7C7F87] hover:text-white hover:bg-[#2A2B30] transition-colors"
+          className="absolute top-5 right-5 p-1 rounded-lg text-[var(--text-3)] hover:text-white hover:bg-[var(--input)] transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
@@ -127,7 +127,7 @@ export function NewSpreadsheetDialog({
         <h2 className="text-base font-semibold text-white mb-1">
           Create new spreadsheet
         </h2>
-        <p className="text-xs text-[#A3A6AD] mb-5">
+        <p className="text-xs text-[var(--text-2)] mb-5">
           Select a template and choose where to save this spreadsheet.
         </p>
 
@@ -139,7 +139,7 @@ export function NewSpreadsheetDialog({
 
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+            <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
               Spreadsheet title
             </label>
             <input
@@ -147,13 +147,13 @@ export function NewSpreadsheetDialog({
               placeholder="e.g. Q4 Video Tracker"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full h-10 bg-[#2A2B30] border border-[#2E2F34] rounded-[10px] px-3 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
+              className="w-full h-10 bg-[var(--input)] border border-[var(--border)] rounded-[10px] px-3 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3] transition-colors"
               autoFocus
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+            <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
               Location (optional)
             </label>
             <ProjectSelect
@@ -167,7 +167,7 @@ export function NewSpreadsheetDialog({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+            <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
               Template
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -181,7 +181,7 @@ export function NewSpreadsheetDialog({
                     className={`p-2.5 rounded-[10px] text-left border text-xs transition-colors ${
                       isSelected
                         ? "bg-[#4876F3]/10 border-[#4876F3] text-white font-medium"
-                        : "border-[#2E2F34] bg-[#2A2B30] text-[#A3A6AD] hover:text-white hover:border-[#424344]"
+                        : "border-[var(--border)] bg-[var(--input)] text-[var(--text-2)] hover:text-white hover:border-[var(--border-strong)]"
                     }`}
                   >
                     {tmpl.name}
@@ -191,11 +191,11 @@ export function NewSpreadsheetDialog({
             </div>
           </div>
 
-          <div className="pt-3 border-t border-[#2E2F34] flex items-center justify-end gap-2">
+          <div className="pt-3 border-t border-[var(--border)] flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-[10px] text-xs font-medium text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
+              className="px-4 py-2 rounded-[10px] text-xs font-medium text-[var(--text-2)] hover:text-white hover:bg-[var(--input)] transition-colors"
             >
               Cancel
             </button>

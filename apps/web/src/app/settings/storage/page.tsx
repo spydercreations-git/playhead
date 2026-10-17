@@ -50,11 +50,11 @@ export default function StorageSettingsPage() {
   if (authLoading || isLoading) {
     return (
       <div className="p-8 max-w-6xl mx-auto space-y-6">
-        <div className="h-8 w-64 bg-[#2E2F34] animate-pulse rounded-lg" />
+        <div className="h-8 w-64 bg-[var(--border)] animate-pulse rounded-lg" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="h-32 bg-[#2E2F34] animate-pulse rounded-xl" />
-          <div className="h-32 bg-[#2E2F34] animate-pulse rounded-xl" />
-          <div className="h-32 bg-[#2E2F34] animate-pulse rounded-xl" />
+          <div className="h-32 bg-[var(--border)] animate-pulse rounded-xl" />
+          <div className="h-32 bg-[var(--border)] animate-pulse rounded-xl" />
+          <div className="h-32 bg-[var(--border)] animate-pulse rounded-xl" />
         </div>
       </div>
     );
@@ -64,7 +64,7 @@ export default function StorageSettingsPage() {
     return (
       <div className="p-8 max-w-lg mx-auto text-center space-y-4">
         <h2 className="text-xl font-bold text-white">Admin Access Required</h2>
-        <p className="text-sm text-[#A3A6AD]">
+        <p className="text-sm text-[var(--text-2)]">
           The storage and billing dashboard is only available to workspace administrators.
         </p>
         <Link
@@ -95,41 +95,41 @@ export default function StorageSettingsPage() {
     <div className="p-8 max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <div className="flex items-center gap-2 text-xs text-[#A3A6AD] mb-1">
+          <div className="flex items-center gap-2 text-xs text-[var(--text-2)] mb-1">
             <Link href="/settings" className="hover:text-white">Settings</Link>
             <span>/</span>
             <span className="text-white">Storage & Usage</span>
           </div>
           <h1 className="text-2xl font-bold text-white">Storage & Pay-as-you-go Usage</h1>
-          <p className="text-sm text-[#A3A6AD] mt-1">
+          <p className="text-sm text-[var(--text-2)] mt-1">
             Byte-accurate storage tracking across all file versions and Trash until permanently deleted.
           </p>
         </div>
 
         {/* Top Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-[#212121] border border-[#424344] rounded-xl p-5 space-y-2">
-            <span className="text-xs font-medium text-[#A3A6AD]">Total Storage Used</span>
+          <div className="bg-[var(--panel)] border border-[var(--border-strong)] rounded-xl p-5 space-y-2">
+            <span className="text-xs font-medium text-[var(--text-2)]">Total Storage Used</span>
             <div className="text-2xl font-bold text-white">
               {formatBytes(data.storage_used_bytes)}
             </div>
-            <p className="text-xs text-[#A3A6AD]">
+            <p className="text-xs text-[var(--text-2)]">
               {usedGB.toFixed(2)} GB total consumed
             </p>
           </div>
 
-          <div className="bg-[#212121] border border-[#424344] rounded-xl p-5 space-y-2">
-            <span className="text-xs font-medium text-[#A3A6AD]">Estimated Monthly Cost</span>
+          <div className="bg-[var(--panel)] border border-[var(--border-strong)] rounded-xl p-5 space-y-2">
+            <span className="text-xs font-medium text-[var(--text-2)]">Estimated Monthly Cost</span>
             <div className="text-2xl font-bold text-[#4876F3]">
               ${data.estimated_monthly_cost.toFixed(2)}
             </div>
-            <p className="text-xs text-[#A3A6AD]">
+            <p className="text-xs text-[var(--text-2)]">
               At ${data.storage_price_per_gb} / GB / month
             </p>
           </div>
 
-          <div className="bg-[#212121] border border-[#424344] rounded-xl p-5 space-y-2">
-            <span className="text-xs font-medium text-[#A3A6AD]">Workspace Plan</span>
+          <div className="bg-[var(--panel)] border border-[var(--border-strong)] rounded-xl p-5 space-y-2">
+            <span className="text-xs font-medium text-[var(--text-2)]">Workspace Plan</span>
             <div className="text-lg font-bold text-white capitalize">
               {isInternal ? "Internal Studio (Pay as you go)" : data.plan}
             </div>
@@ -145,36 +145,36 @@ export default function StorageSettingsPage() {
             </p>
           </div>
 
-          <div className="bg-[#212121] border border-[#424344] rounded-xl p-5 space-y-2">
-            <span className="text-xs font-medium text-[#A3A6AD]">Reserved In-Flight</span>
+          <div className="bg-[var(--panel)] border border-[var(--border-strong)] rounded-xl p-5 space-y-2">
+            <span className="text-xs font-medium text-[var(--text-2)]">Reserved In-Flight</span>
             <div className="text-2xl font-bold text-white">
               {formatBytes(data.storage_reserved_bytes)}
             </div>
-            <p className="text-xs text-[#A3A6AD]">
+            <p className="text-xs text-[var(--text-2)]">
               Active uploads in progress
             </p>
           </div>
         </div>
 
         {/* Breakdown by Client & Project */}
-        <div className="bg-[#212121] border border-[#424344] rounded-xl overflow-hidden shadow-sm">
-          <div className="p-5 border-b border-[#424344]/50 flex items-center justify-between">
+        <div className="bg-[var(--panel)] border border-[var(--border-strong)] rounded-xl overflow-hidden shadow-sm">
+          <div className="p-5 border-b border-[var(--border-strong)]/50 flex items-center justify-between">
             <div>
               <h2 className="text-base font-semibold text-white">Storage Breakdown by Client & Project</h2>
-              <p className="text-xs text-[#A3A6AD] mt-0.5">
+              <p className="text-xs text-[var(--text-2)] mt-0.5">
                 Shows exact consumption per client folder and project workspace.
               </p>
             </div>
           </div>
 
           {data.breakdown.length === 0 ? (
-            <div className="p-8 text-center text-sm text-[#A3A6AD]">
+            <div className="p-8 text-center text-sm text-[var(--text-2)]">
               No active projects with storage usage yet.
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#181818] text-[#A3A6AD] border-b border-[#424344]/50">
+                <thead className="bg-[var(--bg)] text-[var(--text-2)] border-b border-[var(--border-strong)]/50">
                   <tr>
                     <th className="px-5 py-3 font-medium">Client</th>
                     <th className="px-5 py-3 font-medium">Project</th>
@@ -183,10 +183,10 @@ export default function StorageSettingsPage() {
                     <th className="px-5 py-3 font-medium text-right">Storage Used</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#424344]/30 text-white">
+                <tbody className="divide-y divide-[var(--border-strong)]/30 text-white">
                   {data.breakdown.map((row) => (
-                    <tr key={row.project_id} className="hover:bg-[#2E2F34]/40 transition-colors">
-                      <td className="px-5 py-3.5 font-medium text-[#A3A6AD]">
+                    <tr key={row.project_id} className="hover:bg-[var(--border)]/40 transition-colors">
+                      <td className="px-5 py-3.5 font-medium text-[var(--text-2)]">
                         <Link href={`/clients/${row.client_id}`} className="hover:text-white transition-colors">
                           {row.client_name}
                         </Link>
@@ -196,8 +196,8 @@ export default function StorageSettingsPage() {
                           {row.project_name}
                         </Link>
                       </td>
-                      <td className="px-5 py-3.5 text-[#A3A6AD]">{row.file_count}</td>
-                      <td className="px-5 py-3.5 text-[#A3A6AD]">{row.video_count}</td>
+                      <td className="px-5 py-3.5 text-[var(--text-2)]">{row.file_count}</td>
+                      <td className="px-5 py-3.5 text-[var(--text-2)]">{row.video_count}</td>
                       <td className="px-5 py-3.5 font-semibold text-right text-emerald-400">
                         {formatBytes(row.project_bytes)}
                       </td>

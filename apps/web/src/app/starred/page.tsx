@@ -101,13 +101,13 @@ export default function StarredPage() {
 
         {items.length > 0 && (
           <div className="relative w-full max-w-xs">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#7C7F87]" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-[var(--text-3)]" />
             <input
               type="text"
               placeholder="Search starred..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-[10px] border border-[#2E2F34] bg-[#2A2B30] py-2 pl-9 pr-3 text-xs text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none transition-colors"
+              className="w-full rounded-[10px] border border-[var(--border)] bg-[var(--input)] py-2 pl-9 pr-3 text-xs text-white placeholder-[var(--text-3)] focus:border-[#4876F3] focus:outline-none transition-colors"
             />
           </div>
         )}
@@ -119,7 +119,7 @@ export default function StarredPage() {
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="h-16 animate-pulse rounded-xl border border-[#2E2F34] bg-[#181818]"
+              className="h-16 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--bg)]"
             />
           ))}
         </div>
@@ -128,7 +128,7 @@ export default function StarredPage() {
           <p className="text-sm font-medium text-red-400">Failed to load starred items.</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#2E2F34] bg-[#181818] py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg)] py-16 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-400/10 text-amber-400 mb-4">
             <Star className="h-7 w-7" />
           </div>
@@ -142,14 +142,14 @@ export default function StarredPage() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[#212121] bg-[#181818]">
-          <div className="grid grid-cols-12 border-b border-[#212121] px-4 py-3 text-xs font-medium  text-neutral-400">
+        <div className="overflow-hidden rounded-xl border border-[var(--panel)] bg-[var(--bg)]">
+          <div className="grid grid-cols-12 border-b border-[var(--panel)] px-4 py-3 text-xs font-medium  text-neutral-400">
             <div className="col-span-6 sm:col-span-6">Name</div>
             <div className="hidden col-span-2 sm:block">Size</div>
             <div className="hidden col-span-2 sm:block">Modified</div>
             <div className="col-span-6 sm:col-span-2 text-right">Actions</div>
           </div>
-          <div className="divide-y divide-[#212121]">
+          <div className="divide-y divide-[var(--panel)]">
             {filtered.map((item) => {
               const projectLink = `/projects/${item.project_id}${
                 item.type === "folder"
@@ -161,7 +161,7 @@ export default function StarredPage() {
               return (
                 <div
                   key={item.id}
-                  className="grid grid-cols-12 items-center px-4 py-3 hover:bg-[#181818] transition-colors group"
+                  className="grid grid-cols-12 items-center px-4 py-3 hover:bg-[var(--bg)] transition-colors group"
                 >
                   <div className="col-span-6 flex items-center gap-3 min-w-0 pr-2">
                     {getItemIcon(item.type, item.name)}
@@ -181,7 +181,7 @@ export default function StarredPage() {
                   <div className="col-span-6 sm:col-span-2 flex items-center justify-end gap-2">
                     <Link
                       href={projectLink}
-                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-neutral-400 hover:text-white hover:bg-[#212121]"
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-neutral-400 hover:text-white hover:bg-[var(--panel)]"
                       title="Open in project"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
@@ -189,7 +189,7 @@ export default function StarredPage() {
                     </Link>
                     <button
                       onClick={() => unstarMutation.mutate(item.id)}
-                      className="rounded-md p-1.5 text-amber-400 hover:bg-[#212121] transition-colors"
+                      className="rounded-md p-1.5 text-amber-400 hover:bg-[var(--panel)] transition-colors"
                       title="Remove from starred"
                     >
                       <Star className="h-4 w-4 fill-amber-400" />

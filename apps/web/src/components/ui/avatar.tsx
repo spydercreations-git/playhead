@@ -60,7 +60,7 @@ export function Avatar({
       <img
         src={src}
         alt={name}
-        className={`rounded-full object-cover shrink-0 ring-2 ring-[#181818] ${sizeClasses} ${className}`}
+        className={`rounded-full object-cover shrink-0 ring-2 ring-[var(--bg)] ${sizeClasses} ${className}`}
       />
     );
   }
@@ -68,7 +68,7 @@ export function Avatar({
   return (
     <div
       style={{ backgroundColor: bgColor }}
-      className={`rounded-full shrink-0 flex items-center justify-center font-semibold text-white select-none ring-2 ring-[#181818] ${sizeClasses} ${className}`}
+      className={`rounded-full shrink-0 flex items-center justify-center font-semibold text-white select-none ring-2 ring-[var(--bg)] ${sizeClasses} ${className}`}
       title={name}
       {...props}
     >
@@ -116,7 +116,7 @@ export function AvatarStack({
       ))}
       {overflow > 0 && (
         <div
-          className={`rounded-full shrink-0 flex items-center justify-center font-semibold bg-[#2C2D33] text-[#A3A6AD] ring-2 ring-[#181818] ${overflowSizeClass}`}
+          className={`rounded-full shrink-0 flex items-center justify-center font-semibold bg-[var(--hover)] text-[var(--text-2)] ring-2 ring-[var(--bg)] ${overflowSizeClass}`}
         >
           +{overflow}
         </div>

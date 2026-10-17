@@ -25,10 +25,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantClasses = {
       primary: "bg-[#3B67E0] hover:bg-[#3560D6] active:bg-[#3560D6] text-white border border-transparent shadow-none",
-      secondary: "bg-[#2A2B30] hover:bg-[#2C2D33] active:bg-[#2C2D33] text-white border border-[#2E2F34] hover:border-[#424344]",
-      outline: "bg-transparent hover:bg-[#2C2D33] active:bg-[#2C2D33] text-white border border-[#2E2F34] hover:border-[#424344]",
+      secondary: "bg-[var(--input)] hover:bg-[var(--hover)] active:bg-[var(--hover)] text-white border border-[var(--border)] hover:border-[var(--border-strong)]",
+      outline: "bg-transparent hover:bg-[var(--hover)] active:bg-[var(--hover)] text-white border border-[var(--border)] hover:border-[var(--border-strong)]",
       danger: "bg-[#F0506E] hover:bg-[#F0506E] active:bg-[#F0506E] text-white border border-transparent",
-      ghost: "bg-transparent hover:bg-[#2C2D33] active:bg-[#2C2D33] text-[#A3A6AD] hover:text-white border border-transparent",
+      ghost: "bg-transparent hover:bg-[var(--hover)] active:bg-[var(--hover)] text-[var(--text-2)] hover:text-white border border-transparent",
     }[variant];
 
     return (
@@ -68,8 +68,8 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         aria-label={ariaLabel}
         className={`inline-flex items-center justify-center rounded-[8px] select-none transition-all duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#4876F3]/60 disabled:opacity-45 disabled:pointer-events-none ${
           active
-            ? "bg-[#2C2D33] text-white"
-            : "text-[#A3A6AD] hover:bg-[#2C2D33] hover:text-white"
+            ? "bg-[var(--hover)] text-white"
+            : "text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white"
         } ${sizeClasses} ${className}`}
         {...props}
       >

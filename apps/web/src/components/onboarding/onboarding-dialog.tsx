@@ -193,12 +193,12 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
     <>
       <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md select-none">
         <div
-          className="w-full max-w-[680px] bg-[#212121] border border-[#2E2F34] rounded-[16px] shadow-xl overflow-hidden flex flex-col"
+          className="w-full max-w-[680px] bg-[var(--panel)] border border-[var(--border)] rounded-[16px] shadow-xl overflow-hidden flex flex-col"
           role="dialog"
           aria-modal="true"
         >
           {/* Top Bar Header with Playhead Logo and Step Indicator */}
-          <div className="flex items-center justify-between px-7 pt-6 pb-4 border-b border-[#2E2F34]">
+          <div className="flex items-center justify-between px-7 pt-6 pb-4 border-b border-[var(--border)]">
             <div className="flex items-center">
               <PlayheadLogoWithText width={120} color="#FFFFFF" />
             </div>
@@ -207,13 +207,13 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
             <div className="flex items-center gap-6 text-[13px] font-medium">
               <div
                 className={`relative pb-1.5 flex items-center gap-1.5 transition-colors ${
-                  step === 1 ? "text-white font-semibold" : "text-[#A3A6AD]"
+                  step === 1 ? "text-white font-semibold" : "text-[var(--text-2)]"
                 }`}
               >
                 {step === 2 ? (
                   <div className="flex items-center gap-1.5 text-[#3FCF8E]">
                     <CheckCircle2 size={15} />
-                    <span className="text-[#A3A6AD]">Profile</span>
+                    <span className="text-[var(--text-2)]">Profile</span>
                   </div>
                 ) : (
                   <>
@@ -228,7 +228,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
 
               <div
                 className={`relative pb-1.5 flex items-center gap-1.5 transition-colors ${
-                  step === 2 ? "text-white font-semibold" : "text-[#A3A6AD]"
+                  step === 2 ? "text-white font-semibold" : "text-[var(--text-2)]"
                 }`}
               >
                 <span className="tabular-nums">2</span>
@@ -245,7 +245,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
             <form onSubmit={handleStep1Continue} className="p-7 space-y-6">
               <div>
                 <h1 className="text-2xl font-bold text-white tracking-tight">Set up your profile</h1>
-                <p className="text-sm text-[#A3A6AD] mt-1">This is how Idyll and your clients will see you.</p>
+                <p className="text-sm text-[var(--text-2)] mt-1">This is how Idyll and your clients will see you.</p>
               </div>
 
               {/* Photo Upload Section */}
@@ -255,10 +255,10 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                     <img
                       src={avatarUrl}
                       alt={fullName}
-                      className="w-[72px] h-[72px] rounded-full object-cover border border-[#424344]"
+                      className="w-[72px] h-[72px] rounded-full object-cover border border-[var(--border-strong)]"
                     />
                   ) : (
-                    <div className="w-[72px] h-[72px] rounded-full bg-[#FFBB56] flex items-center justify-center text-2xl font-bold text-[#181818] border border-[#424344]">
+                    <div className="w-[72px] h-[72px] rounded-full bg-[#FFBB56] flex items-center justify-center text-2xl font-bold text-[var(--bg)] border border-[var(--border-strong)]">
                       {initialLetter}
                     </div>
                   )}
@@ -266,7 +266,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                     type="button"
                     onClick={handlePhotoUploadClick}
                     title="Upload photo"
-                    className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#4876F3] hover:bg-[#3560D6] rounded-full flex items-center justify-center text-white shadow-md border-2 border-[#212121] transition-colors"
+                    className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#4876F3] hover:bg-[#3560D6] rounded-full flex items-center justify-center text-white shadow-md border-2 border-[var(--panel)] transition-colors"
                   >
                     <Camera size={14} />
                   </button>
@@ -276,7 +276,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                   <h3 className="text-sm font-semibold text-white">
                     {hasTempPassword ? "Add a photo" : "From your Google account"}
                   </h3>
-                  <p className="text-xs text-[#A3A6AD] mt-0.5">
+                  <p className="text-xs text-[var(--text-2)] mt-0.5">
                     {hasTempPassword ? "Required. Square works best." : "Keep it, or upload another."}
                   </p>
                   <button
@@ -298,30 +298,30 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
 
               {/* Full Name Field */}
               <div>
-                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">Full name</label>
+                <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">Full name</label>
                 <input
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="e.g. Harsh Pawar"
-                  className="w-full bg-[#2A2B30] border border-[#424344] rounded-[8px] px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#4876F3] transition-colors"
+                  className="w-full bg-[var(--input)] border border-[var(--border-strong)] rounded-[8px] px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#4876F3] transition-colors"
                   required
                 />
               </div>
 
               {/* Username Field with live validation */}
               <div>
-                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">Username</label>
+                <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">Username</label>
                 <div
-                  className={`flex items-center bg-[#2A2B30] border rounded-[8px] px-3.5 py-2.5 transition-colors ${
+                  className={`flex items-center bg-[var(--input)] border rounded-[8px] px-3.5 py-2.5 transition-colors ${
                     isUsernameAvailable === true
                       ? "border-[#3FCF8E]"
                       : isUsernameAvailable === false
                       ? "border-[#F0506E]"
-                      : "border-[#424344] focus-within:border-[#4876F3]"
+                      : "border-[var(--border-strong)] focus-within:border-[#4876F3]"
                   }`}
                 >
-                  <span className="text-sm text-[#A3A6AD] mr-0.5 select-none font-medium">@</span>
+                  <span className="text-sm text-[var(--text-2)] mr-0.5 select-none font-medium">@</span>
                   <input
                     type="text"
                     value={username.replace(/^@/, "")}
@@ -330,7 +330,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                     className="flex-1 bg-transparent text-sm text-white focus:outline-none"
                     required
                   />
-                  {checkingUsername && <Loader2 size={16} className="text-[#A3A6AD] animate-spin" />}
+                  {checkingUsername && <Loader2 size={16} className="text-[var(--text-2)] animate-spin" />}
                   {!checkingUsername && isUsernameAvailable === true && (
                     <CheckCircle2 size={16} className="text-[#3FCF8E]" />
                   )}
@@ -349,20 +349,20 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
               {/* New Password Field (only for Temporary Password users) */}
               {hasTempPassword && (
                 <div>
-                  <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">New password</label>
+                  <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">New password</label>
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="At least 8 characters"
-                      className="w-full bg-[#2A2B30] border border-[#424344] rounded-[8px] px-3.5 py-2.5 pr-10 text-sm text-white focus:outline-none focus:border-[#4876F3] transition-colors"
+                      className="w-full bg-[var(--input)] border border-[var(--border-strong)] rounded-[8px] px-3.5 py-2.5 pr-10 text-sm text-white focus:outline-none focus:border-[#4876F3] transition-colors"
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A3A6AD] hover:text-white"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-2)] hover:text-white"
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -376,8 +376,8 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
               {error && <p className="text-xs text-[#F0506E] mt-1">{error}</p>}
 
               {/* Footer */}
-              <div className="flex items-center justify-between pt-4 border-t border-[#2E2F34]">
-                <span className="text-xs text-[#7C7F87] font-medium">Step 1 of 2</span>
+              <div className="flex items-center justify-between pt-4 border-t border-[var(--border)]">
+                <span className="text-xs text-[var(--text-3)] font-medium">Step 1 of 2</span>
                 <button
                   type="submit"
                   disabled={!canContinue}
@@ -397,18 +397,18 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
               <div>
                 {!isClient ? (
                   // Team Badge (O3)
-                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#2A2B30] border border-[#424344] mb-3">
-                    <div className="w-4 h-4 rounded-full bg-[#181818] flex items-center justify-center text-xs font-bold text-white">
+                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[var(--input)] border border-[var(--border-strong)] mb-3">
+                    <div className="w-4 h-4 rounded-full bg-[var(--bg)] flex items-center justify-center text-xs font-bold text-white">
                       IP
                     </div>
-                    <span className="text-xs text-[#A3A6AD]">
+                    <span className="text-xs text-[var(--text-2)]">
                       You&apos;re joining Idyll Productions as <span className="text-white font-medium">{roleDisplay}</span>
                     </span>
                   </div>
                 ) : (
                   // Client Badge (O4)
-                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#2A2B30] border border-[#424344] mb-3">
-                    <div className="w-4 h-4 rounded-full bg-[#3FCF8E] flex items-center justify-center text-xs font-bold text-[#181818]">
+                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[var(--input)] border border-[var(--border-strong)] mb-3">
+                    <div className="w-4 h-4 rounded-full bg-[#3FCF8E] flex items-center justify-center text-xs font-bold text-[var(--bg)]">
                       {clientDisplayName.charAt(0).toUpperCase()}
                     </div>
                     <span className="text-xs font-semibold text-white">{clientDisplayName}</span>
@@ -418,7 +418,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                 <h1 className="text-2xl font-bold text-white tracking-tight">
                   {!isClient ? `Welcome to Playhead, ${userFirstName}` : `Welcome, ${userFirstName}`}
                 </h1>
-                <p className="text-sm text-[#A3A6AD] mt-1">
+                <p className="text-sm text-[var(--text-2)] mt-1">
                   {!isClient
                     ? "Three things you'll do every day."
                     : "Idyll Productions shares your videos here. Watch, comment on any frame, and approve."}
@@ -431,20 +431,20 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                   // Team Snippets (O3)
                   <>
                     {/* Snippet 1: Projects and folders */}
-                    <div className="bg-[#181818] border border-[#2E2F34] rounded-[10px] p-3 flex flex-col justify-between">
-                      <div className="bg-[#212121] rounded-[8px] p-2.5 mb-3 border border-[#2E2F34] space-y-1.5">
+                    <div className="bg-[var(--bg)] border border-[var(--border)] rounded-[10px] p-3 flex flex-col justify-between">
+                      <div className="bg-[var(--panel)] rounded-[8px] p-2.5 mb-3 border border-[var(--border)] space-y-1.5">
                         <div className="flex items-center gap-1.5 text-xs text-white font-medium">
-                          <ChevronDown size={14} className="text-[#A3A6AD]" />
+                          <ChevronDown size={14} className="text-[var(--text-2)]" />
                           <Folder size={14} className="text-[#3FCF8E]" />
                           <span className="truncate">{clientName ? `${clientName} Projects` : "Client Projects"}</span>
                         </div>
-                        <div className="pl-5 space-y-1 text-xs text-[#A3A6AD]">
+                        <div className="pl-5 space-y-1 text-xs text-[var(--text-2)]">
                           <div className="flex items-center gap-1.5">
-                            <Folder size={12} className="text-[#A3A6AD]" />
+                            <Folder size={12} className="text-[var(--text-2)]" />
                             <span>Raw files</span>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <Folder size={12} className="text-[#A3A6AD]" />
+                            <Folder size={12} className="text-[var(--text-2)]" />
                             <span>Edited files</span>
                           </div>
                           <div className="flex items-center gap-1.5 text-[#3FCF8E]">
@@ -455,23 +455,23 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                       </div>
                       <div>
                         <h4 className="text-xs font-semibold text-white">Projects and folders</h4>
-                        <p className="text-xs text-[#A3A6AD] mt-0.5 leading-snug">
+                        <p className="text-xs text-[var(--text-2)] mt-0.5 leading-snug">
                           Every client has projects. Files live in folders.
                         </p>
                       </div>
                     </div>
 
                     {/* Snippet 2: Frame accurate review */}
-                    <div className="bg-[#181818] border border-[#2E2F34] rounded-[10px] p-3 flex flex-col justify-between">
-                      <div className="bg-[#212121] rounded-[8px] p-2.5 mb-3 border border-[#2E2F34]">
+                    <div className="bg-[var(--bg)] border border-[var(--border)] rounded-[10px] p-3 flex flex-col justify-between">
+                      <div className="bg-[var(--panel)] rounded-[8px] p-2.5 mb-3 border border-[var(--border)]">
                         <div className="flex items-center justify-between text-xs text-white font-medium">
                           <span className="truncate">Jada_Final_v3.mp4</span>
                         </div>
-                        <span className="text-xs text-[#7C7F87]">v3 · 01:15</span>
+                        <span className="text-xs text-[var(--text-3)]">v3 · 01:15</span>
 
                         {/* Timeline scrubber with comment pins */}
                         <div className="relative mt-3 mb-2 flex items-center">
-                          <div className="w-full h-1 bg-[#2E2F34] rounded-full relative">
+                          <div className="w-full h-1 bg-[var(--border)] rounded-full relative">
                             <div className="w-1/2 h-full bg-[#4876F3] rounded-full" />
                             {/* Scrubber head */}
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow" />
@@ -489,22 +489,22 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                             </div>
                           </div>
                         </div>
-                        <span className="text-xs text-[#7C7F87] block text-center mt-1">Comment on any frame</span>
+                        <span className="text-xs text-[var(--text-3)] block text-center mt-1">Comment on any frame</span>
                       </div>
                       <div>
                         <h4 className="text-xs font-semibold text-white">Frame accurate review</h4>
-                        <p className="text-xs text-[#A3A6AD] mt-0.5 leading-snug">
+                        <p className="text-xs text-[var(--text-2)] mt-0.5 leading-snug">
                           Comment on the exact frame. Versions stay together.
                         </p>
                       </div>
                     </div>
 
                     {/* Snippet 3: Fast uploads */}
-                    <div className="bg-[#181818] border border-[#2E2F34] rounded-[10px] p-3 flex flex-col justify-between">
-                      <div className="bg-[#212121] rounded-[8px] p-2.5 mb-3 border border-[#2E2F34] space-y-2">
+                    <div className="bg-[var(--bg)] border border-[var(--border)] rounded-[10px] p-3 flex flex-col justify-between">
+                      <div className="bg-[var(--panel)] rounded-[8px] p-2.5 mb-3 border border-[var(--border)] space-y-2">
                         {/* Upload item 1: active */}
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded bg-[#2A2B30] flex items-center justify-center text-[#FFBB56]">
+                          <div className="w-6 h-6 rounded bg-[var(--input)] flex items-center justify-center text-[#FFBB56]">
                             <VideoFileIcon size={14} />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -512,15 +512,15 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                               <span className="text-white truncate">Raw_take_04.mov</span>
                             </div>
                             <span className="text-xs text-[#4876F3] font-medium">64% · 1 min left</span>
-                            <div className="w-full h-1 bg-[#2E2F34] rounded-full mt-1 overflow-hidden">
+                            <div className="w-full h-1 bg-[var(--border)] rounded-full mt-1 overflow-hidden">
                               <div className="w-[64%] h-full bg-[#4876F3]" />
                             </div>
                           </div>
                         </div>
 
                         {/* Upload item 2: done */}
-                        <div className="flex items-center gap-2 pt-1 border-t border-[#2E2F34]">
-                          <div className="w-6 h-6 rounded bg-[#2A2B30] flex items-center justify-center text-[#4876F3]">
+                        <div className="flex items-center gap-2 pt-1 border-t border-[var(--border)]">
+                          <div className="w-6 h-6 rounded bg-[var(--input)] flex items-center justify-center text-[#4876F3]">
                             <PdfFileIcon size={14} />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -531,7 +531,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                       </div>
                       <div>
                         <h4 className="text-xs font-semibold text-white">Fast uploads</h4>
-                        <p className="text-xs text-[#A3A6AD] mt-0.5 leading-snug">
+                        <p className="text-xs text-[var(--text-2)] mt-0.5 leading-snug">
                           Drop anything. Big files resume if the internet drops.
                         </p>
                       </div>
@@ -541,13 +541,13 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                   // Client Snippets (O4)
                   <>
                     {/* Snippet 1: Watch and comment */}
-                    <div className="bg-[#181818] border border-[#2E2F34] rounded-[10px] p-3 flex flex-col justify-between">
-                      <div className="bg-[#212121] rounded-[8px] p-2.5 mb-3 border border-[#2E2F34]">
+                    <div className="bg-[var(--bg)] border border-[var(--border)] rounded-[10px] p-3 flex flex-col justify-between">
+                      <div className="bg-[var(--panel)] rounded-[8px] p-2.5 mb-3 border border-[var(--border)]">
                         <div className="text-xs text-white font-medium truncate">Jada_Final_v3.mp4</div>
-                        <span className="text-xs text-[#7C7F87]">v3 · 01:15</span>
+                        <span className="text-xs text-[var(--text-3)]">v3 · 01:15</span>
 
                         <div className="relative mt-3 mb-2 flex items-center">
-                          <div className="w-full h-1 bg-[#2E2F34] rounded-full relative">
+                          <div className="w-full h-1 bg-[var(--border)] rounded-full relative">
                             <div className="w-1/2 h-full bg-[#4876F3] rounded-full" />
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow" />
                             <div className="absolute -top-3 left-[20%] w-3.5 h-3.5 bg-[#4876F3] rounded-full text-xs text-white flex items-center justify-center font-bold">
@@ -561,20 +561,20 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                             </div>
                           </div>
                         </div>
-                        <span className="text-xs text-[#7C7F87] block text-center mt-1">Comment on any frame</span>
+                        <span className="text-xs text-[var(--text-3)] block text-center mt-1">Comment on any frame</span>
                       </div>
                       <div>
                         <h4 className="text-xs font-semibold text-white">Watch and comment</h4>
-                        <p className="text-xs text-[#A3A6AD] mt-0.5 leading-snug">
+                        <p className="text-xs text-[var(--text-2)] mt-0.5 leading-snug">
                           Click the timeline, type, done. Idyll sees it at that exact frame.
                         </p>
                       </div>
                     </div>
 
                     {/* Snippet 2: Approve */}
-                    <div className="bg-[#181818] border border-[#2E2F34] rounded-[10px] p-3 flex flex-col justify-between">
-                      <div className="bg-[#212121] rounded-[8px] p-3 mb-3 border border-[#2E2F34] flex flex-col items-start gap-3">
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#2A2B30] text-[#FFBB56] text-xs font-medium">
+                    <div className="bg-[var(--bg)] border border-[var(--border)] rounded-[10px] p-3 flex flex-col justify-between">
+                      <div className="bg-[var(--panel)] rounded-[8px] p-3 mb-3 border border-[var(--border)] flex flex-col items-start gap-3">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--input)] text-[#FFBB56] text-xs font-medium">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#FFBB56]" />
                           Needs review
                         </span>
@@ -586,33 +586,33 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                             <Check size={13} />
                             <span>Approve</span>
                           </button>
-                          <span className="text-xs text-[#7C7F87]">v3</span>
+                          <span className="text-xs text-[var(--text-3)]">v3</span>
                         </div>
                       </div>
                       <div>
                         <h4 className="text-xs font-semibold text-white">Approve</h4>
-                        <p className="text-xs text-[#A3A6AD] mt-0.5 leading-snug">
+                        <p className="text-xs text-[var(--text-2)] mt-0.5 leading-snug">
                           Happy with a version? Hit Approve and Idyll gets notified.
                         </p>
                       </div>
                     </div>
 
                     {/* Snippet 3: Everything in one place */}
-                    <div className="bg-[#181818] border border-[#2E2F34] rounded-[10px] p-3 flex flex-col justify-between">
-                      <div className="bg-[#212121] rounded-[8px] p-2 mb-3 border border-[#2E2F34] grid grid-cols-3 gap-1.5">
-                        <div className="aspect-[9/16] bg-[#2A2B30] rounded-[6px] relative overflow-hidden flex items-center justify-center">
+                    <div className="bg-[var(--bg)] border border-[var(--border)] rounded-[10px] p-3 flex flex-col justify-between">
+                      <div className="bg-[var(--panel)] rounded-[8px] p-2 mb-3 border border-[var(--border)] grid grid-cols-3 gap-1.5">
+                        <div className="aspect-[9/16] bg-[var(--input)] rounded-[6px] relative overflow-hidden flex items-center justify-center">
                           <div className="w-4 h-4 rounded-full bg-[#4876F3]/40" />
                         </div>
-                        <div className="aspect-[9/16] bg-[#2C2D33] rounded-[6px] relative overflow-hidden flex items-center justify-center">
+                        <div className="aspect-[9/16] bg-[var(--hover)] rounded-[6px] relative overflow-hidden flex items-center justify-center">
                           <div className="w-4 h-4 rounded-full bg-[#FFBB56]/40" />
                         </div>
-                        <div className="aspect-[9/16] bg-[#26272C] rounded-[6px] relative overflow-hidden flex items-center justify-center">
+                        <div className="aspect-[9/16] bg-[var(--panel-raised)] rounded-[6px] relative overflow-hidden flex items-center justify-center">
                           <div className="w-4 h-4 rounded-full bg-[#3FCF8E]/40" />
                         </div>
                       </div>
                       <div>
                         <h4 className="text-xs font-semibold text-white">Everything in one place</h4>
-                        <p className="text-xs text-[#A3A6AD] mt-0.5 leading-snug">
+                        <p className="text-xs text-[var(--text-2)] mt-0.5 leading-snug">
                           Every video, version and comment for {clientDisplayName}.
                         </p>
                       </div>
@@ -624,11 +624,11 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
               {error && <p className="text-xs text-[#F0506E] mt-1">{error}</p>}
 
               {/* Step 2 Bottom Navigation */}
-              <div className="flex items-center justify-between pt-4 border-t border-[#2E2F34]">
+              <div className="flex items-center justify-between pt-4 border-t border-[var(--border)]">
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-[#A3A6AD] hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-2)] hover:text-white transition-colors"
                 >
                   <ArrowLeft size={14} />
                   <span>Back</span>

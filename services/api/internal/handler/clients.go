@@ -1,13 +1,19 @@
 package handler
 
 import (
+	"crypto/rand"
 	"encoding/json"
+	"math/big"
 	"net/http"
+	"regexp"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
@@ -17,6 +23,7 @@ import (
 type ClientHandler struct {
 	queries *db.Queries
 	mailer  *mailer.Mailer
+	dbPool  *pgxpool.Pool
 }
 
 func NewClientHandler(queries *db.Queries, mailer *mailer.Mailer) *ClientHandler {
@@ -24,6 +31,15 @@ func NewClientHandler(queries *db.Queries, mailer *mailer.Mailer) *ClientHandler
 		queries: queries,
 		mailer:  mailer,
 	}
+}
+
+func (h *ClientHandler) SetPool(pool *pgxpool.Pool) {
+	h.dbPool = pool
+}
+
+type CreateClientPersonInput struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
 type CreateClientContactInput struct {
@@ -34,12 +50,33 @@ type CreateClientContactInput struct {
 }
 
 type CreateClientRequest struct {
-	Name             string                     `json:"name"`
-	Website          string                     `json:"website"`
-	Notes            string                     `json:"notes"`
-	LogoKey          string                     `json:"logo_key"`
-	Contacts         []CreateClientContactInput `json:"contacts"`
-	EmailOnboarding  bool                       `json:"email_onboarding"`
+	Name                string                     `json:"name"`
+	Website             string                     `json:"website"`
+	Notes               string                     `json:"notes"`
+	LogoKey             string                     `json:"logo_key"`
+	Contacts            []CreateClientContactInput `json:"contacts"`
+	People              []CreateClientPersonInput  `json:"people"`
+	SendInviteEmailsNow *bool                      `json:"send_invite_emails_now"`
+	EmailOnboarding     bool                       `json:"email_onboarding"`
+}
+
+var clientEmailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+
+func isValidClientEmail(email string) bool {
+	if len(email) < 5 || len(email) > 254 {
+		return false
+	}
+	return clientEmailRegex.MatchString(email)
+}
+
+func generateSecureTempPassword() string {
+	const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$"
+	b := make([]byte, 14)
+	for i := range b {
+		num, _ := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
+		b[i] = chars[num.Int64()]
+	}
+	return string(b)
 }
 
 func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +106,81 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := h.queries.CreateClient(r.Context(), db.CreateClientParams{
+	// Extract and validate people
+	var rawPeople []CreateClientPersonInput
+	if len(req.People) > 0 {
+		rawPeople = req.People
+	} else if len(req.Contacts) > 0 {
+		for _, c := range req.Contacts {
+			rawPeople = append(rawPeople, CreateClientPersonInput{
+				Name:  c.Name,
+				Email: c.Email,
+			})
+		}
+	}
+
+	seenEmails := make(map[string]bool)
+	type personToSave struct {
+		Name  string
+		Email string
+	}
+	var peopleToSave []personToSave
+
+	for _, p := range rawPeople {
+		trimmedName := strings.TrimSpace(p.Name)
+		trimmedEmail := strings.TrimSpace(p.Email)
+		// Empty row allowed if both fields are blank
+		if trimmedName == "" && trimmedEmail == "" {
+			continue
+		}
+
+		normalizedEmail := authz.NormalizeEmail(trimmedEmail)
+		if !isValidClientEmail(normalizedEmail) {
+			respondJSON(w, http.StatusBadRequest, map[string]string{
+				"error":   "invalid_email",
+				"message": "Enter a full email address: " + trimmedEmail,
+			})
+			return
+		}
+
+		if seenEmails[normalizedEmail] {
+			respondJSON(w, http.StatusBadRequest, map[string]string{
+				"error":   "duplicate_email",
+				"message": "Duplicate email address: " + normalizedEmail,
+			})
+			return
+		}
+		seenEmails[normalizedEmail] = true
+
+		if trimmedName == "" {
+			trimmedName = strings.Split(normalizedEmail, "@")[0]
+		}
+
+		peopleToSave = append(peopleToSave, personToSave{
+			Name:  trimmedName,
+			Email: normalizedEmail,
+		})
+	}
+
+	sendInviteEmails := true
+	if req.SendInviteEmailsNow != nil {
+		sendInviteEmails = *req.SendInviteEmailsNow
+	}
+
+	var tx pgx.Tx
+	qtx := h.queries
+	if h.dbPool != nil {
+		var txErr error
+		tx, txErr = h.dbPool.Begin(r.Context())
+		if txErr != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to begin transaction"})
+			return
+		}
+		defer tx.Rollback(r.Context())
+		qtx = h.queries.WithTx(tx)
+	}
+
+	client, err := qtx.CreateClient(r.Context(), db.CreateClientParams{
 		CompanyID: companyID,
 		Name:      name,
 		Website:   pgtype.Text{String: strings.TrimSpace(req.Website), Valid: strings.TrimSpace(req.Website) != ""},
@@ -81,33 +192,102 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create initial contacts if provided
-	for _, c := range req.Contacts {
-		contactEmail := authz.NormalizeEmail(c.Email)
-		if contactEmail == "" || !strings.Contains(contactEmail, "@") {
-			continue
+	if strings.TrimSpace(req.LogoKey) != "" {
+		updatedClient, uErr := qtx.UpdateClient(r.Context(), db.UpdateClientParams{
+			ID:      client.ID,
+			LogoKey: pgtype.Text{String: strings.TrimSpace(req.LogoKey), Valid: true},
+		})
+		if uErr == nil {
+			client = updatedClient
 		}
-		contactName := strings.TrimSpace(c.Name)
-		if contactName == "" {
-			contactName = strings.Split(contactEmail, "@")[0]
-		}
-		level := strings.ToLower(strings.TrimSpace(c.DefaultLevel))
-		if level == "" {
-			level = authz.LevelNone
-		}
-		canDownload := true
-		if c.CanDownload != nil {
-			canDownload = *c.CanDownload
+	}
+
+	companyName := "Workspace"
+	comp, cErr := qtx.GetCompanyByID(r.Context(), companyID)
+	if cErr == nil && comp.Name != "" {
+		companyName = comp.Name
+	}
+
+	type emailItem struct {
+		to           string
+		name         string
+		clientName   string
+		companyName  string
+		tempPassword string
+	}
+	var emailsToSend []emailItem
+
+	for _, p := range peopleToSave {
+		// Look up or create user for this person
+		var targetUserID pgtype.UUID
+		u, uErr := qtx.GetUserByEmail(r.Context(), p.Email)
+		if uErr == nil && u.ID.Valid {
+			targetUserID = u.ID
+		} else {
+			newUser, createErr := qtx.CreateUser(r.Context(), db.CreateUserParams{
+				Email:        p.Email,
+				Name:         p.Name,
+				PasswordHash: pgtype.Text{Valid: false},
+				GoogleID:     pgtype.Text{Valid: false},
+			})
+			if createErr != nil {
+				respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to create user for client person"})
+				return
+			}
+			_ = qtx.VerifyUserEmail(r.Context(), newUser.ID)
+			targetUserID = newUser.ID
 		}
 
-		_, _ = h.queries.CreateClientContact(r.Context(), db.CreateClientContactParams{
+		// Save contact: default_level = "none", can_download = true
+		_, err = qtx.CreateClientContact(r.Context(), db.CreateClientContactParams{
 			CompanyID:    companyID,
 			ClientID:     client.ID,
-			Name:         contactName,
-			Email:        contactEmail,
-			DefaultLevel: level,
-			CanDownload:  canDownload,
+			Name:         p.Name,
+			Email:        p.Email,
+			DefaultLevel: authz.LevelNone,
+			CanDownload:  true,
 		})
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to create client contact"})
+			return
+		}
+		_ = qtx.LinkClientContactsToUser(r.Context(), db.LinkClientContactsToUserParams{
+			UserID: targetUserID,
+			Email:  p.Email,
+		})
+
+		if sendInviteEmails {
+			tempPassword := generateSecureTempPassword()
+			tempHash, hErr := authz.HashPassword(tempPassword)
+			if hErr == nil {
+				_ = qtx.SetUserTempPassword(r.Context(), db.SetUserTempPasswordParams{
+					ID:                    targetUserID,
+					TempPasswordHash:      pgtype.Text{String: tempHash, Valid: true},
+					TempPasswordExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(7 * 24 * time.Hour), Valid: true},
+				})
+			}
+			emailsToSend = append(emailsToSend, emailItem{
+				to:           p.Email,
+				name:         p.Name,
+				clientName:   client.Name,
+				companyName:  companyName,
+				tempPassword: tempPassword,
+			})
+		}
+	}
+
+	if tx != nil {
+		if err := tx.Commit(r.Context()); err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to commit client creation"})
+			return
+		}
+	}
+
+	// Dispatch queued emails only after successful database commit
+	if h.mailer != nil && len(emailsToSend) > 0 {
+		for _, item := range emailsToSend {
+			_ = h.mailer.SendClientPersonInviteEmail(item.to, item.name, item.clientName, item.companyName, item.tempPassword, "")
+		}
 	}
 
 	respondJSON(w, http.StatusCreated, client)

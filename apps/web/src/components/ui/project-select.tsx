@@ -93,19 +93,19 @@ export function ProjectSelect({
             setSearchQuery("");
           }
         }}
-        className={`w-full h-10 px-3 pr-9 rounded-[10px] bg-[#2A2B30] border transition-colors text-xs text-left flex items-center justify-between relative ${
+        className={`w-full h-10 px-3 pr-9 rounded-[10px] bg-[var(--input)] border transition-colors text-xs text-left flex items-center justify-between relative ${
           isOpen
             ? "border-[#4876F3] ring-1 ring-[#4876F3]"
-            : "border-[#2E2F34] hover:border-[#424344]"
+            : "border-[var(--border)] hover:border-[var(--border-strong)]"
         } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       >
         <div className="flex items-center gap-2 truncate">
-          <Folder className={`w-3.5 h-3.5 shrink-0 ${allowMyDocuments && !value ? "text-[#4876F3]" : "text-[#7C7F87]"}`} />
+          <Folder className={`w-3.5 h-3.5 shrink-0 ${allowMyDocuments && !value ? "text-[#4876F3]" : "text-[var(--text-3)]"}`} />
           {selectedProject ? (
             <span className="truncate text-white">
               {selectedProject.name}{" "}
               {selectedProject.client_name ? (
-                <span className="text-[#7C7F87] font-normal">
+                <span className="text-[var(--text-3)] font-normal">
                   ({selectedProject.client_name})
                 </span>
               ) : null}
@@ -113,13 +113,13 @@ export function ProjectSelect({
           ) : allowMyDocuments && !value ? (
             <span className="truncate text-white font-medium">My documents (private to me)</span>
           ) : (
-            <span className="text-[#7C7F87]">{placeholder}</span>
+            <span className="text-[var(--text-3)]">{placeholder}</span>
           )}
         </div>
 
         {/* Custom ChevronDown icon 14px placed 12px from right edge */}
         <ChevronDown
-          className={`w-[14px] h-[14px] text-[#7C7F87] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none transition-transform duration-150 ${
+          className={`w-[14px] h-[14px] text-[var(--text-3)] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none transition-transform duration-150 ${
             isOpen ? "rotate-180 text-white" : ""
           }`}
         />
@@ -127,18 +127,18 @@ export function ProjectSelect({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[10px] bg-[#212121] border border-[#2E2F34] shadow-overlay py-2 max-h-64 flex flex-col">
+        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-[10px] bg-[var(--panel)] border border-[var(--border)] shadow-overlay py-2 max-h-64 flex flex-col">
           {/* Search Input */}
-          <div className="px-2 pb-2 border-b border-[#2E2F34]">
+          <div className="px-2 pb-2 border-b border-[var(--border)]">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-[#7C7F87] absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-[var(--text-3)] absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 autoFocus
                 placeholder="Search projects..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-8 pl-8 pr-3 rounded-[8px] bg-[#2A2B30] border border-[#2E2F34] text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3]"
+                className="w-full h-8 pl-8 pr-3 rounded-[8px] bg-[var(--input)] border border-[var(--border)] text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3]"
               />
             </div>
           </div>
@@ -146,15 +146,15 @@ export function ProjectSelect({
           {/* Grouped Options List */}
           <div className="overflow-y-auto flex-1 py-1">
             {allowMyDocuments && (!searchQuery || "my documents".includes(searchQuery.toLowerCase())) && (
-              <div className="px-2 pb-1 mb-1 border-b border-[#2E2F34]">
+              <div className="px-2 pb-1 mb-1 border-b border-[var(--border)]">
                 <button
                   type="button"
                   onClick={() => {
                     onChange("");
                     setIsOpen(false);
                   }}
-                  className={`w-full px-2.5 py-1.5 rounded-[6px] text-left text-xs flex items-center justify-between hover:bg-[#2C2D33] transition-colors ${
-                    !value ? "bg-[#4876F3]/10 text-white font-medium" : "text-[#A3A6AD]"
+                  className={`w-full px-2.5 py-1.5 rounded-[6px] text-left text-xs flex items-center justify-between hover:bg-[var(--hover)] transition-colors ${
+                    !value ? "bg-[#4876F3]/10 text-white font-medium" : "text-[var(--text-2)]"
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
@@ -166,13 +166,13 @@ export function ProjectSelect({
               </div>
             )}
             {groupedProjects.length === 0 ? (
-              <div className="px-3 py-4 text-center text-xs text-[#7C7F87]">
+              <div className="px-3 py-4 text-center text-xs text-[var(--text-3)]">
                 No projects found
               </div>
             ) : (
               groupedProjects.map((group) => (
                 <div key={group.clientName} className="mb-2 last:mb-0">
-                  <div className="px-3 py-1 text-[13px] font-medium text-[#A3A6AD]">
+                  <div className="px-3 py-1 text-[13px] font-medium text-[var(--text-2)]">
                     {group.clientName}
                   </div>
                   {group.items.map((project) => {
@@ -185,8 +185,8 @@ export function ProjectSelect({
                           onChange(project.id);
                           setIsOpen(false);
                         }}
-                        className={`w-full px-3 py-1.5 text-left text-xs flex items-center justify-between hover:bg-[#2C2D33] transition-colors ${
-                          isSelected ? "bg-[#4876F3]/10 text-white font-medium" : "text-[#A3A6AD]"
+                        className={`w-full px-3 py-1.5 text-left text-xs flex items-center justify-between hover:bg-[var(--hover)] transition-colors ${
+                          isSelected ? "bg-[#4876F3]/10 text-white font-medium" : "text-[var(--text-2)]"
                         }`}
                       >
                         <span className="truncate">{project.name}</span>

@@ -127,6 +127,7 @@ func main() {
 	onboardingHandler := handler.NewOnboardingHandler(queries, storageClient)
 	if pgxPool != nil {
 		projectHandler.SetPool(pgxPool)
+		clientHandler.SetPool(pgxPool)
 	}
 	if storageClient != nil {
 		projectHandler.SetStorage(storageClient)

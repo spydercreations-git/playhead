@@ -53,7 +53,7 @@ export function DeleteDialog({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96 }}
         transition={{ duration: 0.16, ease: "easeOut" }}
-        className="relative z-10 w-full max-w-sm rounded-xl border border-[#2E2F34] bg-[#212121] p-6 shadow-overlay flex flex-col items-center text-center select-none"
+        className="relative z-10 w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-overlay flex flex-col items-center text-center select-none"
       >
         {/* Round Warning Icon */}
         <div
@@ -76,7 +76,7 @@ export function DeleteDialog({
         </h3>
 
         {/* Subtitle */}
-        <p className="mt-2 text-xs text-[#A3A6AD] leading-relaxed max-w-xs">
+        <p className="mt-2 text-xs text-[var(--text-2)] leading-relaxed max-w-xs">
           {subtitle}
         </p>
 
@@ -86,7 +86,7 @@ export function DeleteDialog({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="flex-1 h-9 rounded-xl border border-[#2E2F34] bg-[#2A2B30] text-xs font-semibold text-[#A3A6AD] hover:bg-[#2E2F34] hover:text-white transition-colors"
+            className="flex-1 h-9 rounded-xl border border-[var(--border)] bg-[var(--input)] text-xs font-semibold text-[var(--text-2)] hover:bg-[var(--border)] hover:text-white transition-colors"
           >
             Cancel
           </button>

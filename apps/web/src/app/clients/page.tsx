@@ -75,7 +75,7 @@ export default function ClientsPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center text-center">
         <h2 className="text-lg font-bold text-white">Access Restricted</h2>
-        <p className="mt-1 text-sm text-[#A3A6AD]">
+        <p className="mt-1 text-sm text-[var(--text-2)]">
           Clients do not have access to the clients management directory.
         </p>
       </div>
@@ -90,31 +90,31 @@ export default function ClientsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-white">
             Clients
           </h1>
-          <p className="text-xs text-[#A3A6AD]">
+          <p className="text-xs text-[var(--text-2)]">
             Manage all video production clients, contacts, and access permissions
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Search */}
-          <div className="flex h-9 items-center rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3 text-xs text-[#7C7F87] focus-within:border-[#4876F3] transition-colors">
+          <div className="flex h-9 items-center rounded-[10px] bg-[var(--input)] border border-[var(--border)] px-3 text-xs text-[var(--text-3)] focus-within:border-[#4876F3] transition-colors">
             <input
               type="text"
               placeholder="Search clients..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-40 bg-transparent text-white placeholder-[#7C7F87] focus:outline-none text-xs"
+              className="w-40 bg-transparent text-white placeholder-[var(--text-3)] focus:outline-none text-xs"
             />
           </div>
 
           {/* View toggle */}
-          <div className="flex rounded-lg bg-[#212121] border border-[#424344] p-0.5">
+          <div className="flex rounded-lg bg-[var(--panel)] border border-[var(--border-strong)] p-0.5">
             <button
               onClick={() => setView("table")}
               className={`px-2.5 py-1 text-xs font-medium rounded ${
                 view === "table"
-                  ? "bg-[#2E2F34] text-white"
-                  : "text-[#A3A6AD] hover:text-white"
+                  ? "bg-[var(--border)] text-white"
+                  : "text-[var(--text-2)] hover:text-white"
               }`}
             >
               List
@@ -123,8 +123,8 @@ export default function ClientsPage() {
               onClick={() => setView("grid")}
               className={`px-2.5 py-1 text-xs font-medium rounded ${
                 view === "grid"
-                  ? "bg-[#2E2F34] text-white"
-                  : "text-[#A3A6AD] hover:text-white"
+                  ? "bg-[var(--border)] text-white"
+                  : "text-[var(--text-2)] hover:text-white"
               }`}
             >
               Grid
@@ -147,17 +147,17 @@ export default function ClientsPage() {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-32 rounded-xl bg-[#212121] border border-[#424344] animate-pulse"
+              className="h-32 rounded-xl bg-[var(--panel)] border border-[var(--border-strong)] animate-pulse"
             />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#424344] bg-[#212121]/50 py-16 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#2E2F34] text-[#4876F3] mb-3">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--panel)]/50 py-16 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--border)] text-[#4876F3] mb-3">
             <Building2 className="w-6 h-6 text-emerald-400" />
           </div>
           <h3 className="text-base font-semibold text-white">No clients found</h3>
-          <p className="mt-1 text-xs text-[#A3A6AD] max-w-sm">
+          <p className="mt-1 text-xs text-[var(--text-2)] max-w-sm">
             {search
               ? "No clients matched your search filter."
               : "Get started by adding your first agency client."}
@@ -172,9 +172,9 @@ export default function ClientsPage() {
           )}
         </div>
       ) : view === "table" ? (
-        <div className="overflow-hidden rounded-xl border border-[#424344] bg-[#212121]">
+        <div className="overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--panel)]">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-[#424344] bg-[#2E2F34]/50 text-[#A3A6AD]">
+            <thead className="border-b border-[var(--border-strong)] bg-[var(--border)]/50 text-[var(--text-2)]">
               <tr>
                 <th className="py-3 px-4 font-medium">Client</th>
                 <th className="py-3 px-4 font-medium">Contacts</th>
@@ -184,11 +184,11 @@ export default function ClientsPage() {
                 <th className="py-3 px-4 text-right font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#424344]/40">
+            <tbody className="divide-y divide-[var(--border-strong)]/40">
               {filtered.map((client) => (
                 <tr
                   key={client.id}
-                  className="hover:bg-[#2E2F34]/40 transition-colors group"
+                  className="hover:bg-[var(--border)]/40 transition-colors group"
                 >
                   <td className="py-3.5 px-4 font-medium text-white">
                     <Link
@@ -199,7 +199,7 @@ export default function ClientsPage() {
                         <img
                           src={client.logo_key.String}
                           alt={client.name}
-                          className="h-8 w-8 rounded-lg object-cover border border-[#2E2F34]"
+                          className="h-8 w-8 rounded-lg object-cover border border-[var(--border)]"
                         />
                       ) : (
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#4876F3]/20 font-bold text-[#4876F3] text-xs">
@@ -209,23 +209,23 @@ export default function ClientsPage() {
                       <div className="flex flex-col">
                         <span>{client.name}</span>
                         {client.website?.Valid && (
-                          <span className="text-xs text-[#A3A6AD] hover:underline">
+                          <span className="text-xs text-[var(--text-2)] hover:underline">
                             {client.website.String}
                           </span>
                         )}
                       </div>
                     </Link>
                   </td>
-                  <td className="py-3.5 px-4 text-[#A3A6AD]">
+                  <td className="py-3.5 px-4 text-[var(--text-2)]">
                     {client.contacts_count} contacts
                   </td>
-                  <td className="py-3.5 px-4 text-[#A3A6AD]">
+                  <td className="py-3.5 px-4 text-[var(--text-2)]">
                     {client.projects_count} projects
                   </td>
-                  <td className="py-3.5 px-4 text-[#A3A6AD]">
+                  <td className="py-3.5 px-4 text-[var(--text-2)]">
                     {formatBytes(client.total_size_bytes)}
                   </td>
-                  <td className="py-3.5 px-4 text-[#A3A6AD]">
+                  <td className="py-3.5 px-4 text-[var(--text-2)]">
                     {formatDate(client.updated_at)}
                   </td>
                   <td className="py-3.5 px-4 text-right">
@@ -257,7 +257,7 @@ export default function ClientsPage() {
             <Link
               key={client.id}
               href={`/clients/${client.id}`}
-              className="flex flex-col justify-between rounded-xl border border-[#424344] bg-[#212121] p-5 hover:border-[#7C7F87] transition-all hover:shadow-lg"
+              className="flex flex-col justify-between rounded-xl border border-[var(--border-strong)] bg-[var(--panel)] p-5 hover:border-[var(--text-3)] transition-all hover:shadow-lg"
             >
               <div>
                 <div className="flex items-center gap-3 mb-3">
@@ -265,7 +265,7 @@ export default function ClientsPage() {
                     <img
                       src={client.logo_key.String}
                       alt={client.name}
-                      className="h-10 w-10 rounded-lg object-cover border border-[#2E2F34]"
+                      className="h-10 w-10 rounded-lg object-cover border border-[var(--border)]"
                     />
                   ) : (
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#4876F3]/20 font-bold text-[#4876F3] text-sm">
@@ -276,14 +276,14 @@ export default function ClientsPage() {
                     <h3 className="text-sm font-bold text-white">
                       {client.name}
                     </h3>
-                    <p className="text-xs text-[#A3A6AD]">
+                    <p className="text-xs text-[var(--text-2)]">
                       {client.website?.Valid ? client.website.String : "No website"}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-[#424344]/50 flex items-center justify-between text-xs text-[#A3A6AD]">
+              <div className="mt-4 pt-3 border-t border-[var(--border-strong)]/50 flex items-center justify-between text-xs text-[var(--text-2)]">
                 <span>{client.projects_count} projects</span>
                 <span>{formatBytes(client.total_size_bytes)}</span>
               </div>
@@ -295,11 +295,11 @@ export default function ClientsPage() {
       {/* Delete Confirmation Modal (Admin Only, requires typing client name) */}
       {clientToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-          <div className="w-full max-w-md rounded-xl border border-red-500/40 bg-[#212121] p-6 shadow-overlay">
+          <div className="w-full max-w-md rounded-xl border border-red-500/40 bg-[var(--panel)] p-6 shadow-overlay">
             <h3 className="text-base font-bold text-white mb-2">
               Delete {clientToDelete.name}?
             </h3>
-            <p className="text-xs text-[#A3A6AD] mb-4 leading-relaxed">
+            <p className="text-xs text-[var(--text-2)] mb-4 leading-relaxed">
               Delete {clientToDelete.name} and its {clientToDelete.projects_count} projects? Everything moves to Trash for 30 days.
             </p>
 
@@ -310,7 +310,7 @@ export default function ClientsPage() {
             )}
 
             <div className="mb-4">
-              <label className="block text-xs text-[#A3A6AD] mb-1.5">
+              <label className="block text-xs text-[var(--text-2)] mb-1.5">
                 Type <strong>{clientToDelete.name}</strong> to confirm:
               </label>
               <input
@@ -318,15 +318,15 @@ export default function ClientsPage() {
                 value={deleteInputName}
                 onChange={(e) => setDeleteInputName(e.target.value)}
                 placeholder={clientToDelete.name}
-                className="w-full h-10 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3.5 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
+                className="w-full h-10 rounded-[10px] bg-[var(--input)] border border-[var(--border)] px-3.5 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3] transition-colors"
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-2 border-t border-[#2E2F34]">
+            <div className="flex justify-end gap-3 pt-2 border-t border-[var(--border)]">
               <button
                 type="button"
                 onClick={() => setClientToDelete(null)}
-                className="px-3.5 py-2 text-xs font-semibold text-[#A3A6AD] hover:text-white rounded-[10px]"
+                className="px-3.5 py-2 text-xs font-semibold text-[var(--text-2)] hover:text-white rounded-[10px]"
               >
                 Cancel
               </button>

@@ -243,11 +243,11 @@ export default function SpreadsheetsPage() {
   if (!authLoading && user && !company && !isClient) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <div className="w-16 h-16 rounded-full bg-[#2A2B30] border border-[#2E2F34] flex items-center justify-center mb-4 text-[#A3A6AD]">
-          <FileSpreadsheet className="w-8 h-8 text-[#A3A6AD]" />
+        <div className="w-16 h-16 rounded-full bg-[var(--input)] border border-[var(--border)] flex items-center justify-center mb-4 text-[var(--text-2)]">
+          <FileSpreadsheet className="w-8 h-8 text-[var(--text-2)]" />
         </div>
         <h2 className="text-xl font-bold text-white mb-2">Spreadsheets</h2>
-        <p className="text-sm text-[#A3A6AD] max-w-md">
+        <p className="text-sm text-[var(--text-2)] max-w-md">
           Your account isn&apos;t part of a team yet. Ask an Admin to invite you.
         </p>
       </div>
@@ -257,7 +257,7 @@ export default function SpreadsheetsPage() {
   return (
     <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-8 text-white font-sans">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#2E2F34] pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--border)] pb-6">
         <div>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#4876F3]/10 text-[#4876F3] border border-[#4876F3]/20">
@@ -267,7 +267,7 @@ export default function SpreadsheetsPage() {
               <h1 className="text-2xl font-bold tracking-tight text-white">
                 Spreadsheets & Trackers
               </h1>
-              <p className="text-xs text-[#A3A6AD] mt-0.5">
+              <p className="text-xs text-[var(--text-2)] mt-0.5">
                 Real-time multi-sheet workbooks, video production budgets, and deliverables tracking.
               </p>
             </div>
@@ -279,9 +279,9 @@ export default function SpreadsheetsPage() {
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-2 h-9 px-3.5 rounded-[10px] bg-[#2A2B30] hover:bg-[#2E2F34] text-xs font-medium text-white border border-[#2E2F34] transition-colors"
+              className="flex items-center gap-2 h-9 px-3.5 rounded-[10px] bg-[var(--input)] hover:bg-[var(--border)] text-xs font-medium text-white border border-[var(--border)] transition-colors"
             >
-              <Upload className="h-3.5 w-3.5 text-[#7C7F87]" />
+              <Upload className="h-3.5 w-3.5 text-[var(--text-3)]" />
               <span>Import (.xlsx, .csv)</span>
             </button>
             <button
@@ -304,7 +304,7 @@ export default function SpreadsheetsPage() {
             className={`h-8 px-3 rounded-[8px] text-xs font-medium transition-colors shrink-0 ${
               selectedClientId === "all"
                 ? "bg-[#4876F3] text-white"
-                : "bg-[#2A2B30] text-[#A3A6AD] hover:text-white border border-[#2E2F34]"
+                : "bg-[var(--input)] text-[var(--text-2)] hover:text-white border border-[var(--border)]"
             }`}
           >
             All Clients ({spreadsheets.length})
@@ -316,7 +316,7 @@ export default function SpreadsheetsPage() {
               className={`h-8 px-3 rounded-[8px] text-xs font-medium transition-colors shrink-0 ${
                 selectedClientId === chip.id
                   ? "bg-[#4876F3] text-white"
-                  : "bg-[#2A2B30] text-[#A3A6AD] hover:text-white border border-[#2E2F34]"
+                  : "bg-[var(--input)] text-[var(--text-2)] hover:text-white border border-[var(--border)]"
               }`}
             >
               {chip.name} ({chip.count})
@@ -325,25 +325,25 @@ export default function SpreadsheetsPage() {
         </div>
 
         <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#7C7F87]" />
+          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[var(--text-3)]" />
           <input
             type="text"
             placeholder="Search sheets or projects..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-8 pl-8 pr-3 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3]"
+            className="w-full h-8 pl-8 pr-3 rounded-[10px] bg-[var(--input)] border border-[var(--border)] text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3]"
           />
         </div>
       </div>
 
       {/* Spreadsheets List Grid / Loading / Error / Empty States */}
       {error ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center rounded-xl border border-[#2E2F34] bg-[#212121] p-8">
+        <div className="flex flex-col items-center justify-center py-20 text-center rounded-xl border border-[var(--border)] bg-[var(--panel)] p-8">
           <div className="h-12 w-12 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center mb-3">
             <AlertCircle className="h-6 w-6" />
           </div>
           <h3 className="text-sm font-semibold text-white mb-1">Failed to load spreadsheets</h3>
-          <p className="text-xs text-[#A3A6AD] max-w-sm mb-6">{error}</p>
+          <p className="text-xs text-[var(--text-2)] max-w-sm mb-6">{error}</p>
           <button
             onClick={() => loadData()}
             className="flex items-center gap-2 h-9 px-4 rounded-[10px] bg-[#4876F3] hover:bg-[#3560D6] text-xs font-semibold text-white transition-colors"
@@ -352,17 +352,17 @@ export default function SpreadsheetsPage() {
           </button>
         </div>
       ) : loading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-[#A3A6AD]">
+        <div className="flex flex-col items-center justify-center py-20 text-[var(--text-2)]">
           <Loader2 className="h-7 w-7 animate-spin text-[#4876F3] mb-3" />
           <span className="text-xs">Loading spreadsheets...</span>
         </div>
       ) : filteredSpreadsheets.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center rounded-xl border border-[#2E2F34] bg-[#212121] p-8">
-          <div className="h-12 w-12 rounded-xl bg-[#2A2B30] text-[#A3A6AD] flex items-center justify-center mb-3">
+        <div className="flex flex-col items-center justify-center py-20 text-center rounded-xl border border-[var(--border)] bg-[var(--panel)] p-8">
+          <div className="h-12 w-12 rounded-xl bg-[var(--input)] text-[var(--text-2)] flex items-center justify-center mb-3">
             <FileSpreadsheet className="h-6 w-6" />
           </div>
           <h3 className="text-sm font-semibold text-white mb-1">No spreadsheets found</h3>
-          <p className="text-xs text-[#A3A6AD] max-w-sm mb-6">
+          <p className="text-xs text-[var(--text-2)] max-w-sm mb-6">
             Create a new spreadsheet or video tracker to manage deliverables, calculate budgets, and track reviews.
           </p>
           {!isClient && (
@@ -410,14 +410,14 @@ export default function SpreadsheetsPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: 4 }}
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-              className="relative z-10 w-full max-w-md rounded-xl border border-[#2E2F34] bg-[#212121] p-6 shadow-overlay"
+              className="relative z-10 w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-overlay"
             >
-            <div className="flex items-center justify-between pb-4 border-b border-[#2E2F34]">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
               <h3 className="text-sm font-semibold text-white">Create New Spreadsheet</h3>
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 rounded-lg text-[#7C7F87] hover:text-white hover:bg-[#2A2B30] transition-colors"
+                className="p-1 rounded-lg text-[var(--text-3)] hover:text-white hover:bg-[var(--input)] transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -425,7 +425,7 @@ export default function SpreadsheetsPage() {
 
             <form onSubmit={handleCreateSpreadsheet} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+                <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
                   Location (optional)
                 </label>
                 <ProjectSelect
@@ -438,7 +438,7 @@ export default function SpreadsheetsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+                <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
                   Spreadsheet Name
                 </label>
                 <input
@@ -446,12 +446,12 @@ export default function SpreadsheetsPage() {
                   placeholder="e.g. Q4 Video Tracker"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full h-10 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
+                  className="w-full h-10 rounded-[10px] bg-[var(--input)] border border-[var(--border)] px-3 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3] transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+                <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
                   Template
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -469,7 +469,7 @@ export default function SpreadsheetsPage() {
                       className={`p-2.5 rounded-[10px] text-left border text-xs transition-colors ${
                         selectedTemplate === tpl.id
                           ? "border-[#4876F3] bg-[#4876F3]/10 text-white font-medium"
-                          : "border-[#2E2F34] bg-[#2A2B30] text-[#A3A6AD] hover:text-white hover:border-[#424344]"
+                          : "border-[var(--border)] bg-[var(--input)] text-[var(--text-2)] hover:text-white hover:border-[var(--border-strong)]"
                       }`}
                     >
                       {tpl.name}
@@ -478,11 +478,11 @@ export default function SpreadsheetsPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-[#2E2F34]">
+              <div className="flex justify-end gap-2 pt-4 border-t border-[var(--border)]">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-3.5 py-2 rounded-[10px] text-xs font-medium text-[#A3A6AD] hover:text-white"
+                  className="px-3.5 py-2 rounded-[10px] text-xs font-medium text-[var(--text-2)] hover:text-white"
                 >
                   Cancel
                 </button>
@@ -504,13 +504,13 @@ export default function SpreadsheetsPage() {
       {/* Import Modal */}
       {showImportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-xl border border-[#2E2F34] bg-[#212121] p-6 shadow-overlay relative">
-            <div className="flex items-center justify-between pb-4 border-b border-[#2E2F34]">
+          <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-overlay relative">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
               <h3 className="text-sm font-semibold text-white">Import Spreadsheet</h3>
               <button
                 type="button"
                 onClick={() => setShowImportModal(false)}
-                className="p-1 rounded-lg text-[#7C7F87] hover:text-white hover:bg-[#2A2B30] transition-colors"
+                className="p-1 rounded-lg text-[var(--text-3)] hover:text-white hover:bg-[var(--input)] transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -518,7 +518,7 @@ export default function SpreadsheetsPage() {
 
             <form onSubmit={handleImportSubmit} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+                <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
                   Target Project
                 </label>
                 <ProjectSelect
@@ -530,7 +530,7 @@ export default function SpreadsheetsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+                <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
                   Excel or CSV file (Max 25MB)
                 </label>
                 <input
@@ -547,15 +547,15 @@ export default function SpreadsheetsPage() {
                       setImportFile(file);
                     }
                   }}
-                  className="w-full p-2 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] text-xs text-white file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#4876F3] file:text-white hover:file:bg-[#3560D6]"
+                  className="w-full p-2 rounded-[10px] bg-[var(--input)] border border-[var(--border)] text-xs text-white file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#4876F3] file:text-white hover:file:bg-[#3560D6]"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-[#2E2F34]">
+              <div className="flex justify-end gap-2 pt-4 border-t border-[var(--border)]">
                 <button
                   type="button"
                   onClick={() => setShowImportModal(false)}
-                  className="px-3.5 py-2 rounded-[10px] text-xs font-medium text-[#A3A6AD] hover:text-white"
+                  className="px-3.5 py-2 rounded-[10px] text-xs font-medium text-[var(--text-2)] hover:text-white"
                 >
                   Cancel
                 </button>

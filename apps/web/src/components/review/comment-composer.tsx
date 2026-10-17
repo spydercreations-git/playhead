@@ -99,7 +99,7 @@ export function CommentComposer({
   );
 
   return (
-    <div className="relative flex flex-col bg-[#181818] border-t border-[#212121] p-4 transition-colors">
+    <div className="relative flex flex-col bg-[var(--bg)] border-t border-[var(--panel)] p-4 transition-colors">
       {/* Active Playhead Timecode Chip */}
       <div className="flex items-center gap-2 mb-2">
         {includeTimecode ? (
@@ -120,7 +120,7 @@ export function CommentComposer({
               setIncludeTimecode(true);
               setTimecodeStartMs(currentTimeMs);
             }}
-            className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#212121] text-[#A3A6AD] hover:text-white text-xs font-mono transition-colors"
+            className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[var(--panel)] text-[var(--text-2)] hover:text-white text-xs font-mono transition-colors"
             title="Attach current timecode"
           >
             <Clock className="w-3 h-3" />
@@ -158,30 +158,30 @@ export function CommentComposer({
           disabled={disabled || submitting}
           rows={2}
           placeholder={includeTimecode ? "Leave a comment at this moment... (Cmd+Enter to send)" : "Leave a general comment..."}
-          className="w-full bg-[#181818] text-white text-xs rounded-xl border border-[#212121] focus:border-[#FFBB56] focus:ring-1 focus:ring-[#FFBB56] p-3 outline-none resize-none placeholder-[#A3A6AD] transition-all"
+          className="w-full bg-[var(--bg)] text-white text-xs rounded-xl border border-[var(--panel)] focus:border-[#FFBB56] focus:ring-1 focus:ring-[#FFBB56] p-3 outline-none resize-none placeholder-[var(--text-2)] transition-all"
         />
 
         {/* Mention suggestions popover */}
         {showMentionMenu && filteredMentions.length > 0 && (
-          <div className="absolute bottom-full left-0 mb-1 w-64 max-h-48 overflow-y-auto bg-[#181818] border border-[#2E2F34] rounded-xl shadow-overlay p-1 z-50">
-            <div className="px-2 py-1 text-xs text-[#A3A6AD] font-semibold">
+          <div className="absolute bottom-full left-0 mb-1 w-64 max-h-48 overflow-y-auto bg-[var(--bg)] border border-[var(--border)] rounded-xl shadow-overlay p-1 z-50">
+            <div className="px-2 py-1 text-xs text-[var(--text-2)] font-semibold">
               Mention someone
             </div>
             {filteredMentions.map((p) => (
               <button
                 key={p.id}
                 onClick={() => handleSelectMention(p)}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left hover:bg-[#212121] text-xs transition-colors"
+                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left hover:bg-[var(--panel)] text-xs transition-colors"
               >
                 <div>
                   <div className="font-medium text-white flex items-center gap-1.5">
                     <span>{p.name}</span>
-                    {p.username && <span className="text-[#A3A6AD] font-normal text-xs">@{p.username}</span>}
+                    {p.username && <span className="text-[var(--text-2)] font-normal text-xs">@{p.username}</span>}
                   </div>
-                  {p.email && <div className="text-xs text-[#7C7F87]">{p.email}</div>}
+                  {p.email && <div className="text-xs text-[var(--text-3)]">{p.email}</div>}
                 </div>
                 {p.role && (
-                  <span className="text-xs bg-[#212121] px-1.5 py-0.5 rounded text-[#A3A6AD] capitalize">
+                  <span className="text-xs bg-[var(--panel)] px-1.5 py-0.5 rounded text-[var(--text-2)] capitalize">
                     {p.role}
                   </span>
                 )}
@@ -201,7 +201,7 @@ export function CommentComposer({
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 hasDrawing
                   ? "bg-[#FFBB56] text-white"
-                  : "bg-[#212121] text-[#A3A6AD] hover:text-white hover:bg-[#2E2F34]"
+                  : "bg-[var(--panel)] text-[var(--text-2)] hover:text-white hover:bg-[var(--border)]"
               }`}
               title="Draw annotation on paused frame"
             >
@@ -213,7 +213,7 @@ export function CommentComposer({
           {/* Mention Button */}
           <button
             onClick={() => setShowMentionMenu(!showMentionMenu)}
-            className="p-1.5 rounded-lg text-[#A3A6AD] hover:text-white hover:bg-[#212121] transition-colors"
+            className="p-1.5 rounded-lg text-[var(--text-2)] hover:text-white hover:bg-[var(--panel)] transition-colors"
             title="Mention someone (@)"
           >
             <AtSign className="w-3.5 h-3.5" />
@@ -227,7 +227,7 @@ export function CommentComposer({
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                   visibility === "team"
                     ? "bg-[#FFBB56]/10 text-[#FFBB56] border-[#FFBB56]/40"
-                    : "bg-[#212121] text-[#A3A6AD] border-transparent hover:text-white"
+                    : "bg-[var(--panel)] text-[var(--text-2)] border-transparent hover:text-white"
                 }`}
                 title={visibility === "team" ? "Visible to Team only" : "Visible to Everyone"}
               >

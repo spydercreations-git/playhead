@@ -7,18 +7,18 @@
 
 export const DESIGN_TOKENS = {
   // Surface & Backgrounds
-  bg: "#181818",
-  panel: "#212121",
-  panelRaised: "#26272C",
-  input: "#2A2B30",
-  hover: "#2C2D33",
-  border: "#2E2F34",
-  borderStrong: "#424344",
+  bg: "#0A0A0B",
+  panel: "#111113",
+  panelRaised: "#17171A",
+  input: "#1A1A1E",
+  hover: "#1E1E22",
+  border: "#232327",
+  borderStrong: "#34343A",
 
   // Text Hierarchy
   text: "#FFFFFF",
-  text2: "#A3A6AD",
-  text3: "#7C7F87",
+  text2: "#A1A1AA",
+  text3: "#71717A",
 
   // Brand & Action
   accent: "#4876F3",

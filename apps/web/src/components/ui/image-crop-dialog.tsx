@@ -181,7 +181,7 @@ export function ImageCropDialog({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm select-none">
       <div
-        className="w-full max-w-[620px] bg-[#212121] border border-[#2E2F34] rounded-[16px] shadow-xl overflow-hidden flex flex-col"
+        className="w-full max-w-[620px] bg-[var(--panel)] border border-[var(--border)] rounded-[16px] shadow-xl overflow-hidden flex flex-col"
         role="dialog"
         aria-modal="true"
         aria-label={displayTitle}
@@ -190,14 +190,14 @@ export function ImageCropDialog({
         <div className="flex items-start justify-between p-6 pb-4">
           <div>
             <h2 className="text-lg font-semibold text-white">{displayTitle}</h2>
-            <p className="text-[13px] text-[#A3A6AD] mt-0.5">
+            <p className="text-[13px] text-[var(--text-2)] mt-0.5">
               Drag to move. Scroll or use the slider to zoom.
             </p>
           </div>
           <button
             onClick={onClose}
             title="Close dialog"
-            className="text-[#A3A6AD] hover:text-white p-1 rounded-[6px] hover:bg-[#2A2B30] transition-colors"
+            className="text-[var(--text-2)] hover:text-white p-1 rounded-[6px] hover:bg-[var(--input)] transition-colors"
           >
             <X size={18} />
           </button>
@@ -205,7 +205,7 @@ export function ImageCropDialog({
 
         {/* Crop Viewport */}
         <div className="relative px-6">
-          <div className="relative w-full h-[320px] bg-[#181818] rounded-[12px] overflow-hidden border border-[#2E2F34]">
+          <div className="relative w-full h-[320px] bg-[var(--bg)] rounded-[12px] overflow-hidden border border-[var(--border)]">
             {imageSrc ? (
               <Cropper
                 image={imageSrc}
@@ -223,7 +223,7 @@ export function ImageCropDialog({
                 onCropAreaChange={onCropAreaChange}
                 style={{
                   containerStyle: {
-                    background: "#181818",
+                    background: "var(--bg)",
                   },
                   cropAreaStyle: {
                     border: shape === "circle" ? "2px solid rgba(255, 255, 255, 0.9)" : "none",
@@ -231,7 +231,7 @@ export function ImageCropDialog({
                 }}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-sm text-[#7C7F87]">
+              <div className="w-full h-full flex items-center justify-center text-sm text-[var(--text-3)]">
                 No image selected
               </div>
             )}
@@ -254,7 +254,7 @@ export function ImageCropDialog({
           </div>
 
           {/* Controls Bar: Zoom Slider, Percentage, Rotate, Reset */}
-          <div className="flex items-center gap-3 mt-4 text-[#A3A6AD]">
+          <div className="flex items-center gap-3 mt-4 text-[var(--text-2)]">
             <button
               type="button"
               onClick={handleZoomOut}
@@ -272,7 +272,7 @@ export function ImageCropDialog({
                 step={0.01}
                 value={zoom}
                 onChange={(e) => setZoom(parseFloat(e.target.value))}
-                className="w-full h-1 bg-[#2E2F34] rounded-lg appearance-none cursor-pointer accent-[#4876F3]"
+                className="w-full h-1 bg-[var(--border)] rounded-lg appearance-none cursor-pointer accent-[#4876F3]"
               />
             </div>
 
@@ -289,13 +289,13 @@ export function ImageCropDialog({
               {zoomPercentage}%
             </span>
 
-            <div className="w-px h-4 bg-[#2E2F34] mx-1" />
+            <div className="w-px h-4 bg-[var(--border)] mx-1" />
 
             <button
               type="button"
               onClick={handleRotate}
               title="Rotate 90 degrees"
-              className="p-1.5 rounded-[6px] hover:bg-[#2A2B30] hover:text-white transition-colors"
+              className="p-1.5 rounded-[6px] hover:bg-[var(--input)] hover:text-white transition-colors"
             >
               <RotateCw size={16} />
             </button>
@@ -304,21 +304,21 @@ export function ImageCropDialog({
               type="button"
               onClick={handleReset}
               title="Reset zoom and rotation"
-              className="p-1.5 rounded-[6px] hover:bg-[#2A2B30] hover:text-white transition-colors"
+              className="p-1.5 rounded-[6px] hover:bg-[var(--input)] hover:text-white transition-colors"
             >
               <RotateCcw size={16} />
             </button>
           </div>
 
           {/* Live Preview Row (56px, 32px, 20px) */}
-          <div className="flex items-center justify-between mt-5 py-3 border-t border-[#2E2F34]">
+          <div className="flex items-center justify-between mt-5 py-3 border-t border-[var(--border)]">
             <div className="flex items-center gap-4">
-              <span className="text-[13px] text-[#A3A6AD]">Preview</span>
+              <span className="text-[13px] text-[var(--text-2)]">Preview</span>
 
               <div className="flex items-center gap-3">
                 {/* 56px */}
                 <div
-                  className={`w-14 h-14 bg-[#2A2B30] overflow-hidden flex-shrink-0 ${
+                  className={`w-14 h-14 bg-[var(--input)] overflow-hidden flex-shrink-0 ${
                     shape === "circle" ? "rounded-full" : "rounded-[8px]"
                   }`}
                 >
@@ -329,7 +329,7 @@ export function ImageCropDialog({
 
                 {/* 32px */}
                 <div
-                  className={`w-8 h-8 bg-[#2A2B30] overflow-hidden flex-shrink-0 ${
+                  className={`w-8 h-8 bg-[var(--input)] overflow-hidden flex-shrink-0 ${
                     shape === "circle" ? "rounded-full" : "rounded-[6px]"
                   }`}
                 >
@@ -340,7 +340,7 @@ export function ImageCropDialog({
 
                 {/* 20px */}
                 <div
-                  className={`w-5 h-5 bg-[#2A2B30] overflow-hidden flex-shrink-0 ${
+                  className={`w-5 h-5 bg-[var(--input)] overflow-hidden flex-shrink-0 ${
                     shape === "circle" ? "rounded-full" : "rounded-[4px]"
                   }`}
                 >
@@ -351,7 +351,7 @@ export function ImageCropDialog({
               </div>
             </div>
 
-            <span className="text-[12px] text-[#7C7F87]">
+            <span className="text-[12px] text-[var(--text-3)]">
               How it looks in comments, menus and cards
             </span>
           </div>
@@ -360,7 +360,7 @@ export function ImageCropDialog({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between p-6 pt-4 mt-2 border-t border-[#2E2F34] bg-[#212121]">
+        <div className="flex items-center justify-between p-6 pt-4 mt-2 border-t border-[var(--border)] bg-[var(--panel)]">
           <div>
             <button
               type="button"
@@ -410,7 +410,7 @@ export function ImageCropDialog({
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="px-4 py-2 text-[14px] font-medium text-white bg-[#2E2F34] hover:bg-[#3A3C44] rounded-[8px] transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-[14px] font-medium text-white bg-[var(--border)] hover:bg-[#3A3C44] rounded-[8px] transition-colors disabled:opacity-50"
             >
               Cancel
             </button>

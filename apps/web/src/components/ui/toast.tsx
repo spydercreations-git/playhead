@@ -23,7 +23,7 @@ function SingleToast({ toast }: { toast: ToastItem }) {
       onMouseLeave={() => setIsHovered(false)}
       role="status"
       aria-live="polite"
-      className="pointer-events-auto flex w-full items-center justify-between gap-3 rounded-[10px] border border-[#2E2F34] bg-[#212121] p-3.5 shadow-overlay backdrop-blur-none transition-all duration-150 animate-in fade-in slide-in-from-bottom-2"
+      className="pointer-events-auto flex w-full items-center justify-between gap-3 rounded-[10px] border border-[var(--border)] bg-[var(--panel)] p-3.5 shadow-overlay backdrop-blur-none transition-all duration-150 animate-in fade-in slide-in-from-bottom-2"
     >
       <div className="flex items-start gap-2.5 min-w-0 flex-1">
         {toast.type === "success" && (
@@ -41,7 +41,7 @@ function SingleToast({ toast }: { toast: ToastItem }) {
             {toast.message}
           </span>
           {toast.reason && (
-            <span className="text-xs text-[#A3A6AD] mt-0.5">
+            <span className="text-xs text-[var(--text-2)] mt-0.5">
               {toast.reason}
             </span>
           )}
@@ -74,7 +74,7 @@ function SingleToast({ toast }: { toast: ToastItem }) {
                 dismiss(toast.id);
               }
             }}
-            className="rounded-[6px] bg-[#2A2B30] border border-[#2E2F34] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#2C2D33] transition-colors"
+            className="rounded-[6px] bg-[var(--input)] border border-[var(--border)] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[var(--hover)] transition-colors"
           >
             Try again
           </button>
@@ -82,7 +82,7 @@ function SingleToast({ toast }: { toast: ToastItem }) {
 
         <button
           onClick={() => dismiss(toast.id)}
-          className="rounded p-1 text-[#7C7F87] hover:text-white hover:bg-[#2A2B30] transition-colors"
+          className="rounded p-1 text-[var(--text-3)] hover:text-white hover:bg-[var(--input)] transition-colors"
           title="Dismiss"
         >
           <X className="w-3.5 h-3.5" />

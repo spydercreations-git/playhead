@@ -72,14 +72,14 @@ export function ProjectIconRail({
 
   return (
     <>
-      <aside className="w-[56px] min-w-[56px] max-w-[56px] h-screen border-r border-[#2E2F34] bg-[#181818] flex flex-col items-center py-3.5 justify-between shrink-0 select-none z-30">
+      <aside className="w-[56px] min-w-[56px] max-w-[56px] h-screen border-r border-[var(--border)] bg-[var(--bg)] flex flex-col items-center py-3.5 justify-between shrink-0 select-none z-30">
         {/* Top: Mini Playhead Logo & Nav Icons */}
         <div className="flex flex-col items-center gap-4 w-full">
           {/* Logo */}
           <Link
             href="/"
             title="Playhead Home"
-            className="flex h-9 w-9 items-center justify-center rounded-[10px] hover:bg-[#2A2B30] transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-[10px] hover:bg-[var(--input)] transition-colors"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -97,13 +97,13 @@ export function ProjectIconRail({
             </svg>
           </Link>
 
-          <div className="w-6 h-[1px] bg-[#2E2F34]" />
+          <div className="w-6 h-[1px] bg-[var(--border)]" />
 
           {/* Home */}
           <Link
             href="/"
             title="Home"
-            className="group relative flex h-10 w-10 items-center justify-center rounded-[10px] text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white transition-colors"
+            className="group relative flex h-10 w-10 items-center justify-center rounded-[10px] text-[var(--text-2)] hover:bg-[var(--input)] hover:text-white transition-colors"
           >
             <Home className="w-5 h-5" />
             <span className="sr-only">Home</span>
@@ -114,7 +114,7 @@ export function ProjectIconRail({
             type="button"
             onClick={() => setShowSearchModal(true)}
             title="Search (⌘K)"
-            className="group relative flex h-10 w-10 items-center justify-center rounded-[10px] text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white transition-colors"
+            className="group relative flex h-10 w-10 items-center justify-center rounded-[10px] text-[var(--text-2)] hover:bg-[var(--input)] hover:text-white transition-colors"
           >
             <Search className="w-5 h-5" />
             <span className="sr-only">Search</span>
@@ -124,7 +124,7 @@ export function ProjectIconRail({
           <Link
             href="/notifications"
             title="Notifications"
-            className="group relative flex h-10 w-10 items-center justify-center rounded-[10px] text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white transition-colors"
+            className="group relative flex h-10 w-10 items-center justify-center rounded-[10px] text-[var(--text-2)] hover:bg-[var(--input)] hover:text-white transition-colors"
           >
             <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
@@ -141,7 +141,7 @@ export function ProjectIconRail({
             type="button"
             onClick={onToggleUploads}
             title={activeUploadsCount > 0 ? `${activeUploadsCount} uploads in progress` : "Uploads"}
-            className="group relative flex h-10 w-10 items-center justify-center rounded-[10px] text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white transition-colors"
+            className="group relative flex h-10 w-10 items-center justify-center rounded-[10px] text-[var(--text-2)] hover:bg-[var(--input)] hover:text-white transition-colors"
           >
             <UploadCloud className="w-5 h-5" />
             {activeUploadsCount > 0 && (
@@ -170,19 +170,19 @@ export function ProjectIconRail({
                 className="fixed inset-0 z-40"
                 onClick={() => setProfileOpen(false)}
               />
-              <div className="absolute bottom-2 left-12 z-50 w-56 rounded-xl border border-[#2E2F34] bg-[#212121] py-1.5 shadow-overlay">
-                <div className="px-3.5 py-2 border-b border-[#2E2F34]">
+              <div className="absolute bottom-2 left-12 z-50 w-56 rounded-xl border border-[var(--border)] bg-[var(--panel)] py-1.5 shadow-overlay">
+                <div className="px-3.5 py-2 border-b border-[var(--border)]">
                   <p className="text-xs font-semibold text-white truncate">
                     {user?.name || user?.email || ""}
                   </p>
-                  <p className="text-xs text-[#A3A6AD] truncate">
+                  <p className="text-xs text-[var(--text-2)] truncate">
                     {user?.email}
                   </p>
                 </div>
                 <Link
                   href="/settings"
                   onClick={() => setProfileOpen(false)}
-                  className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white transition-colors"
+                  className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-[var(--text-2)] hover:bg-[var(--input)] hover:text-white transition-colors"
                 >
                   <Settings className="w-4 h-4" />
                   <span>Settings</span>
@@ -190,7 +190,7 @@ export function ProjectIconRail({
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-rose-400 hover:bg-[#2A2B30] transition-colors"
+                  className="flex w-full items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-rose-400 hover:bg-[var(--input)] transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Sign out</span>
@@ -208,15 +208,15 @@ export function ProjectIconRail({
             className="fixed inset-0"
             onClick={() => setShowSearchModal(false)}
           />
-          <div className="relative w-full max-w-lg rounded-xl border border-[#2E2F34] bg-[#212121] p-4 shadow-overlay z-10">
-            <div className="flex items-center justify-between pb-3 border-b border-[#2E2F34]">
-              <div className="flex items-center gap-2.5 text-xs text-[#A3A6AD]">
+          <div className="relative w-full max-w-lg rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-overlay z-10">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2.5 text-xs text-[var(--text-2)]">
                 <Search className="w-4 h-4 text-[#4876F3]" />
                 <span className="font-semibold text-white">Search</span>
               </div>
               <button
                 onClick={() => setShowSearchModal(false)}
-                className="text-[#A3A6AD] hover:text-white"
+                className="text-[var(--text-2)] hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -226,10 +226,10 @@ export function ProjectIconRail({
                 type="text"
                 autoFocus
                 placeholder="Search projects, folders, videos..."
-                className="w-full h-10 px-3 rounded-xl bg-[#2A2B30] border border-[#2E2F34] text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3]"
+                className="w-full h-10 px-3 rounded-xl bg-[var(--input)] border border-[var(--border)] text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3]"
               />
             </div>
-            <div className="mt-4 flex items-center justify-between text-xs text-[#7C7F87] pt-2 border-t border-[#2E2F34]/50">
+            <div className="mt-4 flex items-center justify-between text-xs text-[var(--text-3)] pt-2 border-t border-[var(--border)]/50">
               <span>Press ESC to close</span>
               <span>⌘K anywhere to open</span>
             </div>

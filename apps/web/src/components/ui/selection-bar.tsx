@@ -18,7 +18,7 @@ export interface SelectionBarProps {
 /**
  * Playhead Floating Selection Bar
  * Boards/02 Components:
- * - Height 52px, radius 12, fill #26272C, border #2E2F34, shadow
+ * - Height 52px, radius 12, fill var(--panel-raised), border var(--border), shadow
  * - Motion: 0.98 to 1 scale in
  */
 export function SelectionBar({
@@ -38,14 +38,14 @@ export function SelectionBar({
     <div
       role="toolbar"
       aria-label="Selection actions"
-      className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-40 flex items-center h-[52px] px-4 gap-3.5 rounded-[12px] bg-[#26272C] border border-[#2E2F34] shadow-[0_8px_24px_rgba(0,0,0,0.5)] select-none animate-in fade-in-0 zoom-in-95 duration-150 ${className}`}
+      className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-40 flex items-center h-[52px] px-4 gap-3.5 rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-[0_8px_24px_rgba(0,0,0,0.5)] select-none animate-in fade-in-0 zoom-in-95 duration-150 ${className}`}
     >
       {/* Clear button */}
       <button
         type="button"
         onClick={onClear}
         aria-label="Clear selection"
-        className="text-[#A3A6AD] hover:text-white transition-colors p-1 -ml-1 rounded-[6px]"
+        className="text-[var(--text-2)] hover:text-white transition-colors p-1 -ml-1 rounded-[6px]"
       >
         <Close size={18} />
       </button>
@@ -56,7 +56,7 @@ export function SelectionBar({
       </span>
 
       {/* Divider */}
-      <div className="h-5 w-[1px] bg-[#2E2F34]" />
+      <div className="h-5 w-[1px] bg-[var(--border)]" />
 
       {/* Actions */}
       <div className="flex items-center gap-1">
@@ -66,7 +66,7 @@ export function SelectionBar({
               <button
                 type="button"
                 onClick={onDownload}
-                className="flex items-center gap-1.5 h-8 px-2.5 rounded-[8px] text-xs font-semibold text-[#A3A6AD] hover:bg-[#2C2D33] hover:text-white transition-all"
+                className="flex items-center gap-1.5 h-8 px-2.5 rounded-[8px] text-xs font-semibold text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white transition-all"
               >
                 <Download size={16} />
                 <span>Download</span>
@@ -77,7 +77,7 @@ export function SelectionBar({
               <button
                 type="button"
                 onClick={onMove}
-                className="flex items-center gap-1.5 h-8 px-2.5 rounded-[8px] text-xs font-semibold text-[#A3A6AD] hover:bg-[#2C2D33] hover:text-white transition-all"
+                className="flex items-center gap-1.5 h-8 px-2.5 rounded-[8px] text-xs font-semibold text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white transition-all"
               >
                 <DriveFolderUpload size={16} />
                 <span>Move</span>
@@ -88,7 +88,7 @@ export function SelectionBar({
               <button
                 type="button"
                 onClick={onStar}
-                className="flex items-center gap-1.5 h-8 px-2.5 rounded-[8px] text-xs font-semibold text-[#A3A6AD] hover:bg-[#2C2D33] hover:text-white transition-all"
+                className="flex items-center gap-1.5 h-8 px-2.5 rounded-[8px] text-xs font-semibold text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white transition-all"
               >
                 <Star size={16} />
                 <span>Star</span>
@@ -99,7 +99,7 @@ export function SelectionBar({
               <button
                 type="button"
                 onClick={onShare}
-                className="flex items-center gap-1.5 h-8 px-2.5 rounded-[8px] text-xs font-semibold text-[#A3A6AD] hover:bg-[#2C2D33] hover:text-white transition-all"
+                className="flex items-center gap-1.5 h-8 px-2.5 rounded-[8px] text-xs font-semibold text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white transition-all"
               >
                 <Share size={16} />
                 <span>Share</span>

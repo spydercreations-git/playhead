@@ -43,13 +43,13 @@ export function AuthShowcase() {
   const commentDots = [20, 60, 80];
 
   return (
-    <div className="relative flex flex-col justify-between w-full h-full rounded-[16px] bg-[#212121] border border-[#2E2F34] p-8 xl:p-10 select-none overflow-hidden">
+    <div className="relative flex flex-col justify-between w-full h-full rounded-[16px] bg-[var(--panel)] border border-[var(--border)] p-8 xl:p-10 select-none overflow-hidden">
       {/* Top Headline */}
       <div className="z-10 mb-6">
         <h2 className="text-[28px] font-semibold text-white tracking-tight leading-tight">
           Review, share and deliver.
         </h2>
-        <p className="text-[28px] font-semibold text-[#7C7F87] tracking-tight leading-tight mt-1">
+        <p className="text-[28px] font-semibold text-[var(--text-3)] tracking-tight leading-tight mt-1">
           Every client, file and comment in one place.
         </p>
       </div>
@@ -57,20 +57,20 @@ export function AuthShowcase() {
       {/* Center Showcase: Viewfinder + Timeline */}
       <div className="my-auto w-full flex flex-col gap-6 py-2">
         {/* Viewfinder Container */}
-        <div className="relative w-full aspect-[16/10] max-h-[460px] rounded-[12px] bg-[#111113] border border-[#2E2F34] overflow-hidden shadow-xl">
+        <div className="relative w-full aspect-[16/10] max-h-[460px] rounded-[12px] bg-[#111113] border border-[var(--border)] overflow-hidden shadow-xl">
           {/* Rule-of-Thirds Grid Lines */}
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-0 bottom-0 left-1/3 w-[1px] bg-[#2E2F34]/70" />
-            <div className="absolute top-0 bottom-0 left-2/3 w-[1px] bg-[#2E2F34]/70" />
-            <div className="absolute left-0 right-0 top-1/3 h-[1px] bg-[#2E2F34]/70" />
-            <div className="absolute left-0 right-0 top-2/3 h-[1px] bg-[#2E2F34]/70" />
+            <div className="absolute top-0 bottom-0 left-1/3 w-[1px] bg-[var(--border)]/70" />
+            <div className="absolute top-0 bottom-0 left-2/3 w-[1px] bg-[var(--border)]/70" />
+            <div className="absolute left-0 right-0 top-1/3 h-[1px] bg-[var(--border)]/70" />
+            <div className="absolute left-0 right-0 top-2/3 h-[1px] bg-[var(--border)]/70" />
           </div>
 
           {/* Center Crosshair */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <line x1="7" y1="2" x2="7" y2="12" stroke="#7C7F87" strokeWidth="1.5" strokeLinecap="round" />
-              <line x1="2" y1="7" x2="12" y2="7" stroke="#7C7F87" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="7" y1="2" x2="7" y2="12" stroke="var(--text-3)" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="2" y1="7" x2="12" y2="7" stroke="var(--text-3)" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </div>
 
@@ -78,36 +78,36 @@ export function AuthShowcase() {
           <div className="absolute inset-4 pointer-events-none">
             {/* Top-left */}
             <svg className="absolute top-0 left-0 w-5 h-5" viewBox="0 0 20 20" fill="none">
-              <path d="M 20 2 H 2 V 20" stroke="#7C7F87" strokeWidth="2" strokeLinecap="round" />
+              <path d="M 20 2 H 2 V 20" stroke="var(--text-3)" strokeWidth="2" strokeLinecap="round" />
             </svg>
             {/* Top-right */}
             <svg className="absolute top-0 right-0 w-5 h-5" viewBox="0 0 20 20" fill="none">
-              <path d="M 0 2 H 18 V 20" stroke="#7C7F87" strokeWidth="2" strokeLinecap="round" />
+              <path d="M 0 2 H 18 V 20" stroke="var(--text-3)" strokeWidth="2" strokeLinecap="round" />
             </svg>
             {/* Bottom-left */}
             <svg className="absolute bottom-0 left-0 w-5 h-5" viewBox="0 0 20 20" fill="none">
-              <path d="M 2 0 V 18 H 20" stroke="#7C7F87" strokeWidth="2" strokeLinecap="round" />
+              <path d="M 2 0 V 18 H 20" stroke="var(--text-3)" strokeWidth="2" strokeLinecap="round" />
             </svg>
             {/* Bottom-right */}
             <svg className="absolute bottom-0 right-0 w-5 h-5" viewBox="0 0 20 20" fill="none">
-              <path d="M 18 0 V 18 H 0" stroke="#7C7F87" strokeWidth="2" strokeLinecap="round" />
+              <path d="M 18 0 V 18 H 0" stroke="var(--text-3)" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </div>
 
           {/* Top-Left HUD: Red dot + "In review" */}
           <div className="absolute top-5 left-7 flex items-center gap-2 pointer-events-none">
             <span className="w-2 h-2 rounded-full bg-[#F0506E] shadow-[0_0_8px_#F0506E]" />
-            <span className="text-xs font-medium text-[#A3A6AD]">In review</span>
+            <span className="text-xs font-medium text-[var(--text-2)]">In review</span>
           </div>
 
           {/* Top-Right HUD: Timecode */}
           <div className="absolute top-5 right-7 pointer-events-none">
-            <span className="text-xs font-mono tabular-nums text-[#A3A6AD]">00:00:08:12</span>
+            <span className="text-xs font-mono tabular-nums text-[var(--text-2)]">00:00:08:12</span>
           </div>
 
           {/* Bottom-Left HUD: Resolution/FPS */}
           <div className="absolute bottom-5 left-7 pointer-events-none">
-            <span className="text-xs font-mono tabular-nums text-[#7C7F87]">16:9 · 1080p · 24 fps</span>
+            <span className="text-xs font-mono tabular-nums text-[var(--text-3)]">16:9 · 1080p · 24 fps</span>
           </div>
 
           {/* Amber Circle Annotation */}
@@ -126,14 +126,14 @@ export function AuthShowcase() {
           </div>
 
           {/* Pinned Comment Card */}
-          <div className="absolute top-[36%] left-[56%] -translate-x-1/2 rounded-[8px] bg-[#1F2024]/95 border border-[#2E2F34] shadow-xl p-3 max-w-[210px] pointer-events-none backdrop-blur-sm">
+          <div className="absolute top-[36%] left-[56%] -translate-x-1/2 rounded-[8px] bg-[#1F2024]/95 border border-[var(--border)] shadow-xl p-3 max-w-[210px] pointer-events-none backdrop-blur-sm">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full bg-[#0284C7] text-white text-xs font-bold flex items-center justify-center shrink-0">
                 S
               </div>
               <span className="text-xs font-medium text-white">Sarah</span>
-              <span className="text-xs text-[#7C7F87]">·</span>
-              <span className="text-xs font-mono tabular-nums text-[#7C7F87]">00:08</span>
+              <span className="text-xs text-[var(--text-3)]">·</span>
+              <span className="text-xs font-mono tabular-nums text-[var(--text-3)]">00:08</span>
             </div>
             <p className="mt-1.5 text-xs text-white font-normal leading-snug">
               Make the logo bigger here?
@@ -144,7 +144,7 @@ export function AuthShowcase() {
         {/* Timeline under the Viewfinder */}
         <div className="w-full flex flex-col gap-2 px-1">
           {/* Time Labels */}
-          <div className="relative w-full flex justify-between text-xs font-mono tabular-nums text-[#7C7F87]">
+          <div className="relative w-full flex justify-between text-xs font-mono tabular-nums text-[var(--text-3)]">
             <span>00:00</span>
             <span className="absolute left-[20%] -translate-x-1/2">00:02</span>
             <span className="absolute left-[60%] -translate-x-1/2">00:06</span>
@@ -157,7 +157,7 @@ export function AuthShowcase() {
             {Array.from({ length: 11 }).map((_, i) => (
               <div
                 key={i}
-                className="w-[1px] h-1 bg-[#2E2F34]"
+                className="w-[1px] h-1 bg-[var(--border)]"
                 style={{
                   height: i % 2 === 0 ? "4px" : "2px",
                 }}
@@ -166,7 +166,7 @@ export function AuthShowcase() {
           </div>
 
           {/* Track and Progress Bar */}
-          <div className="relative w-full h-[2px] bg-[#2A2B30] rounded-full my-2 flex items-center">
+          <div className="relative w-full h-[2px] bg-[var(--input)] rounded-full my-2 flex items-center">
             {/* Blue Progress Line */}
             <div
               className="h-full bg-[#4876F3] rounded-full"
@@ -202,7 +202,7 @@ export function AuthShowcase() {
       </div>
 
       {/* Bottom Features with Icons */}
-      <div className="pt-4 flex items-center justify-between gap-4 text-xs text-[#A3A6AD] border-t border-[#2E2F34]/50">
+      <div className="pt-4 flex items-center justify-between gap-4 text-xs text-[var(--text-2)] border-t border-[var(--border)]/50">
         {/* Feature 1 */}
         <div className="flex items-center gap-2">
           <svg

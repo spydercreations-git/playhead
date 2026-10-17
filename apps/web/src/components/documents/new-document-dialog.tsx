@@ -172,13 +172,13 @@ export function NewDocumentDialog({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: 4 }}
         transition={dialogTransition}
-        className="relative z-10 bg-[#212121] border border-[#2E2F34] rounded-xl max-w-xl w-full p-6 shadow-overlay"
+        className="relative z-10 bg-[var(--panel)] border border-[var(--border)] rounded-xl max-w-xl w-full p-6 shadow-overlay"
       >
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 p-1 rounded-lg text-[#7C7F87] hover:text-white hover:bg-[#2A2B30] transition-colors"
+          className="absolute top-5 right-5 p-1 rounded-lg text-[var(--text-3)] hover:text-white hover:bg-[var(--input)] transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
@@ -186,7 +186,7 @@ export function NewDocumentDialog({
         <h2 className="text-base font-semibold text-white mb-1">
           Create new document
         </h2>
-        <p className="text-xs text-[#A3A6AD] mb-5">
+        <p className="text-xs text-[var(--text-2)] mb-5">
           Select a template and choose where to save this document.
         </p>
 
@@ -199,7 +199,7 @@ export function NewDocumentDialog({
         <form onSubmit={handleCreate} className="space-y-4">
           {/* Document Title */}
           <div>
-            <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+            <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
               Document title
             </label>
             <input
@@ -207,14 +207,14 @@ export function NewDocumentDialog({
               placeholder="e.g. Q4 Brand Commercial Brief"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full h-10 bg-[#2A2B30] border border-[#2E2F34] rounded-[10px] px-3 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] transition-colors"
+              className="w-full h-10 bg-[var(--input)] border border-[var(--border)] rounded-[10px] px-3 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3] transition-colors"
               autoFocus
             />
           </div>
 
           {/* Location Selector */}
           <div>
-            <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+            <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
               Location (optional)
             </label>
             <ProjectSelect
@@ -229,7 +229,7 @@ export function NewDocumentDialog({
 
           {/* Template Selection Cards */}
           <div>
-            <label className="block text-xs font-medium text-[#A3A6AD] mb-2">
+            <label className="block text-xs font-medium text-[var(--text-2)] mb-2">
               Choose template
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -243,14 +243,14 @@ export function NewDocumentDialog({
                     className={`p-3 rounded-[10px] border cursor-pointer transition-all flex items-start gap-3 select-none ${
                       isSelected
                         ? "bg-[#4876F3]/10 border-[#4876F3] text-white"
-                        : "bg-[#2A2B30] border-[#2E2F34] text-[#A3A6AD] hover:text-white hover:border-[#424344]"
+                        : "bg-[var(--input)] border-[var(--border)] text-[var(--text-2)] hover:text-white hover:border-[var(--border-strong)]"
                     }`}
                   >
                     <div
                       className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                         isSelected
                           ? "bg-[#4876F3] text-white"
-                          : "bg-[#212121] text-[#7C7F87]"
+                          : "bg-[var(--panel)] text-[var(--text-3)]"
                       }`}
                     >
                       <Icon className="w-4 h-4" />
@@ -259,7 +259,7 @@ export function NewDocumentDialog({
                       <div className="text-xs font-semibold text-white">
                         {tmpl.title}
                       </div>
-                      <div className="text-xs text-[#7C7F87] line-clamp-1 mt-0.5">
+                      <div className="text-xs text-[var(--text-3)] line-clamp-1 mt-0.5">
                         {tmpl.desc}
                       </div>
                     </div>
@@ -270,11 +270,11 @@ export function NewDocumentDialog({
           </div>
 
           {/* Footer Submit */}
-          <div className="pt-3 border-t border-[#2E2F34] flex items-center justify-end gap-2">
+          <div className="pt-3 border-t border-[var(--border)] flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-[10px] text-xs font-medium text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
+              className="px-4 py-2 rounded-[10px] text-xs font-medium text-[var(--text-2)] hover:text-white hover:bg-[var(--input)] transition-colors"
             >
               Cancel
             </button>

@@ -11,14 +11,14 @@ export default function SignupPage() {
         <h1 className="text-[28px] font-bold text-white tracking-tight leading-none mb-2">
           Private workspace
         </h1>
-        <p className="text-sm text-[#A3A6AD] mb-8 leading-relaxed">
+        <p className="text-sm text-[var(--text-2)] mb-8 leading-relaxed">
           Public sign up is currently disabled. Playhead is an invite-only workspace for
           Idyll Productions and invited clients.
         </p>
 
         {/* Note Box with Lock Icon */}
-        <div className="rounded-[12px] bg-[#212121] border border-[#2E2F34] p-4 flex items-start gap-3 mb-6">
-          <div className="w-8 h-8 rounded-[8px] bg-[#2A2B30] flex items-center justify-center text-[#A3A6AD] shrink-0 mt-0.5">
+        <div className="rounded-[12px] bg-[var(--panel)] border border-[var(--border)] p-4 flex items-start gap-3 mb-6">
+          <div className="w-8 h-8 rounded-[8px] bg-[var(--input)] flex items-center justify-center text-[var(--text-2)] shrink-0 mt-0.5">
             <svg
               width="15"
               height="15"
@@ -35,7 +35,7 @@ export default function SignupPage() {
           </div>
           <div className="text-xs">
             <p className="font-semibold text-white">How to get access:</p>
-            <p className="text-[#7C7F87] mt-1 leading-relaxed">
+            <p className="text-[var(--text-3)] mt-1 leading-relaxed">
               Ask the person who invited you for access. Once invited, use your email to sign in directly.
             </p>
           </div>

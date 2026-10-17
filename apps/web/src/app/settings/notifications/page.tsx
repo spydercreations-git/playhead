@@ -117,17 +117,17 @@ export default function NotificationSettingsPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-[#424344]/50">
+      <div className="flex items-center justify-between pb-4 border-b border-[var(--border-strong)]/50">
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="p-1.5 rounded-lg hover:bg-[#2E2F34] text-[#A3A6AD] hover:text-white"
+            className="p-1.5 rounded-lg hover:bg-[var(--border)] text-[var(--text-2)] hover:text-white"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
             <h1 className="text-xl font-bold text-white tracking-tight">Notification Preferences</h1>
-            <p className="text-xs text-[#A3A6AD] mt-0.5">
+            <p className="text-xs text-[var(--text-2)] mt-0.5">
               Choose how and when Playhead notifies you about project activity
             </p>
           </div>
@@ -152,8 +152,8 @@ export default function NotificationSettingsPage() {
         {/* Content */}
         <div className="p-8 max-w-4xl w-full mx-auto space-y-8">
           {/* Notification Frequency */}
-          <div className="bg-[#181818] border border-[#212121] rounded-xl p-6 space-y-4">
-            <h2 className="text-xs font-bold  text-[#A3A6AD]">
+          <div className="bg-[var(--bg)] border border-[var(--panel)] rounded-xl p-6 space-y-4">
+            <h2 className="text-xs font-bold  text-[var(--text-2)]">
               Email Frequency
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -162,7 +162,7 @@ export default function NotificationSettingsPage() {
                 className={`p-4 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
                   frequency === "instant"
                     ? "bg-[#4876F3]/10 border-[#4876F3] text-white"
-                    : "bg-[#181818] border-[#212121] text-[#A3A6AD] hover:border-[#424344]"
+                    : "bg-[var(--bg)] border-[var(--panel)] text-[var(--text-2)] hover:border-[var(--border-strong)]"
                 }`}
               >
                 <input
@@ -174,7 +174,7 @@ export default function NotificationSettingsPage() {
                 />
                 <div>
                   <p className="text-xs font-semibold text-white">Send right away</p>
-                  <p className="text-xs text-[#A3A6AD] mt-0.5">
+                  <p className="text-xs text-[var(--text-2)] mt-0.5">
                     Receive an email immediately when events occur
                   </p>
                 </div>
@@ -185,7 +185,7 @@ export default function NotificationSettingsPage() {
                 className={`p-4 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
                   frequency === "daily"
                     ? "bg-[#4876F3]/10 border-[#4876F3] text-white"
-                    : "bg-[#181818] border-[#212121] text-[#A3A6AD] hover:border-[#424344]"
+                    : "bg-[var(--bg)] border-[var(--panel)] text-[var(--text-2)] hover:border-[var(--border-strong)]"
                 }`}
               >
                 <input
@@ -197,7 +197,7 @@ export default function NotificationSettingsPage() {
                 />
                 <div>
                   <p className="text-xs font-semibold text-white">Daily summary</p>
-                  <p className="text-xs text-[#A3A6AD] mt-0.5">
+                  <p className="text-xs text-[var(--text-2)] mt-0.5">
                     A single digest sent every morning at 9:00 AM
                   </p>
                 </div>
@@ -206,14 +206,14 @@ export default function NotificationSettingsPage() {
           </div>
 
           {/* Events Matrix */}
-          <div className="bg-[#181818] border border-[#212121] rounded-xl overflow-hidden">
-            <div className="p-6 border-b border-[#212121]">
-              <h2 className="text-xs font-bold  text-[#A3A6AD]">
+          <div className="bg-[var(--bg)] border border-[var(--panel)] rounded-xl overflow-hidden">
+            <div className="p-6 border-b border-[var(--panel)]">
+              <h2 className="text-xs font-bold  text-[var(--text-2)]">
                 Activity Alerts
               </h2>
             </div>
 
-            <div className="divide-y divide-[#212121]">
+            <div className="divide-y divide-[var(--panel)]">
               {DEFAULT_EVENTS.map((evt) => {
                 const current = preferences[evt.type] || { in_app: true, email: true };
 
@@ -221,7 +221,7 @@ export default function NotificationSettingsPage() {
                   <div key={evt.type} className="p-5 flex items-center justify-between gap-4">
                     <div className="space-y-0.5 max-w-lg">
                       <p className="text-xs font-medium text-white">{evt.label}</p>
-                      <p className="text-xs text-[#A3A6AD]">{evt.desc}</p>
+                      <p className="text-xs text-[var(--text-2)]">{evt.desc}</p>
                     </div>
 
                     <div className="flex items-center gap-6 shrink-0">
@@ -231,9 +231,9 @@ export default function NotificationSettingsPage() {
                           type="checkbox"
                           checked={current.in_app}
                           onChange={() => toggleSetting(evt.type, "in_app")}
-                          className="rounded border-[#212121] text-[#4876F3] focus:ring-0"
+                          className="rounded border-[var(--panel)] text-[#4876F3] focus:ring-0"
                         />
-                        <span className="text-xs text-[#A3A6AD]">In-app</span>
+                        <span className="text-xs text-[var(--text-2)]">In-app</span>
                       </label>
 
                       {/* Email Toggle */}
@@ -242,9 +242,9 @@ export default function NotificationSettingsPage() {
                           type="checkbox"
                           checked={current.email}
                           onChange={() => toggleSetting(evt.type, "email")}
-                          className="rounded border-[#212121] text-[#4876F3] focus:ring-0"
+                          className="rounded border-[var(--panel)] text-[#4876F3] focus:ring-0"
                         />
-                        <span className="text-xs text-[#A3A6AD]">Email</span>
+                        <span className="text-xs text-[var(--text-2)]">Email</span>
                       </label>
                     </div>
                   </div>

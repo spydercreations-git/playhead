@@ -51,7 +51,7 @@ export function SectionHeader({
         className={`h-4.5 w-4.5 rounded-[5px] flex items-center justify-center transition-all ${
           isAllSelected || isPartlySelected
             ? "bg-[#4876F3] border border-[#4876F3] text-white"
-            : "border border-[#7C7F87]/60 bg-transparent hover:border-white text-transparent"
+            : "border border-[var(--text-3)]/60 bg-transparent hover:border-white text-transparent"
         }`}
         title={isAllSelected ? "Deselect all" : "Select all"}
       >
@@ -63,7 +63,7 @@ export function SectionHeader({
       <button
         type="button"
         onClick={onToggleCollapse}
-        className="flex items-center justify-center h-5 w-5 rounded text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
+        className="flex items-center justify-center h-5 w-5 rounded text-[var(--text-2)] hover:text-white hover:bg-[var(--input)] transition-colors"
       >
         <ChevronDown
           className={`w-3.5 h-3.5 transition-transform duration-200 ${
@@ -75,7 +75,7 @@ export function SectionHeader({
       {/* Label: e.g. "4 folders · 21.18 GB" */}
       <span
         onClick={onToggleCollapse}
-        className="text-xs font-semibold text-[#A3A6AD] hover:text-white cursor-pointer transition-colors"
+        className="text-xs font-semibold text-[var(--text-2)] hover:text-white cursor-pointer transition-colors"
       >
         {text}
       </span>

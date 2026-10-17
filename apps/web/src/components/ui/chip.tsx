@@ -39,7 +39,7 @@ const STATUS_CONFIG: Record<StatusChipVariant, StatusConfig> = {
   },
   draft: {
     label: "Draft",
-    color: "#7C7F87",
+    color: "var(--text-3)",
     bg: "rgba(124, 127, 135, 0.16)",
   },
   team_only: {
@@ -101,14 +101,14 @@ export function FilterChip({
       type="button"
       className={`inline-flex items-center gap-2 h-8 px-3.5 rounded-full text-[13px] font-medium transition-all duration-150 select-none ${
         active
-          ? "bg-[#2C2D33] text-white border border-[#424344]"
-          : "bg-transparent text-[#A3A6AD] border border-[#2E2F34] hover:border-[#424344] hover:text-white"
+          ? "bg-[var(--hover)] text-white border border-[var(--border-strong)]"
+          : "bg-transparent text-[var(--text-2)] border border-[var(--border)] hover:border-[var(--border-strong)] hover:text-white"
       } ${className}`}
       {...props}
     >
       <span>{children}</span>
       {typeof count === "number" && (
-        <span className={active ? "text-white/70" : "text-[#7C7F87]"}>{count}</span>
+        <span className={active ? "text-white/70" : "text-[var(--text-3)]"}>{count}</span>
       )}
     </button>
   );
@@ -119,12 +119,12 @@ export interface TagProps extends React.HTMLAttributes<HTMLSpanElement> {}
 /**
  * Metadata Tag Component (MP4, 4K, v3)
  * Boards/02 Components:
- * - Height 24px, radius 6, bg #2A2B30, text 12 Medium #A3A6AD
+ * - Height 24px, radius 6, bg var(--input), text 12 Medium var(--text-2)
  */
 export function Tag({ children, className = "", ...props }: TagProps) {
   return (
     <span
-      className={`inline-flex items-center h-6 px-2 rounded-[6px] bg-[#2A2B30] text-xs font-medium text-[#A3A6AD] select-none ${className}`}
+      className={`inline-flex items-center h-6 px-2 rounded-[6px] bg-[var(--input)] text-xs font-medium text-[var(--text-2)] select-none ${className}`}
       {...props}
     >
       {children}

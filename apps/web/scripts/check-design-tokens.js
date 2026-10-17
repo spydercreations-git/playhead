@@ -17,16 +17,16 @@ const SRC_DIR = path.resolve(__dirname, '../src');
 
 // Explicit Design System Token Palette
 const ALLOWED_TOKENS = new Set([
-  '#181818', // bg
-  '#212121', // panel
-  '#26272c', // panel-raised
-  '#2a2b30', // input
-  '#2c2d33', // hover
-  '#2e2f34', // border
-  '#424344', // border-strong
+  '#0a0a0b', // bg
+  '#111113', // panel
+  '#17171a', // panel-raised
+  '#1a1a1e', // input
+  '#1e1e22', // hover
+  '#232327', // border
+  '#34343a', // border-strong
   '#ffffff', // text / white
-  '#a3a6ad', // text-2
-  '#7c7f87', // text-3
+  '#a1a1aa', // text-2
+  '#71717a', // text-3
   '#4876f3', // accent
   '#3b67e0', // button
   '#3560d6', // button-hover
@@ -36,6 +36,8 @@ const ALLOWED_TOKENS = new Set([
   '#9787ff', // purple
   '#fa457b', // pink
   '#000000', // black
+  '#3b5bdb', // glow blue
+  '#5b3fd6', // glow purple
 ]);
 
 // 1. Google Brand SVG logo colors ("Continue with Google" button)
@@ -191,11 +193,24 @@ function checkDirectory(dir, results) {
         }
       });
 
-      // 4. Gradients: bg-gradient-
-      const gradMatches = content.match(/bg-gradient-[a-z]+/g);
+      // 4. Gradients: only glow and client picture fade allowed
+      const gradMatches = content.match(/bg-gradient-[a-z0-9_-]+/g);
       if (gradMatches) {
-        results.gradientCount += gradMatches.length;
-        results.gradientOccurrences.push({ file: relPath, matches: gradMatches });
+        const disallowed = gradMatches.filter(m => {
+          // Allow client picture fade
+          if ((relPath.includes('client') || relPath.includes('cards')) && (m === 'bg-gradient-to-t' || m === 'bg-gradient-to-b')) {
+            return false;
+          }
+          // Allow glow
+          if (relPath.includes('globals.css') || relPath.includes('app-shell')) {
+            return false;
+          }
+          return true;
+        });
+        if (disallowed.length > 0) {
+          results.gradientCount += disallowed.length;
+          results.gradientOccurrences.push({ file: relPath, matches: disallowed });
+        }
       }
 
       // 5. Exaggerated hover scales: scale-105/110/125

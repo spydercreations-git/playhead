@@ -128,7 +128,7 @@ export default function OnboardingPage() {
 
   if (loadingUser) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#181818]">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#4876F3] border-t-transparent" />
       </div>
     );
@@ -136,11 +136,11 @@ export default function OnboardingPage() {
 
   if (user && !user.email_verified) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12 bg-[#181818]">
+      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12 bg-[var(--bg)]">
         <div className="mb-8 flex justify-center">
           <PlayheadLogoWithText width={170} color="#FFFFFF" />
         </div>
-        <div className="w-full max-w-[460px] rounded-xl border border-[#424344] bg-[#212121] p-8 text-center shadow-overlay">
+        <div className="w-full max-w-[460px] rounded-xl border border-[var(--border-strong)] bg-[var(--panel)] p-8 text-center shadow-overlay">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
@@ -149,10 +149,10 @@ export default function OnboardingPage() {
             </svg>
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Email verification required</h2>
-          <p className="text-sm text-[#A3A6AD] mb-6">
+          <p className="text-sm text-[var(--text-2)] mb-6">
             Please verify your email address (<span className="text-white font-medium">{user.email}</span>) before setting up your company workspace.
           </p>
-          <div className="rounded-lg border border-[#424344] bg-[#2E2F34] p-3 text-xs text-[#A3A6AD] mb-6">
+          <div className="rounded-lg border border-[var(--border-strong)] bg-[var(--border)] p-3 text-xs text-[var(--text-2)] mb-6">
             In local development, check Mailpit for the activation link at{" "}
             <a
               href="http://localhost:8025"
@@ -175,14 +175,14 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12 bg-[#181818]">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12 bg-[var(--bg)]">
       <div className="mb-8 flex justify-center">
         <PlayheadLogoWithText width={170} color="#FFFFFF" />
       </div>
 
-      <div className="w-full max-w-[520px] rounded-xl border border-[#424344] bg-[#212121] p-8 shadow-overlay">
+      <div className="w-full max-w-[520px] rounded-xl border border-[var(--border-strong)] bg-[var(--panel)] p-8 shadow-overlay">
         {/* Progress Tracker */}
-        <div className="mb-8 flex items-center justify-between border-b border-[#424344] pb-4">
+        <div className="mb-8 flex items-center justify-between border-b border-[var(--border-strong)] pb-4">
           <div className="flex items-center gap-3">
             <div
               className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
@@ -191,22 +191,22 @@ export default function OnboardingPage() {
             >
               {step > 1 ? <Check className="w-3.5 h-3.5" /> : "1"}
             </div>
-            <span className={`text-xs font-semibold ${step === 1 ? "text-white" : "text-[#A3A6AD]"}`}>
+            <span className={`text-xs font-semibold ${step === 1 ? "text-white" : "text-[var(--text-2)]"}`}>
               Workspace
             </span>
           </div>
 
-          <div className="h-0.5 flex-1 mx-4 bg-[#424344]" />
+          <div className="h-0.5 flex-1 mx-4 bg-[var(--border-strong)]" />
 
           <div className="flex items-center gap-3">
             <div
               className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
-                step === 2 ? "bg-[#4876F3] text-white" : "bg-[#2E2F34] text-[#A3A6AD]"
+                step === 2 ? "bg-[#4876F3] text-white" : "bg-[var(--border)] text-[var(--text-2)]"
               }`}
             >
               2
             </div>
-            <span className={`text-xs font-semibold ${step === 2 ? "text-white" : "text-[#A3A6AD]"}`}>
+            <span className={`text-xs font-semibold ${step === 2 ? "text-white" : "text-[var(--text-2)]"}`}>
               Team (Trial 5 seats)
             </span>
           </div>
@@ -222,13 +222,13 @@ export default function OnboardingPage() {
           <form onSubmit={handleStep1Submit} className="space-y-5">
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white">Create your workspace</h1>
-              <p className="mt-1 text-xs text-[#A3A6AD]">
+              <p className="mt-1 text-xs text-[var(--text-2)]">
                 A shared home for your video projects, reviews, boards, and files.
               </p>
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-[#A3A6AD]">
+              <label className="mb-1.5 block text-xs font-medium text-[var(--text-2)]">
                 Company or agency name
               </label>
               <input
@@ -237,16 +237,16 @@ export default function OnboardingPage() {
                 value={companyName}
                 onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="Idyll Productions"
-                className="w-full rounded-lg border border-[#424344] bg-[#2E2F34] px-3.5 py-2.5 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3]"
+                className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--border)] px-3.5 py-2.5 text-sm text-white placeholder-[var(--text-3)] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3]"
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-[#A3A6AD]">
+              <label className="mb-1.5 block text-xs font-medium text-[var(--text-2)]">
                 Workspace URL slug
               </label>
-              <div className="flex rounded-lg border border-[#424344] bg-[#2E2F34] overflow-hidden focus-within:border-[#4876F3] focus-within:ring-1 focus-within:ring-[#4876F3]">
-                <span className="flex items-center px-3 text-xs text-[#7C7F87] border-r border-[#424344] select-none">
+              <div className="flex rounded-lg border border-[var(--border-strong)] bg-[var(--border)] overflow-hidden focus-within:border-[#4876F3] focus-within:ring-1 focus-within:ring-[#4876F3]">
+                <span className="flex items-center px-3 text-xs text-[var(--text-3)] border-r border-[var(--border-strong)] select-none">
                   app.playhead.io/
                 </span>
                 <input
@@ -255,12 +255,12 @@ export default function OnboardingPage() {
                   value={slug}
                   onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
                   placeholder="idyll-productions"
-                  className="w-full bg-transparent px-3 py-2.5 text-sm text-white placeholder-[#7C7F87] focus:outline-none"
+                  className="w-full bg-transparent px-3 py-2.5 text-sm text-white placeholder-[var(--text-3)] focus:outline-none"
                 />
               </div>
             </div>
 
-            <div className="rounded-lg border border-[#424344] bg-[#2E2F34]/50 p-3 text-xs text-[#A3A6AD]">
+            <div className="rounded-lg border border-[var(--border-strong)] bg-[var(--border)]/50 p-3 text-xs text-[var(--text-2)]">
               <span className="font-semibold text-white">14-day free trial active:</span> Full agency access including 1 TB cloud storage and up to 5 team member seats.
             </div>
 
@@ -278,7 +278,7 @@ export default function OnboardingPage() {
           <form onSubmit={handleStep2Submit} className="space-y-5">
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white">Invite your team</h1>
-              <p className="mt-1 text-xs text-[#A3A6AD]">
+              <p className="mt-1 text-xs text-[var(--text-2)]">
                 Add editors, producers, or clients. Your 14-day trial includes up to 5 team seats (1 owner + 4 members).
               </p>
             </div>
@@ -291,12 +291,12 @@ export default function OnboardingPage() {
                     value={inv.email}
                     onChange={(e) => updateInviteRow(idx, "email", e.target.value)}
                     placeholder="teammate@company.com"
-                    className="flex-1 rounded-lg border border-[#424344] bg-[#2E2F34] px-3 py-2 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none"
+                    className="flex-1 rounded-lg border border-[var(--border-strong)] bg-[var(--border)] px-3 py-2 text-sm text-white placeholder-[var(--text-3)] focus:border-[#4876F3] focus:outline-none"
                   />
                   <select
                     value={inv.role}
                     onChange={(e) => updateInviteRow(idx, "role", e.target.value as any)}
-                    className="rounded-lg border border-[#424344] bg-[#2E2F34] px-2.5 py-2 text-xs text-white focus:border-[#4876F3] focus:outline-none"
+                    className="rounded-lg border border-[var(--border-strong)] bg-[var(--border)] px-2.5 py-2 text-xs text-white focus:border-[#4876F3] focus:outline-none"
                   >
                     <option value="admin">Admin</option>
                     <option value="member">Member</option>
@@ -306,7 +306,7 @@ export default function OnboardingPage() {
                     <button
                       type="button"
                       onClick={() => removeInviteRow(idx)}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg text-[#A3A6AD] hover:bg-[#2E2F34] hover:text-white"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--text-2)] hover:bg-[var(--border)] hover:text-white"
                       title="Remove row"
                     >
                       <X className="w-4 h-4" />
@@ -337,7 +337,7 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={() => router.push("/")}
-                className="rounded-lg border border-[#424344] bg-[#2E2F34] px-4 py-2.5 text-sm font-semibold text-[#A3A6AD] hover:bg-[#2E2F34] hover:text-white transition-colors"
+                className="rounded-lg border border-[var(--border-strong)] bg-[var(--border)] px-4 py-2.5 text-sm font-semibold text-[var(--text-2)] hover:bg-[var(--border)] hover:text-white transition-colors"
               >
                 Skip for now
               </button>

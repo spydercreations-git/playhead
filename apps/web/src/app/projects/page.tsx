@@ -88,11 +88,11 @@ export default function ProjectsPage() {
   if (!authLoading && user && !company && !isClient) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <div className="w-16 h-16 rounded-full bg-[#2A2B30] border border-[#2E2F34] flex items-center justify-center mb-4 text-[#A3A6AD]">
-          <Folder className="w-8 h-8 text-[#A3A6AD]" />
+        <div className="w-16 h-16 rounded-full bg-[var(--input)] border border-[var(--border)] flex items-center justify-center mb-4 text-[var(--text-2)]">
+          <Folder className="w-8 h-8 text-[var(--text-2)]" />
         </div>
         <h2 className="text-xl font-bold text-white mb-2">Projects</h2>
-        <p className="text-sm text-[#A3A6AD] max-w-md">
+        <p className="text-sm text-[var(--text-2)] max-w-md">
           Your account isn&apos;t part of a team yet. Ask an Admin to invite you.
         </p>
       </div>
@@ -107,7 +107,7 @@ export default function ProjectsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-white">
             Projects
           </h1>
-          <p className="text-xs text-[#A3A6AD] mt-0.5">
+          <p className="text-xs text-[var(--text-2)] mt-0.5">
             {projects.length} {projects.length === 1 ? "project" : "projects"} across{" "}
             {clientCount} {clientCount === 1 ? "client" : "clients"}
           </p>
@@ -115,13 +115,13 @@ export default function ProjectsPage() {
 
         <div className="flex flex-wrap items-center gap-3">
           {/* Search */}
-          <div className="flex h-9 items-center rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] px-3 text-xs text-[#7C7F87] focus-within:border-[#4876F3] transition-colors">
+          <div className="flex h-9 items-center rounded-[10px] bg-[var(--input)] border border-[var(--border)] px-3 text-xs text-[var(--text-3)] focus-within:border-[#4876F3] transition-colors">
             <input
               type="text"
               placeholder="Search projects..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-40 bg-transparent text-white placeholder-[#7C7F87] focus:outline-none text-xs"
+              className="w-40 bg-transparent text-white placeholder-[var(--text-3)] focus:outline-none text-xs"
             />
           </div>
 
@@ -131,7 +131,7 @@ export default function ProjectsPage() {
               <select
                 value={selectedClientId}
                 onChange={(e) => setSelectedClientId(e.target.value)}
-                className="h-9 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-3 pr-8 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors"
+                className="h-9 rounded-[10px] bg-[var(--input)] border border-[var(--border)] pl-3 pr-8 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors"
               >
                 <option value="">All Clients</option>
                 {clientOptions.map((c: any) => (
@@ -140,7 +140,7 @@ export default function ProjectsPage() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="w-3.5 h-3.5 text-[#7C7F87] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-3.5 h-3.5 text-[var(--text-3)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           )}
 
@@ -149,22 +149,22 @@ export default function ProjectsPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-9 rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-3 pr-8 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors"
+              className="h-9 rounded-[10px] bg-[var(--input)] border border-[var(--border)] pl-3 pr-8 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors"
             >
               <option value="active">Active</option>
               <option value="archived">Archived</option>
             </select>
-            <ChevronDown className="w-3.5 h-3.5 text-[#7C7F87] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-[var(--text-3)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {/* View toggle */}
-          <div className="flex rounded-lg bg-[#212121] border border-[#2E2F34] p-0.5">
+          <div className="flex rounded-lg bg-[var(--panel)] border border-[var(--border)] p-0.5">
             <button
               onClick={() => setView("grid")}
               className={`px-2.5 py-1 text-xs font-medium rounded ${
                 view === "grid"
-                  ? "bg-[#2E2F34] text-white"
-                  : "text-[#A3A6AD] hover:text-white"
+                  ? "bg-[var(--border)] text-white"
+                  : "text-[var(--text-2)] hover:text-white"
               }`}
             >
               Grid
@@ -173,8 +173,8 @@ export default function ProjectsPage() {
               onClick={() => setView("table")}
               className={`px-2.5 py-1 text-xs font-medium rounded ${
                 view === "table"
-                  ? "bg-[#2E2F34] text-white"
-                  : "text-[#A3A6AD] hover:text-white"
+                  ? "bg-[var(--border)] text-white"
+                  : "text-[var(--text-2)] hover:text-white"
               }`}
             >
               List
@@ -201,7 +201,7 @@ export default function ProjectsPage() {
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 ${
               selectedClientId === ""
                 ? "bg-[#4876F3] text-white font-semibold shadow-sm"
-                : "bg-[#212121] border border-[#2E2F34] text-[#A3A6AD] hover:text-white hover:border-[#424344]"
+                : "bg-[var(--panel)] border border-[var(--border)] text-[var(--text-2)] hover:text-white hover:border-[var(--border-strong)]"
             }`}
           >
             All ({projects.length})
@@ -240,11 +240,11 @@ export default function ProjectsPage() {
                     ? "ring-2 ring-[#4876F3] bg-[#4876F3]/30 text-white font-semibold scale-[1.015]"
                     : isSelected
                     ? "bg-[#4876F3] text-white font-semibold shadow-sm"
-                    : "bg-[#212121] border border-[#2E2F34] text-[#A3A6AD] hover:text-white hover:border-[#424344]"
+                    : "bg-[var(--panel)] border border-[var(--border)] text-[var(--text-2)] hover:text-white hover:border-[var(--border-strong)]"
                 }`}
               >
                 <span>{client.name}</span>
-                <span className={`text-xs ${isSelected || isDropTarget ? "text-white/80" : "text-[#7C7F87]"}`}>
+                <span className={`text-xs ${isSelected || isDropTarget ? "text-white/80" : "text-[var(--text-3)]"}`}>
                   {isDropTarget ? "Drop to move" : count}
                 </span>
               </button>
@@ -259,17 +259,17 @@ export default function ProjectsPage() {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-44 rounded-xl bg-[#212121] border border-[#424344] animate-pulse"
+              className="h-44 rounded-xl bg-[var(--panel)] border border-[var(--border-strong)] animate-pulse"
             />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#424344] bg-[#212121]/50 py-16 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#2E2F34] text-[#4876F3] mb-3">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--panel)]/50 py-16 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--border)] text-[#4876F3] mb-3">
             <Folder className="w-6 h-6 text-[#4876F3]" />
           </div>
           <h3 className="text-base font-semibold text-white">No projects found</h3>
-          <p className="mt-1 text-xs text-[#A3A6AD] max-w-sm">
+          <p className="mt-1 text-xs text-[var(--text-2)] max-w-sm">
             {search
               ? "No projects matched your search query."
               : "No projects in this view yet."}
@@ -312,9 +312,9 @@ export default function ProjectsPage() {
           ))}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[#424344] bg-[#212121]">
+        <div className="overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--panel)]">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-[#424344] bg-[#2E2F34]/50 text-[#A3A6AD]">
+            <thead className="border-b border-[var(--border-strong)] bg-[var(--border)]/50 text-[var(--text-2)]">
               <tr>
                 <th className="py-3 px-4 font-medium">Project</th>
                 <th className="py-3 px-4 font-medium">Client</th>
@@ -325,11 +325,11 @@ export default function ProjectsPage() {
                 <th className="py-3 px-4 text-right font-medium">Open</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#424344]/40">
+            <tbody className="divide-y divide-[var(--border-strong)]/40">
               {filtered.map((project) => (
                 <tr
                   key={project.id}
-                  className="hover:bg-[#2E2F34]/40 transition-colors"
+                  className="hover:bg-[var(--border)]/40 transition-colors"
                 >
                   <td className="py-3.5 px-4 font-semibold text-white">
                     <Link
@@ -346,26 +346,26 @@ export default function ProjectsPage() {
                     <span
                       className={`text-xs px-1.5 py-0.5 rounded  font-bold ${
                         project.status === "archived"
-                          ? "bg-[#424344] text-[#A3A6AD]"
+                          ? "bg-[var(--border-strong)] text-[var(--text-2)]"
                           : "bg-green-500/20 text-green-400"
                       }`}
                     >
                       {project.status}
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 text-[#A3A6AD]">
+                  <td className="py-3.5 px-4 text-[var(--text-2)]">
                     {project.video_count || 0} videos, {project.file_count || 0} files, {project.folder_count || 0} folders
                   </td>
-                  <td className="py-3.5 px-4 text-[#A3A6AD]">
+                  <td className="py-3.5 px-4 text-[var(--text-2)]">
                     {formatBytes(project.total_bytes || 0)}
                   </td>
-                  <td className="py-3.5 px-4 text-[#A3A6AD]">
+                  <td className="py-3.5 px-4 text-[var(--text-2)]">
                     {formatDate(project.updated_at)}
                   </td>
                   <td className="py-3.5 px-4 text-right">
                     <Link
                       href={`/projects/${project.id}`}
-                      className="rounded bg-[#2E2F34] px-3 py-1 text-xs font-semibold text-white hover:bg-[#4876F3]"
+                      className="rounded bg-[var(--border)] px-3 py-1 text-xs font-semibold text-white hover:bg-[#4876F3]"
                     >
                       Open
                     </Link>
@@ -380,24 +380,24 @@ export default function ProjectsPage() {
       {/* Move Project to Client Confirmation Modal */}
       {moveConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-xl bg-[#212121] border border-[#2E2F34] p-6 shadow-overlay space-y-4">
+          <div className="w-full max-w-md rounded-xl bg-[var(--panel)] border border-[var(--border)] p-6 shadow-overlay space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[#4876F3]/20 border border-[#4876F3]/30 flex items-center justify-center text-[#4876F3]">
                 <Folder className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-white">Move project to {moveConfirm.targetClient.name}?</h3>
-                <p className="text-xs text-[#A3A6AD] mt-0.5">Moving "{moveConfirm.project.name}"</p>
+                <p className="text-xs text-[var(--text-2)] mt-0.5">Moving "{moveConfirm.project.name}"</p>
               </div>
             </div>
-            <p className="text-xs text-[#A3A6AD] leading-relaxed">
+            <p className="text-xs text-[var(--text-2)] leading-relaxed">
               This project will be moved under <span className="text-white font-medium">{moveConfirm.targetClient.name}</span>. Members with client-level access will be updated.
             </p>
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setMoveConfirm(null)}
-                className="px-4 py-2 rounded-lg bg-[#2A2B30] hover:bg-[#2E2F34] text-xs font-semibold text-white transition-colors"
+                className="px-4 py-2 rounded-lg bg-[var(--input)] hover:bg-[var(--border)] text-xs font-semibold text-white transition-colors"
               >
                 Cancel
               </button>

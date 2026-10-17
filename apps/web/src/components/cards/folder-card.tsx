@@ -59,7 +59,7 @@ export function FolderCard({
 
   const borderColor = isDropTarget || isSelected
     ? "#4876F3"
-    : "#2E2F34";
+    : "var(--border)";
 
   const borderWidth = isDropTarget ? 2 : 1;
 
@@ -84,10 +84,10 @@ export function FolderCard({
       >
         <path
           d="M0 22 V12 q0 -10 10 -10 h80 q8 0 13 5 l6 6 q4 4 10 4 V22 H0z"
-          fill="#26272C"
+          fill="var(--panel-raised)"
           stroke={borderColor}
           strokeWidth={borderWidth}
-          className="transition-colors group-hover:stroke-[#424344]"
+          className="transition-colors group-hover:stroke-[var(--border-strong)]"
         />
         <rect
           x="0"
@@ -95,10 +95,10 @@ export function FolderCard({
           width="100%"
           height="272"
           rx="12"
-          fill="#212121"
+          fill="var(--panel)"
           stroke={borderColor}
           strokeWidth={borderWidth}
-          className="transition-colors group-hover:stroke-[#424344]"
+          className="transition-colors group-hover:stroke-[var(--border-strong)]"
         />
       </svg>
 
@@ -106,8 +106,8 @@ export function FolderCard({
         {/* Preview Container: 1 big + 2 small slots, 6px gap, radius 8, height 150px */}
         <div className="relative h-[150px] w-full">
           {thumbnails.length === 0 ? (
-            <div className="h-[150px] w-full rounded-[8px] bg-[#2C2D33] flex items-center justify-center text-[#7C7F87]">
-              <Folder size={36} className="text-[#7C7F87]" />
+            <div className="h-[150px] w-full rounded-[8px] bg-[var(--hover)] flex items-center justify-center text-[var(--text-3)]">
+              <Folder size={36} className="text-[var(--text-3)]" />
             </div>
           ) : (
             <div className="h-[150px] w-full flex gap-1.5">
@@ -120,8 +120,8 @@ export function FolderCard({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-[#2C2D33] flex items-center justify-center text-[#7C7F87]">
-                    <Folder size={24} className="text-[#7C7F87]" />
+                  <div className="w-full h-full bg-[var(--hover)] flex items-center justify-center text-[var(--text-3)]">
+                    <Folder size={24} className="text-[var(--text-3)]" />
                   </div>
                 )}
               </div>
@@ -136,8 +136,8 @@ export function FolderCard({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-[#2C2D33] flex items-center justify-center text-[#7C7F87]">
-                      <Folder size={18} className="text-[#7C7F87]" />
+                    <div className="w-full h-full bg-[var(--hover)] flex items-center justify-center text-[var(--text-3)]">
+                      <Folder size={18} className="text-[var(--text-3)]" />
                     </div>
                   )}
                 </div>
@@ -149,8 +149,8 @@ export function FolderCard({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-[#2C2D33] flex items-center justify-center text-[#7C7F87]">
-                      <Folder size={18} className="text-[#7C7F87]" />
+                    <div className="w-full h-full bg-[var(--hover)] flex items-center justify-center text-[var(--text-3)]">
+                      <Folder size={18} className="text-[var(--text-3)]" />
                     </div>
                   )}
                 </div>
@@ -168,7 +168,7 @@ export function FolderCard({
             className={`folder-checkbox absolute top-2 left-2 h-5 w-5 rounded-[6px] flex items-center justify-center transition-all z-20 ${
               isSelected
                 ? "bg-[#4876F3] border border-[#4876F3] text-white opacity-100"
-                : "border border-[#7C7F87]/60 bg-black/60 hover:border-white text-transparent opacity-0 group-hover:opacity-100"
+                : "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-0 group-hover:opacity-100"
             }`}
           >
             <Check size={14} className="text-white" />
@@ -196,7 +196,7 @@ export function FolderCard({
                 onBlur={() => {
                   if (onRenameSubmit) onRenameSubmit();
                 }}
-                className="w-full h-7 rounded-[8px] bg-[#2A2B30] border border-[#4876F3] px-2 text-xs text-white focus:outline-none"
+                className="w-full h-7 rounded-[8px] bg-[var(--input)] border border-[#4876F3] px-2 text-xs text-white focus:outline-none"
               />
             ) : (
               <>
@@ -208,7 +208,7 @@ export function FolderCard({
                     {dropLabel || "Move to folder"}
                   </p>
                 ) : (
-                  <p className="text-[13px] text-[#7C7F87] truncate mt-0.5">
+                  <p className="text-[13px] text-[var(--text-3)] truncate mt-0.5">
                     {itemCount} {itemCount === 1 ? "file" : "files"}
                     {totalBytes > 0 && `  ·  ${formatBytes(totalBytes)}`}
                   </p>
@@ -224,7 +224,7 @@ export function FolderCard({
                 e.stopPropagation();
                 onContextMenu(e.currentTarget);
               }}
-              className="folder-menu-btn flex h-7 w-7 items-center justify-center rounded-md text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white transition-colors shrink-0"
+              className="folder-menu-btn flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-2)] hover:bg-[var(--input)] hover:text-white transition-colors shrink-0"
             >
               <MoreHorizontal size={18} />
             </button>

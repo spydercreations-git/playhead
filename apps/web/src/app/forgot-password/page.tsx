@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
             <h1 className="text-[28px] font-bold text-white tracking-tight leading-none mb-3">
               Check your email
             </h1>
-            <p className="text-sm text-[#A3A6AD] mb-8 leading-relaxed">
+            <p className="text-sm text-[var(--text-2)] mb-8 leading-relaxed">
               If an account exists with{" "}
               <span className="font-semibold text-white">{email}</span>, we have sent instructions to reset your password.
             </p>
@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
             <h1 className="text-[28px] font-bold text-white tracking-tight leading-none mb-2">
               Reset password
             </h1>
-            <p className="text-sm text-[#A3A6AD] mb-8">
+            <p className="text-sm text-[var(--text-2)] mb-8">
               Enter your work email and we&apos;ll send you a reset link.
             </p>
 
@@ -67,11 +67,11 @@ export default function ForgotPasswordPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[#A3A6AD] mb-2">
+                <label className="block text-xs font-medium text-[var(--text-2)] mb-2">
                   Work email
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7C7F87]">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--text-3)]">
                     <svg
                       width="16"
                       height="16"
@@ -93,7 +93,7 @@ export default function ForgotPasswordPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@company.com"
-                    className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
+                    className="w-full h-[48px] rounded-[10px] bg-[var(--input)] border border-[var(--border)] pl-10 pr-4 text-sm text-white placeholder-[var(--text-3)] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
                   />
                 </div>
               </div>
@@ -106,7 +106,7 @@ export default function ForgotPasswordPage() {
                 <span>{loading ? "Sending link..." : "Send reset link"}</span>
               </button>
 
-              <div className="pt-2 text-center text-xs text-[#A3A6AD]">
+              <div className="pt-2 text-center text-xs text-[var(--text-2)]">
                 <span>Remember your password? </span>
                 <Link href="/login" className="text-[#4876F3] hover:underline font-medium">
                   Sign in

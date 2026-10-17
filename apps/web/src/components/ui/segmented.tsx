@@ -19,9 +19,9 @@ export interface SegmentedProps<T extends string = string> {
 /**
  * Playhead Segmented Control (View toggle)
  * Boards/02 Components:
- * - Container: height 32px, radius 8, fill #2A2B30
+ * - Container: height 32px, radius 8, fill var(--input)
  * - Active segment: radius 6, fill #3A3C44, white text/icon
- * - Inactive: transparent fill, #A3A6AD text/icon, hover white
+ * - Inactive: transparent fill, var(--text-2) text/icon, hover white
  */
 export function Segmented<T extends string = string>({
   options,
@@ -32,7 +32,7 @@ export function Segmented<T extends string = string>({
   return (
     <div
       role="group"
-      className={`inline-flex items-center h-8 p-1 rounded-[8px] bg-[#2A2B30] select-none ${className}`}
+      className={`inline-flex items-center h-8 p-1 rounded-[8px] bg-[var(--input)] select-none ${className}`}
     >
       {options.map((opt) => {
         const isActive = opt.value === value;
@@ -46,7 +46,7 @@ export function Segmented<T extends string = string>({
             className={`flex items-center justify-center h-6 px-2.5 rounded-[6px] text-xs font-medium transition-all duration-150 outline-none ${
               isActive
                 ? "bg-[#3A3C44] text-white shadow-sm"
-                : "text-[#A3A6AD] hover:text-white"
+                : "text-[var(--text-2)] hover:text-white"
             }`}
           >
             {opt.icon}

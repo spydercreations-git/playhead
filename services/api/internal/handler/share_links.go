@@ -225,7 +225,7 @@ func (h *ShareLinksHandler) Create(w http.ResponseWriter, r *http.Request) {
 			CompanyID: companyID,
 			ID:        pgtype.UUID{Bytes: itemUUID, Valid: true},
 		})
-		if itErr == nil && item.DriveOwnerID.Valid {
+		if itErr == nil && (!item.ProjectID.Valid || item.DriveOwnerID.Valid) {
 			respondJSON(w, http.StatusForbidden, map[string]string{
 				"error":   "forbidden",
 				"message": "Share links cannot be created for My Drive items",

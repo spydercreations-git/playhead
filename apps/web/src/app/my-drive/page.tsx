@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/icon";
 import { FolderCard } from "@/components/cards/folder-card";
 import { apiRequest } from "@/lib/api";
+import { useAuth } from "@/lib/use-auth";
 
 interface DriveFolder {
   id: string;
@@ -75,6 +76,13 @@ function formatDate(isoString: string): string {
 
 export default function MyDrivePage() {
   const router = useRouter();
+  const { isExecutive, isLoading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !isExecutive) {
+      router.replace("/");
+    }
+  }, [authLoading, isExecutive, router]);
 
   // State
   const [folders, setFolders] = useState<DriveFolder[]>([]);

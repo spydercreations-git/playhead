@@ -45,7 +45,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user, role, isClient, hasPermission } = useAuth();
+  const { user, role, isClient, hasPermission, isExecutive } = useAuth();
 
   const { data: reviewsData } = useQuery({
     queryKey: ["reviews-count"],
@@ -87,7 +87,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   // Exact navigation items from P03/P04
   const navItems = [
     { name: "Home", href: "/", icon: Home, show: true },
-    { name: "My Drive", href: "/my-drive", icon: HardDrive, show: true },
+    { name: "My Drive", href: "/my-drive", icon: HardDrive, show: isExecutive },
     {
       name: "Clients",
       href: "/clients",

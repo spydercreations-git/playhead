@@ -77,6 +77,19 @@ export function useAuth() {
     [isClient, roleName, permissions]
   );
 
+  // Executive roles with full access (Shared My Drive, executive controls)
+  const executiveRoles = [
+    "ceo",
+    "coo",
+    "cfo",
+    "chief sales officer",
+    "design head",
+    "admin",
+    "owner",
+  ];
+  const isExecutive = !isClient && executiveRoles.includes(roleName.toLowerCase());
+  const canChangeRoles = !isClient && ["ceo", "coo", "owner"].includes(roleName.toLowerCase());
+
   // Helper flags mapped directly to granular permissions
   const isAdmin = hasPermission("admin.settings");
   const isManager = hasPermission("team.invite") || isAdmin;
@@ -92,6 +105,8 @@ export function useAuth() {
     permissions,
     isClient,
     hasPermission,
+    isExecutive,
+    canChangeRoles,
     isAdmin,
     isManager,
     isEditor,

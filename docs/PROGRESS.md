@@ -693,13 +693,33 @@ Google Login is built into the backend and UI, but hidden until configured. When
 
 ---
 
-## Upcoming Milestones (Version 2: P7)
+## Big Update: Steps 0 to 14
 
-- **Milestone P7: Search, notifications, polish**
-  - Global search across clients, projects, folders, files, document text, spreadsheet content, and comments.
-  - In-app notification bell and email notifications.
-  - Client Notes. Performance validation against Section 7 benchmarks. Security audit.
-  - **Internal launch for the Idyll team and clients after P7.**
+### Step 0: Database Backup ✅
+- Backed up dev database (`playhead_dev`, user `postgres`) via `docker exec -t playhead-postgres pg_dump` to `db/backups/playhead_backup_20261017_084900.sql`.
+
+### Step 1: New Access Model (Server First) ✅ (Commit: 9063cf2)
+- Added migration `00013_new_access_model.sql`:
+  - Dropped `is_restricted` column completely from `projects` and `items`.
+  - Added `access_type` ('full' vs 'per_project') and `can_change_roles` boolean to `roles`.
+- Updated Go `authz` package:
+  - Role constants: `RoleCEO`, `RoleCOO`, `RoleCFO`, `RoleCSO`, `RoleDesignHead` (Executive Full Access / Admins internally), `RoleProjectManager`, `RoleEditor` (per-project).
+  - Project levels: Full (50), Editor (40), Uploader (30), Commenter (20), Viewer (10) + `can_download` boolean switch.
+  - Folder override logic: Folder grants take precedence over inherited project grants; Full access executive roles always win.
+  - Team role editing: Only `CEO` and `COO` can modify member roles in Team.
+- Comprehensive access matrix test (`access_matrix_test.go`) covering all roles and project levels against all required permissions (10/10 passing).
+- Removed all `is_restricted` logic from frontend pages and components.
+
+### Step 2: Shared My Drive (Admins Only) ✅
+- Added migration `00014_shared_my_drive.sql`:
+  - Merged duplicate default folders (Videos, Images, Documents, Music) to company scope.
+  - Set `drive_owner_id = NULL` for shared company drive items.
+- My Drive is ONE shared drive for all executive roles (`person.IsFullAccess()`).
+- Server enforcement: Project Managers, Editors, and Viewers attempting to access `/api/v1/drive/*` receive 403 Forbidden.
+- External grants and public share links are strictly forbidden on My Drive items.
+- Client isolation: Hidden "My Drive" navigation link in sidebar for Project Managers, Editors, and clients.
+- Automated tests: `services/api/internal/handler/drive_test.go` (`TestMyDriveAccessAndPermissions` 13/13 passing).
+
 
 
 

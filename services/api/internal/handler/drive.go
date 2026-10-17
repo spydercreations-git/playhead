@@ -32,11 +32,11 @@ type DriveHandler struct {
 	cfg     *config.Config
 }
 
-func NewDriveHandler(queries *db.Queries, pool *pgxpool.Pool, storage *storage.Client, cfg *config.Config) *DriveHandler {
+func NewDriveHandler(queries *db.Queries, pool *pgxpool.Pool, store *storage.Client, cfg *config.Config) *DriveHandler {
 	return &DriveHandler{
 		queries: queries,
 		pool:    pool,
-		storage: storage,
+		storage: store,
 		cfg:     cfg,
 	}
 }
@@ -44,7 +44,7 @@ func NewDriveHandler(queries *db.Queries, pool *pgxpool.Pool, storage *storage.C
 type DriveFolderItem struct {
 	ID              string   `json:"id"`
 	Name            string   `json:"name"`
-	Category        string   `json:"category,omitempty"`
+	Category        string   `json:"category"`
 	IsDefaultFolder bool     `json:"is_default_folder"`
 	Position        string   `json:"position"`
 	FileCount       int32    `json:"file_count"`
@@ -54,8 +54,8 @@ type DriveFolderItem struct {
 	UpdatedAt       string   `json:"updated_at"`
 }
 
-// EnsureDefaultFolders creates Videos, Images, Documents, Music folders if missing
-func (h *DriveHandler) EnsureDefaultFolders(ctx context.Context, companyID, userID pgtype.UUID) ([]db.Item, error) {
+// EnsureDefaultFolders seeds the 4 default folders for the company shared drive
+func (h *DriveHandler) EnsureDefaultFolders(ctx context.Context, companyID pgtype.UUID, creatorID pgtype.UUID) ([]db.Item, error) {
 	defaults := []struct {
 		Category string
 		Name     string
@@ -70,18 +70,17 @@ func (h *DriveHandler) EnsureDefaultFolders(ctx context.Context, companyID, user
 	var results []db.Item
 	for _, def := range defaults {
 		folder, err := h.queries.GetDefaultDriveFolderByCategory(ctx, db.GetDefaultDriveFolderByCategoryParams{
-			CompanyID:    companyID,
-			DriveOwnerID: userID,
-			Category:     pgtype.Text{String: def.Category, Valid: true},
+			CompanyID: companyID,
+			Lower:     def.Category,
 		})
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				created, createErr := h.queries.CreateDriveFolder(ctx, db.CreateDriveFolderParams{
 					CompanyID:       companyID,
-					DriveOwnerID:    userID,
 					ParentID:        pgtype.UUID{Valid: false},
 					Name:            def.Name,
 					Position:        pgtype.Numeric{Int: big.NewInt(int64(def.Position)), Valid: true},
+					CreatedBy:       creatorID,
 					IsDefaultFolder: true,
 					Category:        pgtype.Text{String: def.Category, Valid: true},
 				})
@@ -99,7 +98,7 @@ func (h *DriveHandler) EnsureDefaultFolders(ctx context.Context, companyID, user
 	return results, nil
 }
 
-// ListFolders returns all root folders for caller's drive with file_count and total_bytes
+// ListFolders returns all root folders for the company shared drive with file_count and total_bytes
 func (h *DriveHandler) ListFolders(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, ok := middleware.GetAuthenticatedUser(ctx)
@@ -126,10 +125,7 @@ func (h *DriveHandler) ListFolders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	folders, err := h.queries.ListDriveFolders(ctx, db.ListDriveFoldersParams{
-		CompanyID:    companyID,
-		DriveOwnerID: user.ID,
-	})
+	folders, err := h.queries.ListDriveFolders(ctx, companyID)
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_list_folders"})
 		return
@@ -138,9 +134,8 @@ func (h *DriveHandler) ListFolders(w http.ResponseWriter, r *http.Request) {
 	response := make([]DriveFolderItem, 0, len(folders))
 	for _, f := range folders {
 		stats, _ := h.queries.GetDriveFolderStats(ctx, db.GetDriveFolderStatsParams{
-			CompanyID:    companyID,
-			DriveOwnerID: user.ID,
-			ParentID:     f.ID,
+			CompanyID: companyID,
+			ParentID:  f.ID,
 		})
 
 		posStr := "0"
@@ -154,10 +149,10 @@ func (h *DriveHandler) ListFolders(w http.ResponseWriter, r *http.Request) {
 				SELECT fv.storage_key, fv.mime, fv.preview_keys
 				FROM items i
 				JOIN file_versions fv ON fv.item_id = i.id
-				WHERE i.company_id = $1 AND i.drive_owner_id = $2 AND i.parent_id = $3 AND i.deleted_at IS NULL AND i.kind = 'file'
+				WHERE i.company_id = $1 AND i.parent_id = $2 AND i.project_id IS NULL AND i.deleted_at IS NULL AND i.kind = 'file'
 				ORDER BY i.created_at DESC
 				LIMIT 3
-			`, companyID, user.ID, f.ID)
+			`, companyID, f.ID)
 			if qErr == nil {
 				for tRows.Next() {
 					var sKey, mime string
@@ -235,8 +230,8 @@ func (h *DriveHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_folder_id"})
 			return
 		}
-		// Verify folder ownership
-		targetFolder, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+		// Verify folder exists in company
+		_, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
 			ID:        parentID,
 			CompanyID: companyID,
 		})
@@ -244,16 +239,11 @@ func (h *DriveHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 			respondJSON(w, http.StatusNotFound, map[string]string{"error": "folder_not_found"})
 			return
 		}
-		if !targetFolder.DriveOwnerID.Valid || targetFolder.DriveOwnerID != user.ID {
-			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Access to another user's drive is forbidden"})
-			return
-		}
 	}
 
 	items, err := h.queries.ListDriveItems(ctx, db.ListDriveItemsParams{
-		CompanyID:    companyID,
-		DriveOwnerID: user.ID,
-		ParentID:     parentID,
+		CompanyID: companyID,
+		ParentID:  parentID,
 	})
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_list_items"})
@@ -265,7 +255,7 @@ func (h *DriveHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// CreateFolder creates a new custom folder in My Drive
+// CreateFolder creates a new custom folder in Shared My Drive
 func (h *DriveHandler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, ok := middleware.GetAuthenticatedUser(ctx)
@@ -307,7 +297,7 @@ func (h *DriveHandler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_parent_id"})
 			return
 		}
-		parent, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+		_, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
 			ID:        parentID,
 			CompanyID: companyID,
 		})
@@ -315,18 +305,14 @@ func (h *DriveHandler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 			respondJSON(w, http.StatusNotFound, map[string]string{"error": "parent_folder_not_found"})
 			return
 		}
-		if !parent.DriveOwnerID.Valid || parent.DriveOwnerID != user.ID {
-			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Access to another user's drive is forbidden"})
-			return
-		}
 	}
 
 	created, err := h.queries.CreateDriveFolder(ctx, db.CreateDriveFolderParams{
 		CompanyID:       companyID,
-		DriveOwnerID:    user.ID,
 		ParentID:        parentID,
 		Name:            req.Name,
 		Position:        pgtype.Numeric{Int: big.NewInt(0), Valid: true},
+		CreatedBy:       user.ID,
 		IsDefaultFolder: false,
 		Category:        pgtype.Text{Valid: false},
 	})
@@ -375,11 +361,6 @@ func (h *DriveHandler) RenameItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !item.DriveOwnerID.Valid || item.DriveOwnerID != user.ID {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Access to another user's drive is forbidden"})
-		return
-	}
-
 	if item.IsDefaultFolder {
 		respondJSON(w, http.StatusBadRequest, map[string]string{
 			"error":   "cannot_modify_default_folder",
@@ -402,10 +383,9 @@ func (h *DriveHandler) RenameItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	updated, err := h.queries.UpdateDriveItemName(ctx, db.UpdateDriveItemNameParams{
-		ID:           itemID,
-		CompanyID:    companyID,
-		DriveOwnerID: user.ID,
-		Name:         req.Name,
+		ID:        itemID,
+		CompanyID: companyID,
+		Name:      req.Name,
 	})
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_rename_item"})
@@ -451,11 +431,6 @@ func (h *DriveHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !item.DriveOwnerID.Valid || item.DriveOwnerID != user.ID {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Access to another user's drive is forbidden"})
-		return
-	}
-
 	if item.IsDefaultFolder {
 		respondJSON(w, http.StatusBadRequest, map[string]string{
 			"error":   "cannot_delete_default_folder",
@@ -493,13 +468,19 @@ func (h *DriveHandler) RestoreItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	person := middleware.GetPerson(ctx)
+	if !person.IsFullAccess() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "My Drive is only accessible to executive roles"})
+		return
+	}
+
 	var itemID pgtype.UUID
 	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
 		return
 	}
 
-	item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+	_, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
 		ID:        itemID,
 		CompanyID: companyID,
 	})
@@ -508,20 +489,13 @@ func (h *DriveHandler) RestoreItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !item.DriveOwnerID.Valid || item.DriveOwnerID != user.ID {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Access to another user's drive is forbidden"})
-		return
-	}
-
 	_ = h.queries.RestoreDriveItemDescendants(ctx, db.RestoreDriveItemDescendantsParams{
-		ID:           itemID,
-		CompanyID:    companyID,
-		DriveOwnerID: user.ID,
+		ID:        itemID,
+		CompanyID: companyID,
 	})
 	_ = h.queries.RestoreDriveItem(ctx, db.RestoreDriveItemParams{
-		ID:           itemID,
-		CompanyID:    companyID,
-		DriveOwnerID: user.ID,
+		ID:        itemID,
+		CompanyID: companyID,
 	})
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{"status": "restored"})
@@ -542,6 +516,12 @@ func (h *DriveHandler) MoveToProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	person := middleware.GetPerson(ctx)
+	if !person.IsFullAccess() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "My Drive is only accessible to executive roles"})
+		return
+	}
+
 	var itemID pgtype.UUID
 	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
@@ -554,11 +534,6 @@ func (h *DriveHandler) MoveToProject(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
-		return
-	}
-
-	if !item.DriveOwnerID.Valid || item.DriveOwnerID != user.ID {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Access to another user's drive is forbidden"})
 		return
 	}
 
@@ -594,7 +569,6 @@ func (h *DriveHandler) MoveToProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	person := middleware.GetPerson(ctx)
 	var targetParentUUID uuid.UUID
 	var targetParentID pgtype.UUID
 	if req.TargetParentID != nil && *req.TargetParentID != "" && *req.TargetParentID != "null" {
@@ -622,11 +596,10 @@ func (h *DriveHandler) MoveToProject(w http.ResponseWriter, r *http.Request) {
 	qtx := h.queries.WithTx(tx)
 
 	moved, err := qtx.MoveDriveItemToProject(ctx, db.MoveDriveItemToProjectParams{
-		ID:           itemID,
-		CompanyID:    companyID,
-		DriveOwnerID: user.ID,
-		ProjectID:    targetProjectID,
-		ParentID:     targetParentID,
+		ID:        itemID,
+		CompanyID: companyID,
+		ProjectID: targetProjectID,
+		ParentID:  targetParentID,
 	})
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_move_item", "message": err.Error()})
@@ -678,23 +651,24 @@ func (h *DriveHandler) CopyToProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	person := middleware.GetPerson(ctx)
+	if !person.IsFullAccess() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "My Drive is only accessible to executive roles"})
+		return
+	}
+
 	var itemID pgtype.UUID
 	if err := itemID.Scan(chi.URLParam(r, "id")); err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
 		return
 	}
 
-	item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+	_, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
 		ID:        itemID,
 		CompanyID: companyID,
 	})
 	if err != nil {
 		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
-		return
-	}
-
-	if !item.DriveOwnerID.Valid || item.DriveOwnerID != user.ID {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Access to another user's drive is forbidden"})
 		return
 	}
 
@@ -722,7 +696,6 @@ func (h *DriveHandler) CopyToProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	person := middleware.GetPerson(ctx)
 	var targetParentUUID uuid.UUID
 	var targetParentID pgtype.UUID
 	if req.TargetParentID != nil && *req.TargetParentID != "" && *req.TargetParentID != "null" {
@@ -742,9 +715,8 @@ func (h *DriveHandler) CopyToProject(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch all items in tree to calculate total bytes and clone
 	descendants, err := h.queries.ListDriveDescendants(ctx, db.ListDriveDescendantsParams{
-		ID:           itemID,
-		CompanyID:    companyID,
-		DriveOwnerID: user.ID,
+		ID:        itemID,
+		CompanyID: companyID,
 	})
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_inspect_items"})
@@ -995,10 +967,13 @@ func (h *DriveHandler) ListTrash(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, err := h.queries.ListTrashedDriveItems(ctx, db.ListTrashedDriveItemsParams{
-		CompanyID:    companyID,
-		DriveOwnerID: user.ID,
-	})
+	person := middleware.GetPerson(ctx)
+	if !person.IsFullAccess() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "My Drive is only accessible to executive roles"})
+		return
+	}
+
+	items, err := h.queries.ListTrashedDriveItems(ctx, companyID)
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_list_trash"})
 		return

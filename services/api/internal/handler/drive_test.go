@@ -111,7 +111,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: comp.ID,
 		UserID:    dave.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCOO,
 	})
 
 	// Target project for move/copy
@@ -329,15 +329,15 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 		}
 	})
 
-	t.Run("An Admin (Dave) gets blocked (403) from mutating Alice's drive item", func(t *testing.T) {
-		renameBody, _ := json.Marshal(map[string]string{"name": "Admin Hijack"})
+	t.Run("Another Executive (Dave - COO) has full access to Shared My Drive and can mutate item", func(t *testing.T) {
+		renameBody, _ := json.Marshal(map[string]string{"name": "Shared Pitch"})
 		req := httptest.NewRequest("PATCH", fmt.Sprintf("/api/v1/drive/items/%s", customFolderID), bytes.NewReader(renameBody))
-		req = req.WithContext(contextWithAuth(req.Context(), dave, comp.ID, authz.RoleAdmin))
+		req = req.WithContext(contextWithAuth(req.Context(), dave, comp.ID, authz.RoleCOO))
 		rr := httptest.NewRecorder()
 		router.ServeHTTP(rr, req)
 
-		if rr.Code != http.StatusForbidden {
-			t.Fatalf("expected 403 Forbidden for Admin accessing another user's personal drive, got %d: %s", rr.Code, rr.Body.String())
+		if rr.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK for Dave (COO) modifying shared drive item, got %d: %s", rr.Code, rr.Body.String())
 		}
 	})
 
@@ -455,15 +455,15 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 	// H. Server-side My Drive privacy: Grants, share links, comments by others, and downloads
 	// -------------------------------------------------------------------------
 	t.Run("Server refuses grants, share links, comments, and downloads by others on My Drive items", func(t *testing.T) {
-		// Create a private file in Alice's drive
+		// Create a file in company shared drive
 		driveFile, err := queries.CreateDriveFileItem(ctx, db.CreateDriveFileItemParams{
-			CompanyID:    comp.ID,
-			DriveOwnerID: alice.ID,
-			ParentID:     pgtype.UUID{},
-			Name:         "alice-confidential.png",
-			Position:     pgtype.Numeric{Int: big.NewInt(0), Valid: true},
-			TotalBytes:   2048,
-			Category:     pgtype.Text{String: "images", Valid: true},
+			CompanyID:  comp.ID,
+			ParentID:   pgtype.UUID{},
+			Name:       "alice-confidential.png",
+			Position:   pgtype.Numeric{Int: big.NewInt(0), Valid: true},
+			CreatedBy:  alice.ID,
+			TotalBytes: 2048,
+			Category:   pgtype.Text{String: "images", Valid: true},
 		})
 		if err != nil {
 			t.Fatalf("failed to create drive file: %v", err)
@@ -563,6 +563,16 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 
 		if rrDlAlice.Code != http.StatusOK {
 			t.Fatalf("expected 200 OK on download by owner Alice, got %d: %s", rrDlAlice.Code, rrDlAlice.Body.String())
+		}
+
+		// 6. Download endpoint: GET /api/v1/items/{drive_item_id}/download from another executive Dave (COO) MUST succeed (200 OK)
+		reqDlDave := httptest.NewRequest("GET", "/api/v1/items/"+driveFileIDStr+"/download", nil)
+		reqDlDave = reqDlDave.WithContext(contextWithAuth(reqDlDave.Context(), dave, comp.ID, authz.RoleCOO))
+		rrDlDave := httptest.NewRecorder()
+		rStorage.ServeHTTP(rrDlDave, reqDlDave)
+
+		if rrDlDave.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK on download by executive Dave, got %d: %s", rrDlDave.Code, rrDlDave.Body.String())
 		}
 	})
 

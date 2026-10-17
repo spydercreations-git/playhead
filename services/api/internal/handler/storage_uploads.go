@@ -129,17 +129,16 @@ func (h *StorageUploadsHandler) InitiateUpload(w http.ResponseWriter, r *http.Re
 		cat := detectCategory(req.Filename, req.Mime)
 		if req.ParentID == nil || *req.ParentID == "" || *req.ParentID == "null" {
 			folder, err := h.queries.GetDefaultDriveFolderByCategory(ctx, db.GetDefaultDriveFolderByCategoryParams{
-				CompanyID:    companyID,
-				DriveOwnerID: user.ID,
-				Category:     pgtype.Text{String: cat, Valid: true},
+				CompanyID: companyID,
+				Lower:     cat,
 			})
 			if err != nil {
 				createdFolder, cErr := h.queries.CreateDriveFolder(ctx, db.CreateDriveFolderParams{
 					CompanyID:       companyID,
-					DriveOwnerID:    user.ID,
 					ParentID:        pgtype.UUID{Valid: false},
 					Name:            strings.Title(cat),
 					Position:        pgtype.Numeric{Int: big.NewInt(0), Valid: true},
+					CreatedBy:       user.ID,
 					IsDefaultFolder: true,
 					Category:        pgtype.Text{String: cat, Valid: true},
 				})
@@ -463,18 +462,17 @@ func (h *StorageUploadsHandler) CompleteUpload(w http.ResponseWriter, r *http.Re
 			}
 		}
 	}
-
 	if !item.ID.Valid {
-		if upload.DriveOwnerID.Valid {
+		if !upload.ProjectID.Valid {
 			cat := detectCategory(upload.Filename, upload.Mime)
 			created, err := h.queries.CreateDriveFileItem(ctx, db.CreateDriveFileItemParams{
-				CompanyID:    companyID,
-				DriveOwnerID: upload.DriveOwnerID,
-				ParentID:     upload.ParentID,
-				Name:         upload.Filename,
-				Position:     pgtype.Numeric{Int: big.NewInt(0), Valid: true},
-				TotalBytes:   upload.SizeBytes,
-				Category:     pgtype.Text{String: cat, Valid: true},
+				CompanyID:  companyID,
+				ParentID:   upload.ParentID,
+				Name:       upload.Filename,
+				Position:   pgtype.Numeric{Int: big.NewInt(0), Valid: true},
+				CreatedBy:  upload.UserID,
+				TotalBytes: upload.SizeBytes,
+				Category:   pgtype.Text{String: cat, Valid: true},
 			})
 			if err != nil {
 				respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_item"})
@@ -484,7 +482,7 @@ func (h *StorageUploadsHandler) CompleteUpload(w http.ResponseWriter, r *http.Re
 
 			_ = h.queries.RecordRecentItem(ctx, db.RecordRecentItemParams{
 				CompanyID: companyID,
-				UserID:    upload.DriveOwnerID,
+				UserID:    upload.UserID,
 				ItemID:    item.ID,
 				ItemType:  "file",
 				ProjectID: pgtype.UUID{Valid: false},
@@ -677,8 +675,8 @@ func (h *StorageUploadsHandler) ViewItem(w http.ResponseWriter, r *http.Request)
 
 	person := middleware.GetPerson(ctx)
 	canDownload := true
-	if item.DriveOwnerID.Valid {
-		if person.UserID == uuid.Nil || person.UserID != uuid.UUID(item.DriveOwnerID.Bytes) {
+	if !item.ProjectID.Valid || item.DriveOwnerID.Valid {
+		if !person.IsFullAccess() {
 			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Access denied"})
 			return
 		}
@@ -773,8 +771,8 @@ func (h *StorageUploadsHandler) DownloadItem(w http.ResponseWriter, r *http.Requ
 	}
 
 	person := middleware.GetPerson(ctx)
-	if item.DriveOwnerID.Valid {
-		if person.UserID == uuid.Nil || person.UserID != uuid.UUID(item.DriveOwnerID.Bytes) {
+	if !item.ProjectID.Valid || item.DriveOwnerID.Valid {
+		if !person.IsFullAccess() {
 			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Download permission denied"})
 			return
 		}

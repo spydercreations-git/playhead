@@ -360,9 +360,9 @@ func (h *ReviewHandler) ListComments(w http.ResponseWriter, r *http.Request) {
 	}
 
 	person := middleware.GetPerson(ctx)
-	if item.DriveOwnerID.Valid {
-		if person.UserID == uuid.Nil || person.UserID != uuid.UUID(item.DriveOwnerID.Bytes) {
-			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Access to another user's drive item is forbidden"})
+	if !item.ProjectID.Valid || item.DriveOwnerID.Valid {
+		if !person.IsFullAccess() {
+			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Access to My Drive items is limited to executive roles"})
 			return
 		}
 	} else {
@@ -463,9 +463,9 @@ func (h *ReviewHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	person := middleware.GetPerson(ctx)
-	if item.DriveOwnerID.Valid {
-		if person.UserID == uuid.Nil || person.UserID != uuid.UUID(item.DriveOwnerID.Bytes) {
-			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Comments on another user's drive item are forbidden"})
+	if !item.ProjectID.Valid || item.DriveOwnerID.Valid {
+		if !person.IsFullAccess() {
+			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Comments on My Drive items are limited to executive roles"})
 			return
 		}
 	} else {

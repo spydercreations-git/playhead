@@ -17,29 +17,29 @@ INSERT INTO items (
     file_count, folder_count, video_count, total_bytes, review_status, locked, category, is_default_folder
 )
 VALUES (
-    $1, $2, NULL, $3, 'file', $4, $5, $2,
+    $1, NULL, NULL, $2, 'file', $3, $4, $5,
     0, 0, 0, $6, 'none', FALSE, $7, FALSE
 )
 RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
 `
 
 type CreateDriveFileItemParams struct {
-	CompanyID    pgtype.UUID    `json:"company_id"`
-	DriveOwnerID pgtype.UUID    `json:"drive_owner_id"`
-	ParentID     pgtype.UUID    `json:"parent_id"`
-	Name         string         `json:"name"`
-	Position     pgtype.Numeric `json:"position"`
-	TotalBytes   int64          `json:"total_bytes"`
-	Category     pgtype.Text    `json:"category"`
+	CompanyID  pgtype.UUID    `json:"company_id"`
+	ParentID   pgtype.UUID    `json:"parent_id"`
+	Name       string         `json:"name"`
+	Position   pgtype.Numeric `json:"position"`
+	CreatedBy  pgtype.UUID    `json:"created_by"`
+	TotalBytes int64          `json:"total_bytes"`
+	Category   pgtype.Text    `json:"category"`
 }
 
 func (q *Queries) CreateDriveFileItem(ctx context.Context, arg CreateDriveFileItemParams) (Item, error) {
 	row := q.db.QueryRow(ctx, createDriveFileItem,
 		arg.CompanyID,
-		arg.DriveOwnerID,
 		arg.ParentID,
 		arg.Name,
 		arg.Position,
+		arg.CreatedBy,
 		arg.TotalBytes,
 		arg.Category,
 	)
@@ -75,16 +75,16 @@ const createDriveFolder = `-- name: CreateDriveFolder :one
 INSERT INTO items (
     company_id, drive_owner_id, project_id, parent_id, kind, name, position, created_by, is_default_folder, category
 ) VALUES (
-    $1, $2, NULL, $3, 'folder', $4, $5, $2, $6, $7
+    $1, NULL, NULL, $2, 'folder', $3, $4, $5, $6, $7
 ) RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
 `
 
 type CreateDriveFolderParams struct {
 	CompanyID       pgtype.UUID    `json:"company_id"`
-	DriveOwnerID    pgtype.UUID    `json:"drive_owner_id"`
 	ParentID        pgtype.UUID    `json:"parent_id"`
 	Name            string         `json:"name"`
 	Position        pgtype.Numeric `json:"position"`
+	CreatedBy       pgtype.UUID    `json:"created_by"`
 	IsDefaultFolder bool           `json:"is_default_folder"`
 	Category        pgtype.Text    `json:"category"`
 }
@@ -92,10 +92,10 @@ type CreateDriveFolderParams struct {
 func (q *Queries) CreateDriveFolder(ctx context.Context, arg CreateDriveFolderParams) (Item, error) {
 	row := q.db.QueryRow(ctx, createDriveFolder,
 		arg.CompanyID,
-		arg.DriveOwnerID,
 		arg.ParentID,
 		arg.Name,
 		arg.Position,
+		arg.CreatedBy,
 		arg.IsDefaultFolder,
 		arg.Category,
 	)
@@ -133,7 +133,7 @@ INSERT INTO uploads (
     storage_key, upload_id, part_size_bytes, total_parts, completed_parts, status, expires_at
 )
 VALUES (
-    $1, $2, $2, NULL, $3, $4, NULL,
+    $1, $2, NULL, NULL, $3, $4, NULL,
     $5, $6, $7, $8, $9, $10, $11,
     '[]'::jsonb, 'pending', $12
 )
@@ -199,23 +199,21 @@ func (q *Queries) CreateDriveUpload(ctx context.Context, arg CreateDriveUploadPa
 const getDefaultDriveFolderByCategory = `-- name: GetDefaultDriveFolderByCategory :one
 SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category FROM items
 WHERE company_id = $1
-  AND drive_owner_id = $2
   AND project_id IS NULL
   AND parent_id IS NULL
   AND is_default_folder = TRUE
-  AND category = $3
+  AND LOWER(category) = LOWER($2)
   AND deleted_at IS NULL
 LIMIT 1
 `
 
 type GetDefaultDriveFolderByCategoryParams struct {
-	CompanyID    pgtype.UUID `json:"company_id"`
-	DriveOwnerID pgtype.UUID `json:"drive_owner_id"`
-	Category     pgtype.Text `json:"category"`
+	CompanyID pgtype.UUID `json:"company_id"`
+	Lower     string      `json:"lower"`
 }
 
 func (q *Queries) GetDefaultDriveFolderByCategory(ctx context.Context, arg GetDefaultDriveFolderByCategoryParams) (Item, error) {
-	row := q.db.QueryRow(ctx, getDefaultDriveFolderByCategory, arg.CompanyID, arg.DriveOwnerID, arg.Category)
+	row := q.db.QueryRow(ctx, getDefaultDriveFolderByCategory, arg.CompanyID, arg.Lower)
 	var i Item
 	err := row.Scan(
 		&i.ID,
@@ -250,15 +248,14 @@ SELECT
     COALESCE(SUM(total_bytes), 0)::bigint AS total_bytes
 FROM items
 WHERE company_id = $1
-  AND drive_owner_id = $2
-  AND parent_id = $3
+  AND project_id IS NULL
+  AND parent_id = $2
   AND deleted_at IS NULL
 `
 
 type GetDriveFolderStatsParams struct {
-	CompanyID    pgtype.UUID `json:"company_id"`
-	DriveOwnerID pgtype.UUID `json:"drive_owner_id"`
-	ParentID     pgtype.UUID `json:"parent_id"`
+	CompanyID pgtype.UUID `json:"company_id"`
+	ParentID  pgtype.UUID `json:"parent_id"`
 }
 
 type GetDriveFolderStatsRow struct {
@@ -267,7 +264,7 @@ type GetDriveFolderStatsRow struct {
 }
 
 func (q *Queries) GetDriveFolderStats(ctx context.Context, arg GetDriveFolderStatsParams) (GetDriveFolderStatsRow, error) {
-	row := q.db.QueryRow(ctx, getDriveFolderStats, arg.CompanyID, arg.DriveOwnerID, arg.ParentID)
+	row := q.db.QueryRow(ctx, getDriveFolderStats, arg.CompanyID, arg.ParentID)
 	var i GetDriveFolderStatsRow
 	err := row.Scan(&i.FileCount, &i.TotalBytes)
 	return i, err
@@ -277,18 +274,16 @@ const getDriveItemByID = `-- name: GetDriveItemByID :one
 SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category FROM items
 WHERE id = $1
   AND company_id = $2
-  AND drive_owner_id = $3
   AND project_id IS NULL
 `
 
 type GetDriveItemByIDParams struct {
-	ID           pgtype.UUID `json:"id"`
-	CompanyID    pgtype.UUID `json:"company_id"`
-	DriveOwnerID pgtype.UUID `json:"drive_owner_id"`
+	ID        pgtype.UUID `json:"id"`
+	CompanyID pgtype.UUID `json:"company_id"`
 }
 
 func (q *Queries) GetDriveItemByID(ctx context.Context, arg GetDriveItemByIDParams) (Item, error) {
-	row := q.db.QueryRow(ctx, getDriveItemByID, arg.ID, arg.CompanyID, arg.DriveOwnerID)
+	row := q.db.QueryRow(ctx, getDriveItemByID, arg.ID, arg.CompanyID)
 	var i Item
 	err := row.Scan(
 		&i.ID,
@@ -361,9 +356,9 @@ func (q *Queries) GetFileVersionsForItem(ctx context.Context, itemID pgtype.UUID
 
 const listDriveDescendants = `-- name: ListDriveDescendants :many
 WITH RECURSIVE item_tree(tree_id) AS (
-    SELECT root_item.id FROM items root_item WHERE root_item.id = $1 AND root_item.company_id = $2 AND root_item.drive_owner_id = $3
+    SELECT root_item.id FROM items root_item WHERE root_item.id = $1 AND root_item.company_id = $2 AND root_item.project_id IS NULL
     UNION ALL
-    SELECT c.id FROM items c JOIN item_tree t ON c.parent_id = t.tree_id WHERE c.company_id = $2 AND c.drive_owner_id = $3
+    SELECT c.id FROM items c JOIN item_tree t ON c.parent_id = t.tree_id WHERE c.company_id = $2 AND c.project_id IS NULL
 )
 SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category FROM items i
 JOIN item_tree ON i.id = item_tree.tree_id
@@ -371,13 +366,12 @@ ORDER BY i.kind = 'folder' DESC, i.created_at ASC
 `
 
 type ListDriveDescendantsParams struct {
-	ID           pgtype.UUID `json:"id"`
-	CompanyID    pgtype.UUID `json:"company_id"`
-	DriveOwnerID pgtype.UUID `json:"drive_owner_id"`
+	ID        pgtype.UUID `json:"id"`
+	CompanyID pgtype.UUID `json:"company_id"`
 }
 
 func (q *Queries) ListDriveDescendants(ctx context.Context, arg ListDriveDescendantsParams) ([]Item, error) {
-	rows, err := q.db.Query(ctx, listDriveDescendants, arg.ID, arg.CompanyID, arg.DriveOwnerID)
+	rows, err := q.db.Query(ctx, listDriveDescendants, arg.ID, arg.CompanyID)
 	if err != nil {
 		return nil, err
 	}
@@ -422,7 +416,6 @@ func (q *Queries) ListDriveDescendants(ctx context.Context, arg ListDriveDescend
 const listDriveFolders = `-- name: ListDriveFolders :many
 SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category FROM items
 WHERE company_id = $1
-  AND drive_owner_id = $2
   AND project_id IS NULL
   AND parent_id IS NULL
   AND kind = 'folder'
@@ -430,13 +423,8 @@ WHERE company_id = $1
 ORDER BY is_default_folder DESC, position ASC, name ASC
 `
 
-type ListDriveFoldersParams struct {
-	CompanyID    pgtype.UUID `json:"company_id"`
-	DriveOwnerID pgtype.UUID `json:"drive_owner_id"`
-}
-
-func (q *Queries) ListDriveFolders(ctx context.Context, arg ListDriveFoldersParams) ([]Item, error) {
-	rows, err := q.db.Query(ctx, listDriveFolders, arg.CompanyID, arg.DriveOwnerID)
+func (q *Queries) ListDriveFolders(ctx context.Context, companyID pgtype.UUID) ([]Item, error) {
+	rows, err := q.db.Query(ctx, listDriveFolders, companyID)
 	if err != nil {
 		return nil, err
 	}
@@ -481,24 +469,22 @@ func (q *Queries) ListDriveFolders(ctx context.Context, arg ListDriveFoldersPara
 const listDriveItems = `-- name: ListDriveItems :many
 SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category FROM items
 WHERE company_id = $1
-  AND drive_owner_id = $2
   AND project_id IS NULL
   AND (
-    ($3::uuid IS NULL AND parent_id IS NULL)
-    OR (parent_id = $3::uuid)
+    ($2::uuid IS NULL AND parent_id IS NULL)
+    OR (parent_id = $2::uuid)
   )
   AND deleted_at IS NULL
 ORDER BY kind = 'folder' DESC, name ASC
 `
 
 type ListDriveItemsParams struct {
-	CompanyID    pgtype.UUID `json:"company_id"`
-	DriveOwnerID pgtype.UUID `json:"drive_owner_id"`
-	ParentID     pgtype.UUID `json:"parent_id"`
+	CompanyID pgtype.UUID `json:"company_id"`
+	ParentID  pgtype.UUID `json:"parent_id"`
 }
 
 func (q *Queries) ListDriveItems(ctx context.Context, arg ListDriveItemsParams) ([]Item, error) {
-	rows, err := q.db.Query(ctx, listDriveItems, arg.CompanyID, arg.DriveOwnerID, arg.ParentID)
+	rows, err := q.db.Query(ctx, listDriveItems, arg.CompanyID, arg.ParentID)
 	if err != nil {
 		return nil, err
 	}
@@ -610,18 +596,13 @@ func (q *Queries) ListRecentItems(ctx context.Context, arg ListRecentItemsParams
 const listTrashedDriveItems = `-- name: ListTrashedDriveItems :many
 SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category FROM items
 WHERE company_id = $1
-  AND drive_owner_id = $2
+  AND project_id IS NULL
   AND deleted_at IS NOT NULL
 ORDER BY deleted_at DESC
 `
 
-type ListTrashedDriveItemsParams struct {
-	CompanyID    pgtype.UUID `json:"company_id"`
-	DriveOwnerID pgtype.UUID `json:"drive_owner_id"`
-}
-
-func (q *Queries) ListTrashedDriveItems(ctx context.Context, arg ListTrashedDriveItemsParams) ([]Item, error) {
-	rows, err := q.db.Query(ctx, listTrashedDriveItems, arg.CompanyID, arg.DriveOwnerID)
+func (q *Queries) ListTrashedDriveItems(ctx context.Context, companyID pgtype.UUID) ([]Item, error) {
+	rows, err := q.db.Query(ctx, listTrashedDriveItems, companyID)
 	if err != nil {
 		return nil, err
 	}
@@ -687,27 +668,24 @@ func (q *Queries) MoveDriveDescendantsToProject(ctx context.Context, arg MoveDri
 
 const moveDriveItemToProject = `-- name: MoveDriveItemToProject :one
 UPDATE items
-SET project_id = $4, parent_id = $5, drive_owner_id = NULL, updated_at = NOW()
+SET project_id = $3, parent_id = $4, drive_owner_id = NULL, updated_at = NOW()
 WHERE id = $1
   AND company_id = $2
-  AND drive_owner_id = $3
   AND project_id IS NULL
 RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
 `
 
 type MoveDriveItemToProjectParams struct {
-	ID           pgtype.UUID `json:"id"`
-	CompanyID    pgtype.UUID `json:"company_id"`
-	DriveOwnerID pgtype.UUID `json:"drive_owner_id"`
-	ProjectID    pgtype.UUID `json:"project_id"`
-	ParentID     pgtype.UUID `json:"parent_id"`
+	ID        pgtype.UUID `json:"id"`
+	CompanyID pgtype.UUID `json:"company_id"`
+	ProjectID pgtype.UUID `json:"project_id"`
+	ParentID  pgtype.UUID `json:"parent_id"`
 }
 
 func (q *Queries) MoveDriveItemToProject(ctx context.Context, arg MoveDriveItemToProjectParams) (Item, error) {
 	row := q.db.QueryRow(ctx, moveDriveItemToProject,
 		arg.ID,
 		arg.CompanyID,
-		arg.DriveOwnerID,
 		arg.ProjectID,
 		arg.ParentID,
 	)
@@ -743,18 +721,17 @@ const permanentDeleteDriveItem = `-- name: PermanentDeleteDriveItem :exec
 DELETE FROM items
 WHERE id = $1
   AND company_id = $2
-  AND drive_owner_id = $3
+  AND project_id IS NULL
   AND is_default_folder = FALSE
 `
 
 type PermanentDeleteDriveItemParams struct {
-	ID           pgtype.UUID `json:"id"`
-	CompanyID    pgtype.UUID `json:"company_id"`
-	DriveOwnerID pgtype.UUID `json:"drive_owner_id"`
+	ID        pgtype.UUID `json:"id"`
+	CompanyID pgtype.UUID `json:"company_id"`
 }
 
 func (q *Queries) PermanentDeleteDriveItem(ctx context.Context, arg PermanentDeleteDriveItemParams) error {
-	_, err := q.db.Exec(ctx, permanentDeleteDriveItem, arg.ID, arg.CompanyID, arg.DriveOwnerID)
+	_, err := q.db.Exec(ctx, permanentDeleteDriveItem, arg.ID, arg.CompanyID)
 	return err
 }
 
@@ -792,26 +769,24 @@ UPDATE items
 SET deleted_at = NULL, deleted_by = NULL, updated_at = NOW()
 WHERE id = $1
   AND company_id = $2
-  AND drive_owner_id = $3
   AND project_id IS NULL
 `
 
 type RestoreDriveItemParams struct {
-	ID           pgtype.UUID `json:"id"`
-	CompanyID    pgtype.UUID `json:"company_id"`
-	DriveOwnerID pgtype.UUID `json:"drive_owner_id"`
+	ID        pgtype.UUID `json:"id"`
+	CompanyID pgtype.UUID `json:"company_id"`
 }
 
 func (q *Queries) RestoreDriveItem(ctx context.Context, arg RestoreDriveItemParams) error {
-	_, err := q.db.Exec(ctx, restoreDriveItem, arg.ID, arg.CompanyID, arg.DriveOwnerID)
+	_, err := q.db.Exec(ctx, restoreDriveItem, arg.ID, arg.CompanyID)
 	return err
 }
 
 const restoreDriveItemDescendants = `-- name: RestoreDriveItemDescendants :exec
 WITH RECURSIVE item_tree(tree_id) AS (
-    SELECT root_item.id FROM items root_item WHERE root_item.id = $1 AND root_item.company_id = $2 AND root_item.drive_owner_id = $3
+    SELECT root_item.id FROM items root_item WHERE root_item.id = $1 AND root_item.company_id = $2 AND root_item.project_id IS NULL
     UNION ALL
-    SELECT c.id FROM items c JOIN item_tree t ON c.parent_id = t.tree_id WHERE c.company_id = $2 AND c.drive_owner_id = $3
+    SELECT c.id FROM items c JOIN item_tree t ON c.parent_id = t.tree_id WHERE c.company_id = $2 AND c.project_id IS NULL
 )
 UPDATE items target
 SET deleted_at = NULL, deleted_by = NULL, updated_at = NOW()
@@ -819,13 +794,12 @@ WHERE target.id IN (SELECT tree_id FROM item_tree) AND target.company_id = $2
 `
 
 type RestoreDriveItemDescendantsParams struct {
-	ID           pgtype.UUID `json:"id"`
-	CompanyID    pgtype.UUID `json:"company_id"`
-	DriveOwnerID pgtype.UUID `json:"drive_owner_id"`
+	ID        pgtype.UUID `json:"id"`
+	CompanyID pgtype.UUID `json:"company_id"`
 }
 
 func (q *Queries) RestoreDriveItemDescendants(ctx context.Context, arg RestoreDriveItemDescendantsParams) error {
-	_, err := q.db.Exec(ctx, restoreDriveItemDescendants, arg.ID, arg.CompanyID, arg.DriveOwnerID)
+	_, err := q.db.Exec(ctx, restoreDriveItemDescendants, arg.ID, arg.CompanyID)
 	return err
 }
 
@@ -834,7 +808,6 @@ UPDATE items
 SET deleted_at = NOW(), deleted_by = $3, updated_at = NOW()
 WHERE id = $1
   AND company_id = $2
-  AND drive_owner_id = $3
   AND project_id IS NULL
   AND is_default_folder = FALSE
 `
@@ -852,9 +825,9 @@ func (q *Queries) TrashDriveItem(ctx context.Context, arg TrashDriveItemParams) 
 
 const trashDriveItemDescendants = `-- name: TrashDriveItemDescendants :exec
 WITH RECURSIVE item_tree(tree_id) AS (
-    SELECT root_item.id FROM items root_item WHERE root_item.id = $1 AND root_item.company_id = $2 AND root_item.drive_owner_id = $3
+    SELECT root_item.id FROM items root_item WHERE root_item.id = $1 AND root_item.company_id = $2 AND root_item.project_id IS NULL
     UNION ALL
-    SELECT c.id FROM items c JOIN item_tree t ON c.parent_id = t.tree_id WHERE c.company_id = $2 AND c.drive_owner_id = $3
+    SELECT c.id FROM items c JOIN item_tree t ON c.parent_id = t.tree_id WHERE c.company_id = $2 AND c.project_id IS NULL
 )
 UPDATE items target
 SET deleted_at = NOW(), deleted_by = $3, updated_at = NOW()
@@ -874,29 +847,22 @@ func (q *Queries) TrashDriveItemDescendants(ctx context.Context, arg TrashDriveI
 
 const updateDriveItemName = `-- name: UpdateDriveItemName :one
 UPDATE items
-SET name = $4, updated_at = NOW()
+SET name = $3, updated_at = NOW()
 WHERE id = $1
   AND company_id = $2
-  AND drive_owner_id = $3
   AND project_id IS NULL
   AND is_default_folder = FALSE
 RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
 `
 
 type UpdateDriveItemNameParams struct {
-	ID           pgtype.UUID `json:"id"`
-	CompanyID    pgtype.UUID `json:"company_id"`
-	DriveOwnerID pgtype.UUID `json:"drive_owner_id"`
-	Name         string      `json:"name"`
+	ID        pgtype.UUID `json:"id"`
+	CompanyID pgtype.UUID `json:"company_id"`
+	Name      string      `json:"name"`
 }
 
 func (q *Queries) UpdateDriveItemName(ctx context.Context, arg UpdateDriveItemNameParams) (Item, error) {
-	row := q.db.QueryRow(ctx, updateDriveItemName,
-		arg.ID,
-		arg.CompanyID,
-		arg.DriveOwnerID,
-		arg.Name,
-	)
+	row := q.db.QueryRow(ctx, updateDriveItemName, arg.ID, arg.CompanyID, arg.Name)
 	var i Item
 	err := row.Scan(
 		&i.ID,

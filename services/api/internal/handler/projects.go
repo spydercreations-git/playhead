@@ -51,16 +51,16 @@ type CreateProjectRequest struct {
 
 func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 	user, _ := middleware.GetAuthenticatedUser(r.Context())
-	role, _ := middleware.GetUserRole(r.Context())
 	companyID, ok := middleware.GetActiveCompanyID(r.Context())
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
 		return
 	}
 
-	// Full-access roles, Admin and Manager can create projects
-	if !authz.IsFullAccess(role) && role != authz.RoleAdmin && role != authz.RoleManager && role != authz.RoleOwner {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only leadership, admins and managers can create projects"})
+	person := middleware.GetPerson(r.Context())
+	// Roles with projects.create permission can create projects
+	if !person.HasPermission(authz.PermProjectsCreate) {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only members with projects.create can create projects"})
 		return
 	}
 
@@ -194,7 +194,6 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h *ProjectHandler) List(w http.ResponseWriter, r *http.Request) {
 	user, _ := middleware.GetAuthenticatedUser(r.Context())
-	role, _ := middleware.GetUserRole(r.Context())
 	companyID, ok := middleware.GetActiveCompanyID(r.Context())
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -211,8 +210,9 @@ func (h *ProjectHandler) List(w http.ResponseWriter, r *http.Request) {
 		statusFilter = pgtype.Text{String: status, Valid: true}
 	}
 
-	// Admins and Managers see all projects (with filters)
-	if role == authz.RoleAdmin || role == authz.RoleManager || role == authz.RoleOwner {
+	// Leadership and roles with projects.view_all see all projects (with filters)
+	person := middleware.GetPerson(r.Context())
+	if person.HasPermission(authz.PermProjectsViewAll) {
 		projects, err := h.queries.ListProjectsForAdminOrManager(r.Context(), db.ListProjectsForAdminOrManagerParams{
 			CompanyID: companyID,
 			ClientID:  clientIDFilter,

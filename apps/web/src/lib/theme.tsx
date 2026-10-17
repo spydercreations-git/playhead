@@ -66,10 +66,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     if (isNeutralPage) {
       document.documentElement.setAttribute("data-theme-neutral", "true");
+      // Share links (/s/*) and review links must always render Blue
+      document.documentElement.setAttribute("data-theme", "blue");
     } else {
       document.documentElement.removeAttribute("data-theme-neutral");
+      // Restore user theme when navigating back to normal workspace
+      const currentTheme = (user?.theme as ThemeId) || "blue";
+      document.documentElement.setAttribute("data-theme", currentTheme);
     }
-  }, [pathname]);
+  }, [pathname, user?.theme]);
 
   const setTheme = useCallback(
     (newTheme: ThemeId) => {

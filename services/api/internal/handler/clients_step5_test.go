@@ -49,7 +49,7 @@ func TestStep5NewClientModalAndPeople(t *testing.T) {
 	_, err = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: comp.ID,
 		UserID:    adminUser.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 	})
 	if err != nil {
 		t.Fatalf("create admin membership: %v", err)
@@ -58,7 +58,7 @@ func TestStep5NewClientModalAndPeople(t *testing.T) {
 	adminPerson := authz.Person{
 		UserID:      uuid.UUID(adminUser.ID.Bytes),
 		Email:       adminUser.Email,
-		Role:        authz.RoleAdmin,
+		Role:        authz.RoleCEO,
 		CompanyID:   uuid.UUID(comp.ID.Bytes),
 		Permissions: []string{authz.PermClientsCreate, authz.PermClientsViewAll},
 	}

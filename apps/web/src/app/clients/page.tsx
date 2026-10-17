@@ -6,7 +6,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
-import { Building2 } from "@/components/ui/icon";
+import { ClientCard } from "@/components/clients/client-card";
+import { Icon } from "@/components/ui/icon";
 
 interface ClientListItem {
   id: string;
@@ -134,9 +135,10 @@ export default function ClientsPage() {
           {hasPermission("clients.create") && (
             <button
               onClick={() => setShowNewClient(true)}
-              className="flex h-9 items-center justify-center rounded-lg bg-[var(--button)] px-4 text-xs font-semibold text-[var(--button-text)] shadow hover:bg-[var(--button-hover)] transition-colors"
+              className="flex h-9 items-center gap-1.5 justify-center rounded-lg bg-[var(--button)] px-4 text-xs font-semibold text-[var(--button-text)] shadow hover:bg-[var(--button-hover)] transition-colors"
             >
-              + New Client
+              <Icon name="add" size={16} />
+              <span>New client</span>
             </button>
           )}
         </div>
@@ -152,22 +154,25 @@ export default function ClientsPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--panel)]/50 py-16 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--border)] text-[#4876F3] mb-3">
-            <Building2 className="w-6 h-6 text-emerald-400" />
-          </div>
-          <h3 className="text-base font-semibold text-white">No clients found</h3>
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--panel)]/50 py-16 text-center">
+          <Icon name="corporate_fare" size={32} className="text-white mb-3" />
+          <h3 className="text-base font-semibold text-white">
+            {search ? "No clients found" : "No clients yet"}
+          </h3>
           <p className="mt-1 text-xs text-[var(--text-2)] max-w-sm">
             {search
               ? "No clients matched your search filter."
-              : "Get started by adding your first agency client."}
+              : hasPermission("clients.create")
+              ? "Add your first client to start sharing work with them."
+              : "Ask a leader to add one."}
           </p>
           {!search && hasPermission("clients.create") && (
             <button
               onClick={() => setShowNewClient(true)}
-              className="mt-4 rounded-lg bg-[var(--button)] px-4 py-2 text-xs font-semibold text-[var(--button-text)] shadow hover:bg-[var(--button-hover)]"
+              className="mt-4 flex items-center gap-1.5 h-9 rounded-lg bg-[var(--button)] px-4 text-xs font-semibold text-[var(--button-text)] shadow hover:bg-[var(--button-hover)] transition-colors"
             >
-              + Create Client
+              <Icon name="add" size={16} />
+              <span>New client</span>
             </button>
           )}
         </div>
@@ -252,42 +257,23 @@ export default function ClientsPage() {
           </table>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {filtered.map((client) => (
-            <Link
+            <ClientCard
               key={client.id}
-              href={`/clients/${client.id}`}
-              className="flex flex-col justify-between rounded-xl border border-[var(--border-strong)] bg-[var(--panel)] p-5 hover:border-[var(--text-3)] transition-all hover:shadow-lg"
-            >
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  {client.logo_key?.Valid && client.logo_key.String ? (
-                    <img
-                      src={client.logo_key.String}
-                      alt={client.name}
-                      className="h-10 w-10 rounded-lg object-cover border border-[var(--border)]"
-                    />
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#4876F3]/20 font-bold text-[#4876F3] text-sm">
-                      {client.name.slice(0, 2).toUpperCase()}
-                    </div>
-                  )}
-                  <div>
-                    <h3 className="text-sm font-bold text-white">
-                      {client.name}
-                    </h3>
-                    <p className="text-xs text-[var(--text-2)]">
-                      {client.website?.Valid ? client.website.String : "No website"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-[var(--border-strong)]/50 flex items-center justify-between text-xs text-[var(--text-2)]">
-                <span>{client.projects_count} projects</span>
-                <span>{formatBytes(client.total_size_bytes)}</span>
-              </div>
-            </Link>
+              id={client.id}
+              name={client.name}
+              pictureUrl={client.logo_key?.Valid && client.logo_key.String ? client.logo_key.String : null}
+              peopleCount={client.contacts_count || 0}
+              updatedAtText={formatDate(client.updated_at)}
+              website={client.website?.Valid ? client.website.String : null}
+              interactive={true}
+              onMenuClick={() => {
+                if (hasPermission("clients.delete")) {
+                  setClientToDelete(client);
+                }
+              }}
+            />
           ))}
         </div>
       )}

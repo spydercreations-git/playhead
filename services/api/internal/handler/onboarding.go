@@ -3,11 +3,13 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -265,7 +267,8 @@ func (h *OnboardingHandler) UploadAvatar(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	avatarURL := "/api/v1/users/avatar/" + userIDStr + "/512.webp"
+	nowUnix := time.Now().Unix()
+	avatarURL := fmt.Sprintf("/api/v1/users/avatar/%s/512.webp?v=%d", userIDStr, nowUnix)
 	_ = h.queries.UpdateUserAvatar(r.Context(), db.UpdateUserAvatarParams{
 		ID:        user.ID,
 		AvatarUrl: pgtype.Text{String: avatarURL, Valid: true},
@@ -275,10 +278,10 @@ func (h *OnboardingHandler) UploadAvatar(w http.ResponseWriter, r *http.Request)
 		"status":     "ok",
 		"avatar_url": avatarURL,
 		"variants": map[string]string{
-			"512": "/api/v1/users/avatar/" + userIDStr + "/512.webp",
-			"256": "/api/v1/users/avatar/" + userIDStr + "/256.webp",
-			"128": "/api/v1/users/avatar/" + userIDStr + "/128.webp",
-			"64":  "/api/v1/users/avatar/" + userIDStr + "/64.webp",
+			"512": fmt.Sprintf("/api/v1/users/avatar/%s/512.webp?v=%d", userIDStr, nowUnix),
+			"256": fmt.Sprintf("/api/v1/users/avatar/%s/256.webp?v=%d", userIDStr, nowUnix),
+			"128": fmt.Sprintf("/api/v1/users/avatar/%s/128.webp?v=%d", userIDStr, nowUnix),
+			"64":  fmt.Sprintf("/api/v1/users/avatar/%s/64.webp?v=%d", userIDStr, nowUnix),
 		},
 	})
 }
@@ -386,7 +389,8 @@ func (h *OnboardingHandler) UploadClientPicture(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	pictureURL := "/api/v1/clients/" + clientIDStr + "/picture/512.webp"
+	nowUnix := time.Now().Unix()
+	pictureURL := fmt.Sprintf("/api/v1/clients/%s/picture/512.webp?v=%d", clientIDStr, nowUnix)
 	_ = h.queries.UpdateClientLogoKey(r.Context(), db.UpdateClientLogoKeyParams{
 		ID:        clientID,
 		LogoKey:   pgtype.Text{String: pictureURL, Valid: true},
@@ -397,10 +401,10 @@ func (h *OnboardingHandler) UploadClientPicture(w http.ResponseWriter, r *http.R
 		"status":      "ok",
 		"picture_url": pictureURL,
 		"variants": map[string]string{
-			"512": "/api/v1/clients/" + clientIDStr + "/picture/512.webp",
-			"256": "/api/v1/clients/" + clientIDStr + "/picture/256.webp",
-			"128": "/api/v1/clients/" + clientIDStr + "/picture/128.webp",
-			"64":  "/api/v1/clients/" + clientIDStr + "/picture/64.webp",
+			"512": fmt.Sprintf("/api/v1/clients/%s/picture/512.webp?v=%d", clientIDStr, nowUnix),
+			"256": fmt.Sprintf("/api/v1/clients/%s/picture/256.webp?v=%d", clientIDStr, nowUnix),
+			"128": fmt.Sprintf("/api/v1/clients/%s/picture/128.webp?v=%d", clientIDStr, nowUnix),
+			"64":  fmt.Sprintf("/api/v1/clients/%s/picture/64.webp?v=%d", clientIDStr, nowUnix),
 		},
 	})
 }

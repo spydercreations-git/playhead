@@ -55,7 +55,7 @@ func TestTrialMaxFiveSeatsEnforcement(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: testCompany.ID,
 		UserID:    ownerUser.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 	})
 
 	authOwner := &middleware.AuthenticatedUser{
@@ -72,7 +72,7 @@ func TestTrialMaxFiveSeatsEnforcement(t *testing.T) {
 	}
 	userCtx := context.WithValue(ctx, middleware.UserContextKey, authOwner)
 	userCtx = context.WithValue(userCtx, middleware.CompanyContextKey, testCompany.ID)
-	userCtx = context.WithValue(userCtx, middleware.RoleContextKey, authz.RoleAdmin)
+	userCtx = context.WithValue(userCtx, middleware.RoleContextKey, authz.RoleCEO)
 	userCtx = context.WithValue(userCtx, middleware.PersonContextKey, ownerPerson)
 
 	// Function to send invite

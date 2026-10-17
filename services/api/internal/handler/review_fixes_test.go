@@ -55,7 +55,7 @@ func TestFix1TeamInviteAndResendTempPassword(t *testing.T) {
 	adminPerson := authz.Person{
 		UserID:      uuid.UUID(adminUser.ID.Bytes),
 		Email:       adminUser.Email,
-		Role:        authz.RoleAdmin,
+		Role:        authz.RoleCEO,
 		CompanyID:   uuid.UUID(comp.ID.Bytes),
 		Permissions: []string{authz.PermTeamInvite},
 	}
@@ -261,7 +261,7 @@ func TestFix3ClientPictureCompanyCheck(t *testing.T) {
 	personA := authz.Person{
 		UserID:      uuid.UUID(userA.ID.Bytes),
 		Email:       userA.Email,
-		Role:        authz.RoleAdmin,
+		Role:        authz.RoleCEO,
 		CompanyID:   uuid.UUID(compA.ID.Bytes),
 		Permissions: []string{authz.PermClientsEdit},
 	}
@@ -331,7 +331,7 @@ func TestFix1ClientContactResendTempPassword(t *testing.T) {
 	adminPerson := authz.Person{
 		UserID:      uuid.UUID(adminUser.ID.Bytes),
 		Email:       adminUser.Email,
-		Role:        authz.RoleAdmin,
+		Role:        authz.RoleCEO,
 		CompanyID:   uuid.UUID(comp.ID.Bytes),
 		Permissions: []string{authz.PermClientsEdit},
 	}

@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { apiRequest } from "@/lib/api";
-import { Camera, Plus, X, Loader2 } from "@/components/ui/icon";
+import { Icon } from "@/components/ui/icon";
 import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
+import { ClientCard } from "@/components/clients/client-card";
 
 interface NewClientDialogProps {
   isOpen: boolean;
@@ -26,51 +27,96 @@ function isValidEmail(email: string): boolean {
   return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email.trim());
 }
 
+function getAvatarColor(identifier: string) {
+  const colors = [
+    "bg-teal-500/20 text-teal-300 border border-teal-500/30",
+    "bg-purple-500/20 text-purple-300 border border-purple-500/30",
+    "bg-blue-500/20 text-blue-300 border border-blue-500/30",
+    "bg-amber-500/20 text-amber-300 border border-amber-500/30",
+    "bg-rose-500/20 text-rose-300 border border-rose-500/30",
+    "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30",
+  ];
+  let hash = 0;
+  for (let i = 0; i < identifier.length; i++) {
+    hash = identifier.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
 export function NewClientDialog({
   isOpen,
   onClose,
   onSuccess,
   initialData,
 }: NewClientDialogProps) {
+  // Form fields
   const [name, setName] = useState(initialData?.name || "");
   const [website, setWebsite] = useState(initialData?.website || "");
-  const [notes, setNotes] = useState(initialData?.notes || "");
-  const [people, setPeople] = useState<PersonEntry[]>([
-    { name: "", email: "" },
-  ]);
+  const [people, setPeople] = useState<PersonEntry[]>([]);
   const [sendInviteEmailsNow, setSendInviteEmailsNow] = useState(true);
+
+  // Inline "Add a person" state
+  const [isAddingPerson, setIsAddingPerson] = useState(false);
+  const [inlineName, setInlineName] = useState("");
+  const [inlineEmail, setInlineEmail] = useState("");
+  const [inlineError, setInlineError] = useState<string | null>(null);
 
   // Picture & crop states
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inlineNameInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
   const [picturePreviewUrl, setPicturePreviewUrl] = useState<string | null>(null);
   const [pictureError, setPictureError] = useState<string | null>(null);
 
+  // Status & modal states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
+  // Reset form on open/initialData change
   useEffect(() => {
     if (initialData) {
       setName(initialData.name || "");
       setWebsite(initialData.website || "");
-      setNotes(initialData.notes || "");
       setPeople([]);
     } else {
       setName("");
       setWebsite("");
-      setNotes("");
-      setPeople([{ name: "", email: "" }]);
+      setPeople([]);
       setSendInviteEmailsNow(true);
       setCroppedBlob(null);
       setPicturePreviewUrl(null);
       setCropSrc(null);
       setPictureError(null);
       setError(null);
+      setIsAddingPerson(false);
+      setInlineName("");
+      setInlineEmail("");
+      setInlineError(null);
+      setShowDiscardConfirm(false);
     }
   }, [initialData, isOpen]);
 
-  // Clean up preview object url
+  // Auto-focus name field when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        nameInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  // Auto-focus inline name input when inline add opens
+  useEffect(() => {
+    if (isAddingPerson) {
+      inlineNameInputRef.current?.focus();
+    }
+  }, [isAddingPerson]);
+
+  // Clean up object URLs
   useEffect(() => {
     return () => {
       if (picturePreviewUrl && picturePreviewUrl.startsWith("blob:")) {
@@ -79,25 +125,70 @@ export function NewClientDialog({
     };
   }, [picturePreviewUrl]);
 
-  if (!isOpen) return null;
-
   const isEditMode = Boolean(initialData?.id);
 
-  function handleAddPerson() {
-    setPeople((prev) => [...prev, { name: "", email: "" }]);
-  }
+  // Check if user has entered anything
+  const hasTyped = useMemo(() => {
+    return (
+      name.trim().length > 0 ||
+      website.trim().length > 0 ||
+      people.length > 0 ||
+      croppedBlob !== null ||
+      inlineName.trim().length > 0 ||
+      inlineEmail.trim().length > 0
+    );
+  }, [name, website, people, croppedBlob, inlineName, inlineEmail]);
 
-  function handleUpdatePerson(index: number, field: keyof PersonEntry, value: string) {
-    setPeople((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
-    });
-  }
+  // Validation
+  const validPeopleCount = useMemo(() => {
+    return people.filter(
+      (p) => p.email.trim().length > 0 && isValidEmail(p.email.trim())
+    ).length;
+  }, [people]);
 
-  function handleRemovePerson(index: number) {
+  // Handle inline person add
+  const handleAddInlinePerson = useCallback(() => {
+    const trimmedEmail = inlineEmail.trim();
+    const trimmedName = inlineName.trim();
+
+    if (!trimmedEmail) {
+      setInlineError("Enter a full email address");
+      return;
+    }
+
+    if (!isValidEmail(trimmedEmail)) {
+      setInlineError("Enter a full email address");
+      return;
+    }
+
+    const emailLower = trimmedEmail.toLowerCase();
+    const isDuplicate = people.some(
+      (p) => p.email.trim().toLowerCase() === emailLower
+    );
+
+    if (isDuplicate) {
+      setInlineError("Same email twice in one client is not allowed");
+      return;
+    }
+
+    // Success: add to people list
+    setPeople((prev) => [
+      ...prev,
+      {
+        name: trimmedName || trimmedEmail.split("@")[0],
+        email: trimmedEmail,
+      },
+    ]);
+
+    setInlineName("");
+    setInlineEmail("");
+    setInlineError(null);
+    setIsAddingPerson(false);
+  }, [inlineEmail, inlineName, people]);
+
+  const handleRemovePerson = useCallback((index: number) => {
     setPeople((prev) => prev.filter((_, idx) => idx !== index));
-  }
+  }, []);
 
   // Picture selection & validation
   function handleSelectPictureFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -132,93 +223,65 @@ export function NewClientDialog({
     setCropSrc(null);
   }
 
-  // Email validations & duplicate detection
-  const peopleValidation = useMemo(() => {
-    let invalidEmailCount = 0;
-    const errors: Record<number, string> = {};
-
-    // Map lowercase non-empty emails to index occurrences
-    const emailCounts: Record<string, number> = {};
-    people.forEach((p) => {
-      const emailNorm = p.email.trim().toLowerCase();
-      if (emailNorm) {
-        emailCounts[emailNorm] = (emailCounts[emailNorm] || 0) + 1;
+  // Footer status message
+  const footerStatusText = useMemo(() => {
+    if (!name.trim()) {
+      return "Enter company name to continue";
+    }
+    if (isAddingPerson && inlineEmail.trim()) {
+      if (!isValidEmail(inlineEmail.trim())) {
+        return inlineName.trim()
+          ? `Fix ${inlineName.trim()}'s email`
+          : "Enter a valid email address";
       }
-    });
-
-    people.forEach((p, idx) => {
-      const nameTrimmed = p.name.trim();
-      const emailTrimmed = p.email.trim();
-
-      // If both name and email are empty, it's an unpopulated row (allowed, ignored)
-      if (!nameTrimmed && !emailTrimmed) {
-        return;
-      }
-
-      if (!emailTrimmed) {
-        errors[idx] = "Enter a full email address";
-        invalidEmailCount++;
-        return;
-      }
-
-      if (!isValidEmail(emailTrimmed)) {
-        errors[idx] = "Enter a full email address";
-        invalidEmailCount++;
-        return;
-      }
-
-      const emailNorm = emailTrimmed.toLowerCase();
-      if (emailCounts[emailNorm] > 1) {
-        errors[idx] = "Same email twice in one client is not allowed";
-        invalidEmailCount++;
-        return;
-      }
-    });
-
-    const validFilledCount = people.filter(
-      (p, idx) => p.email.trim().length > 0 && !errors[idx]
-    ).length;
-
-    return {
-      errors,
-      invalidEmailCount,
-      validFilledCount,
-    };
-  }, [people]);
+    }
+    return null;
+  }, [name, isAddingPerson, inlineEmail, inlineName]);
 
   const isFormValid =
-    name.trim().length > 0 && peopleValidation.invalidEmailCount === 0;
+    name.trim().length > 0 &&
+    (!isAddingPerson || (!inlineEmail.trim() && !inlineName.trim()));
 
-  // Footer status description
-  const footerStatusText = useMemo(() => {
-    if (peopleValidation.invalidEmailCount > 0) {
-      return `Fix ${peopleValidation.invalidEmailCount} ${
-        peopleValidation.invalidEmailCount === 1 ? "email" : "emails"
-      } to continue`;
+  // Escape key and close handler
+  const handleRequestClose = useCallback(() => {
+    if (isAddingPerson) {
+      setIsAddingPerson(false);
+      setInlineError(null);
+      return;
     }
-    if (!name.trim()) {
-      return "Enter client name to continue";
+    if (hasTyped) {
+      setShowDiscardConfirm(true);
+    } else {
+      onClose();
     }
-    if (peopleValidation.validFilledCount > 0) {
-      if (sendInviteEmailsNow) {
-        return `Will invite ${peopleValidation.validFilledCount} ${
-          peopleValidation.validFilledCount === 1 ? "person" : "people"
-        }`;
+  }, [isAddingPerson, hasTyped, onClose]);
+
+  // Global keydown for Escape
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (cropSrc) {
+          setCropSrc(null);
+          return;
+        }
+        if (showDiscardConfirm) {
+          setShowDiscardConfirm(false);
+          return;
+        }
+        handleRequestClose();
       }
-      return `${peopleValidation.validFilledCount} ${
-        peopleValidation.validFilledCount === 1 ? "person" : "people"
-      } will be saved without invites`;
     }
-    return "No people to invite";
-  }, [
-    peopleValidation.invalidEmailCount,
-    peopleValidation.validFilledCount,
-    name,
-    sendInviteEmailsNow,
-  ]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, cropSrc, showDiscardConfirm, handleRequestClose]);
+
+  // Form submit
+  async function handleSubmit(e?: React.FormEvent) {
+    if (e) e.preventDefault();
     if (!isFormValid || loading) return;
 
     try {
@@ -231,44 +294,56 @@ export function NewClientDialog({
           body: JSON.stringify({
             name: name.trim(),
             website: website.trim() || undefined,
-            notes: notes.trim() || undefined,
           }),
         });
 
         if (croppedBlob) {
-          const formData = new FormData();
-          formData.append("file", croppedBlob, "client-picture.webp");
-          await apiRequest(`/clients/${initialData.id}/picture`, {
-            method: "POST",
-            body: formData,
-          });
+          try {
+            const formData = new FormData();
+            formData.append("file", croppedBlob, "client-picture.webp");
+            await apiRequest(`/clients/${initialData.id}/picture`, {
+              method: "POST",
+              body: formData,
+            });
+          } catch (uploadErr) {
+            console.error("Client picture upload failed:", uploadErr);
+            setError("Client updated, but the picture failed to upload. Try again in Client settings.");
+            if (onSuccess) onSuccess();
+            return;
+          }
         }
       } else {
-        const validPeople = people
-          .filter((p) => p.email.trim().length > 0)
-          .map((p) => ({
-            name: p.name.trim(),
-            email: p.email.trim(),
-          }));
+        const validPeople = people.map((p) => ({
+          name: p.name.trim(),
+          email: p.email.trim(),
+        }));
 
-        const res = await apiRequest<{ client: { id: string } }>("/clients", {
+        const res = await apiRequest<any>("/clients", {
           method: "POST",
           body: JSON.stringify({
             name: name.trim(),
             website: website.trim() || undefined,
-            notes: notes.trim() || undefined,
             send_invite_emails_now: sendInviteEmailsNow,
             people: validPeople,
           }),
         });
 
-        if (croppedBlob && res.client?.id) {
-          const formData = new FormData();
-          formData.append("file", croppedBlob, "client-picture.webp");
-          await apiRequest(`/clients/${res.client.id}/picture`, {
-            method: "POST",
-            body: formData,
-          });
+        const createdId = res?.id || res?.client?.id;
+
+        if (croppedBlob && createdId) {
+          try {
+            const formData = new FormData();
+            formData.append("file", croppedBlob, "client-picture.webp");
+            await apiRequest(`/clients/${createdId}/picture`, {
+              method: "POST",
+              body: formData,
+            });
+          } catch (uploadErr) {
+            console.error("Client picture upload failed:", uploadErr);
+            setError("Client created, but the picture failed to upload. Try again in Client settings.");
+            if (onSuccess) onSuccess();
+            return;
+          }
         }
       }
 
@@ -281,269 +356,397 @@ export function NewClientDialog({
     }
   }
 
-  const avatarInitial = name.trim() ? name.trim().charAt(0).toUpperCase() : "C";
+  // All hooks called above: early return now safe
+  if (!isOpen) return null;
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-        <div className="w-full max-w-[560px] rounded-[16px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-overlay max-h-[90vh] flex flex-col relative">
-          {/* Header */}
-          <div className="flex items-start justify-between pb-3">
+      {/* Background Backdrop */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
+        {/* Main Modal Window (1000 x 680, rounded 20px) */}
+        <div className="relative w-full max-w-[560px] min-[900px]:max-w-[1000px] h-auto min-[900px]:h-[680px] rounded-[20px] border border-[var(--border)] bg-[var(--panel)] shadow-xl overflow-hidden flex flex-col min-[900px]:flex-row">
+          
+          {/* Close Button Top Right */}
+          <button
+            type="button"
+            onClick={handleRequestClose}
+            className="absolute top-6 right-6 z-30 h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-3)] hover:text-white hover:bg-white/10 transition-colors"
+            title="Close"
+          >
+            <Icon name="close" size={20} />
+          </button>
+
+          {/* LEFT COLUMN: LIVE PREVIEW (380 wide, hidden below 900px) */}
+          <div
+            className="hidden min-[900px]:flex w-[380px] shrink-0 border-r border-[var(--border)] bg-[var(--bg)] flex-col justify-between p-8 relative overflow-hidden"
+            style={{
+              backgroundImage: "var(--bg-glow)",
+              backgroundPosition: "bottom center",
+              backgroundRepeat: "no-repeat",
+            }}
+          >
             <div>
-              <h2 className="text-base font-bold text-white">
-                {isEditMode ? "Edit client" : "New client"}
-              </h2>
-              <p className="text-xs text-[var(--text-3)] mt-0.5">
-                {isEditMode
-                  ? "Update client details and notes."
-                  : "A client is a company. Add the people who will review your work."}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-[8px] text-[var(--text-3)] hover:text-white hover:bg-[var(--input)] transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+              {/* Preview Label */}
+              <div className="text-[12px] font-semibold tracking-wider text-[var(--text-3)] mb-6">
+                PREVIEW
+              </div>
 
-          {error && (
-            <div className="mt-2 rounded-[10px] border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
-              {error}
+              {/* Live Client Card Component */}
+              <div className="w-full">
+                <ClientCard
+                  name={name.trim() || "Company name"}
+                  pictureUrl={picturePreviewUrl}
+                  peopleCount={validPeopleCount}
+                  updatedAtText="Updated just now"
+                  interactive={false}
+                />
+              </div>
             </div>
-          )}
 
-          {pictureError && (
-            <div className="mt-2 rounded-[10px] border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
-              {pictureError}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto py-2 space-y-4">
-            {/* Client picture avatar section */}
-            <div className="flex items-center gap-4 py-1">
+            {/* Bottom: Upload / Change picture action */}
+            <div className="pt-4">
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
-                className="hidden"
                 onChange={handleSelectPictureFile}
+                className="hidden"
               />
-              <div
+              <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="relative w-16 h-16 rounded-[16px] bg-[#0e7490] flex items-center justify-center cursor-pointer overflow-visible shrink-0 hover:opacity-90 transition-opacity"
+                className="inline-flex items-center gap-2 text-[15px] font-semibold text-[var(--button)] hover:opacity-90 transition-opacity cursor-pointer group"
               >
-                {picturePreviewUrl ? (
-                  <img
-                    src={picturePreviewUrl}
-                    alt="Client picture"
-                    className="w-full h-full object-cover rounded-[16px]"
-                  />
-                ) : (
-                  <span className="text-2xl font-bold text-white select-none">
-                    {avatarInitial}
-                  </span>
-                )}
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#3B67E0] border-2 border-[var(--panel)] flex items-center justify-center text-white shadow-sm">
-                  <Camera className="w-3.5 h-3.5" />
-                </div>
-              </div>
-
-              <div>
-                <div className="text-sm font-semibold text-white">Client picture</div>
-                <div className="text-xs text-[var(--text-3)]">
-                  Optional. PNG, JPG or WebP. You crop it next.
-                </div>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-xs font-semibold text-[#4876F3] hover:underline cursor-pointer inline-block mt-0.5"
-                >
+                <Icon
+                  name="Camera"
+                  size={18}
+                  className="text-[var(--button)] group-hover:opacity-90"
+                />
+                <span>
                   {picturePreviewUrl ? "Change picture" : "Upload picture"}
-                </button>
-              </div>
+                </span>
+              </button>
+
+              {pictureError && (
+                <p className="mt-2 text-[13px] text-red-400 leading-tight">
+                  {pictureError}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: THE FORM (48px side padding) */}
+          <div className="flex-1 flex flex-col justify-between px-6 py-6 min-[900px]:px-12 min-[900px]:py-8 min-[900px]:pt-10 overflow-hidden">
+            
+            {/* Header */}
+            <div>
+              <h2 className="text-[28px] min-[900px]:text-[30px] font-bold text-white tracking-tight leading-tight">
+                {isEditMode ? "Edit client" : "New client"}
+              </h2>
+              <p className="text-[16px] text-[var(--text-2)] mt-1">
+                A company you make videos for.
+              </p>
             </div>
 
-            {/* Client name & Website (two columns) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Form Fields Container */}
+            <form
+              id="new-client-form"
+              onSubmit={handleSubmit}
+              className="my-5 space-y-5 overflow-y-auto pr-1 flex-1 max-h-[460px]"
+            >
+              {/* Error banner */}
+              {error && (
+                <div className="rounded-[12px] bg-red-500/10 border border-red-500/30 p-3.5 text-[14px] text-red-400">
+                  {error}
+                </div>
+              )}
+
+              {/* 1. Company Name */}
               <div>
-                <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
-                  Client name <span className="text-red-400">*</span>
+                <label
+                  htmlFor="company-name-input"
+                  className="block text-[14px] font-medium text-white mb-2"
+                >
+                  Company name
                 </label>
                 <input
+                  id="company-name-input"
+                  ref={nameInputRef}
                   type="text"
-                  required
-                  autoFocus
+                  placeholder="Acme Studios"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Acme Studio"
-                  className="w-full h-10 rounded-[10px] border border-[var(--border)] bg-[var(--input)] px-3.5 text-xs text-white placeholder-[var(--text-3)] focus:border-[#4876F3] focus:outline-none transition-colors"
+                  className="w-full h-[48px] rounded-[12px] bg-[var(--input)] border border-[var(--border)] px-4 text-[16px] text-white placeholder-[var(--text-3)] focus:border-[var(--button)] outline-none transition-colors"
                 />
               </div>
 
+              {/* 2. Website */}
               <div>
-                <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
-                  Website (optional)
-                </label>
-                <input
-                  type="text"
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="acmestudio.com"
-                  className="w-full h-10 rounded-[10px] border border-[var(--border)] bg-[var(--input)] px-3.5 text-xs text-white placeholder-[var(--text-3)] focus:border-[#4876F3] focus:outline-none transition-colors"
-                />
-              </div>
-            </div>
-
-            {/* People section (in Create mode) */}
-            {!isEditMode && (
-              <div className="space-y-2 pt-1">
-                <div>
-                  <div className="text-sm font-semibold text-white">People</div>
-                  <div className="text-xs text-[var(--text-3)] mt-0.5">
-                    Each person gets their own login. Pick their projects later in Manage access.
-                  </div>
-                </div>
-
-                <div className="space-y-2.5 pt-1">
-                  {people.map((person, idx) => {
-                    const rowError = peopleValidation.errors[idx];
-                    return (
-                      <div key={idx} className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            placeholder="Name"
-                            value={person.name}
-                            onChange={(e) =>
-                              handleUpdatePerson(idx, "name", e.target.value)
-                            }
-                            className="w-[42%] h-10 rounded-[10px] border border-[var(--border)] bg-[var(--input)] px-3.5 text-xs text-white placeholder-[var(--text-3)] focus:border-[#4876F3] focus:outline-none transition-colors"
-                          />
-                          <div className="flex-1 relative">
-                            <input
-                              type="email"
-                              placeholder="name@company.com"
-                              value={person.email}
-                              onChange={(e) =>
-                                handleUpdatePerson(idx, "email", e.target.value)
-                              }
-                              className={`w-full h-10 rounded-[10px] border bg-[var(--input)] px-3.5 text-xs text-white placeholder-[var(--text-3)] focus:outline-none transition-colors ${
-                                rowError
-                                  ? "border-red-500 focus:border-red-500"
-                                  : "border-[var(--border)] focus:border-[#4876F3]"
-                              }`}
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemovePerson(idx)}
-                            className="p-2 text-[var(--text-3)] hover:text-white rounded-[8px] hover:bg-[var(--input)] transition-colors shrink-0"
-                            title="Remove person"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                        {rowError && (
-                          <p className="text-xs text-red-400 pl-[44%] font-medium">
-                            {rowError}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleAddPerson}
-                  className="text-xs font-semibold text-[#4876F3] hover:underline cursor-pointer flex items-center gap-1.5 pt-1"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add another person</span>
-                </button>
-
-                {/* Send invite emails now toggle */}
-                <div className="mt-3 rounded-[12px] bg-[var(--input)]/60 border border-[var(--border)] p-3.5 flex items-center gap-3.5">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={sendInviteEmailsNow}
-                    onClick={() => setSendInviteEmailsNow(!sendInviteEmailsNow)}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      sendInviteEmailsNow ? "bg-[#3B67E0]" : "bg-[var(--border-strong)]"
-                    }`}
+                <div className="flex items-center gap-2 mb-2">
+                  <label
+                    htmlFor="company-website-input"
+                    className="text-[14px] font-medium text-white"
                   >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                        sendInviteEmailsNow ? "translate-x-5" : "translate-x-0"
-                      }`}
-                    />
-                  </button>
-                  <div>
-                    <div className="text-xs font-medium text-white">
-                      Send invite emails now
-                    </div>
-                    <div className="text-xs text-[var(--text-3)]">
-                      Turn off to add people now and invite them later.
-                    </div>
-                  </div>
+                    Website
+                  </label>
+                  <span className="text-[13px] text-[var(--text-3)]">
+                    Optional
+                  </span>
+                </div>
+                <div className="relative">
+                  <Icon
+                    name="globe"
+                    size={18}
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)] pointer-events-none"
+                  />
+                  <input
+                    id="company-website-input"
+                    type="text"
+                    placeholder="acmeworks.com"
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && isFormValid) {
+                        e.preventDefault();
+                        handleSubmit();
+                      }
+                    }}
+                    className="w-full h-[48px] rounded-[12px] bg-[var(--input)] border border-[var(--border)] pl-11 pr-4 text-[16px] text-white placeholder-[var(--text-3)] focus:border-[var(--button)] outline-none transition-colors"
+                  />
                 </div>
               </div>
-            )}
 
-            {isEditMode && (
+              {/* 3. People who review */}
               <div>
-                <label className="block text-xs font-medium text-[var(--text-2)] mb-1.5">
-                  Notes
+                <label className="block text-[14px] font-medium text-white mb-2">
+                  People who review
                 </label>
-                <textarea
-                  rows={3}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Brand guidelines, deliverables preferences, account notes..."
-                  className="w-full rounded-[10px] border border-[var(--border)] bg-[var(--input)] p-3 text-xs text-white placeholder-[var(--text-3)] focus:border-[#4876F3] focus:outline-none resize-none transition-colors"
-                />
-              </div>
-            )}
 
-            {/* Footer */}
-            <div className="flex items-center justify-between pt-4 border-t border-[var(--border)]">
-              <div
-                className={`text-xs ${
-                  peopleValidation.invalidEmailCount > 0
-                    ? "text-red-400 font-medium"
-                    : "text-[var(--text-3)]"
-                }`}
-              >
-                {!isEditMode && footerStatusText}
+                <div className="space-y-2.5">
+                  {/* Added people list */}
+                  {people.map((person, idx) => (
+                    <div
+                      key={idx}
+                      className="h-[52px] rounded-[12px] bg-[var(--input)] border border-[var(--border)] px-3.5 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={`h-8 w-8 rounded-full ${getAvatarColor(
+                            person.name || person.email
+                          )} font-bold text-[13px] flex items-center justify-center shrink-0`}
+                        >
+                          {(person.name || person.email || "P")
+                            .charAt(0)
+                            .toUpperCase()}
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[15px] font-medium text-white truncate leading-tight">
+                            {person.name || "Reviewer"}
+                          </span>
+                          <span className="text-[13px] text-[var(--text-3)] truncate leading-tight">
+                            {person.email}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePerson(idx)}
+                        className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-3)] hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                        title="Remove"
+                      >
+                        <Icon name="close" size={16} />
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* "Add a person" Dashed or Inline mode */}
+                  {isAddingPerson ? (
+                    <div className="space-y-1.5">
+                      <div className="h-[52px] rounded-[12px] bg-[var(--input)] border border-[var(--button)] px-3 flex items-center gap-2.5">
+                        <input
+                          ref={inlineNameInputRef}
+                          type="text"
+                          placeholder="Name"
+                          value={inlineName}
+                          onChange={(e) => {
+                            setInlineName(e.target.value);
+                            setInlineError(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddInlinePerson();
+                            } else if (e.key === "Escape") {
+                              e.preventDefault();
+                              setIsAddingPerson(false);
+                              setInlineError(null);
+                            }
+                          }}
+                          className="flex-1 bg-transparent text-[15px] text-white placeholder-[var(--text-3)] outline-none min-w-0"
+                        />
+                        <div className="h-5 w-px bg-[var(--border)] shrink-0" />
+                        <input
+                          type="email"
+                          placeholder="Email address"
+                          value={inlineEmail}
+                          onChange={(e) => {
+                            setInlineEmail(e.target.value);
+                            setInlineError(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddInlinePerson();
+                            } else if (e.key === "Escape") {
+                              e.preventDefault();
+                              setIsAddingPerson(false);
+                              setInlineError(null);
+                            }
+                          }}
+                          className="flex-1 bg-transparent text-[15px] text-white placeholder-[var(--text-3)] outline-none min-w-0"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddInlinePerson}
+                          className="h-[36px] px-3.5 rounded-[8px] bg-[var(--button)] hover:bg-[var(--button-hover)] text-[var(--button-text)] text-[14px] font-semibold transition-colors shrink-0"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsAddingPerson(false);
+                            setInlineError(null);
+                          }}
+                          className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-3)] hover:text-white transition-colors shrink-0"
+                        >
+                          <Icon name="close" size={16} />
+                        </button>
+                      </div>
+
+                      {inlineError && (
+                        <p className="text-[13px] text-red-400 pl-1">
+                          {inlineError}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAddingPerson(true);
+                        setInlineName("");
+                        setInlineEmail("");
+                        setInlineError(null);
+                      }}
+                      className="w-full h-[52px] rounded-[12px] border border-dashed border-[var(--border)] hover:border-[var(--border-strong)] flex items-center px-4 gap-3 text-[var(--text-2)] hover:text-white transition-colors cursor-pointer group"
+                    >
+                      <Icon
+                        name="person_add"
+                        size={18}
+                        className="text-[var(--text-2)] group-hover:text-white transition-colors"
+                      />
+                      <span className="text-[15px] font-medium">
+                        Add a person
+                      </span>
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center gap-2.5">
+              {/* 4. Checkbox "Email them an invite now" */}
+              <div className="pt-1">
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={sendInviteEmailsNow}
+                    onChange={(e) => setSendInviteEmailsNow(e.target.checked)}
+                    className="h-[18px] w-[18px] rounded-[4px] border-[var(--border)] accent-[var(--button)] cursor-pointer"
+                  />
+                  <span className="text-[15px] text-white font-normal">
+                    Email them an invite now
+                  </span>
+                </label>
+              </div>
+            </form>
+
+            {/* Footer with Divider */}
+            <div className="border-t border-[var(--border)] pt-5 flex items-center justify-between mt-auto">
+              {/* Short error/status text on left */}
+              <div className="min-w-0 pr-4">
+                {footerStatusText && (
+                  <span className="text-[13px] text-red-400 font-medium truncate block">
+                    {footerStatusText}
+                  </span>
+                )}
+              </div>
+
+              {/* Right: Cancel & Create buttons */}
+              <div className="flex items-center gap-4 shrink-0">
                 <button
                   type="button"
-                  onClick={onClose}
-                  disabled={loading}
-                  className="px-4 py-2 text-xs font-semibold text-[var(--text-2)] hover:text-white rounded-[10px] hover:bg-[var(--hover)] transition-colors"
+                  onClick={handleRequestClose}
+                  className="px-3 py-2 text-[15px] font-medium text-[var(--text-2)] hover:text-white transition-colors"
                 >
                   Cancel
                 </button>
+
                 <button
-                  type="submit"
-                  disabled={loading || !isFormValid}
-                  className="h-9 px-4 rounded-[10px] bg-[var(--button)] text-xs font-semibold text-[var(--button-text)] shadow hover:bg-[var(--button-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                  type="button"
+                  disabled={!isFormValid || loading}
+                  onClick={() => handleSubmit()}
+                  className="h-[44px] w-[160px] rounded-[12px] bg-[var(--button)] hover:bg-[var(--button-hover)] text-[var(--button-text)] font-semibold text-[15px] disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow"
                 >
-                  {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{isEditMode ? "Save changes" : "Create client"}</span>
+                  {loading ? (
+                    <div className="flex items-center gap-2">
+                      <Icon name="progress_activity" size={18} className="animate-spin text-[var(--button-text)]" />
+                      <span>Saving...</span>
+                    </div>
+                  ) : (
+                    <span>{isEditMode ? "Save changes" : "Create client"}</span>
+                  )}
                 </button>
               </div>
             </div>
-          </form>
+          </div>
         </div>
       </div>
 
-      {/* Image Crop Dialog for Square Client Picture */}
+      {/* Discard Confirmation Dialog */}
+      {showDiscardConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-100">
+          <div className="w-full max-w-[400px] rounded-[16px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-xl">
+            <h3 className="text-[20px] font-bold text-white">
+              Discard this client?
+            </h3>
+            <p className="mt-2 text-[14px] text-[var(--text-2)] leading-relaxed">
+              You have unsaved changes. Are you sure you want to discard them?
+            </p>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDiscardConfirm(false)}
+                className="px-4 py-2 text-[14px] font-medium text-[var(--text-2)] hover:text-white transition-colors"
+              >
+                Keep editing
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDiscardConfirm(false);
+                  onClose();
+                }}
+                className="h-[38px] px-4 rounded-[10px] bg-red-600 hover:bg-red-500 text-white font-semibold text-[14px] transition-colors"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Crop Tool (Square aspect ratio) */}
       {cropSrc && (
         <ImageCropDialog
           isOpen={Boolean(cropSrc)}

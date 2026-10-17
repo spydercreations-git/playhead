@@ -731,6 +731,9 @@ export const ICON_NAME_MAP: Record<string, string> = {
   "VideoFileIcon": "movie",
   "ImageFileIcon": "image",
   "PdfFileIcon": "description",
-  "AudioFileIcon": "music_note"
+  "AudioFileIcon": "music_note",
+  "globe": "public",
+  "Globe": "public",
+  "language": "public"
 };
 

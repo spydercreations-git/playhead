@@ -49,7 +49,7 @@ func TestSpreadsheetColumnLockingAndHiddenSanitization(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: company.ID,
 		UserID:    adminUser.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 	})
 
 	clientUser, err := queries.CreateUser(ctx, db.CreateUserParams{
@@ -269,7 +269,7 @@ func TestAutoTrackerCreationOnProjectCreation(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: company.ID,
 		UserID:    adminUser.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 	})
 	clientEntity, _ := queries.CreateClient(ctx, db.CreateClientParams{
 		CompanyID: company.ID,
@@ -290,7 +290,7 @@ func TestAutoTrackerCreationOnProjectCreation(t *testing.T) {
 		Name:  adminUser.Name,
 	}))
 	req = req.WithContext(context.WithValue(req.Context(), middleware.CompanyContextKey, company.ID))
-	req = req.WithContext(context.WithValue(req.Context(), middleware.RoleContextKey, authz.RoleAdmin))
+	req = req.WithContext(context.WithValue(req.Context(), middleware.RoleContextKey, authz.RoleCEO))
 
 	w := httptest.NewRecorder()
 	projHandler.Create(w, req)

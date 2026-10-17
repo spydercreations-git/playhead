@@ -109,6 +109,14 @@ export function ReviewWorkspace({
   const currentIndex = itemsList.findIndex((i) => i.id === item.id);
   const positionText = itemsList.length > 0 ? `${currentIndex >= 0 ? currentIndex + 1 : 1} of ${itemsList.length}` : "";
 
+  // Apply neutral plain dark look for video review/player while open, remove on close
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme-neutral", "true");
+    return () => {
+      document.documentElement.removeAttribute("data-theme-neutral");
+    };
+  }, []);
+
   // 1. Fetch versions for item
   const fetchVersions = useCallback(async () => {
     if (isPublic) return; // public share links use single version or current

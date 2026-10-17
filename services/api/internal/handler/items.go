@@ -1192,9 +1192,8 @@ func (h *ItemsHandler) ListTrash(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Admins and Managers see all trash items in the company
-	lowerRole := strings.ToLower(person.Role)
-	if lowerRole == authz.RoleAdmin || lowerRole == authz.RoleOwner || lowerRole == authz.RoleManager {
+	// Admins and full access roles see all trash items in the company
+	if person.IsFullAccess() || person.HasPermission(authz.PermFilesEmptyTrash) {
 		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"items": items,
 		})
@@ -1373,7 +1372,6 @@ func (h *ItemsHandler) RestoreTrashItem(w http.ResponseWriter, r *http.Request) 
 func (h *ItemsHandler) PermanentDeleteTrashItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, _ := middleware.GetAuthenticatedUser(ctx)
-	role, _ := middleware.GetUserRole(ctx)
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -1396,9 +1394,10 @@ func (h *ItemsHandler) PermanentDeleteTrashItem(w http.ResponseWriter, r *http.R
 	}
 
 	// Permanent delete is allowed for Admins or the item's original creator
-	isAdmin := role == authz.RoleAdmin || role == authz.RoleOwner
+	person := middleware.GetPerson(ctx)
+	canDeleteForever := person.IsFullAccess() || person.HasPermission(authz.PermFilesDeleteForever)
 	isOwner := item.CreatedBy.Valid && item.CreatedBy == user.ID
-	if !isAdmin && !isOwner {
+	if !canDeleteForever && !isOwner {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only Admins and the original uploader can permanently delete items"})
 		return
 	}

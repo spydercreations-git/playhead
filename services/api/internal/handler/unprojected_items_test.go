@@ -59,7 +59,7 @@ func TestUnprojectedDocumentsAndSpreadsheets(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: comp.ID,
 		UserID:    userA.ID,
-		Role:      authz.RoleMember,
+		Role:      authz.RoleEditor,
 	})
 
 	userB, err := queries.CreateUser(ctx, db.CreateUserParams{
@@ -81,7 +81,7 @@ func TestUnprojectedDocumentsAndSpreadsheets(t *testing.T) {
 		"template": "blank",
 	})
 	reqDoc := httptest.NewRequest("POST", "/api/v1/documents", bytes.NewReader(docPayload))
-	reqDoc = reqDoc.WithContext(contextWithAuth(reqDoc.Context(), userA, comp.ID, authz.RoleMember))
+	reqDoc = reqDoc.WithContext(contextWithAuth(reqDoc.Context(), userA, comp.ID, authz.RoleEditor))
 	recDoc := httptest.NewRecorder()
 
 	docH.Create(recDoc, reqDoc)
@@ -118,7 +118,7 @@ func TestUnprojectedDocumentsAndSpreadsheets(t *testing.T) {
 	// 3. User A can view the document
 	reqGetDocA := httptest.NewRequest("GET", "/api/v1/documents/"+createdDoc.ID, nil)
 	reqGetDocA = withChiURLParams(reqGetDocA, map[string]string{"id": createdDoc.ID})
-	reqGetDocA = reqGetDocA.WithContext(contextWithAuth(reqGetDocA.Context(), userA, comp.ID, authz.RoleMember))
+	reqGetDocA = reqGetDocA.WithContext(contextWithAuth(reqGetDocA.Context(), userA, comp.ID, authz.RoleEditor))
 	recGetDocA := httptest.NewRecorder()
 
 	docH.Get(recGetDocA, reqGetDocA)
@@ -149,7 +149,7 @@ func TestUnprojectedDocumentsAndSpreadsheets(t *testing.T) {
 		"template": "blank",
 	})
 	reqSheet := httptest.NewRequest("POST", "/api/v1/spreadsheets", bytes.NewReader(sheetPayload))
-	reqSheet = reqSheet.WithContext(contextWithAuth(reqSheet.Context(), userA, comp.ID, authz.RoleMember))
+	reqSheet = reqSheet.WithContext(contextWithAuth(reqSheet.Context(), userA, comp.ID, authz.RoleEditor))
 	recSheet := httptest.NewRecorder()
 
 	sheetH.CreateSpreadsheet(recSheet, reqSheet)
@@ -172,7 +172,7 @@ func TestUnprojectedDocumentsAndSpreadsheets(t *testing.T) {
 	// 6. User A can view spreadsheet, User B cannot view it
 	reqGetSheetA := httptest.NewRequest("GET", "/api/v1/spreadsheets/"+createdSheet.ID, nil)
 	reqGetSheetA = withChiURLParams(reqGetSheetA, map[string]string{"id": createdSheet.ID})
-	reqGetSheetA = reqGetSheetA.WithContext(contextWithAuth(reqGetSheetA.Context(), userA, comp.ID, authz.RoleMember))
+	reqGetSheetA = reqGetSheetA.WithContext(contextWithAuth(reqGetSheetA.Context(), userA, comp.ID, authz.RoleEditor))
 	recGetSheetA := httptest.NewRecorder()
 
 	sheetH.GetSpreadsheet(recGetSheetA, reqGetSheetA)
@@ -208,7 +208,7 @@ func TestUnprojectedDocumentsAndSpreadsheets(t *testing.T) {
 	// Now User B CAN view the spreadsheet!
 	reqGetSheetBGranted := httptest.NewRequest("GET", "/api/v1/spreadsheets/"+createdSheet.ID, nil)
 	reqGetSheetBGranted = withChiURLParams(reqGetSheetBGranted, map[string]string{"id": createdSheet.ID})
-	reqGetSheetBGranted = reqGetSheetBGranted.WithContext(contextWithAuth(reqGetSheetBGranted.Context(), userB, comp.ID, authz.RoleAdmin))
+	reqGetSheetBGranted = reqGetSheetBGranted.WithContext(contextWithAuth(reqGetSheetBGranted.Context(), userB, comp.ID, authz.RoleCEO))
 	recGetSheetBGranted := httptest.NewRecorder()
 
 	sheetH.GetSpreadsheet(recGetSheetBGranted, reqGetSheetBGranted)

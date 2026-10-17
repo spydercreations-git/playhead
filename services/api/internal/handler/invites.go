@@ -78,10 +78,10 @@ func (h *InviteHandler) Create(w http.ResponseWriter, r *http.Request) {
 		rawRole = "Editor"
 	}
 	lowerRole := strings.ToLower(rawRole)
-	if lowerRole == "owner" || lowerRole == "member" || lowerRole == "guest" {
+	if authz.IsDeprecatedRole(lowerRole) {
 		respondJSON(w, http.StatusBadRequest, map[string]string{
 			"error":   "invalid_role",
-			"message": "Invite role cannot be owner, member, or guest",
+			"message": "Invite role cannot be a deprecated role name",
 		})
 		return
 	}
@@ -336,7 +336,7 @@ func (h *InviteHandler) Resend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	person := middleware.GetPerson(r.Context())
-	if !person.HasPermission(authz.PermTeamInvite) && !authz.IsAtLeast(person.Role, authz.RoleManager) {
+	if !person.HasPermission(authz.PermTeamInvite) {
 		respondJSON(w, http.StatusForbidden, map[string]string{
 			"error":   "forbidden",
 			"message": "Only leaders and managers can resend invitations",

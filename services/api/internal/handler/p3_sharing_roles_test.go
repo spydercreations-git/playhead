@@ -84,7 +84,7 @@ func TestP3PermissionsRolesAndSharing(t *testing.T) {
 	_, err = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: comp.ID,
 		UserID:    adminUser.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 	})
 	if err != nil {
 		t.Fatalf("failed to create admin membership: %v", err)
@@ -94,7 +94,7 @@ func TestP3PermissionsRolesAndSharing(t *testing.T) {
 		UserID:      uuid.UUID(adminUser.ID.Bytes),
 		CompanyID:   uuid.UUID(comp.ID.Bytes),
 		Email:       adminEmail,
-		Role:        authz.RoleAdmin,
+		Role:        authz.RoleCEO,
 		Permissions: authz.AllPermissions,
 	}
 
@@ -609,7 +609,7 @@ func TestP3PermissionsRolesAndSharing(t *testing.T) {
 		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 			CompanyID: comp.ID,
 			UserID:    admin2.ID,
-			Role:      authz.RoleAdmin,
+			Role:      authz.RoleCEO,
 		})
 		admin2Person := authz.Person{UserID: uuid.UUID(admin2.ID.Bytes), Email: admin2.Email, Role: "admin", Permissions: []string{authz.PermTeamChangeRoles}, CompanyID: uuid.UUID(comp.ID.Bytes)}
 
@@ -731,7 +731,7 @@ func TestP3_AdvisorSecurityRequirements(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: compA.ID,
 		UserID:    userA.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 	})
 	personA := authz.Person{UserID: uuid.UUID(userA.ID.Bytes), Email: userA.Email, Role: "admin", CompanyID: uuid.UUID(compA.ID.Bytes), Permissions: []string{authz.PermTeamChangeRoles, authz.PermSharingCreatePublicLinks}}
 
@@ -743,7 +743,7 @@ func TestP3_AdvisorSecurityRequirements(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: compB.ID,
 		UserID:    userB.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 	})
 	personB := authz.Person{UserID: uuid.UUID(userB.ID.Bytes), Email: userB.Email, Role: "admin", CompanyID: uuid.UUID(compB.ID.Bytes), Permissions: []string{authz.PermTeamChangeRoles, authz.PermSharingCreatePublicLinks}}
 	_ = personB
@@ -2146,7 +2146,7 @@ func TestFolderGrantBatchActionsAndTrash(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: comp.ID,
 		UserID:    adminUser.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 	})
 
 	client, _ := queries.CreateClient(ctx, db.CreateClientParams{

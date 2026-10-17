@@ -290,24 +290,51 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	respondJSON(w, http.StatusCreated, client)
+	respondJSON(w, http.StatusCreated, map[string]interface{}{
+		"id":         uuid.UUID(client.ID.Bytes).String(),
+		"company_id": uuid.UUID(client.CompanyID.Bytes).String(),
+		"name":       client.Name,
+		"website":    client.Website,
+		"notes":      client.Notes,
+		"logo_key":   client.LogoKey,
+		"created_at": client.CreatedAt,
+		"updated_at": client.UpdatedAt,
+		"client":     client,
+	})
 }
 
 func (h *ClientHandler) List(w http.ResponseWriter, r *http.Request) {
-	role, _ := middleware.GetUserRole(r.Context())
+	person := middleware.GetPerson(r.Context())
 	companyID, ok := middleware.GetActiveCompanyID(r.Context())
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
 		return
 	}
 
-	// Only Admin and Manager can see clients list
-	if role != authz.RoleAdmin && role != authz.RoleManager && role != authz.RoleOwner {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Editors and clients cannot view clients list"})
+	// Client people never see the clients list
+	if person.Role == "" || strings.ToLower(person.Role) == "guest" || strings.ToLower(person.Role) == "client" {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Clients cannot view the clients list"})
 		return
 	}
 
-	clients, err := h.queries.ListClients(r.Context(), companyID)
+	// Full access roles or clients.view_all permission see all clients
+	if person.IsFullAccess() || person.HasPermission(authz.PermClientsViewAll) {
+		clients, err := h.queries.ListClients(r.Context(), companyID)
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
+			return
+		}
+		respondJSON(w, http.StatusOK, map[string]interface{}{
+			"clients": clients,
+		})
+		return
+	}
+
+	// Project Manager and Editor see only clients that have a project they are added to
+	clients, err := h.queries.ListClientsForUserWithProjectAccess(r.Context(), db.ListClientsForUserWithProjectAccessParams{
+		CompanyID: companyID,
+		Email:     person.Email,
+	})
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
 		return
@@ -319,15 +346,15 @@ func (h *ClientHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClientHandler) Get(w http.ResponseWriter, r *http.Request) {
-	role, _ := middleware.GetUserRole(r.Context())
+	person := middleware.GetPerson(r.Context())
 	companyID, ok := middleware.GetActiveCompanyID(r.Context())
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
 		return
 	}
 
-	// Only Admin and Manager can view client details
-	if role != authz.RoleAdmin && role != authz.RoleManager && role != authz.RoleOwner {
+	// Only roles with clients.view_all can view client details
+	if !person.HasPermission(authz.PermClientsViewAll) {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
@@ -561,14 +588,14 @@ func (h *ClientHandler) ListContacts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClientHandler) AddContact(w http.ResponseWriter, r *http.Request) {
-	role, _ := middleware.GetUserRole(r.Context())
+	person := middleware.GetPerson(r.Context())
 	companyID, ok := middleware.GetActiveCompanyID(r.Context())
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
 		return
 	}
 
-	if role != authz.RoleAdmin && role != authz.RoleManager && role != authz.RoleOwner {
+	if !person.HasPermission(authz.PermClientsEdit) {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
@@ -629,8 +656,8 @@ type UpdateContactRequest struct {
 }
 
 func (h *ClientHandler) UpdateContact(w http.ResponseWriter, r *http.Request) {
-	role, _ := middleware.GetUserRole(r.Context())
-	if role != authz.RoleAdmin && role != authz.RoleManager && role != authz.RoleOwner {
+	person := middleware.GetPerson(r.Context())
+	if !person.HasPermission(authz.PermClientsEdit) {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
@@ -675,8 +702,8 @@ func (h *ClientHandler) UpdateContact(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ClientHandler) DeleteContact(w http.ResponseWriter, r *http.Request) {
-	role, _ := middleware.GetUserRole(r.Context())
-	if role != authz.RoleAdmin && role != authz.RoleManager && role != authz.RoleOwner {
+	person := middleware.GetPerson(r.Context())
+	if !person.HasPermission(authz.PermClientsEdit) {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
@@ -710,7 +737,7 @@ func (h *ClientHandler) ResendContactInvite(w http.ResponseWriter, r *http.Reque
 	}
 
 	person := middleware.GetPerson(r.Context())
-	if !person.HasPermission(authz.PermClientsEdit) && !authz.IsAtLeast(person.Role, authz.RoleManager) {
+	if !person.HasPermission(authz.PermClientsEdit) {
 		respondJSON(w, http.StatusForbidden, map[string]string{
 			"error":   "forbidden",
 			"message": "Only leaders and managers can resend client contact invitations",

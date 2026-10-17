@@ -233,7 +233,7 @@ func TestP5DocumentsIntegration(t *testing.T) {
 	_, err = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: company.ID,
 		UserID:    owner.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 	})
 	if err != nil {
 		t.Fatalf("failed to add owner membership: %v", err)
@@ -469,7 +469,7 @@ func TestP5DocumentsIntegration(t *testing.T) {
 	ownerPerson := authz.Person{
 		UserID:      owner.ID.Bytes,
 		CompanyID:   company.ID.Bytes,
-		Role:        authz.RoleAdmin,
+		Role:        authz.RoleCEO,
 		Permissions: []string{},
 	}
 	restoreBody, _ := json.Marshal(map[string]interface{}{
@@ -621,7 +621,7 @@ func TestPdfExportClientNeverGetsTeamNotesAndCustomOptions(t *testing.T) {
 	_, err = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: company.ID,
 		UserID:    owner.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 	})
 	if err != nil {
 		t.Fatalf("failed to create membership: %v", err)

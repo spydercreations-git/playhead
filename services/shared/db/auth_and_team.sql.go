@@ -68,7 +68,7 @@ SET name = $2,
     temp_password_used = TRUE,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, theme
+RETURNING id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, theme, grid_size
 `
 
 type CompleteUserOnboardingParams struct {
@@ -105,6 +105,7 @@ func (q *Queries) CompleteUserOnboarding(ctx context.Context, arg CompleteUserOn
 		&i.IsOnboarded,
 		&i.OnboardedAt,
 		&i.Theme,
+		&i.GridSize,
 	)
 	return i, err
 }
@@ -1028,7 +1029,7 @@ const updateUserTheme = `-- name: UpdateUserTheme :one
 UPDATE users
 SET theme = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, theme
+RETURNING id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, theme, grid_size
 `
 
 type UpdateUserThemeParams struct {
@@ -1056,6 +1057,7 @@ func (q *Queries) UpdateUserTheme(ctx context.Context, arg UpdateUserThemeParams
 		&i.IsOnboarded,
 		&i.OnboardedAt,
 		&i.Theme,
+		&i.GridSize,
 	)
 	return i, err
 }

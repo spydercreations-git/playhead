@@ -65,7 +65,7 @@ func TestP4VideoReviewAndPermissions(t *testing.T) {
 	_, err = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: company.ID,
 		UserID:    compOwner.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 	})
 	if err != nil {
 		t.Fatalf("failed to create owner membership: %v", err)
@@ -73,7 +73,7 @@ func TestP4VideoReviewAndPermissions(t *testing.T) {
 	ownerPerson := authz.Person{
 		UserID:    uuid.UUID(compOwner.ID.Bytes),
 		Email:     compOwner.Email,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 		CompanyID: uuid.UUID(company.ID.Bytes),
 	}
 
@@ -709,12 +709,12 @@ func TestP4_AdvisorReviewFixes(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: company.ID,
 		UserID:    compOwner.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 	})
 	ownerPerson := authz.Person{
 		UserID:    uuid.UUID(compOwner.ID.Bytes),
 		Email:     compOwner.Email,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 		CompanyID: uuid.UUID(company.ID.Bytes),
 	}
 

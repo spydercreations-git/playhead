@@ -50,7 +50,7 @@ func TestP1ProjectsAndClients(t *testing.T) {
 	_, err = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: comp.ID,
 		UserID:    adminUser.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 	})
 	if err != nil {
 		t.Fatalf("failed to create admin membership: %v", err)
@@ -126,7 +126,7 @@ func TestP1ProjectsAndClients(t *testing.T) {
 		Template: "video_project",
 	})
 	reqVid := httptest.NewRequest("POST", "/api/v1/projects", bytes.NewReader(createVideoReqBody))
-	reqVid = reqVid.WithContext(contextWithAuth(reqVid.Context(), adminUser, comp.ID, authz.RoleAdmin))
+	reqVid = reqVid.WithContext(contextWithAuth(reqVid.Context(), adminUser, comp.ID, authz.RoleCEO))
 	recVid := httptest.NewRecorder()
 	projectH.Create(recVid, reqVid)
 	if recVid.Code != http.StatusCreated {
@@ -286,7 +286,7 @@ func TestP1ProjectsAndClients(t *testing.T) {
 
 	// 10. Admin adding editor to project succeeds
 	reqAdminAdd := httptest.NewRequest("POST", "/api/v1/projects/"+projIDA1Str+"/people", bytes.NewReader(addPersonBody))
-	reqAdminAdd = reqAdminAdd.WithContext(contextWithAuth(reqAdminAdd.Context(), adminUser, comp.ID, authz.RoleAdmin))
+	reqAdminAdd = reqAdminAdd.WithContext(contextWithAuth(reqAdminAdd.Context(), adminUser, comp.ID, authz.RoleCEO))
 	recAdminAdd := httptest.NewRecorder()
 	rAddPerson.ServeHTTP(recAdminAdd, reqAdminAdd)
 
@@ -323,7 +323,7 @@ func TestP1ProjectsAndClients(t *testing.T) {
 
 	// 12. Client details: client Notes in P1 is a plain text field
 	getClientReq := httptest.NewRequest("GET", "/api/v1/clients/"+fmt.Sprintf("%x-%x-%x-%x-%x", clientA.ID.Bytes[0:4], clientA.ID.Bytes[4:6], clientA.ID.Bytes[6:8], clientA.ID.Bytes[8:10], clientA.ID.Bytes[10:16]), nil)
-	getClientReq = getClientReq.WithContext(contextWithAuth(getClientReq.Context(), adminUser, comp.ID, authz.RoleAdmin))
+	getClientReq = getClientReq.WithContext(contextWithAuth(getClientReq.Context(), adminUser, comp.ID, authz.RoleCEO))
 	recGetClient := httptest.NewRecorder()
 	rClient := chi.NewRouter()
 	rClient.Get("/api/v1/clients/{id}", clientH.Get)
@@ -366,7 +366,7 @@ func TestP1ProjectsAndClients(t *testing.T) {
 
 	// Admin succeeds
 	reqAdminMove := httptest.NewRequest("PATCH", "/api/v1/projects/"+projIDA1Str, bytes.NewReader(moveBody))
-	reqAdminMove = reqAdminMove.WithContext(contextWithAuth(reqAdminMove.Context(), adminUser, comp.ID, authz.RoleAdmin))
+	reqAdminMove = reqAdminMove.WithContext(contextWithAuth(reqAdminMove.Context(), adminUser, comp.ID, authz.RoleCEO))
 	recAdminMove := httptest.NewRecorder()
 	rUpdateProj.ServeHTTP(recAdminMove, reqAdminMove)
 	if recAdminMove.Code != http.StatusOK {

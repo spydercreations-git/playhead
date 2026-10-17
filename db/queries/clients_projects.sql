@@ -86,6 +86,27 @@ FROM clients c
 WHERE c.company_id = @company_id AND c.deleted_at IS NULL
 ORDER BY c.updated_at DESC;
 
+-- name: ListClientsForUserWithProjectAccess :many
+SELECT c.*,
+    COALESCE((SELECT COUNT(*) FROM client_contacts cc WHERE cc.client_id = c.id), 0)::int AS contacts_count,
+    COALESCE((SELECT COUNT(*) FROM projects p WHERE p.client_id = c.id AND p.deleted_at IS NULL), 0)::int AS projects_count,
+    COALESCE((SELECT SUM(p.total_bytes) FROM projects p WHERE p.client_id = c.id AND p.deleted_at IS NULL), 0)::bigint AS total_size_bytes,
+    COALESCE((SELECT COUNT(*) FROM items i JOIN projects p ON p.id = i.project_id WHERE p.client_id = c.id AND p.deleted_at IS NULL AND i.deleted_at IS NULL AND i.kind = 'file'), 0)::int AS files_count,
+    COALESCE((SELECT COUNT(*) FROM items i JOIN projects p ON p.id = i.project_id WHERE p.client_id = c.id AND p.deleted_at IS NULL AND i.deleted_at IS NULL AND i.kind = 'file' AND (i.review_status = 'needs_review' OR i.review_status = 'pending' OR i.review_status = 'in_review')), 0)::int AS to_review_count
+FROM clients c
+WHERE c.company_id = @company_id 
+  AND c.deleted_at IS NULL
+  AND c.id IN (
+      SELECT p.client_id 
+      FROM projects p
+      JOIN grants g ON g.target_type = 'project' AND g.target_id = p.id
+      WHERE p.company_id = @company_id
+        AND p.deleted_at IS NULL
+        AND LOWER(g.email) = LOWER(@email)
+  )
+ORDER BY c.updated_at DESC;
+
+
 -- name: UpdateClient :one
 UPDATE clients
 SET name = COALESCE(sqlc.narg('name'), name),

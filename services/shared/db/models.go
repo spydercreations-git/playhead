@@ -32,6 +32,7 @@ type Client struct {
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
 	DeleteBatchID pgtype.UUID        `json:"delete_batch_id"`
+	Status        string             `json:"status"`
 }
 
 type ClientContact struct {
@@ -46,6 +47,12 @@ type ClientContact struct {
 	LastSignedInAt pgtype.Timestamptz `json:"last_signed_in_at"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+type ClientNotificationMute struct {
+	UserID    pgtype.UUID        `json:"user_id"`
+	ClientID  pgtype.UUID        `json:"client_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Comment struct {
@@ -449,6 +456,7 @@ type User struct {
 	IsOnboarded           bool               `json:"is_onboarded"`
 	OnboardedAt           pgtype.Timestamptz `json:"onboarded_at"`
 	Theme                 string             `json:"theme"`
+	GridSize              string             `json:"grid_size"`
 }
 
 type UserSetting struct {

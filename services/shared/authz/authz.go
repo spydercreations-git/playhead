@@ -34,13 +34,6 @@ const (
 	// Access Types
 	AccessTypeFull       = "full_access"
 	AccessTypePerProject = "per_project"
-
-	// Legacy aliases maintained for backward compatibility
-	RoleAdmin   = "Admin"
-	RoleOwner   = "Owner"
-	RoleManager = "Manager"
-	RoleMember  = "Member"
-	RoleGuest   = "Guest"
 )
 
 var roleHierarchy = map[string]int{
@@ -162,6 +155,12 @@ func IsFullAccess(role string) bool {
 	return r == "ceo" || r == "coo" || r == "cfo" || r == "cso" || r == "chief sales officer" || r == "chief_sales_officer" || r == "design head" || r == "design_head" || r == "admin" || r == "owner"
 }
 
+// IsDeprecatedRole checks if the provided role string is a legacy deprecated role.
+func IsDeprecatedRole(role string) bool {
+	r := strings.ToLower(strings.TrimSpace(role))
+	return r == "owner" || r == "member" || r == "guest" || r == "admin" || r == "manager"
+}
+
 // CanChangeRoles returns true if the role is authorized to change roles in Team (CEO or COO).
 func CanChangeRoles(role string) bool {
 	r := strings.ToLower(strings.TrimSpace(role))
@@ -275,7 +274,7 @@ func CanCreateProjects(person Person) bool {
 		return true
 	}
 	r := strings.ToLower(person.Role)
-	return r == RoleProjectManager || r == RoleManager || person.HasPermission(PermProjectsCreate)
+	return r == strings.ToLower(RoleProjectManager) || r == "manager" || person.HasPermission(PermProjectsCreate)
 }
 
 // CanShareItem checks if a person is allowed to add or change people (grants) on an item.

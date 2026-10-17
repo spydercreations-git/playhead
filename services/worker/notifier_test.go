@@ -131,7 +131,7 @@ func TestGroupedCommentNotificationsAndMentions(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: company.ID,
 		UserID:    creator.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 	})
 
 	clientRec, err := queries.CreateClient(ctx, db.CreateClientParams{

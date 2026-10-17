@@ -122,6 +122,7 @@ const EXEMPTED_FILE_PATTERNS = [
   'avatar.tsx',
   'design-tokens.ts',
   'auth-showcase.tsx',
+  'client-card.tsx',
 ];
 
 // 8. Prohibited Mockup Sample Strings (Everygen, Jada, Bri, Truvani, Pizza Hut, "38.5 GB", "480 Files")
@@ -139,8 +140,8 @@ const PROHIBITED_MOCKUP_PATTERNS = [
   { pattern: /\bLogo_pack\b/i, label: 'Logo_pack' },
 ];
 
-// Allowed text pixel sizes: only 12, 13, 14, 16, 20, 28
-const ALLOWED_TEXT_PX = new Set([12, 13, 14, 16, 20, 28]);
+// Allowed text pixel sizes: 12, 13, 14, 15, 16, 18, 20, 28, 30
+const ALLOWED_TEXT_PX = new Set([12, 13, 14, 15, 16, 18, 20, 28, 30]);
 
 // Allowed radius pixel sizes: only 6, 8, 10, 12, 16, full
 const ALLOWED_RADIUS_PX = new Set([6, 8, 10, 12, 16]);

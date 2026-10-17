@@ -55,7 +55,7 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: comp.ID,
 		UserID:    adminUser.ID,
-		Role:      authz.RoleAdmin,
+		Role:      authz.RoleCEO,
 	})
 
 	clientRec, err := queries.CreateClient(ctx, db.CreateClientParams{
@@ -91,7 +91,7 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 		body, _ := json.Marshal(uploadPayload)
 
 		req := httptest.NewRequest("POST", "/api/v1/uploads/initiate", bytes.NewReader(body))
-		req = req.WithContext(contextWithAuth(req.Context(), adminUser, comp.ID, authz.RoleAdmin))
+		req = req.WithContext(contextWithAuth(req.Context(), adminUser, comp.ID, authz.RoleCEO))
 		rr := httptest.NewRecorder()
 
 		storageH.InitiateUpload(rr, req)
@@ -134,7 +134,7 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 			CompanyID: nonInternalComp.ID,
 			UserID:    userZero.ID,
-			Role:      authz.RoleAdmin,
+			Role:      authz.RoleCEO,
 		})
 
 		clientZero, err := queries.CreateClient(ctx, db.CreateClientParams{
@@ -164,7 +164,7 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 		body, _ := json.Marshal(uploadPayload)
 
 		req := httptest.NewRequest("POST", "/api/v1/uploads/initiate", bytes.NewReader(body))
-		req = req.WithContext(contextWithAuth(req.Context(), userZero, nonInternalComp.ID, authz.RoleAdmin))
+		req = req.WithContext(contextWithAuth(req.Context(), userZero, nonInternalComp.ID, authz.RoleCEO))
 		rr := httptest.NewRecorder()
 
 		storageH.InitiateUpload(rr, req)
@@ -191,7 +191,7 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 		}
 		createBody, _ := json.Marshal(createPayload)
 		req := httptest.NewRequest("POST", "/api/v1/documents", bytes.NewReader(createBody))
-		req = req.WithContext(contextWithAuth(req.Context(), adminUser, comp.ID, authz.RoleAdmin))
+		req = req.WithContext(contextWithAuth(req.Context(), adminUser, comp.ID, authz.RoleCEO))
 		rr := httptest.NewRecorder()
 		docsH.Create(rr, req)
 		if rr.Code != http.StatusCreated && rr.Code != http.StatusOK {
@@ -209,7 +209,7 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 
 		// 3. Perform DELETE /documents/{id}
 		delReq := httptest.NewRequest("DELETE", fmt.Sprintf("/documents/%s", docIDStr), nil)
-		delReq = delReq.WithContext(contextWithAuth(delReq.Context(), adminUser, comp.ID, authz.RoleAdmin))
+		delReq = delReq.WithContext(contextWithAuth(delReq.Context(), adminUser, comp.ID, authz.RoleCEO))
 		delRR := httptest.NewRecorder()
 		r.ServeHTTP(delRR, delReq)
 
@@ -219,7 +219,7 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 
 		// 4. Verify document is in Trash
 		trashReq := httptest.NewRequest("GET", "/trash", nil)
-		trashReq = trashReq.WithContext(contextWithAuth(trashReq.Context(), adminUser, comp.ID, authz.RoleAdmin))
+		trashReq = trashReq.WithContext(contextWithAuth(trashReq.Context(), adminUser, comp.ID, authz.RoleCEO))
 		trashRR := httptest.NewRecorder()
 		r.ServeHTTP(trashRR, trashReq)
 		if trashRR.Code != http.StatusOK {
@@ -247,7 +247,7 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 
 		// 5. Restore document from Trash
 		restoreReq := httptest.NewRequest("POST", fmt.Sprintf("/trash/%s/restore", docIDStr), nil)
-		restoreReq = restoreReq.WithContext(contextWithAuth(restoreReq.Context(), adminUser, comp.ID, authz.RoleAdmin))
+		restoreReq = restoreReq.WithContext(contextWithAuth(restoreReq.Context(), adminUser, comp.ID, authz.RoleCEO))
 		restoreRR := httptest.NewRecorder()
 		r.ServeHTTP(restoreRR, restoreReq)
 
@@ -258,7 +258,7 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 		// 6. Verify item is no longer in Trash
 		trashRR2 := httptest.NewRecorder()
 		trashReq2 := httptest.NewRequest("GET", "/trash", nil)
-		trashReq2 = trashReq2.WithContext(contextWithAuth(trashReq2.Context(), adminUser, comp.ID, authz.RoleAdmin))
+		trashReq2 = trashReq2.WithContext(contextWithAuth(trashReq2.Context(), adminUser, comp.ID, authz.RoleCEO))
 		r.ServeHTTP(trashRR2, trashReq2)
 		_ = json.Unmarshal(trashRR2.Body.Bytes(), &trashResp)
 		itemsList2 := trashResp["items"].([]interface{})
@@ -281,7 +281,7 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 		}
 		createBody, _ := json.Marshal(createPayload)
 		req := httptest.NewRequest("POST", "/api/v1/spreadsheets", bytes.NewReader(createBody))
-		req = req.WithContext(contextWithAuth(req.Context(), adminUser, comp.ID, authz.RoleAdmin))
+		req = req.WithContext(contextWithAuth(req.Context(), adminUser, comp.ID, authz.RoleCEO))
 		rr := httptest.NewRecorder()
 		sheetsH.CreateSpreadsheet(rr, req)
 		if rr.Code != http.StatusCreated && rr.Code != http.StatusOK {
@@ -299,7 +299,7 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 
 		// 3. Perform DELETE /spreadsheets/{id}
 		delReq := httptest.NewRequest("DELETE", fmt.Sprintf("/spreadsheets/%s", sheetIDStr), nil)
-		delReq = delReq.WithContext(contextWithAuth(delReq.Context(), adminUser, comp.ID, authz.RoleAdmin))
+		delReq = delReq.WithContext(contextWithAuth(delReq.Context(), adminUser, comp.ID, authz.RoleCEO))
 		delRR := httptest.NewRecorder()
 		r.ServeHTTP(delRR, delReq)
 
@@ -309,7 +309,7 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 
 		// 4. Verify spreadsheet is in Trash
 		trashReq := httptest.NewRequest("GET", "/trash", nil)
-		trashReq = trashReq.WithContext(contextWithAuth(trashReq.Context(), adminUser, comp.ID, authz.RoleAdmin))
+		trashReq = trashReq.WithContext(contextWithAuth(trashReq.Context(), adminUser, comp.ID, authz.RoleCEO))
 		trashRR := httptest.NewRecorder()
 		r.ServeHTTP(trashRR, trashReq)
 		if trashRR.Code != http.StatusOK {
@@ -333,7 +333,7 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 
 		// 5. Restore spreadsheet from Trash
 		restoreReq := httptest.NewRequest("POST", fmt.Sprintf("/trash/%s/restore", sheetIDStr), nil)
-		restoreReq = restoreReq.WithContext(contextWithAuth(restoreReq.Context(), adminUser, comp.ID, authz.RoleAdmin))
+		restoreReq = restoreReq.WithContext(contextWithAuth(restoreReq.Context(), adminUser, comp.ID, authz.RoleCEO))
 		restoreRR := httptest.NewRecorder()
 		r.ServeHTTP(restoreRR, restoreReq)
 
@@ -344,7 +344,7 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 		// 6. Verify item is no longer in Trash
 		trashRR2 := httptest.NewRecorder()
 		trashReq2 := httptest.NewRequest("GET", "/trash", nil)
-		trashReq2 = trashReq2.WithContext(contextWithAuth(trashReq2.Context(), adminUser, comp.ID, authz.RoleAdmin))
+		trashReq2 = trashReq2.WithContext(contextWithAuth(trashReq2.Context(), adminUser, comp.ID, authz.RoleCEO))
 		r.ServeHTTP(trashRR2, trashReq2)
 		_ = json.Unmarshal(trashRR2.Body.Bytes(), &trashResp)
 		itemsList2 := trashResp["items"].([]interface{})

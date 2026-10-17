@@ -87,6 +87,14 @@ export function FileViewer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose, onSelectNext, onSelectPrev]);
 
+  // Full screen previews (image/video/PDF opened full screen) must also use the neutral plain dark look
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme-neutral", "true");
+    return () => {
+      document.documentElement.removeAttribute("data-theme-neutral");
+    };
+  }, []);
+
   if (!item) return null;
 
   const mime = item.mime?.toLowerCase() || "";
@@ -159,7 +167,7 @@ export function FileViewer({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]/95 text-white font-sans animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]/95 text-white font-sans animate-in fade-in duration-200 theme-neutral" data-theme-neutral="true">
       {/* Top Header Bar */}
       <div className="flex h-14 items-center justify-between border-b border-[var(--border-strong)]/60 px-6 bg-[var(--bg)]">
         <div className="flex items-center gap-4">

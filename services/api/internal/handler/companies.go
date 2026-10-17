@@ -219,10 +219,10 @@ func (h *CompanyHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request
 	}
 
 	rawRole := strings.ToLower(strings.TrimSpace(req.Role))
-	if rawRole == "owner" || rawRole == "member" || rawRole == "guest" {
+	if authz.IsDeprecatedRole(rawRole) {
 		respondJSON(w, http.StatusBadRequest, map[string]string{
 			"error":   "invalid_role",
-			"message": "Role cannot be owner, member, or guest",
+			"message": "Role cannot be a deprecated role name",
 		})
 		return
 	}
@@ -381,9 +381,14 @@ func (h *CompanyHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Last Admin guard and Admin-only removal: only Admins can remove an Admin
-	isTargetAdmin := strings.ToLower(targetMembership.Role) == "admin" || (targetMembership.RoleName.Valid && strings.ToLower(targetMembership.RoleName.String) == "admin")
+	isTargetAdmin := strings.EqualFold(targetMembership.Role, "admin") ||
+		(targetMembership.RoleName.Valid && strings.EqualFold(targetMembership.RoleName.String, "admin")) ||
+		authz.IsFullAccess(targetMembership.Role) ||
+		(targetMembership.RoleName.Valid && authz.IsFullAccess(targetMembership.RoleName.String))
+
 	if isTargetAdmin {
-		if !strings.EqualFold(person.Role, "admin") {
+		isCallerAdmin := strings.EqualFold(person.Role, "admin") || authz.CanChangeRoles(person.Role) || person.IsFullAccess()
+		if !isCallerAdmin {
 			respondJSON(w, http.StatusForbidden, map[string]string{
 				"error":   "forbidden",
 				"message": "Only Admins can remove an Admin",

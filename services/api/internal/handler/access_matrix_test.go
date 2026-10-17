@@ -266,7 +266,7 @@ func TestAccessMatrix(t *testing.T) {
 
 		// Sarah Client has project viewer access but "none" override on rawFolder -> should get 404
 		req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/projects/%s/items?parent_id=%s", projIDStr, rawFolderIDStr), nil)
-		req = req.WithContext(contextWithAuth(req.Context(), clientUser, comp.ID, authz.RoleGuest))
+		req = req.WithContext(contextWithAuth(req.Context(), clientUser, comp.ID, ""))
 		rec := httptest.NewRecorder()
 		r.ServeHTTP(rec, req)
 		if rec.Code != http.StatusNotFound {
@@ -504,7 +504,7 @@ func TestAccessMatrix(t *testing.T) {
 
 		// Client gets 403 Forbidden
 		reqClient := httptest.NewRequest("GET", "/api/v1/drive/folders", nil)
-		reqClient = reqClient.WithContext(contextWithAuth(reqClient.Context(), clientUser, comp.ID, authz.RoleGuest))
+		reqClient = reqClient.WithContext(contextWithAuth(reqClient.Context(), clientUser, comp.ID, ""))
 		recClient := httptest.NewRecorder()
 		r.ServeHTTP(recClient, reqClient)
 		if recClient.Code != http.StatusForbidden {

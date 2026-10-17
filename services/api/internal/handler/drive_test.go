@@ -497,7 +497,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 			"can_download": false,
 		})
 		reqGrant := httptest.NewRequest("POST", "/api/v1/items/"+driveFileIDStr+"/grants", bytes.NewReader(grantBody))
-		reqGrant = reqGrant.WithContext(contextWithAuth(reqGrant.Context(), alice, comp.ID, authz.RoleAdmin))
+		reqGrant = reqGrant.WithContext(contextWithAuth(reqGrant.Context(), alice, comp.ID, authz.RoleCEO))
 		rrGrant := httptest.NewRecorder()
 		rGrants.ServeHTTP(rrGrant, reqGrant)
 
@@ -516,7 +516,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 			"name":        "Public Share Drive Item",
 		})
 		reqShare := httptest.NewRequest("POST", "/api/v1/projects/"+uuid.UUID(proj.ID.Bytes).String()+"/share-links", bytes.NewReader(shareBody))
-		reqShare = reqShare.WithContext(contextWithAuth(reqShare.Context(), alice, comp.ID, authz.RoleAdmin))
+		reqShare = reqShare.WithContext(contextWithAuth(reqShare.Context(), alice, comp.ID, authz.RoleCEO))
 		rrShare := httptest.NewRecorder()
 		rShare.ServeHTTP(rrShare, reqShare)
 

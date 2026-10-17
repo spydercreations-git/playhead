@@ -230,7 +230,7 @@ func TestInviteEmailMatchingRule(t *testing.T) {
 	_, err = queries.CreateInvite(ctx, db.CreateInviteParams{
 		CompanyID: testCompany.ID,
 		Email:     targetEmail,
-		Role:      authz.RoleMember,
+		Role:      authz.RoleEditor,
 		TokenHash: tokenHash,
 		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(7 * 24 * time.Hour), Valid: true},
 	})

@@ -7,48 +7,40 @@ import (
 )
 
 func TestRoleHierarchy(t *testing.T) {
-	// Owner can access anything
-	if !IsAtLeast(RoleOwner, RoleOwner) || !IsAtLeast(RoleOwner, RoleAdmin) || !IsAtLeast(RoleOwner, RoleMember) || !IsAtLeast(RoleOwner, RoleGuest) {
-		t.Errorf("owner should have all privileges")
+	// CEO has highest privileges
+	if !IsAtLeast(RoleCEO, RoleCEO) || !IsAtLeast(RoleCEO, RoleProjectManager) || !IsAtLeast(RoleCEO, RoleEditor) {
+		t.Errorf("CEO should have all privileges")
 	}
 
-	// Admin can access admin, member, guest, but not owner
-	if IsAtLeast(RoleAdmin, RoleOwner) {
-		t.Errorf("admin should not have owner role")
+	// Project Manager can access PM, Editor, but not CEO
+	if IsAtLeast(RoleProjectManager, RoleCEO) {
+		t.Errorf("PM should not have CEO role")
 	}
-	if !IsAtLeast(RoleAdmin, RoleAdmin) || !IsAtLeast(RoleAdmin, RoleMember) || !IsAtLeast(RoleAdmin, RoleGuest) {
-		t.Errorf("admin should have member and guest privileges")
-	}
-
-	// Member cannot access admin
-	if IsAtLeast(RoleMember, RoleAdmin) {
-		t.Errorf("member should not have admin role")
-	}
-	if !IsAtLeast(RoleMember, RoleMember) || !IsAtLeast(RoleMember, RoleGuest) {
-		t.Errorf("member should have member and guest privileges")
+	if !IsAtLeast(RoleProjectManager, RoleProjectManager) || !IsAtLeast(RoleProjectManager, RoleEditor) {
+		t.Errorf("PM should have Editor privileges")
 	}
 
-	// Guest cannot access member
-	if IsAtLeast(RoleGuest, RoleMember) {
-		t.Errorf("guest should not have member role")
+	// Editor cannot access Project Manager
+	if IsAtLeast(RoleEditor, RoleProjectManager) {
+		t.Errorf("Editor should not have PM role")
 	}
-	if !IsAtLeast(RoleGuest, RoleGuest) {
-		t.Errorf("guest should have guest privileges")
+	if !IsAtLeast(RoleEditor, RoleEditor) {
+		t.Errorf("Editor should have Editor privileges")
 	}
 
 	// Unknown role
-	if IsAtLeast("hacker", RoleGuest) {
+	if IsAtLeast("hacker", RoleEditor) {
 		t.Errorf("unknown role should not have privileges")
 	}
 }
 
 func TestAuthorize(t *testing.T) {
-	if err := Authorize(RoleOwner, RoleAdmin); err != nil {
+	if err := Authorize(RoleCEO, RoleProjectManager); err != nil {
 		t.Errorf("expected nil error, got %v", err)
 	}
 
-	if err := Authorize(RoleMember, RoleAdmin); err != ErrForbidden {
-		t.Errorf("expected ErrForbidden for member trying admin action, got %v", err)
+	if err := Authorize(RoleEditor, RoleCEO); err != ErrForbidden {
+		t.Errorf("expected ErrForbidden for editor trying CEO action, got %v", err)
 	}
 }
 

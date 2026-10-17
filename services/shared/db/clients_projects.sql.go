@@ -42,7 +42,7 @@ func (q *Queries) CheckEmailIsKnown(ctx context.Context, email string) (bool, er
 const createClient = `-- name: CreateClient :one
 INSERT INTO clients (company_id, name, website, notes, created_by)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at, delete_batch_id
+RETURNING id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at, delete_batch_id, status
 `
 
 type CreateClientParams struct {
@@ -76,6 +76,7 @@ func (q *Queries) CreateClient(ctx context.Context, arg CreateClientParams) (Cli
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeleteBatchID,
+		&i.Status,
 	)
 	return i, err
 }
@@ -390,7 +391,7 @@ func (q *Queries) DeleteLoginCodesForEmail(ctx context.Context, email string) er
 }
 
 const getClientByID = `-- name: GetClientByID :one
-SELECT id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at, delete_batch_id FROM clients
+SELECT id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at, delete_batch_id, status FROM clients
 WHERE company_id = $1 AND id = $2 AND deleted_at IS NULL
 `
 
@@ -415,12 +416,13 @@ func (q *Queries) GetClientByID(ctx context.Context, arg GetClientByIDParams) (C
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeleteBatchID,
+		&i.Status,
 	)
 	return i, err
 }
 
 const getClientByIDAnyStatus = `-- name: GetClientByIDAnyStatus :one
-SELECT id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at, delete_batch_id FROM clients
+SELECT id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at, delete_batch_id, status FROM clients
 WHERE company_id = $1 AND id = $2
 `
 
@@ -445,6 +447,7 @@ func (q *Queries) GetClientByIDAnyStatus(ctx context.Context, arg GetClientByIDA
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeleteBatchID,
+		&i.Status,
 	)
 	return i, err
 }
@@ -860,7 +863,7 @@ func (q *Queries) ListClientContactsByCompany(ctx context.Context, companyID pgt
 }
 
 const listClients = `-- name: ListClients :many
-SELECT c.id, c.company_id, c.name, c.website, c.notes, c.notes_item_id, c.logo_key, c.created_by, c.created_at, c.updated_at, c.deleted_at, c.delete_batch_id,
+SELECT c.id, c.company_id, c.name, c.website, c.notes, c.notes_item_id, c.logo_key, c.created_by, c.created_at, c.updated_at, c.deleted_at, c.delete_batch_id, c.status,
     COALESCE((SELECT COUNT(*) FROM client_contacts cc WHERE cc.client_id = c.id), 0)::int AS contacts_count,
     COALESCE((SELECT COUNT(*) FROM projects p WHERE p.client_id = c.id AND p.deleted_at IS NULL), 0)::int AS projects_count,
     COALESCE((SELECT SUM(p.total_bytes) FROM projects p WHERE p.client_id = c.id AND p.deleted_at IS NULL), 0)::bigint AS total_size_bytes,
@@ -884,6 +887,7 @@ type ListClientsRow struct {
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
 	DeleteBatchID  pgtype.UUID        `json:"delete_batch_id"`
+	Status         string             `json:"status"`
 	ContactsCount  int32              `json:"contacts_count"`
 	ProjectsCount  int32              `json:"projects_count"`
 	TotalSizeBytes int64              `json:"total_size_bytes"`
@@ -913,6 +917,93 @@ func (q *Queries) ListClients(ctx context.Context, companyID pgtype.UUID) ([]Lis
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.DeleteBatchID,
+			&i.Status,
+			&i.ContactsCount,
+			&i.ProjectsCount,
+			&i.TotalSizeBytes,
+			&i.FilesCount,
+			&i.ToReviewCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listClientsForUserWithProjectAccess = `-- name: ListClientsForUserWithProjectAccess :many
+SELECT c.id, c.company_id, c.name, c.website, c.notes, c.notes_item_id, c.logo_key, c.created_by, c.created_at, c.updated_at, c.deleted_at, c.delete_batch_id, c.status,
+    COALESCE((SELECT COUNT(*) FROM client_contacts cc WHERE cc.client_id = c.id), 0)::int AS contacts_count,
+    COALESCE((SELECT COUNT(*) FROM projects p WHERE p.client_id = c.id AND p.deleted_at IS NULL), 0)::int AS projects_count,
+    COALESCE((SELECT SUM(p.total_bytes) FROM projects p WHERE p.client_id = c.id AND p.deleted_at IS NULL), 0)::bigint AS total_size_bytes,
+    COALESCE((SELECT COUNT(*) FROM items i JOIN projects p ON p.id = i.project_id WHERE p.client_id = c.id AND p.deleted_at IS NULL AND i.deleted_at IS NULL AND i.kind = 'file'), 0)::int AS files_count,
+    COALESCE((SELECT COUNT(*) FROM items i JOIN projects p ON p.id = i.project_id WHERE p.client_id = c.id AND p.deleted_at IS NULL AND i.deleted_at IS NULL AND i.kind = 'file' AND (i.review_status = 'needs_review' OR i.review_status = 'pending' OR i.review_status = 'in_review')), 0)::int AS to_review_count
+FROM clients c
+WHERE c.company_id = $1 
+  AND c.deleted_at IS NULL
+  AND c.id IN (
+      SELECT p.client_id 
+      FROM projects p
+      JOIN grants g ON g.target_type = 'project' AND g.target_id = p.id
+      WHERE p.company_id = $1
+        AND p.deleted_at IS NULL
+        AND LOWER(g.email) = LOWER($2)
+  )
+ORDER BY c.updated_at DESC
+`
+
+type ListClientsForUserWithProjectAccessParams struct {
+	CompanyID pgtype.UUID `json:"company_id"`
+	Email     string      `json:"email"`
+}
+
+type ListClientsForUserWithProjectAccessRow struct {
+	ID             pgtype.UUID        `json:"id"`
+	CompanyID      pgtype.UUID        `json:"company_id"`
+	Name           string             `json:"name"`
+	Website        pgtype.Text        `json:"website"`
+	Notes          pgtype.Text        `json:"notes"`
+	NotesItemID    pgtype.UUID        `json:"notes_item_id"`
+	LogoKey        pgtype.Text        `json:"logo_key"`
+	CreatedBy      pgtype.UUID        `json:"created_by"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+	DeleteBatchID  pgtype.UUID        `json:"delete_batch_id"`
+	Status         string             `json:"status"`
+	ContactsCount  int32              `json:"contacts_count"`
+	ProjectsCount  int32              `json:"projects_count"`
+	TotalSizeBytes int64              `json:"total_size_bytes"`
+	FilesCount     int32              `json:"files_count"`
+	ToReviewCount  int32              `json:"to_review_count"`
+}
+
+func (q *Queries) ListClientsForUserWithProjectAccess(ctx context.Context, arg ListClientsForUserWithProjectAccessParams) ([]ListClientsForUserWithProjectAccessRow, error) {
+	rows, err := q.db.Query(ctx, listClientsForUserWithProjectAccess, arg.CompanyID, arg.Email)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListClientsForUserWithProjectAccessRow{}
+	for rows.Next() {
+		var i ListClientsForUserWithProjectAccessRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CompanyID,
+			&i.Name,
+			&i.Website,
+			&i.Notes,
+			&i.NotesItemID,
+			&i.LogoKey,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.DeleteBatchID,
+			&i.Status,
 			&i.ContactsCount,
 			&i.ProjectsCount,
 			&i.TotalSizeBytes,
@@ -1564,7 +1655,7 @@ SET name = COALESCE($1, name),
     logo_key = COALESCE($4, logo_key),
     updated_at = NOW()
 WHERE company_id = $5 AND id = $6 AND deleted_at IS NULL
-RETURNING id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at, delete_batch_id
+RETURNING id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at, delete_batch_id, status
 `
 
 type UpdateClientParams struct {
@@ -1599,6 +1690,7 @@ func (q *Queries) UpdateClient(ctx context.Context, arg UpdateClientParams) (Cli
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeleteBatchID,
+		&i.Status,
 	)
 	return i, err
 }

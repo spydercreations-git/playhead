@@ -1041,14 +1041,14 @@ func (h *StorageUploadsHandler) ZipDownload(w http.ResponseWriter, r *http.Reque
 // GetStorageAdminStats returns breakdown and cost estimate (Requirement 1)
 func (h *StorageUploadsHandler) GetStorageAdminStats(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	role, _ := middleware.GetUserRole(ctx)
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
 		return
 	}
 
-	if role != authz.RoleAdmin && role != authz.RoleOwner {
+	person := middleware.GetPerson(ctx)
+	if !person.HasPermission(authz.PermAdminStorage) {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Admin access required"})
 		return
 	}
@@ -1135,7 +1135,7 @@ func (h *StorageUploadsHandler) checkStorageAlerts(companyID pgtype.UUID) {
 		admins, err := h.queries.GetMembershipsForCompany(ctx, companyID)
 		if err == nil {
 			for _, m := range admins {
-				if (m.Role == authz.RoleAdmin || m.Role == authz.RoleOwner) && h.mailer != nil {
+				if authz.IsFullAccess(m.Role) && h.mailer != nil {
 					_ = h.mailer.SendStorageAlertEmail(m.UserEmail, m.UserName, company.Name, usedGB, h.cfg.StorageAlertGB)
 				}
 			}

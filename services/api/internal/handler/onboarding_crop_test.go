@@ -187,7 +187,7 @@ func TestCompleteOnboardingEndpoint(t *testing.T) {
 		t.Fatalf("create user: %v", err)
 	}
 
-	uniqueUsername := fmt.Sprintf("director.%d", time.Now().UnixNano()%100000)
+	uniqueUsername := fmt.Sprintf("dir.%d", time.Now().UnixNano()%1000000000)
 
 	// Auth context setup
 	reqCtx := context.WithValue(ctx, middleware.UserContextKey, &middleware.AuthenticatedUser{

@@ -1392,8 +1392,8 @@ func (h *ReviewHandler) ListReviewsFeed(w http.ResponseWriter, r *http.Request) 
 
 	// Fetch accessible projects for the caller
 	var projectUUIDs []pgtype.UUID
-	if isTeam && (person.Role == authz.RoleAdmin || person.Role == authz.RoleManager || person.Role == authz.RoleOwner) {
-		// Admins/Managers: all company projects (Column2: nil in sqlc means all)
+	if isTeam && person.HasPermission(authz.PermProjectsViewAll) {
+		// Leadership / members with projects.view_all: all company projects (Column2: nil in sqlc means all)
 		projectUUIDs = nil
 	} else {
 		// Non-admins (Editors, clients, external users):

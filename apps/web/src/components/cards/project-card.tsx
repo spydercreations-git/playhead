@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { MoreHorizontal, Lock, Film } from "@/components/ui/icon";
+import { MoreHorizontal, Lock, Film, FolderOpen } from "@/components/ui/icon";
 
 interface ProjectCardProps {
   id: string;
@@ -63,9 +63,9 @@ export function ProjectCard({
           className="absolute top-0 left-0 w-full h-[290px] pointer-events-none overflow-visible"
           fill="none"
         >
-          {/* Tab: top-left, 129 wide, 18 high, corners 10, sloped right edge. Fill #26272C, border #2E2F34 */}
+          {/* Tab: top-left, 129 wide, 18 high, corners 10, sloped right edge. Stays fixed inside card width. */}
           <path
-            d="M0 22 V12 q0 -10 10 -10 h80 q8 0 13 5 l6 6 q4 4 10 4 h171 q10 0 10 10 V22z"
+            d="M0 22 V12 q0 -10 10 -10 h80 q8 0 13 5 l6 6 q4 4 10 4 V22 H0z"
             fill="#26272C"
             stroke="#2E2F34"
             strokeWidth="1"
@@ -85,67 +85,56 @@ export function ProjectCard({
           />
         </svg>
 
-        {/* Preview Container: 1 big + 2 small thumbnails, 6px gap, radius 8, height 150px */}
-        <div className="relative z-10 h-[150px] w-full flex gap-1.5">
-          {/* Big Thumbnail (Left Slot) */}
-          <div className="flex-1 h-[150px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
-            {thumbnails[0] ? (
-              <img
-                src={thumbnails[0]}
-                alt=""
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              /* Vector illustration matching 11-card-shapes.svg exact preview */
-              <svg viewBox="0 0 176 150" className="w-full h-full" preserveAspectRatio="none">
-                <rect width="176" height="150" rx="8" fill="#000000" />
-                <rect x="45.5" width="85" height="150" fill="#3D5A80" />
-                <circle cx="88" cy="57" r="14.5" fill="#E0C3A3" />
-                <path d="M61 150 Q88 75 115 150 Z" fill="#E0C3A3" />
-                <rect x="94.5" y="93" width="22" height="33" rx="3" fill="#F2B134" />
-              </svg>
-            )}
-          </div>
+        {/* Preview Container: If no files, show Empty preview (folder icon on #2C2D33) as in Boards/02 Components Empty */}
+        <div className="relative h-[150px] w-full">
+          {thumbnails.length === 0 ? (
+            <div className="relative z-10 h-[150px] w-full rounded-[8px] bg-[#2C2D33] flex items-center justify-center text-[#7C7F87]">
+              <FolderOpen size={36} className="text-[#7C7F87]" />
+            </div>
+          ) : (
+            <div className="relative z-10 h-[150px] w-full flex gap-1.5">
+              {/* Big Thumbnail (Left Slot) */}
+              <div className="flex-1 h-[150px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
+                {thumbnails[0] ? (
+                  <img
+                    src={thumbnails[0]}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-[#2C2D33] flex items-center justify-center text-[#7C7F87]">
+                    <FolderOpen size={24} className="text-[#7C7F87]" />
+                  </div>
+                )}
+              </div>
 
-          {/* Small Thumbnails (Right Column) */}
-          <div className="w-[36%] h-[150px] flex flex-col gap-1.5">
-            <div className="h-[72px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
-              {thumbnails[1] ? (
-                <img
-                  src={thumbnails[1]}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                /* Vector illustration matching 11-card-shapes.svg small preview 1 */
-                <svg viewBox="0 0 99 72" className="w-full h-full" preserveAspectRatio="none">
-                  <rect width="99" height="72" rx="8" fill="#000000" />
-                  <rect x="29" width="41" height="72" fill="#5B3A29" />
-                  <circle cx="49" cy="27" r="7" fill="#F1D3B3" />
-                  <path d="M36 72 Q49 36 62 72 Z" fill="#F1D3B3" />
-                  <rect x="52" y="44" width="11" height="16" rx="3" fill="#E76F51" />
-                </svg>
-              )}
+              {/* Small Thumbnails (Right Column) */}
+              <div className="w-[36%] h-[150px] flex flex-col gap-1.5">
+                <div className="h-[72px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
+                  {thumbnails[1] ? (
+                    <img
+                      src={thumbnails[1]}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-[#2C2D33]" />
+                  )}
+                </div>
+                <div className="h-[72px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
+                  {thumbnails[2] ? (
+                    <img
+                      src={thumbnails[2]}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-[#2C2D33]" />
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="h-[72px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
-              {thumbnails[2] ? (
-                <img
-                  src={thumbnails[2]}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                /* Vector illustration matching 11-card-shapes.svg small preview 2 */
-                <svg viewBox="0 0 99 72" className="w-full h-full" preserveAspectRatio="none">
-                  <rect width="99" height="72" rx="8" fill="#000000" />
-                  <rect x="29" width="41" height="72" fill="#264653" />
-                  <circle cx="49" cy="27" r="7" fill="#E9C46A" />
-                  <path d="M36 72 Q49 36 62 72 Z" fill="#E9C46A" />
-                  <rect x="52" y="44" width="11" height="16" rx="3" fill="#2A9D8F" />
-                </svg>
-              )}
-            </div>
-          </div>
+          )}
 
           {/* Badges on preview: Restricted Lock badge */}
           {isRestricted && (

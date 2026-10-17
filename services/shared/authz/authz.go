@@ -228,6 +228,7 @@ type ItemTarget struct {
 	CompanyID    uuid.UUID
 	CreatedBy    uuid.UUID
 	IsRestricted bool
+	DriveOwnerID uuid.UUID
 }
 
 // Access evaluates a person's permissions on a project by combining:
@@ -518,6 +519,15 @@ func AccessFolder(ctx context.Context, q *db.Queries, person Person, project Pro
 
 // AccessItem evaluates permissions on an item by resolving its parent folder access.
 func AccessItem(ctx context.Context, q *db.Queries, person Person, project ProjectTarget, item ItemTarget) (AccessResult, error) {
+	// My Drive items: Strictly private to the drive owner.
+	// For any item with drive_owner_id set, NO grants, comments, or downloads by others are permitted.
+	if item.DriveOwnerID != uuid.Nil {
+		if person.UserID != uuid.Nil && person.UserID == item.DriveOwnerID {
+			return AccessResult{Level: LevelFull, CanDownload: true}, nil
+		}
+		return AccessResult{Level: LevelNone, CanDownload: false}, nil
+	}
+
 	// Unprojected items ("My documents" / unprojected spreadsheets):
 	// Visible ONLY to creator and people with explicit grants.
 	// Admins cannot see others' private docs unless explicitly granted.

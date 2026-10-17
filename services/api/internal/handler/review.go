@@ -359,27 +359,35 @@ func (h *ReviewHandler) ListComments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
-		ID:        item.ProjectID,
-		CompanyID: companyID,
-	})
-	if err != nil {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
-		return
-	}
-
 	person := middleware.GetPerson(ctx)
-	access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
-		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
-	}, authz.ItemTarget{
-		ID:        uuid.UUID(item.ID.Bytes),
-		ProjectID: uuid.UUID(item.ProjectID.Bytes),
-		CompanyID: uuid.UUID(item.CompanyID.Bytes),
-		CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
-	})
-	if err != nil || !access.CanView() {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
-		return
+	if item.DriveOwnerID.Valid {
+		if person.UserID == uuid.Nil || person.UserID != uuid.UUID(item.DriveOwnerID.Bytes) {
+			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Access to another user's drive item is forbidden"})
+			return
+		}
+	} else {
+		proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+			ID:        item.ProjectID,
+			CompanyID: companyID,
+		})
+		if err != nil {
+			respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+			return
+		}
+
+		access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
+			ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+		}, authz.ItemTarget{
+			ID:           uuid.UUID(item.ID.Bytes),
+			ProjectID:    uuid.UUID(item.ProjectID.Bytes),
+			CompanyID:    uuid.UUID(item.CompanyID.Bytes),
+			CreatedBy:    uuid.UUID(item.CreatedBy.Bytes),
+			DriveOwnerID: uuid.UUID(item.DriveOwnerID.Bytes),
+		})
+		if err != nil || !access.CanView() {
+			respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+			return
+		}
 	}
 
 	isTeam := h.isTeamMember(ctx, companyID)
@@ -454,33 +462,41 @@ func (h *ReviewHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
-		ID:        item.ProjectID,
-		CompanyID: companyID,
-	})
-	if err != nil {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
-		return
-	}
-
 	person := middleware.GetPerson(ctx)
-	access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
-		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
-	}, authz.ItemTarget{
-		ID:        uuid.UUID(item.ID.Bytes),
-		ProjectID: uuid.UUID(item.ProjectID.Bytes),
-		CompanyID: uuid.UUID(item.CompanyID.Bytes),
-		CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
-	})
-	if err != nil || !access.CanView() {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
-		return
-	}
+	if item.DriveOwnerID.Valid {
+		if person.UserID == uuid.Nil || person.UserID != uuid.UUID(item.DriveOwnerID.Bytes) {
+			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Comments on another user's drive item are forbidden"})
+			return
+		}
+	} else {
+		proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+			ID:        item.ProjectID,
+			CompanyID: companyID,
+		})
+		if err != nil {
+			respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+			return
+		}
 
-	// Requirement 5: Commenter and above (Commenter, Uploader, Full) can comment, reply and resolve.
-	if access.Level != authz.LevelCommenter && access.Level != authz.LevelUploader && access.Level != authz.LevelFull {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Commenter permission required"})
-		return
+		access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
+			ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+		}, authz.ItemTarget{
+			ID:           uuid.UUID(item.ID.Bytes),
+			ProjectID:    uuid.UUID(item.ProjectID.Bytes),
+			CompanyID:    uuid.UUID(item.CompanyID.Bytes),
+			CreatedBy:    uuid.UUID(item.CreatedBy.Bytes),
+			DriveOwnerID: uuid.UUID(item.DriveOwnerID.Bytes),
+		})
+		if err != nil || !access.CanView() {
+			respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+			return
+		}
+
+		// Requirement 5: Commenter and above (Commenter, Uploader, Full) can comment, reply and resolve.
+		if access.Level != authz.LevelCommenter && access.Level != authz.LevelUploader && access.Level != authz.LevelFull {
+			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Commenter permission required"})
+			return
+		}
 	}
 
 	var req createCommentReq

@@ -272,8 +272,8 @@ func TestP1ProjectsAndClients(t *testing.T) {
 	}
 
 	// 11. Extra Test: 6-digit email sign in code flow
-	// Send code for known email (sarah@everygen.com)
-	sendCodeBody, _ := json.Marshal(SendLoginCodeRequest{Email: "Sarah@Everygen.com"})
+	// Send code for known email (commenterEmail)
+	sendCodeBody, _ := json.Marshal(SendLoginCodeRequest{Email: commenterEmail})
 	reqSendCode := httptest.NewRequest("POST", "/api/v1/auth/code/send", bytes.NewReader(sendCodeBody))
 	recSendCode := httptest.NewRecorder()
 	authH.SendLoginCode(recSendCode, reqSendCode)

@@ -414,8 +414,8 @@ export function ReviewWorkspace({
               reviewStatus === "approved"
                 ? "bg-[#3FCF8E]/15 text-[#3FCF8E] border border-[#3FCF8E]/30"
                 : reviewStatus === "changes_requested"
-                ? "bg-[#EF4444]/15 text-[#EF4444] border border-[#EF4444]/30"
-                : "bg-[#EAB308]/15 text-[#EAB308] border border-[#EAB308]/30"
+                ? "bg-[#F0506E]/15 text-[#F0506E] border border-[#F0506E]/30"
+                : "bg-[#FFBB56]/15 text-[#FFBB56] border border-[#FFBB56]/30"
             }`}
           >
             {reviewStatus === "approved" ? (
@@ -456,7 +456,7 @@ export function ReviewWorkspace({
                   setApprovalDecision("changes_requested");
                   setShowApprovalDialog(true);
                 }}
-                className="px-3 py-1.5 rounded-lg border border-[#EF4444]/60 text-[#EF4444] hover:bg-[#EF4444]/10 text-xs font-semibold transition-colors"
+                className="px-3 py-1.5 rounded-lg border border-[#F0506E]/60 text-[#F0506E] hover:bg-[#F0506E]/10 text-xs font-semibold transition-colors"
               >
                 Request changes
               </button>
@@ -633,7 +633,7 @@ export function ReviewWorkspace({
                 className={`px-5 py-2 rounded-lg text-xs font-bold transition-all shadow ${
                   approvalDecision === "approved"
                     ? "bg-[#3FCF8E] hover:bg-[#3FCF8E] text-black"
-                    : "bg-[#EF4444] hover:bg-[#DC2626] text-white"
+                    : "bg-[#F0506E] hover:bg-[#F0506E] text-white"
                 }`}
               >
                 {approvalDecision === "approved" ? "Confirm Approval" : "Submit Request"}

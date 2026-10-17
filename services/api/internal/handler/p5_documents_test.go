@@ -14,7 +14,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/playhead/playhead/services/api/internal/config"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
@@ -200,16 +199,8 @@ func TestP5DocumentsIntegration(t *testing.T) {
 	cfg := config.Load()
 	ctx := context.Background()
 
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
-	if err != nil {
-		t.Skipf("skipping integration test: postgres not reachable: %v", err)
-	}
-	defer pool.Close()
-	if err := pool.Ping(ctx); err != nil {
-		t.Skipf("skipping integration test: ping failed: %v", err)
-	}
-
-	queries := db.New(pool)
+	pool, queries, cleanup := setupTestPool(t)
+	defer cleanup()
 	stClient, _ := storage.NewClient(ctx, storage.Config{
 		Endpoint:        cfg.R2Endpoint,
 		AccessKeyID:     cfg.R2AccessKeyID,
@@ -602,19 +593,11 @@ func TestDocxImportFileSizeLimit(t *testing.T) {
 }
 
 func TestPdfExportClientNeverGetsTeamNotesAndCustomOptions(t *testing.T) {
-	cfg := config.Load()
 	ctx := context.Background()
 
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
-	if err != nil {
-		t.Skipf("skipping: postgres not reachable: %v", err)
-	}
-	defer pool.Close()
-	if err := pool.Ping(ctx); err != nil {
-		t.Skipf("skipping: ping failed: %v", err)
-	}
-
-	queries := db.New(pool)
+	pool, queries, cleanup := setupTestPool(t)
+	defer cleanup()
+	_ = pool
 	nano := time.Now().UnixNano()
 
 	company, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
@@ -740,7 +723,7 @@ func TestPdfExportClientNeverGetsTeamNotesAndCustomOptions(t *testing.T) {
 	}))
 	defer mockCollabServer.Close()
 
-	cfg = &config.Config{
+	cfg := &config.Config{
 		CollabInternalSecret: "test-secret-at-least-32-chars-long!",
 		CollabURL:            mockCollabServer.URL,
 	}

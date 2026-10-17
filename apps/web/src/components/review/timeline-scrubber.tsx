@@ -167,7 +167,7 @@ export function TimelineScrubber({
                   if (onSelectComment) onSelectComment(c.id);
                 }}
                 className={`absolute top-0 bottom-0 z-10 rounded-sm opacity-80 hover:opacity-100 transition-opacity ${
-                  isTeam ? "bg-[#EAB308]/60 border-t border-b border-[#EAB308]" : "bg-[#FFBB56]/50 border-t border-b border-[#FFBB56]"
+                  isTeam ? "bg-[#FFBB56]/60 border-t border-b border-[#FFBB56]" : "bg-[#FFBB56]/50 border-t border-b border-[#FFBB56]"
                 }`}
                 style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
                 title={`${c.author_name}: ${c.body.substring(0, 40)}`}
@@ -199,7 +199,7 @@ export function TimelineScrubber({
                 <div
                   className={`relative flex items-center justify-center w-5 h-5 rounded-full border shadow text-xs font-bold text-white ${
                     isTeam
-                      ? "bg-[#FFBB56] border-[#EAB308]"
+                      ? "bg-[#FFBB56] border-[#FFBB56]"
                       : c.resolved
                       ? "bg-[#3FCF8E] border-white"
                       : "bg-[#FFBB56] border-white"
@@ -207,7 +207,7 @@ export function TimelineScrubber({
                 >
                   {initial}
                   {isTeam && (
-                    <Lock className="absolute -top-1 -right-1 w-2.5 h-2.5 text-[#EAB308] bg-[#181818] rounded-full p-[1px]" />
+                    <Lock className="absolute -top-1 -right-1 w-2.5 h-2.5 text-[#FFBB56] bg-[#181818] rounded-full p-[1px]" />
                   )}
                 </div>
               </button>

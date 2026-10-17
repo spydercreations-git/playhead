@@ -66,8 +66,8 @@ Used inside the FortuneSheet spreadsheet editor for table cell fills and font fo
 For the 6 defined asset and spreadsheet row statuses (Background at 16% opacity and border/text):
 - Not started: `#2A2B30`, `#3F4045`, `#9CA3AF`, `#6B7280`
 - Editing: `#1E293B`, `#2563EB`, `#60A5FA`
-- Needs review: `#451A03`, `#D97706`, `#FBBF24`
-- Changes requested: `#450A0A`, `#DC2626`, `#F87171`
+- Needs review: `#451A03`, `#FFBB56`, `#FBBF24`
+- Changes requested: `#450A0A`, `#F0506E`, `#F87171`
 - Approved: `#064E3B`, `#059669`, `#34D399`
 - Delivered: `#2E1065`, `#7C3AED`, `#C084FC`
 

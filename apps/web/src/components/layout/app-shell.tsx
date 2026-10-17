@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { ProjectIconRail } from "./project-icon-rail";
+import { UploadPanel } from "@/components/uploads/upload-panel";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/use-auth";
 
@@ -99,6 +100,7 @@ function ProtectedAppShell({
         <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#181818]">
           {children}
         </main>
+        <UploadPanel />
       </div>
     );
   }
@@ -108,7 +110,12 @@ function ProtectedAppShell({
     (pathname?.startsWith("/d/") && pathname !== "/d");
 
   if (isFullscreenEditor) {
-    return <main className="h-screen w-screen overflow-hidden bg-[#181818]">{children}</main>;
+    return (
+      <main className="h-screen w-screen overflow-hidden bg-[#181818]">
+        {children}
+        <UploadPanel />
+      </main>
+    );
   }
 
   return (
@@ -120,6 +127,7 @@ function ProtectedAppShell({
           <div className="w-full max-w-[1920px] mx-auto">{children}</div>
         </main>
       </div>
+      <UploadPanel />
     </div>
   );
 }

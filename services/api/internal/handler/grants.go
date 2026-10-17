@@ -353,6 +353,14 @@ func (h *GrantsHandler) AddItemGrant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if item.DriveOwnerID.Valid {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Grants cannot be created for My Drive items. My Drive items are strictly private to the owner.",
+		})
+		return
+	}
+
 	project, err := h.queries.GetProjectByID(r.Context(), db.GetProjectByIDParams{
 		CompanyID: companyID,
 		ID:        item.ProjectID,

@@ -292,7 +292,7 @@ export function CommentsPanel({
                     key={comment.id}
                     className={`rounded-xl border p-3 transition-colors ${
                       isTeam
-                        ? "bg-[#FFBB56]/5 border-[#EAB308]/30 hover:border-[#EAB308]/50"
+                        ? "bg-[#FFBB56]/5 border-[#FFBB56]/30 hover:border-[#FFBB56]/50"
                         : isResolved
                         ? "bg-[#181818]/40 border-[#212121]/40 opacity-70"
                         : "bg-[#181818] border-[#212121] hover:border-[#424344]"
@@ -314,7 +314,7 @@ export function CommentsPanel({
                           <div className="flex items-center gap-1.5">
                             <span className="text-xs font-semibold text-white">{comment.author_name}</span>
                             {isTeam ? (
-                              <span className="flex items-center gap-0.5 rounded px-1 py-0.2 bg-[#EAB308]/20 text-[#EAB308] text-xs font-medium border border-[#EAB308]/30">
+                              <span className="flex items-center gap-0.5 rounded px-1 py-0.2 bg-[#FFBB56]/20 text-[#FFBB56] text-xs font-medium border border-[#FFBB56]/30">
                                 <Lock className="w-2.5 h-2.5" /> Team only
                               </span>
                             ) : null}
@@ -433,7 +433,7 @@ export function CommentsPanel({
                       {canDelete && (
                         <button
                           onClick={() => onDeleteComment(comment.id)}
-                          className="hover:text-[#EF4444] transition-colors"
+                          className="hover:text-[#F0506E] transition-colors"
                           title="Delete comment"
                         >
                           <Trash2 className="w-3 h-3" />
@@ -457,7 +457,7 @@ export function CommentsPanel({
                                   {(isReplyAuthor || hasFullAccess) && (
                                     <button
                                       onClick={() => onDeleteComment(reply.id)}
-                                      className="text-[#A3A6AD] hover:text-[#EF4444]"
+                                      className="text-[#A3A6AD] hover:text-[#F0506E]"
                                     >
                                       <Trash2 className="w-2.5 h-2.5" />
                                     </button>
@@ -514,8 +514,8 @@ export function CommentsPanel({
                   reviewStatus === "approved"
                     ? "bg-[#3FCF8E]/15 text-[#3FCF8E] border border-[#3FCF8E]/30"
                     : reviewStatus === "changes_requested"
-                    ? "bg-[#EF4444]/15 text-[#EF4444] border border-[#EF4444]/30"
-                    : "bg-[#EAB308]/15 text-[#EAB308] border border-[#EAB308]/30"
+                    ? "bg-[#F0506E]/15 text-[#F0506E] border border-[#F0506E]/30"
+                    : "bg-[#FFBB56]/15 text-[#FFBB56] border border-[#FFBB56]/30"
                 }`}
               >
                 {reviewStatus.replace("_", " ")}

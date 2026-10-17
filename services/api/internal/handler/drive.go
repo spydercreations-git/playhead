@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -41,15 +42,16 @@ func NewDriveHandler(queries *db.Queries, pool *pgxpool.Pool, storage *storage.C
 }
 
 type DriveFolderItem struct {
-	ID              string `json:"id"`
-	Name            string `json:"name"`
-	Category        string `json:"category,omitempty"`
-	IsDefaultFolder bool   `json:"is_default_folder"`
-	Position        string `json:"position"`
-	FileCount       int32  `json:"file_count"`
-	TotalBytes      int64  `json:"total_bytes"`
-	CreatedAt       string `json:"created_at"`
-	UpdatedAt       string `json:"updated_at"`
+	ID              string   `json:"id"`
+	Name            string   `json:"name"`
+	Category        string   `json:"category,omitempty"`
+	IsDefaultFolder bool     `json:"is_default_folder"`
+	Position        string   `json:"position"`
+	FileCount       int32    `json:"file_count"`
+	TotalBytes      int64    `json:"total_bytes"`
+	Thumbnails      []string `json:"thumbnails"`
+	CreatedAt       string   `json:"created_at"`
+	UpdatedAt       string   `json:"updated_at"`
 }
 
 // EnsureDefaultFolders creates Videos, Images, Documents, Music folders if missing
@@ -140,6 +142,46 @@ func (h *DriveHandler) ListFolders(w http.ResponseWriter, r *http.Request) {
 			posStr = f.Position.Int.String()
 		}
 
+		thumbs := make([]string, 0, 3)
+		if h.pool != nil {
+			tRows, qErr := h.pool.Query(ctx, `
+				SELECT fv.storage_key, fv.mime, fv.preview_keys
+				FROM items i
+				JOIN file_versions fv ON fv.item_id = i.id
+				WHERE i.company_id = $1 AND i.drive_owner_id = $2 AND i.parent_id = $3 AND i.deleted_at IS NULL AND i.kind = 'file'
+				ORDER BY i.created_at DESC
+				LIMIT 3
+			`, companyID, user.ID, f.ID)
+			if qErr == nil {
+				for tRows.Next() {
+					var sKey, mime string
+					var pKeys []byte
+					if err := tRows.Scan(&sKey, &mime, &pKeys); err == nil {
+						targetKey := sKey
+						if len(pKeys) > 0 {
+							var m map[string]interface{}
+							if json.Unmarshal(pKeys, &m) == nil {
+								if p, ok := m["poster"].(string); ok && p != "" {
+									targetKey = p
+								}
+							}
+						}
+						var u string
+						if h.storage != nil {
+							u, _ = h.storage.PresignGetObjectInline(ctx, targetKey, mime, 2*time.Hour)
+						}
+						if u == "" && targetKey != "" {
+							u = fmt.Sprintf("http://localhost:9000/playhead-dev/%s", targetKey)
+						}
+						if u != "" {
+							thumbs = append(thumbs, u)
+						}
+					}
+				}
+				tRows.Close()
+			}
+		}
+
 		response = append(response, DriveFolderItem{
 			ID:              uuid.UUID(f.ID.Bytes).String(),
 			Name:            f.Name,
@@ -148,6 +190,7 @@ func (h *DriveHandler) ListFolders(w http.ResponseWriter, r *http.Request) {
 			Position:        posStr,
 			FileCount:       stats.FileCount,
 			TotalBytes:      stats.TotalBytes,
+			Thumbnails:      thumbs,
 			CreatedAt:       f.CreatedAt.Time.Format("2006-01-02T15:04:05Z07:00"),
 			UpdatedAt:       f.UpdatedAt.Time.Format("2006-01-02T15:04:05Z07:00"),
 		})
@@ -539,8 +582,16 @@ func (h *DriveHandler) MoveToProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Move root item
-	moved, err := h.queries.MoveDriveItemToProject(ctx, db.MoveDriveItemToProjectParams{
+	// Move root item and descendants in an atomic database transaction
+	tx, err := h.pool.Begin(ctx)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_begin_transaction", "message": err.Error()})
+		return
+	}
+	defer tx.Rollback(ctx)
+	qtx := h.queries.WithTx(tx)
+
+	moved, err := qtx.MoveDriveItemToProject(ctx, db.MoveDriveItemToProjectParams{
 		ID:           itemID,
 		CompanyID:    companyID,
 		DriveOwnerID: user.ID,
@@ -548,20 +599,35 @@ func (h *DriveHandler) MoveToProject(w http.ResponseWriter, r *http.Request) {
 		ParentID:     targetParentID,
 	})
 	if err != nil {
-		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_move_item"})
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_move_item", "message": err.Error()})
 		return
 	}
 
 	// Move all descendants
-	_ = h.queries.MoveDriveDescendantsToProject(ctx, db.MoveDriveDescendantsToProjectParams{
+	err = qtx.MoveDriveDescendantsToProject(ctx, db.MoveDriveDescendantsToProjectParams{
 		ID:        itemID,
 		CompanyID: companyID,
 		ProjectID: targetProjectID,
 	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_move_descendants", "message": err.Error()})
+		return
+	}
 
-	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, targetProjectID)
+	if err := qtx.RecalculateProjectAndFolderCounts(ctx, targetProjectID); err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_recalculate_counts", "message": err.Error()})
+		return
+	}
 	if targetParentID.Valid {
-		_ = h.queries.RecalculateFolderCounts(ctx, targetParentID)
+		if err := qtx.RecalculateFolderCounts(ctx, targetParentID); err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_recalculate_folder_counts", "message": err.Error()})
+			return
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_commit_move", "message": err.Error()})
+		return
 	}
 
 	respondJSON(w, http.StatusOK, moved)
@@ -678,6 +744,15 @@ func (h *DriveHandler) CopyToProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Start atomic database transaction for copy operation
+	tx, err := h.pool.Begin(ctx)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_begin_transaction", "message": err.Error()})
+		return
+	}
+	defer tx.Rollback(ctx)
+	qtx := h.queries.WithTx(tx)
+
 	// Map old item ID -> new item ID
 	idMap := make(map[string]pgtype.UUID)
 
@@ -699,7 +774,7 @@ func (h *DriveHandler) CopyToProject(w http.ResponseWriter, r *http.Request) {
 			name = fmt.Sprintf("%s (Copy)", it.Name)
 		}
 
-		created, err := h.queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+		created, err := qtx.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
 			CompanyID: companyID,
 			ProjectID: targetProjectID,
 			ParentID:  parent,
@@ -709,8 +784,8 @@ func (h *DriveHandler) CopyToProject(w http.ResponseWriter, r *http.Request) {
 			CreatedBy: user.ID,
 		})
 		if err != nil {
-			slog.Error("failed to create copied item", "error", err)
-			continue
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_copied_item", "message": err.Error()})
+			return
 		}
 
 		oldIDStr := uuid.UUID(it.ID.Bytes).String()
@@ -722,7 +797,11 @@ func (h *DriveHandler) CopyToProject(w http.ResponseWriter, r *http.Request) {
 
 		// If file, copy file_versions and renditions
 		if it.Kind == "file" {
-			versions, _ := h.queries.GetFileVersionsForItem(ctx, it.ID)
+			versions, err := qtx.GetFileVersionsForItem(ctx, it.ID)
+			if err != nil {
+				respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_get_file_versions", "message": err.Error()})
+				return
+			}
 			for _, ver := range versions {
 				newStorageKey := fmt.Sprintf("companies/%s/items/%s/v%d",
 					uuid.UUID(companyID.Bytes).String(),
@@ -733,7 +812,7 @@ func (h *DriveHandler) CopyToProject(w http.ResponseWriter, r *http.Request) {
 					_ = h.storage.CopyObject(ctx, ver.StorageKey, newStorageKey)
 				}
 
-				_, _ = h.queries.CreateFileVersion(ctx, db.CreateFileVersionParams{
+				_, err = qtx.CreateFileVersion(ctx, db.CreateFileVersionParams{
 					CompanyID:     companyID,
 					ItemID:        created.ID,
 					Number:        ver.Number,
@@ -748,20 +827,38 @@ func (h *DriveHandler) CopyToProject(w http.ResponseWriter, r *http.Request) {
 					PreviewKeys:   ver.PreviewKeys,
 					UploadedBy:    user.ID,
 				})
+				if err != nil {
+					respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_copied_file_version", "message": err.Error()})
+					return
+				}
 			}
 		}
 	}
 
 	if totalBytesToCopy > 0 {
-		_ = h.queries.CommitCompanyStorage(ctx, db.CommitCompanyStorageParams{
+		if err := qtx.CommitCompanyStorage(ctx, db.CommitCompanyStorageParams{
 			ID:    companyID,
 			Bytes: totalBytesToCopy,
-		})
+		}); err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_commit_company_storage", "message": err.Error()})
+			return
+		}
 	}
 
-	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, targetProjectID)
+	if err := qtx.RecalculateProjectAndFolderCounts(ctx, targetProjectID); err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_recalculate_counts", "message": err.Error()})
+		return
+	}
 	if targetParentID.Valid {
-		_ = h.queries.RecalculateFolderCounts(ctx, targetParentID)
+		if err := qtx.RecalculateFolderCounts(ctx, targetParentID); err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_recalculate_folder_counts", "message": err.Error()})
+			return
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_commit_copy", "message": err.Error()})
+		return
 	}
 
 	respondJSON(w, http.StatusCreated, rootNewItem)

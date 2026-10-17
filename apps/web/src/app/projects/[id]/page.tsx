@@ -9,7 +9,7 @@ import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { toast } from "@/lib/toast";
 import { useContextMenu, MenuGroup } from "@/components/ui/menu";
-import { UploadTray, UploadItem } from "@/components/uploads/upload-tray";
+import { useUploadStore } from "@/lib/upload-store";
 import {
   DownloadTray,
   DownloadSession,
@@ -178,8 +178,8 @@ export default function ProjectWorkspacePage() {
   // File Viewer modal state
   const [activeViewerItem, setActiveViewerItem] = useState<ViewerItem | null>(null);
 
-  // Upload Tray & Queue state
-  const [uploads, setUploads] = useState<UploadItem[]>([]);
+  // Upload Tray & Queue state (Global)
+  const { uploads, addUploads } = useUploadStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -392,237 +392,23 @@ export default function ProjectWorkspacePage() {
   });
 
   // Fast Parallel Resumable Upload Engine
+  // Global Resumable Upload Engine (survives page changes)
   const startFileUpload = async (
     file: File,
-    targetItemId?: string,
-    customName?: string,
+    _targetItemId?: string,
+    _customName?: string,
     customParentId?: string
   ) => {
-    const filename = customName || file.name;
     const targetParent = customParentId !== undefined ? customParentId : currentFolderId;
-    const tempId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
-
-    try {
-      const initRes = await apiRequest("/uploads/initiate", {
-        method: "POST",
-        body: JSON.stringify({
-          project_id: projectId,
-          parent_id: targetParent,
-          target_item_id: targetItemId || null,
-          filename: filename,
-          size_bytes: file.size,
-          mime: file.type || "application/octet-stream",
-        }),
-      });
-
-      const newUpload: UploadItem = {
-        id: tempId,
-        uploadId: initRes.upload_id,
-        itemId: initRes.item_id,
-        projectId,
-        parentId: targetParent,
-        filename,
-        sizeBytes: file.size,
-        mime: file.type || "application/octet-stream",
-        storageKey: initRes.storage_key || "",
-        partSizeBytes: initRes.part_size_bytes || 5 * 1024 * 1024,
-        totalParts: 1,
-        parts: [],
-        completedParts: [],
-        progressPercent: 0,
-        speedBytesPerSec: 0,
-        status: "uploading",
-        file,
-      };
-
-      setUploads((prev) => [newUpload, ...prev]);
-
-      if (initRes.strategy === "single") {
-        await executeSingleUpload(newUpload, initRes.upload_url, file);
-      } else {
-        await executeMultipartUpload(newUpload, initRes.part_size_bytes, initRes.upload_id, file);
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Upload failed to start");
-    }
-  };
-
-  const executeSingleUpload = async (item: UploadItem, putUrl: string, file: File) => {
-    const xhr = new XMLHttpRequest();
-    let lastLoaded = 0;
-    let lastTime = Date.now();
-
-    xhr.upload.onprogress = (evt) => {
-      if (evt.lengthComputable) {
-        const now = Date.now();
-        const diffTime = (now - lastTime) / 1000;
-        if (diffTime > 0.4) {
-          const diffBytes = evt.loaded - lastLoaded;
-          const speed = diffBytes / diffTime;
-          lastLoaded = evt.loaded;
-          lastTime = now;
-
-          setUploads((prev) =>
-            prev.map((u) =>
-              u.id === item.id
-                ? {
-                    ...u,
-                    uploadedBytes: evt.loaded,
-                    progressPercent: Math.round((evt.loaded / evt.total) * 100),
-                    speedBytesPerSec: speed,
-                  }
-                : u
-            )
-          );
-        }
-      }
-    };
-
-    xhr.onload = async () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          await apiRequest("/uploads/complete", {
-            method: "POST",
-            body: JSON.stringify({
-              upload_id: item.uploadId,
-              item_id: item.itemId,
-            }),
-          });
-
-          setUploads((prev) =>
-            prev.map((u) =>
-              u.id === item.id
-                ? { ...u, status: "completed", progressPercent: 100, speedBytesPerSec: 0 }
-                : u
-            )
-          );
-          queryClient.invalidateQueries({ queryKey: ["project-items", projectId] });
-          toast.success(`Uploaded "${item.filename}"`);
-        } catch {
-          setUploads((prev) =>
-            prev.map((u) => (u.id === item.id ? { ...u, status: "error" } : u))
-          );
-          toast.error(`Failed to complete "${item.filename}"`);
-        }
-      } else {
-        setUploads((prev) =>
-          prev.map((u) => (u.id === item.id ? { ...u, status: "error" } : u))
-        );
-      }
-    };
-
-    xhr.onerror = () => {
-      setUploads((prev) =>
-        prev.map((u) => (u.id === item.id ? { ...u, status: "error" } : u))
-      );
-    };
-
-    xhr.open("PUT", putUrl);
-    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
-    xhr.send(file);
-  };
-
-  const executeMultipartUpload = async (
-    item: UploadItem,
-    partSizeBytes: number,
-    uploadId: string,
-    file: File
-  ) => {
-    const totalParts = Math.ceil(file.size / partSizeBytes);
-    const completedParts: { part_number: number; etag: string }[] = [];
-    const concurrency = 3;
-    let nextPartIndex = 0;
-    let activeWorkers = 0;
-    let loadedBytes = 0;
-
-    return new Promise<void>((resolve) => {
-      const runWorker = async () => {
-        while (nextPartIndex < totalParts) {
-          const currentPart = nextPartIndex + 1;
-          nextPartIndex++;
-
-          try {
-            const presignRes = await apiRequest("/uploads/presign-part", {
-              method: "POST",
-              body: JSON.stringify({
-                upload_id: uploadId,
-                part_number: currentPart,
-              }),
-            });
-
-            const startByte = (currentPart - 1) * partSizeBytes;
-            const endByte = Math.min(startByte + partSizeBytes, file.size);
-            const chunk = file.slice(startByte, endByte);
-
-            const putRes = await fetch(presignRes.upload_url, {
-              method: "PUT",
-              body: chunk,
-            });
-
-            if (!putRes.ok) throw new Error("Chunk put failed");
-            const etag = putRes.headers.get("ETag") || `part-${currentPart}`;
-
-            completedParts.push({
-              part_number: currentPart,
-              etag: etag.replace(/"/g, ""),
-            });
-
-            loadedBytes += chunk.size;
-            setUploads((prev) =>
-              prev.map((u) =>
-                u.id === item.id
-                  ? {
-                      ...u,
-                      uploadedBytes: loadedBytes,
-                      progressPercent: Math.round((loadedBytes / file.size) * 100),
-                    }
-                  : u
-              )
-            );
-          } catch {
-            setUploads((prev) =>
-              prev.map((u) => (u.id === item.id ? { ...u, status: "error" } : u))
-            );
-            return;
-          }
-        }
-
-        activeWorkers--;
-        if (activeWorkers === 0) {
-          try {
-            completedParts.sort((a, b) => a.part_number - b.part_number);
-            await apiRequest("/uploads/complete", {
-              method: "POST",
-              body: JSON.stringify({
-                upload_id: uploadId,
-                item_id: item.itemId,
-                parts: completedParts,
-              }),
-            });
-
-            setUploads((prev) =>
-              prev.map((u) =>
-                u.id === item.id
-                  ? { ...u, status: "completed", progressPercent: 100, speedBytesPerSec: 0 }
-                  : u
-              )
-            );
-            queryClient.invalidateQueries({ queryKey: ["project-items", projectId] });
-            toast.success(`Uploaded "${item.filename}"`);
-          } catch {
-            setUploads((prev) =>
-              prev.map((u) => (u.id === item.id ? { ...u, status: "error" } : u))
-            );
-          }
-          resolve();
-        }
-      };
-
-      for (let w = 0; w < concurrency && w < totalParts; w++) {
-        activeWorkers++;
-        runWorker();
-      }
+    const projectTitle = project?.name || "Project";
+    const currentFolderItem = treeData?.folders?.find((f: any) => f.id === targetParent);
+    const folderTitle = currentFolderItem ? ` / ${currentFolderItem.name}` : "";
+    await addUploads([file], {
+      projectId,
+      parentId: targetParent,
+      targetPath: `${projectTitle}${folderTitle}`,
     });
+    queryClient.invalidateQueries({ queryKey: ["project-items", projectId] });
   };
 
   const handleStartDownload = async (mode: "zip" | "folder") => {
@@ -2118,8 +1904,8 @@ export default function ProjectWorkspacePage() {
                               setSelectedItemIds([...selectedItemIds, file.id]);
                             }
                           }}
-                          onContextMenu={(e) => handleItemContextMenu(e, file)}
-                          onTouchStart={(e) => {
+                          onContextMenu={(e: React.MouseEvent) => handleItemContextMenu(e, file)}
+                          onTouchStart={(e: React.TouchEvent) => {
                             const touch = e.touches[0];
                             touchTimerRef.current = setTimeout(() => {
                               handleItemContextMenu({ clientX: touch.clientX, clientY: touch.clientY }, file);
@@ -2310,26 +2096,6 @@ export default function ProjectWorkspacePage() {
         </div>
       </div>
 
-      {/* Upload Tray */}
-      <UploadTray
-        uploads={uploads}
-        onPause={(id) => {
-          setUploads((prev) =>
-            prev.map((u) => (u.id === id ? { ...u, status: "paused" } : u))
-          );
-        }}
-        onResume={(id) => {
-          setUploads((prev) =>
-            prev.map((u) => (u.id === id ? { ...u, status: "uploading" } : u))
-          );
-        }}
-        onCancel={(id) => {
-          setUploads((prev) => prev.filter((u) => u.id !== id));
-        }}
-        onClearCompleted={() => {
-          setUploads((prev) => prev.filter((u) => u.status !== "completed"));
-        }}
-      />
 
       {/* Download Tray */}
       {downloadSession && (

@@ -220,10 +220,24 @@ func (h *ShareLinksHandler) Create(w http.ResponseWriter, r *http.Request) {
 			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
 			return
 		}
+
+		item, itErr := h.queries.GetItemByID(r.Context(), db.GetItemByIDParams{
+			CompanyID: companyID,
+			ID:        pgtype.UUID{Bytes: itemUUID, Valid: true},
+		})
+		if itErr == nil && item.DriveOwnerID.Valid {
+			respondJSON(w, http.StatusForbidden, map[string]string{
+				"error":   "forbidden",
+				"message": "Share links cannot be created for My Drive items",
+			})
+			return
+		}
+
 		itemTarget := authz.ItemTarget{
-			ID:        itemUUID,
-			ProjectID: projectUUID,
-			CompanyID: uuid.UUID(companyID.Bytes),
+			ID:           itemUUID,
+			ProjectID:    projectUUID,
+			CompanyID:    uuid.UUID(companyID.Bytes),
+			DriveOwnerID: uuid.UUID(item.DriveOwnerID.Bytes),
 		}
 		projTarget := authz.ProjectTarget{
 			ID:        projectUUID,

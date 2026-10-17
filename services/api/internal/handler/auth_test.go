@@ -9,27 +9,54 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/playhead/playhead/services/api/internal/config"
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
 	"github.com/playhead/playhead/services/shared/mailer"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/playhead/playhead/services/shared/plans"
 )
 
+func getTestDatabaseURL() string {
+	testDBURL := os.Getenv("TEST_DATABASE_URL")
+	if testDBURL == "" {
+		return "postgres://postgres:postgres@localhost:5432/playhead_test?sslmode=disable"
+	}
+	return testDBURL
+}
+
 func setupTestDB(t *testing.T) (*db.Queries, func()) {
-	cfg := config.Load()
+	testDBURL := getTestDatabaseURL()
 	ctx := context.Background()
-	pool, err := db.Connect(ctx, cfg.DatabaseURL)
+	pool, err := db.Connect(ctx, testDBURL)
 	if err != nil {
-		t.Skipf("skipping database test: postgres not reachable: %v", err)
+		t.Skipf("skipping database test: postgres test db not reachable: %v", err)
 	}
 
 	queries := db.New(pool)
+	_ = EnsureDevAdmins(ctx, pool.Pool, queries, "harsh@idyllproductions.com,dev@playhead.internal")
+
 	return queries, func() {
+		pool.Close()
+	}
+}
+
+func setupTestPool(t *testing.T) (*pgxpool.Pool, *db.Queries, func()) {
+	testDBURL := getTestDatabaseURL()
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, testDBURL)
+	if err != nil {
+		t.Skipf("skipping database test: postgres test db not reachable: %v", err)
+	}
+
+	queries := db.New(pool)
+	_ = EnsureDevAdmins(ctx, pool, queries, "harsh@idyllproductions.com,dev@playhead.internal")
+
+	return pool, queries, func() {
 		pool.Close()
 	}
 }

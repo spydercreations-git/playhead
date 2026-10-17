@@ -124,6 +124,12 @@ func main() {
 	documentsHandler := handler.NewDocumentsHandler(pgxPool, queries, rdb, storageClient, cfg)
 	spreadsheetsHandler := handler.NewSpreadsheetsHandler(pgxPool, queries, rdb, storageClient, cfg)
 	driveHandler := handler.NewDriveHandler(queries, pgxPool, storageClient, cfg)
+	if pgxPool != nil {
+		projectHandler.SetPool(pgxPool)
+	}
+	if storageClient != nil {
+		projectHandler.SetStorage(storageClient)
+	}
 
 	// Background job queue via Redis asynq
 	var asynqClient *asynq.Client

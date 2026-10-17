@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/playhead/playhead/services/api/internal/config"
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
@@ -21,13 +20,8 @@ import (
 
 func TestSpreadsheetColumnLockingAndHiddenSanitization(t *testing.T) {
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, "postgres://postgres:postgres@localhost:5432/playhead_dev?sslmode=disable")
-	if err != nil {
-		t.Skip("Postgres not available, skipping db test")
-		return
-	}
-	defer pool.Close()
-	queries := db.New(pool)
+	pool, queries, cleanup := setupTestPool(t)
+	defer cleanup()
 	cfg := &config.Config{
 		CollabInternalSecret: "test-collab-hmac-secret-32-chars-long!",
 		CollabURL:            "http://localhost:8082",
@@ -257,13 +251,9 @@ func TestSpreadsheetColumnLockingAndHiddenSanitization(t *testing.T) {
 
 func TestAutoTrackerCreationOnProjectCreation(t *testing.T) {
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, "postgres://postgres:postgres@localhost:5432/playhead_dev?sslmode=disable")
-	if err != nil {
-		t.Skip("Postgres not available")
-		return
-	}
-	defer pool.Close()
-	queries := db.New(pool)
+	pool, queries, cleanup := setupTestPool(t)
+	defer cleanup()
+	_ = pool
 	projHandler := NewProjectHandler(queries)
 
 	// Create Company & Admin

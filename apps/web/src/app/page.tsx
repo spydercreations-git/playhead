@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/use-auth";
 import { apiRequest } from "@/lib/api";
 import { DriveFolderCard } from "@/components/cards/drive-folder-card";
+import { FolderCard } from "@/components/cards/folder-card";
 import { ProjectCard } from "@/components/cards/project-card";
 import {
   Upload,
@@ -21,10 +22,13 @@ import {
   Folder,
   Loader2,
   CheckCircle2,
+  ChatBubble,
+  MoreHorizontal,
 } from "@/components/ui/icon";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { NewDocumentDialog } from "@/components/documents/new-document-dialog";
 import { NewSpreadsheetDialog } from "@/components/spreadsheets/new-spreadsheet-dialog";
+import { useUploadStore } from "@/lib/upload-store";
 
 interface DriveFolder {
   id: string;
@@ -56,6 +60,19 @@ interface ProjectItem {
   is_restricted?: boolean;
   waiting_review_count?: number;
   members?: { id?: string; email?: string; name?: string; color?: string }[];
+  thumbnails?: string[];
+}
+
+interface ReviewFeedItem {
+  id: string;
+  name: string;
+  project_id: string;
+  project_name: string;
+  review_status: string;
+  duration_ms: number;
+  unresolved_comment_count: number;
+  latest_version_number: number;
+  latest_preview_status?: string;
 }
 
 function formatBytes(bytes?: number): string {
@@ -68,9 +85,29 @@ function formatBytes(bytes?: number): string {
 
 function getTimeOfDayGreeting(): string {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
+  if (hour >= 5 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 17) return "Good afternoon";
   return "Good evening";
+}
+
+function formatDuration(ms?: number): string {
+  if (!ms || ms <= 0) return "00:00";
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatRelativeTime(dateStr?: string): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000);
+  if (diffSec < 60) return "Just now";
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)} min ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} hour${Math.floor(diffSec / 3600) > 1 ? "s" : ""} ago`;
+  if (diffSec < 172800) return "Yesterday";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function getRecentItemIcon(kind: string, category?: string) {
@@ -117,10 +154,6 @@ export default function HomePage() {
   const [showNewDoc, setShowNewDoc] = useState(false);
   const [showNewSheet, setShowNewSheet] = useState(false);
 
-  // Uploading state
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadFileName, setUploadFileName] = useState("");
-  const [uploadSuccessMessage, setUploadSuccessMessage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   // Real review items count
@@ -180,94 +213,82 @@ export default function HomePage() {
   const firstName = user?.name ? user.name.split(" ")[0] : "there";
   const isFirstTime = totalDriveFiles === 0 && projects.length === 0;
 
-  // Real Upload Handler into My Drive
-  async function handleUploadFile(file: File) {
-    if (!file) return;
-
-    setIsUploading(true);
-    setUploadFileName(file.name);
-    setUploadSuccessMessage(null);
-
-    try {
-      // 1. Initiate upload into My Drive
-      const initData = await apiRequest<{
-        upload_id: string;
-        parts: Array<{ part_number: number; url: string }>;
-      }>("/uploads/initiate", {
-        method: "POST",
-        body: JSON.stringify({
-          project_id: "drive",
-          filename: file.name,
-          size_bytes: file.size,
-          mime: file.type || "application/octet-stream",
-        }),
-      });
-
-      const { upload_id, parts } = initData;
-
-      // 2. Upload part directly to storage presigned URL
-      const completedParts = [];
-      for (const p of parts) {
-        const partRes = await fetch(p.url, {
-          method: "PUT",
-          body: file,
-        });
-        const etag = partRes.headers.get("ETag") || `"part-${p.part_number}"`;
-        completedParts.push({ part_number: p.part_number, etag });
-      }
-
-      // 3. Complete upload
-      await apiRequest(`/uploads/${upload_id}/complete`, {
-        method: "POST",
-        body: JSON.stringify({ parts: completedParts }),
-      });
-
-      // 4. Invalidate relevant queries to update UI in real time
-      await queryClient.invalidateQueries({ queryKey: ["drive-folders"] });
-      await queryClient.invalidateQueries({ queryKey: ["drive-recent"] });
-      await queryClient.invalidateQueries({ queryKey: ["storage-usage"] });
-
-      setUploadSuccessMessage(`Uploaded "${file.name}" to My Drive`);
-      setTimeout(() => setUploadSuccessMessage(null), 5000);
-    } catch (err: any) {
-      console.error("Home upload failed:", err);
-      setUploadSuccessMessage(err.message || "Upload failed");
-      setTimeout(() => setUploadSuccessMessage(null), 5000);
-    } finally {
-      setIsUploading(false);
-      setUploadFileName("");
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  }
+  const { addUploads } = useUploadStore();
 
   function handleUploadClick() {
     fileInputRef.current?.click();
   }
 
   function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleUploadFile(file);
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length > 0) {
+      addUploads(files, { projectId: "drive", targetPath: "My Drive" });
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      handleUploadFile(file);
+    const files = e.dataTransfer.files ? Array.from(e.dataTransfer.files) : [];
+    if (files.length > 0) {
+      addUploads(files, { projectId: "drive", targetPath: "My Drive" });
     }
   }
 
+  // Deduplicate recent items newest first, separated by folders and files
+  const seenFolderIds = new Set<string>();
+  const recentFolders: RecentItem[] = [];
+  const seenFileIds = new Set<string>();
+  const recentFiles: RecentItem[] = [];
+
+  for (const item of recentItems) {
+    if (item.item_kind === "folder") {
+      if (!seenFolderIds.has(item.item_id)) {
+        seenFolderIds.add(item.item_id);
+        recentFolders.push(item);
+      }
+    } else {
+      if (!seenFileIds.has(item.item_id)) {
+        seenFileIds.add(item.item_id);
+        recentFiles.push(item);
+      }
+    }
+  }
+
+  const reviewItems = (reviewsData?.items as ReviewFeedItem[]) || [];
+
   return (
-    <div className="max-w-[1208px] mx-auto space-y-8 pb-12 select-none">
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+      }}
+      onDrop={handleDrop}
+      className="relative max-w-[1208px] mx-auto space-y-8 pb-12 select-none"
+    >
+      {/* Global Drag Overlay on Home for all users */}
+      {isDragging && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-none">
+          <div className="flex flex-col items-center justify-center rounded-2xl bg-[#212121] border-2 border-dashed border-[#4876F3] p-12 text-center shadow-xl">
+            <Upload size={48} className="text-[#4876F3] animate-bounce mb-4" />
+            <p className="text-xl font-bold text-white">Drop files anywhere to upload</p>
+            <p className="text-sm text-[#A3A6AD] mt-1">They go to My Drive. Only you can see them.</p>
+          </div>
+        </div>
+      )}
+
       {/* Hidden file input for uploads */}
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         className="hidden"
         onChange={handleFileSelected}
       />
@@ -292,11 +313,10 @@ export default function HomePage() {
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={handleUploadClick}
-          disabled={isUploading}
-          className="flex h-9 items-center gap-2 rounded-[8px] bg-[#3B67E0] hover:bg-[#3560D6] px-3.5 text-sm font-semibold text-white transition-colors shadow-sm disabled:opacity-50"
+          className="flex h-9 items-center gap-2 rounded-[8px] bg-[#3B67E0] hover:bg-[#3560D6] px-3.5 text-sm font-semibold text-white transition-colors shadow-sm"
         >
-          {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
-          <span>{isUploading ? "Uploading..." : "Upload"}</span>
+          <Upload size={18} />
+          <span>Upload</span>
         </button>
 
         <button
@@ -334,31 +354,6 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Upload Notification Toast Banner */}
-      {uploadSuccessMessage && (
-        <div className="flex items-center gap-3 rounded-[10px] bg-[#212121] border border-[#3FCF8E]/40 px-4 py-3 text-sm text-white shadow-lg animate-in fade-in">
-          <CheckCircle2 size={18} className="text-[#3FCF8E] shrink-0" />
-          <span className="flex-1">{uploadSuccessMessage}</span>
-          <button
-            onClick={() => router.push("/my-drive")}
-            className="text-xs font-semibold text-[#4876F3] hover:underline"
-          >
-            Open My Drive
-          </button>
-        </div>
-      )}
-
-      {/* Upload in Progress Card */}
-      {isUploading && (
-        <div className="flex items-center gap-3.5 rounded-[12px] bg-[#212121] border border-[#4876F3] p-4 text-white shadow-lg animate-pulse">
-          <Loader2 size={22} className="text-[#4876F3] animate-spin shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-white truncate">Uploading {uploadFileName}...</p>
-            <p className="text-xs text-[#7C7F87] mt-0.5">Saving directly into your private My Drive</p>
-          </div>
-        </div>
-      )}
-
       {/* Section: My Drive (4 Default Folders) */}
       <div className="space-y-3.5">
         <div className="flex items-center justify-between">
@@ -386,8 +381,8 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Section: Recent folders / Recent items (P03) */}
-      {recentItems.length > 0 && (
+      {/* Section: Recent folders (P03: Folders only, deduplicated, newest first) */}
+      {recentFolders.length > 0 && (
         <div className="space-y-3.5">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-white">Recent folders</h2>
@@ -400,37 +395,206 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {recentItems.slice(0, 4).map((item) => {
+            {recentFolders.slice(0, 4).map((folder) => (
+              <FolderCard
+                key={folder.id}
+                id={folder.item_id}
+                name={folder.item_name}
+                itemCount={0}
+                totalBytes={folder.total_bytes || 0}
+                thumbnails={[]}
+                isSelected={false}
+                onToggleSelect={() => {}}
+                onOpen={() => {
+                  if (folder.project_id) {
+                    router.push(`/projects/${folder.project_id}`);
+                  } else {
+                    router.push(`/my-drive?folder=${folder.item_id}`);
+                  }
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Section: Recent files (P03: List table, deduplicated, newest first) */}
+      {recentFiles.length > 0 && (
+        <div className="space-y-3.5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-white">Recent files</h2>
+            <Link
+              href="/my-drive"
+              className="text-[13px] font-medium text-[#A3A6AD] hover:text-white transition-colors"
+            >
+              View all
+            </Link>
+          </div>
+
+          <div className="rounded-[12px] bg-[#212121] border border-[#2E2F34] divide-y divide-[#2E2F34] overflow-hidden">
+            {recentFiles.slice(0, 6).map((item) => {
               const IconComp = getRecentItemIcon(item.item_kind, item.category);
               const style = getRecentItemCategoryStyle(item.item_kind, item.category);
               const location = item.project_name || "My Drive";
-              const detail =
-                item.item_kind === "folder"
-                  ? `${location}`
-                  : `${location}  ·  ${formatBytes(item.total_bytes)}`;
 
               return (
                 <div
                   key={item.id}
                   onClick={() => {
                     if (item.project_id) {
-                      router.push(`/projects/${item.project_id}`);
+                      router.push(`/projects/${item.project_id}?item=${item.item_id}`);
                     } else {
                       router.push("/my-drive");
                     }
                   }}
-                  className="group flex items-center justify-between h-[88px] w-full rounded-[12px] bg-[#212121] border border-[#2E2F34] hover:border-[#424344] p-4 select-none cursor-pointer transition-all duration-150 hover:scale-[1.015] active:scale-[0.98]"
+                  className="flex items-center justify-between h-14 px-4 hover:bg-[#2C2D33] cursor-pointer transition-colors"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     <div
-                      className="flex items-center justify-center h-10 w-10 rounded-[10px] shrink-0"
+                      className="flex items-center justify-center h-9 w-9 rounded-[8px] shrink-0"
                       style={{ backgroundColor: style.bg, color: style.color }}
                     >
-                      <IconComp size={20} />
+                      <IconComp size={18} />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{item.item_name}</p>
-                      <p className="text-xs text-[#7C7F87] truncate mt-0.5">{detail}</p>
+                      <p className="text-sm font-medium text-white truncate">{item.item_name}</p>
+                      <p className="text-xs text-[#7C7F87] truncate">
+                        {location}
+                        {item.total_bytes > 0 && `  ·  ${formatBytes(item.total_bytes)}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 shrink-0">
+                    <span className="text-xs text-[#7C7F87]">
+                      {formatRelativeTime(item.viewed_at)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      className="h-7 w-7 rounded-md flex items-center justify-center text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
+                    >
+                      <MoreHorizontal size={16} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Section: Waiting for review (Real data from /reviews, hide when empty) */}
+      {reviewItems.length > 0 && (
+        <div className="space-y-3.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold text-white">Waiting for review</h2>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#2A2B30] text-[#A3A6AD]">
+                {reviewItems.length}
+              </span>
+            </div>
+            <Link
+              href="/reviews"
+              className="text-[13px] font-medium text-[#A3A6AD] hover:text-white transition-colors"
+            >
+              Open Reviews
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {reviewItems.slice(0, 4).map((rev) => {
+              const status = rev.review_status || "needs_review";
+              const isApproved = status === "approved";
+              const isChangesRequested = status === "changes_requested";
+              const chipColor = isApproved ? "#3FCF8E" : isChangesRequested ? "#F0506E" : "#FFBB56";
+              const chipText = isApproved
+                ? "Approved"
+                : isChangesRequested
+                ? "Changes requested"
+                : "Needs review";
+
+              return (
+                <div
+                  key={rev.id}
+                  onClick={() => {
+                    if (rev.project_id) {
+                      router.push(`/projects/${rev.project_id}?item=${rev.id}`);
+                    }
+                  }}
+                  className="group relative flex flex-col justify-between h-[224px] rounded-[12px] bg-[#212121] border border-[#2E2F34] hover:border-[#424344] p-2.5 cursor-pointer transition-all duration-150 hover:scale-[1.015] active:scale-[0.98]"
+                >
+                  {/* Thumbnail slot */}
+                  <div className="relative h-[136px] w-full rounded-[8px] bg-black overflow-hidden flex items-center justify-center">
+                    <div className="w-full h-full bg-[#2C2D33] flex items-center justify-center text-[#7C7F87]">
+                      <VideoFileIcon size={32} className="text-[#7C7F87]" />
+                    </div>
+
+                    {/* Version chip (bottom-left) */}
+                    <div className="absolute bottom-2 left-2 rounded-[5px] bg-black/70 backdrop-blur-sm px-1.5 py-0.5 text-xs font-semibold text-white">
+                      v{rev.latest_version_number || 1}
+                    </div>
+
+                    {/* Duration chip (bottom-right) */}
+                    {rev.duration_ms > 0 && (
+                      <div className="absolute bottom-2 right-2 rounded-[5px] bg-black/70 backdrop-blur-sm px-1.5 py-0.5 text-xs font-medium text-white tabular-nums">
+                        {formatDuration(rev.duration_ms)}
+                      </div>
+                    )}
+
+                    {/* Unresolved Comments chip (top-right) */}
+                    {rev.unresolved_comment_count > 0 && (
+                      <div className="absolute top-2 right-2 flex items-center gap-1 rounded-[6px] bg-black/70 backdrop-blur-sm px-1.5 py-0.5 text-xs font-medium text-white">
+                        <ChatBubble size={12} />
+                        <span>{rev.unresolved_comment_count}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card Content Footer */}
+                  <div className="pt-2 px-1 flex flex-col justify-between flex-1">
+                    <div>
+                      <p className="text-sm font-semibold text-white truncate group-hover:text-[#4876F3] transition-colors">
+                        {rev.name}
+                      </p>
+                      <p className="text-xs text-[#7C7F87] truncate mt-0.5">
+                        {rev.project_name || "Project"}
+                        {rev.unresolved_comment_count > 0 &&
+                          ` · ${rev.unresolved_comment_count} new comment${
+                            rev.unresolved_comment_count > 1 ? "s" : ""
+                          }`}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <div
+                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
+                        style={{
+                          backgroundColor: `${chipColor}26`,
+                          color: chipColor,
+                        }}
+                      >
+                        <span
+                          className="h-1.5 w-1.5 rounded-full"
+                          style={{ backgroundColor: chipColor }}
+                        />
+                        <span>{chipText}</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                        className="h-6 w-6 rounded-md flex items-center justify-center text-[#A3A6AD] hover:text-white hover:bg-[#2A2B30] transition-colors"
+                      >
+                        <MoreHorizontal size={14} />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -440,42 +604,30 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Drop Zone (Matching P05) */}
-      <div
-        onClick={handleUploadClick}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setIsDragging(true);
-        }}
-        onDragLeave={(e) => {
-          e.preventDefault();
-          setIsDragging(false);
-        }}
-        onDrop={handleDrop}
-        className={`flex flex-col items-center justify-center h-[220px] w-full rounded-[12px] border border-dashed transition-all p-6 text-center cursor-pointer ${
-          isDragging
-            ? "border-[#4876F3] bg-[#4876F3]/[0.12] scale-[1.01]"
-            : "border-[#4876F3] bg-[#4876F3]/[0.04] hover:bg-[#4876F3]/[0.08]"
-        }`}
-      >
-        <div className="flex h-16 w-16 items-center justify-center rounded-[16px] bg-[#2C2D33] text-[#A3A6AD] mb-3">
-          <Upload size={32} />
-        </div>
-        <p className="text-base font-semibold text-white">Drop files anywhere to upload</p>
-        <p className="text-sm text-[#A3A6AD] mt-1 mb-4">They go to My Drive. Only you can see them.</p>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleUploadClick();
-          }}
-          disabled={isUploading}
-          className="flex h-9 items-center gap-2 rounded-[8px] bg-[#3B67E0] hover:bg-[#3560D6] px-4 text-sm font-semibold text-white transition-colors shadow-sm disabled:opacity-50"
+      {/* Drop Zone (Matching P05: only shows for a first-time user with no files) */}
+      {isFirstTime && (
+        <div
+          onClick={handleUploadClick}
+          className="flex flex-col items-center justify-center h-[220px] w-full rounded-[12px] border border-dashed border-[#4876F3] bg-[#4876F3]/[0.04] hover:bg-[#4876F3]/[0.08] transition-all p-6 text-center cursor-pointer"
         >
-          <Upload size={18} />
-          <span>Choose files</span>
-        </button>
-      </div>
+          <div className="flex h-16 w-16 items-center justify-center rounded-[16px] bg-[#2C2D33] text-[#A3A6AD] mb-3">
+            <Upload size={32} />
+          </div>
+          <p className="text-base font-semibold text-white">Drop files anywhere to upload</p>
+          <p className="text-sm text-[#A3A6AD] mt-1 mb-4">They go to My Drive. Only you can see them.</p>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleUploadClick();
+            }}
+            className="flex h-9 items-center gap-2 rounded-[8px] bg-[#3B67E0] hover:bg-[#3560D6] px-4 text-sm font-semibold text-white transition-colors shadow-sm"
+          >
+            <Upload size={18} />
+            <span>Choose files</span>
+          </button>
+        </div>
+      )}
 
       {/* Section: My Projects (Real projects or P05 empty state) */}
       <div className="space-y-3.5">
@@ -504,6 +656,7 @@ export default function HomePage() {
                 isRestricted={proj.is_restricted}
                 waitingReviewCount={proj.waiting_review_count}
                 members={proj.members}
+                thumbnails={proj.thumbnails || []}
               />
             ))}
           </div>

@@ -8,9 +8,11 @@ import {
   Search,
   Help,
   ChevronRight,
+  Upload,
 } from "@/components/ui/icon";
 import { Avatar } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/use-auth";
+import { useUploadStore } from "@/lib/upload-store";
 
 interface HeaderProps {
   onOpenSidebar: () => void;
@@ -28,6 +30,11 @@ export function Header({ onOpenSidebar }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
+  const { uploads, isOpen, toggleOpen } = useUploadStore();
+  const activeCount = useMemo(
+    () => uploads.filter((u) => u.status === "uploading" || u.status === "pending").length,
+    [uploads]
+  );
 
   const isHome = pathname === "/";
 
@@ -104,6 +111,28 @@ export function Header({ onOpenSidebar }: HeaderProps) {
             ⌘K
           </kbd>
         </div>
+
+        {/* Uploads Indicator button (P04) */}
+        {uploads.length > 0 && (
+          <button
+            type="button"
+            title={activeCount > 0 ? `Uploads (${activeCount} active)` : "Uploads"}
+            onClick={toggleOpen}
+            className={`relative flex h-8 w-8 items-center justify-center rounded-[8px] transition-colors shrink-0 ${
+              isOpen
+                ? "bg-[#2C2D33] text-[#4876F3]"
+                : "text-[#A3A6AD] hover:bg-[#2C2D33] hover:text-white"
+            }`}
+          >
+            <Upload size={20} />
+            {activeCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#4876F3] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#4876F3]"></span>
+              </span>
+            )}
+          </button>
+        )}
 
         {/* Help button (x=1316) */}
         <button

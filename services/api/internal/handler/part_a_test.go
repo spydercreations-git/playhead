@@ -13,7 +13,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/playhead/playhead/services/api/internal/config"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
@@ -24,13 +23,8 @@ import (
 func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 	cfg := config.Load()
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
-	if err != nil {
-		t.Skipf("skipping database test: postgres not reachable: %v", err)
-	}
-	defer pool.Close()
-
-	queries := db.New(pool)
+	pool, queries, cleanup := setupTestPool(t)
+	defer cleanup()
 	mailClient := mailer.New(mailer.Config{})
 	itemsH := NewItemsHandler(queries, nil)
 	storageH := NewStorageUploadsHandler(queries, nil, mailClient, cfg)

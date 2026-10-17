@@ -117,6 +117,10 @@ const PROHIBITED_MOCKUP_PATTERNS = [
   { pattern: /\bPizza Hut\b/i, label: 'Pizza Hut' },
   { pattern: /\b38\.5\s*GB\b/i, label: '38.5 GB' },
   { pattern: /\b480\s*Files\b/i, label: '480 Files' },
+  { pattern: /\bBri_Raw_Take2\b/i, label: 'Bri_Raw_Take2' },
+  { pattern: /\bVO_take_04\b/i, label: 'VO_take_04' },
+  { pattern: /\bBri_Final_v2\b/i, label: 'Bri_Final_v2' },
+  { pattern: /\bLogo_pack\b/i, label: 'Logo_pack' },
 ];
 
 // Allowed text pixel sizes: only 12, 13, 14, 16, 20, 28

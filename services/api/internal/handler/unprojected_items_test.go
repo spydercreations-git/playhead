@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/playhead/playhead/services/api/internal/config"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
@@ -20,16 +19,11 @@ import (
 )
 
 func TestUnprojectedDocumentsAndSpreadsheets(t *testing.T) {
-	queries, cleanup := setupTestDB(t)
+	pool, queries, cleanup := setupTestPool(t)
 	defer cleanup()
 
 	ctx := context.Background()
 	cfg := config.Load()
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
-	if err != nil {
-		t.Skipf("skipping: database not reachable: %v", err)
-	}
-	defer pool.Close()
 
 	docH := &DocumentsHandler{
 		q:      queries,

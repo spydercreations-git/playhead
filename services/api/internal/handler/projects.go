@@ -1,25 +1,39 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
+	"github.com/playhead/playhead/services/shared/storage"
 )
 
 type ProjectHandler struct {
 	queries *db.Queries
+	pool    *pgxpool.Pool
+	storage *storage.Client
 }
 
 func NewProjectHandler(queries *db.Queries) *ProjectHandler {
 	return &ProjectHandler{queries: queries}
+}
+
+func (h *ProjectHandler) SetPool(p *pgxpool.Pool) {
+	h.pool = p
+}
+
+func (h *ProjectHandler) SetStorage(s *storage.Client) {
+	h.storage = s
 }
 
 type AssignPersonInput struct {
@@ -213,7 +227,30 @@ func (h *ProjectHandler) List(w http.ResponseWriter, r *http.Request) {
 			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
 			return
 		}
-		respondJSON(w, http.StatusOK, map[string]interface{}{"projects": projects})
+		out := make([]map[string]interface{}, 0, len(projects))
+		for _, p := range projects {
+			cidStr := ""
+			if p.ClientID.Valid {
+				cidStr = uuid.UUID(p.ClientID.Bytes).String()
+			}
+			out = append(out, map[string]interface{}{
+				"id":            uuid.UUID(p.ID.Bytes).String(),
+				"company_id":    uuid.UUID(p.CompanyID.Bytes).String(),
+				"client_id":     cidStr,
+				"client_name":   p.ClientName,
+				"name":          p.Name,
+				"status":        p.Status,
+				"file_count":    p.FileCount,
+				"folder_count":  p.FolderCount,
+				"video_count":   p.VideoCount,
+				"total_bytes":   p.TotalBytes,
+				"is_restricted": p.IsRestricted,
+				"thumbnails":    h.fetchProjectThumbnails(r.Context(), companyID, p.ID),
+				"created_at":    p.CreatedAt.Time.Format(time.RFC3339),
+				"updated_at":    p.UpdatedAt.Time.Format(time.RFC3339),
+			})
+		}
+		respondJSON(w, http.StatusOK, map[string]interface{}{"projects": out})
 		return
 	}
 
@@ -229,7 +266,77 @@ func (h *ProjectHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, map[string]interface{}{"projects": projects})
+	out := make([]map[string]interface{}, 0, len(projects))
+	for _, p := range projects {
+		cidStr := ""
+		if p.ClientID.Valid {
+			cidStr = uuid.UUID(p.ClientID.Bytes).String()
+		}
+		out = append(out, map[string]interface{}{
+			"id":            uuid.UUID(p.ID.Bytes).String(),
+			"company_id":    uuid.UUID(p.CompanyID.Bytes).String(),
+			"client_id":     cidStr,
+			"client_name":   p.ClientName,
+			"name":          p.Name,
+			"status":        p.Status,
+			"file_count":    p.FileCount,
+			"folder_count":  p.FolderCount,
+			"video_count":   p.VideoCount,
+			"total_bytes":   p.TotalBytes,
+			"is_restricted": p.IsRestricted,
+			"thumbnails":    h.fetchProjectThumbnails(r.Context(), companyID, p.ID),
+			"created_at":    p.CreatedAt.Time.Format(time.RFC3339),
+			"updated_at":    p.UpdatedAt.Time.Format(time.RFC3339),
+		})
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{"projects": out})
+}
+
+func (h *ProjectHandler) fetchProjectThumbnails(ctx context.Context, companyID, projectID pgtype.UUID) []string {
+	thumbs := make([]string, 0, 3)
+	if h.pool == nil {
+		return thumbs
+	}
+	tRows, err := h.pool.Query(ctx, `
+		SELECT fv.storage_key, fv.mime, fv.preview_keys
+		FROM items i
+		JOIN file_versions fv ON fv.item_id = i.id
+		WHERE i.company_id = $1 AND i.project_id = $2 AND i.deleted_at IS NULL AND i.kind = 'file'
+		ORDER BY i.created_at DESC
+		LIMIT 3
+	`, companyID, projectID)
+	if err != nil {
+		return thumbs
+	}
+	defer tRows.Close()
+
+	for tRows.Next() {
+		var sKey, mime string
+		var pKeys []byte
+		if err := tRows.Scan(&sKey, &mime, &pKeys); err == nil {
+			targetKey := sKey
+			if len(pKeys) > 0 {
+				var m map[string]interface{}
+				if json.Unmarshal(pKeys, &m) == nil {
+					if p, ok := m["poster"].(string); ok && p != "" {
+						targetKey = p
+					}
+				}
+			}
+			var u string
+			if h.storage != nil {
+				u, _ = h.storage.PresignGetObjectInline(ctx, targetKey, mime, 2*time.Hour)
+			}
+			if u == "" && targetKey != "" {
+				u = fmt.Sprintf("http://localhost:9000/playhead-dev/%s", targetKey)
+			}
+			if u != "" {
+				thumbs = append(thumbs, u)
+			}
+		}
+	}
+	return thumbs
 }
 
 func (h *ProjectHandler) Get(w http.ResponseWriter, r *http.Request) {

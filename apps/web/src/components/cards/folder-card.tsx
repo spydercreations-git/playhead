@@ -85,7 +85,7 @@ export function FolderCard({
         fill="none"
       >
         <path
-          d="M0 22 V12 q0 -10 10 -10 h80 q8 0 13 5 l6 6 q4 4 10 4 h171 q10 0 10 10 V22z"
+          d="M0 22 V12 q0 -10 10 -10 h80 q8 0 13 5 l6 6 q4 4 10 4 V22 H0z"
           fill="#26272C"
           stroke={borderColor}
           strokeWidth={borderWidth}
@@ -106,51 +106,59 @@ export function FolderCard({
 
       <div className="relative z-10 h-full w-full pt-[28px] px-3 pb-3 flex flex-col justify-between">
         {/* Preview Container: 1 big + 2 small slots, 6px gap, radius 8, height 150px */}
-        <div className="relative h-[150px] w-full flex gap-1.5">
-          {/* Big Slot */}
-          <div className="flex-1 h-[150px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
-            {thumbnails[0] ? (
-              <img
-                src={thumbnails[0]}
-                alt=""
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-[#181818] flex items-center justify-center">
-                <Folder size={24} className="text-[#2E2F34]" />
+        <div className="relative h-[150px] w-full">
+          {thumbnails.length === 0 ? (
+            <div className="h-[150px] w-full rounded-[8px] bg-[#2C2D33] flex items-center justify-center text-[#7C7F87]">
+              <Folder size={36} className="text-[#7C7F87]" />
+            </div>
+          ) : (
+            <div className="h-[150px] w-full flex gap-1.5">
+              {/* Big Slot */}
+              <div className="flex-1 h-[150px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
+                {thumbnails[0] ? (
+                  <img
+                    src={thumbnails[0]}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-[#2C2D33] flex items-center justify-center text-[#7C7F87]">
+                    <Folder size={24} className="text-[#7C7F87]" />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Small Slots */}
-          <div className="w-[36%] h-[150px] flex flex-col gap-1.5">
-            <div className="h-[72px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
-              {thumbnails[1] ? (
-                <img
-                  src={thumbnails[1]}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-[#181818] flex items-center justify-center">
-                  <Folder size={18} className="text-[#2E2F34]" />
+              {/* Small Slots */}
+              <div className="w-[36%] h-[150px] flex flex-col gap-1.5">
+                <div className="h-[72px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
+                  {thumbnails[1] ? (
+                    <img
+                      src={thumbnails[1]}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-[#2C2D33] flex items-center justify-center text-[#7C7F87]">
+                      <Folder size={18} className="text-[#7C7F87]" />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <div className="h-[72px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
-              {thumbnails[2] ? (
-                <img
-                  src={thumbnails[2]}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-[#181818] flex items-center justify-center">
-                  <Folder size={18} className="text-[#2E2F34]" />
+                <div className="h-[72px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
+                  {thumbnails[2] ? (
+                    <img
+                      src={thumbnails[2]}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-[#2C2D33] flex items-center justify-center text-[#7C7F87]">
+                      <Folder size={18} className="text-[#7C7F87]" />
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Selection Checkbox (Top-left of preview) */}
           <button

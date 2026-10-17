@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/playhead/playhead/services/api/internal/config"
 	"github.com/playhead/playhead/services/shared/authz"
@@ -39,13 +40,8 @@ func setupDriveTestRouter(driveH *DriveHandler) *chi.Mux {
 func TestMyDriveAccessAndPermissions(t *testing.T) {
 	cfg := config.Load()
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
-	if err != nil {
-		t.Skipf("skipping database test: postgres not reachable: %v", err)
-	}
-	defer pool.Close()
-
-	queries := db.New(pool)
+	pool, queries, cleanup := setupTestPool(t)
+	defer cleanup()
 	driveH := NewDriveHandler(queries, pool, nil, cfg)
 	router := setupDriveTestRouter(driveH)
 
@@ -452,6 +448,121 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 		_ = json.Unmarshal(rrList.Body.Bytes(), &recentResp)
 		if len(recentResp.Items) == 0 {
 			t.Fatalf("expected at least 1 recent item, got 0")
+		}
+	})
+
+	// -------------------------------------------------------------------------
+	// H. Server-side My Drive privacy: Grants, share links, comments by others, and downloads
+	// -------------------------------------------------------------------------
+	t.Run("Server refuses grants, share links, comments, and downloads by others on My Drive items", func(t *testing.T) {
+		// Create a private file in Alice's drive
+		driveFile, err := queries.CreateDriveFileItem(ctx, db.CreateDriveFileItemParams{
+			CompanyID:    comp.ID,
+			DriveOwnerID: alice.ID,
+			ParentID:     pgtype.UUID{},
+			Name:         "alice-confidential.png",
+			Position:     pgtype.Numeric{Int: big.NewInt(0), Valid: true},
+			TotalBytes:   2048,
+			Category:     pgtype.Text{String: "images", Valid: true},
+		})
+		if err != nil {
+			t.Fatalf("failed to create drive file: %v", err)
+		}
+		driveFileIDStr := uuid.UUID(driveFile.ID.Bytes).String()
+
+		// Add a file version
+		_, err = queries.CreateFileVersion(ctx, db.CreateFileVersionParams{
+			CompanyID:     comp.ID,
+			ItemID:        driveFile.ID,
+			Number:        1,
+			StorageKey:    fmt.Sprintf("companies/%s/items/%s/v1", uuid.UUID(comp.ID.Bytes), driveFileIDStr),
+			SizeBytes:     2048,
+			Mime:          "image/png",
+			PreviewStatus: "ready",
+			PreviewKeys:   []byte("{}"),
+			UploadedBy:    alice.ID,
+		})
+		if err != nil {
+			t.Fatalf("failed to create file version: %v", err)
+		}
+
+		// 1. Grants endpoint: POST /api/v1/items/{drive_item_id}/grants MUST return 403 Forbidden
+		grantsH := NewGrantsHandler(queries, nil)
+		rGrants := chi.NewRouter()
+		rGrants.Post("/api/v1/items/{id}/grants", grantsH.AddItemGrant)
+
+		grantBody, _ := json.Marshal(map[string]interface{}{
+			"email":        "external@example.com",
+			"level":        "viewer",
+			"can_download": false,
+		})
+		reqGrant := httptest.NewRequest("POST", "/api/v1/items/"+driveFileIDStr+"/grants", bytes.NewReader(grantBody))
+		reqGrant = reqGrant.WithContext(contextWithAuth(reqGrant.Context(), alice, comp.ID, authz.RoleAdmin))
+		rrGrant := httptest.NewRecorder()
+		rGrants.ServeHTTP(rrGrant, reqGrant)
+
+		if rrGrant.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden creating grant on My Drive item, got %d: %s", rrGrant.Code, rrGrant.Body.String())
+		}
+
+		// 2. Share links endpoint: POST /api/v1/projects/{proj_id}/share-links containing drive item MUST return 403 Forbidden
+		shareLinksH := NewShareLinksHandler(queries, nil, "test-secret", "test")
+		rShare := chi.NewRouter()
+		rShare.Post("/api/v1/projects/{id}/share-links", shareLinksH.Create)
+
+		shareBody, _ := json.Marshal(map[string]interface{}{
+			"target_type": "file",
+			"item_ids":    []string{driveFileIDStr},
+			"name":        "Public Share Drive Item",
+		})
+		reqShare := httptest.NewRequest("POST", "/api/v1/projects/"+uuid.UUID(proj.ID.Bytes).String()+"/share-links", bytes.NewReader(shareBody))
+		reqShare = reqShare.WithContext(contextWithAuth(reqShare.Context(), alice, comp.ID, authz.RoleAdmin))
+		rrShare := httptest.NewRecorder()
+		rShare.ServeHTTP(rrShare, reqShare)
+
+		if rrShare.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden creating share link for My Drive item, got %d: %s", rrShare.Code, rrShare.Body.String())
+		}
+
+		// 3. Comments endpoint: POST /api/v1/items/{drive_item_id}/comments from non-owner Bob MUST return 403 Forbidden
+		reviewH := NewReviewHandler(queries, nil, cfg)
+		rReview := chi.NewRouter()
+		rReview.Post("/api/v1/items/{id}/comments", reviewH.CreateComment)
+
+		commentBody, _ := json.Marshal(map[string]interface{}{
+			"body": "Sneaking a comment onto Alice's drive item",
+		})
+		reqCommentBob := httptest.NewRequest("POST", "/api/v1/items/"+driveFileIDStr+"/comments", bytes.NewReader(commentBody))
+		reqCommentBob = reqCommentBob.WithContext(contextWithAuth(reqCommentBob.Context(), bob, comp.ID, authz.RoleMember))
+		rrCommentBob := httptest.NewRecorder()
+		rReview.ServeHTTP(rrCommentBob, reqCommentBob)
+
+		if rrCommentBob.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden on comments by non-owner Bob, got %d: %s", rrCommentBob.Code, rrCommentBob.Body.String())
+		}
+
+		// 4. Download endpoint: GET /api/v1/items/{drive_item_id}/download from non-owner Bob MUST return 403 Forbidden
+		storageH := NewStorageUploadsHandler(queries, nil, nil, cfg)
+		rStorage := chi.NewRouter()
+		rStorage.Get("/api/v1/items/{id}/download", storageH.DownloadItem)
+
+		reqDlBob := httptest.NewRequest("GET", "/api/v1/items/"+driveFileIDStr+"/download", nil)
+		reqDlBob = reqDlBob.WithContext(contextWithAuth(reqDlBob.Context(), bob, comp.ID, authz.RoleMember))
+		rrDlBob := httptest.NewRecorder()
+		rStorage.ServeHTTP(rrDlBob, reqDlBob)
+
+		if rrDlBob.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 Forbidden on download by non-owner Bob, got %d: %s", rrDlBob.Code, rrDlBob.Body.String())
+		}
+
+		// 5. Download endpoint: GET /api/v1/items/{drive_item_id}/download from owner Alice MUST succeed (200 OK)
+		reqDlAlice := httptest.NewRequest("GET", "/api/v1/items/"+driveFileIDStr+"/download", nil)
+		reqDlAlice = reqDlAlice.WithContext(contextWithAuth(reqDlAlice.Context(), alice, comp.ID, authz.RoleMember))
+		rrDlAlice := httptest.NewRecorder()
+		rStorage.ServeHTTP(rrDlAlice, reqDlAlice)
+
+		if rrDlAlice.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK on download by owner Alice, got %d: %s", rrDlAlice.Code, rrDlAlice.Body.String())
 		}
 	})
 

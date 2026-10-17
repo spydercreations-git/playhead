@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/use-auth";
 import { toast } from "@/lib/toast";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
+import { ClientPickerDialog, ClientPickerTrigger } from "@/components/clients/client-picker-dialog";
 import { ProjectCard } from "@/components/cards/project-card";
 import { Folder, ChevronDown, Lock } from "@/components/ui/icon";
 
@@ -46,6 +47,11 @@ export default function ProjectsPage() {
     queryFn: () => apiRequest("/clients"),
   });
   const clientOptions = clientsData?.clients || [];
+  const [showClientPicker, setShowClientPicker] = useState(false);
+  const selectedClientObj = React.useMemo(
+    () => clientOptions.find((c: any) => c.id === selectedClientId) || null,
+    [clientOptions, selectedClientId]
+  );
 
   // Fetch projects (server will filter according to user role / grants)
   const { data, isLoading } = useQuery<{ projects: ProjectItem[] }>({
@@ -125,24 +131,12 @@ export default function ProjectsPage() {
             />
           </div>
 
-          {/* Client Filter */}
-          {clientOptions.length > 0 && (
-            <div className="relative">
-              <select
-                value={selectedClientId}
-                onChange={(e) => setSelectedClientId(e.target.value)}
-                className="h-9 rounded-[10px] bg-[var(--input)] border border-[var(--border)] pl-3 pr-8 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors"
-              >
-                <option value="">All Clients</option>
-                {clientOptions.map((c: any) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-[var(--text-3)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-          )}
+          {/* Client Filter via Universal Client Picker */}
+          <ClientPickerTrigger
+            selectedClient={selectedClientObj}
+            onOpenPicker={() => setShowClientPicker(true)}
+            onClearSelection={() => setSelectedClientId("")}
+          />
 
           {/* Status Filter */}
           <div className="relative">
@@ -442,6 +436,12 @@ export default function ProjectsPage() {
         isOpen={showNewClient}
         onClose={() => setShowNewClient(false)}
         onSuccess={() => setShowNewProject(true)}
+      />
+      <ClientPickerDialog
+        isOpen={showClientPicker}
+        onClose={() => setShowClientPicker(false)}
+        selectedClientId={selectedClientId}
+        onSelectClient={(c) => setSelectedClientId(c ? c.id : "")}
       />
     </div>
   );

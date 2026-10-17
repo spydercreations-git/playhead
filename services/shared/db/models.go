@@ -448,6 +448,7 @@ type User struct {
 	TempPasswordUsed      bool               `json:"temp_password_used"`
 	IsOnboarded           bool               `json:"is_onboarded"`
 	OnboardedAt           pgtype.Timestamptz `json:"onboarded_at"`
+	Theme                 string             `json:"theme"`
 }
 
 type UserSetting struct {

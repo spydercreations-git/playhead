@@ -1,0 +1,5 @@
+-- +goose Up
+ALTER TABLE users ADD COLUMN IF NOT EXISTS theme VARCHAR(32) NOT NULL DEFAULT 'blue';
+
+-- +goose Down
+ALTER TABLE users DROP COLUMN IF EXISTS theme;

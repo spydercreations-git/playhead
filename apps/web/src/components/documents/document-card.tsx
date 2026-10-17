@@ -97,27 +97,25 @@ export function DocumentCard({
           />
         </svg>
 
-        {/* White Paper Preview (150 high, width 188, radius 6, fill #F4F2EE, title #2B2B2B, accent #4876F3, lines #C9C4BA) */}
-        <div className="relative z-10 h-[150px] w-[188px] rounded-[6px] bg-[#F4F2EE] p-3 flex flex-col justify-between overflow-hidden shadow-sm">
+        {/* Document Preview (from New Cards/document-card.svg: #2E2F34 dark preview, #4876F3 title lines, #C9C4BA body lines) */}
+        <div className="relative z-10 h-[150px] w-full rounded-[6px] bg-[#2E2F34] p-3 flex flex-col justify-between overflow-hidden shadow-sm">
           <div>
-            {/* Title Bar */}
-            <div className="h-[7px] w-[113px] rounded-[2px] bg-[#2B2B2B]" />
-            {/* Blue Accent Subtitle */}
-            <div className="h-[4px] w-[56px] rounded-[2px] bg-[#4876F3] mt-2" />
+            {/* Title Bars (#4876F3) */}
+            <div className="h-[4px] w-[50px] rounded-[2px] bg-[#4876F3]" />
+            <div className="h-[4px] w-[128px] rounded-[2px] bg-[#4876F3] mt-2.5" />
 
-            {/* Paragraph Text Lines */}
-            <div className="space-y-2 mt-3.5">
-              <div className="h-[4px] w-[147px] rounded-[2px] bg-[#C9C4BA]" />
-              <div className="h-[4px] w-[136px] rounded-[2px] bg-[#C9C4BA]" />
-              <div className="h-[4px] w-[144px] rounded-[2px] bg-[#C9C4BA]" />
-              <div className="h-[4px] w-[96px] rounded-[2px] bg-[#C9C4BA]" />
+            {/* Paragraph Text Lines (#C9C4BA) */}
+            <div className="space-y-2 mt-3">
+              <div className="h-[3.5px] w-[118px] rounded-[2px] bg-[#C9C4BA]" />
+              <div className="h-[3.5px] w-[125px] rounded-[2px] bg-[#C9C4BA]" />
+              <div className="h-[3.5px] w-[82px] rounded-[2px] bg-[#C9C4BA]" />
             </div>
           </div>
 
           <div className="space-y-2">
-            <div className="h-[4px] w-[141px] rounded-[2px] bg-[#C9C4BA]" />
-            <div className="h-[4px] w-[128px] rounded-[2px] bg-[#C9C4BA]" />
-            <div className="h-[4px] w-[72px] rounded-[2px] bg-[#C9C4BA]" />
+            <div className="h-[3.5px] w-[122px] rounded-[2px] bg-[#C9C4BA]" />
+            <div className="h-[3.5px] w-[112px] rounded-[2px] bg-[#C9C4BA]" />
+            <div className="h-[3.5px] w-[62px] rounded-[2px] bg-[#C9C4BA]" />
           </div>
         </div>
 

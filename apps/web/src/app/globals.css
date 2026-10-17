@@ -3,26 +3,31 @@
 @tailwind utilities;
 
 
-:root {
-  /* Playhead Design System Tokens */
+:root, [data-theme="blue"] {
+  /* Playhead Design System Tokens - Blue (Default) */
   --bg: #0A0A0B;
-  --panel: #111113;
-  --panel-raised: #17171A;
-  --input: #1A1A1E;
-  --hover: #1E1E22;
-  --border: #232327;
-  --border-strong: #34343A;
+  --panel: #0E1120;
+  --panel-raised: #141829;
+  --input: #161A2C;
+  --hover: #1A1F33;
+  --border: #1C2135;
+  --border-strong: #2A3150;
   --text: #FFFFFF;
   --text-2: #A1A1AA;
   --text-3: #71717A;
   --accent: #4876F3;
   --button: #3B67E0;
   --button-hover: #3560D6;
+  --button-text: #FFFFFF;
   --success: #3FCF8E;
   --warning: #FFBB56;
   --danger: #F0506E;
   --purple: #9787FF;
   --pink: #FA457B;
+  --status-approved: #3FCF8E;
+  --status-needs-review: #FFD43B;
+  --status-error: #F0506E;
+  --progress-color: var(--accent);
 
   /* Ambient bottom glow: blue #3B5BDB at 22%, purple #5B3FD6 at 7%, fading to transparent */
   --bg-glow: radial-gradient(circle 900px at 50% 100%, rgba(59, 91, 219, 0.22) 0%, rgba(91, 63, 214, 0.07) 45%, transparent 75%);
@@ -56,9 +61,106 @@
   --sidebar-foreground: var(--text-2);
   --sidebar-border: var(--border);
   --primary: var(--button);
-  --primary-foreground: #FFFFFF;
+  --primary-foreground: var(--button-text);
   --muted: var(--panel-raised);
   --muted-foreground: var(--text-2);
+}
+
+[data-theme="green"] {
+  --bg: #090B0A;
+  --panel: #0F1411;
+  --panel-raised: #141A16;
+  --input: #161D18;
+  --hover: #1A221D;
+  --border: #1D2620;
+  --border-strong: #2C3A30;
+  --accent: #4ADE80;
+  --button: #16A34A;
+  --button-hover: #15803D;
+  --button-text: #FFFFFF;
+  --status-needs-review: #FFD43B;
+  --progress-color: #FFFFFF;
+  --bg-glow: radial-gradient(circle 900px at 50% 100%, rgba(22, 163, 74, 0.22) 0%, rgba(13, 148, 136, 0.07) 45%, transparent 75%);
+}
+
+[data-theme="yellow"] {
+  --bg: #0B0A07;
+  --panel: #14120B;
+  --panel-raised: #1A1810;
+  --input: #1D1A11;
+  --hover: #232015;
+  --border: #262216;
+  --border-strong: #3A3420;
+  --accent: #FACC15;
+  --button: #EAB308;
+  --button-hover: #CA9A06;
+  --button-text: #14110A;
+  --status-needs-review: #FF9F43;
+  --progress-color: #FFFFFF;
+  --bg-glow: radial-gradient(circle 900px at 50% 100%, rgba(234, 179, 8, 0.22) 0%, rgba(202, 106, 6, 0.07) 45%, transparent 75%);
+}
+
+[data-theme="purple"] {
+  --bg: #0B0A10;
+  --panel: #120F20;
+  --panel-raised: #18142A;
+  --input: #1B162E;
+  --hover: #201A36;
+  --border: #221C3A;
+  --border-strong: #352B57;
+  --accent: #8B6CFF;
+  --button: #7655F0;
+  --button-hover: #6A49E3;
+  --button-text: #FFFFFF;
+  --status-needs-review: #FFD43B;
+  --progress-color: var(--accent);
+  --bg-glow: radial-gradient(circle 900px at 50% 100%, rgba(109, 76, 240, 0.22) 0%, rgba(192, 76, 240, 0.07) 45%, transparent 75%);
+}
+
+[data-theme="orange"] {
+  --bg: #0B0A09;
+  --panel: #15110E;
+  --panel-raised: #1B1612;
+  --input: #1E1814;
+  --hover: #241D18;
+  --border: #27201A;
+  --border-strong: #3B3027;
+  --accent: #FF7A2E;
+  --button: #E8590C;
+  --button-hover: #D9500A;
+  --button-text: #FFFFFF;
+  --status-needs-review: #FFD43B;
+  --progress-color: var(--accent);
+  --bg-glow: radial-gradient(circle 900px at 50% 100%, rgba(232, 89, 12, 0.22) 0%, rgba(184, 58, 10, 0.07) 45%, transparent 75%);
+}
+
+[data-theme="pink"] {
+  --bg: #0B090A;
+  --panel: #150E13;
+  --panel-raised: #1C1219;
+  --input: #1F141C;
+  --hover: #261823;
+  --border: #2A1A26;
+  --border-strong: #40283A;
+  --accent: #F472B6;
+  --button: #DB2777;
+  --button-hover: #BE185D;
+  --button-text: #FFFFFF;
+  --status-needs-review: #FFD43B;
+  --progress-color: var(--accent);
+  --bg-glow: radial-gradient(circle 900px at 50% 100%, rgba(219, 39, 119, 0.22) 0%, rgba(147, 51, 234, 0.07) 45%, transparent 75%);
+}
+
+/* Neutral theme for review page, video player, and full screen previews */
+.theme-neutral, [data-theme-neutral="true"], [data-theme-neutral] {
+  --bg: #0A0A0B !important;
+  --panel: #111113 !important;
+  --panel-raised: #17171A !important;
+  --input: #1A1A1E !important;
+  --hover: #1E1E22 !important;
+  --border: #232327 !important;
+  --border-strong: #34343A !important;
+  --bg-glow: none !important;
 }
 
 body {

@@ -16,28 +16,28 @@ export interface DriveFolderCardProps {
 
 const CATEGORY_STYLES = {
   videos: {
-    color: "#FFBB56",
-    bg: "rgba(255, 187, 86, 0.16)",
+    color: "#FFFFFF",
+    bg: "color-mix(in srgb, var(--accent) 22%, transparent)",
     icon: VideoFileIcon,
   },
   images: {
-    color: "#FA457B",
-    bg: "rgba(250, 69, 123, 0.16)",
+    color: "#FFFFFF",
+    bg: "color-mix(in srgb, var(--accent) 22%, transparent)",
     icon: ImageFileIcon,
   },
   documents: {
-    color: "#4876F3",
-    bg: "rgba(72, 118, 243, 0.16)",
+    color: "#FFFFFF",
+    bg: "color-mix(in srgb, var(--accent) 22%, transparent)",
     icon: PdfFileIcon,
   },
   music: {
-    color: "#9787FF",
-    bg: "rgba(151, 135, 255, 0.16)",
+    color: "#FFFFFF",
+    bg: "color-mix(in srgb, var(--accent) 22%, transparent)",
     icon: AudioFileIcon,
   },
   custom: {
-    color: "#3FCF8E",
-    bg: "rgba(63, 207, 142, 0.16)",
+    color: "#FFFFFF",
+    bg: "color-mix(in srgb, var(--accent) 22%, transparent)",
     icon: Folder,
   },
 };

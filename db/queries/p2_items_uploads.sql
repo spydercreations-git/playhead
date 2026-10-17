@@ -198,7 +198,7 @@ UPDATE items
 SET file_count = (SELECT COUNT(*) FROM folder_contents fc_sub WHERE fc_sub.kind = 'file'),
     folder_count = (SELECT COUNT(*) FROM folder_contents fc_sub WHERE fc_sub.kind = 'folder'),
     video_count = (SELECT COUNT(*) FROM folder_contents fc_sub WHERE fc_sub.kind = 'file' AND (fc_sub.name ILIKE '%.mp4' OR fc_sub.name ILIKE '%.mov' OR fc_sub.name ILIKE '%.m4v' OR fc_sub.name ILIKE '%.webm' OR fc_sub.name ILIKE '%.mkv')),
-    total_bytes = (SELECT COALESCE(SUM(fc_sub.size_bytes), 0) FROM folder_contents fc_sub),
+    total_bytes = (SELECT COALESCE(SUM(fc_sub.size_bytes), 0) FROM folder_contents fc_sub WHERE fc_sub.kind = 'file'),
     updated_at = NOW()
 WHERE items.id = @folder_id;
 

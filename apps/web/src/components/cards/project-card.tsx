@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { MoreHorizontal, Lock, Film, FolderOpen } from "@/components/ui/icon";
 
@@ -49,34 +49,47 @@ export function ProjectCard({
   }
   const fileText = details.join("  ·  ");
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(278);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const updateWidth = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        if (rect.width > 0) {
+          setWidth(Math.round(rect.width));
+        }
+      }
+    };
+    updateWidth();
+    const ro = new ResizeObserver(updateWidth);
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  const W = width;
+  const H = 290;
+  const bodyPath = `M0.5 ${H - 12.5} V10.5 Q0.5 0.5 10.5 0.5 H88 C96 0.5 100 2.5 105 7.5 L111 13.5 C115 17.5 118 18.5 124 18.5 H${W - 12.5} Q${W - 0.5} 18.5 ${W - 0.5} 30.5 V${H - 12.5} Q${W - 0.5} ${H - 0.5} ${W - 12.5} ${H - 0.5} H12.5 Q0.5 ${H - 0.5} 0.5 ${H - 12.5} Z`;
+  const tabPath = "M0.5 18.5 V10.5 Q0.5 0.5 10.5 0.5 H88 C96 0.5 100 2.5 105 7.5 L111 13.5 C115 17.5 118 18.5 124 18.5 Z";
+
   return (
-    <div className="group relative h-[290px] w-full select-none transition-transform duration-150 hover:scale-[1.015]">
+    <div ref={containerRef} className="group relative h-[290px] w-full select-none transition-transform duration-150 hover:scale-[1.015]">
       <Link
         href={`/projects/${id}`}
         onContextMenu={onContextMenu}
         className="block relative h-full w-full pt-[28px] px-3 pb-3 flex flex-col justify-between cursor-pointer"
       >
-        {/* SVG Background (shape-project-folder.svg: Tab stays fixed at top left, body stretches with card width) */}
+        {/* SVG Background (from New Cards/project-card-shape.svg continuous outline) */}
         <svg
           className="absolute top-0 left-0 w-full h-[290px] pointer-events-none overflow-visible"
           fill="none"
         >
-          {/* Tab: top-left, 129 wide, 18 high, corners 10, sloped right edge. Stays fixed inside card width. */}
+          <path d={bodyPath} fill="var(--panel)" />
+          <path d={tabPath} fill="var(--panel-raised)" />
           <path
-            d="M0 22 V12 q0 -10 10 -10 h80 q8 0 13 5 l6 6 q4 4 10 4 V22 H0z"
-            fill="var(--panel-raised)"
-            stroke="var(--border)"
-            strokeWidth="1"
-            className="transition-colors group-hover:stroke-[var(--border-strong)]"
-          />
-          {/* Body: radius 12, fill var(--panel), border var(--border). Stretches with width */}
-          <rect
-            x="0"
-            y="18"
-            width="100%"
-            height="272"
-            rx="12"
-            fill="var(--panel)"
+            d={bodyPath}
+            fill="none"
             stroke="var(--border)"
             strokeWidth="1"
             className="transition-colors group-hover:stroke-[var(--border-strong)]"

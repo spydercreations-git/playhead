@@ -15,21 +15,21 @@ const path = require('path');
 
 const SRC_DIR = path.resolve(__dirname, '../src');
 
-// Explicit Design System Token Palette
+// Explicit Design System Token Palette (including all 6 dark themes)
 const ALLOWED_TOKENS = new Set([
   '#0a0a0b', // bg
-  '#111113', // panel
-  '#17171a', // panel-raised
-  '#1a1a1e', // input
-  '#1e1e22', // hover
-  '#232327', // border
-  '#34343a', // border-strong
+  '#111113', // panel (neutral)
+  '#17171a', // panel-raised (neutral)
+  '#1a1a1e', // input (neutral)
+  '#1e1e22', // hover (neutral)
+  '#232327', // border (neutral)
+  '#34343a', // border-strong (neutral)
   '#ffffff', // text / white
   '#a1a1aa', // text-2
   '#71717a', // text-3
-  '#4876f3', // accent
-  '#3b67e0', // button
-  '#3560d6', // button-hover
+  '#4876f3', // accent blue
+  '#3b67e0', // button blue
+  '#3560d6', // button-hover blue
   '#3fcf8e', // success
   '#ffbb56', // warning
   '#f0506e', // danger
@@ -38,6 +38,19 @@ const ALLOWED_TOKENS = new Set([
   '#000000', // black
   '#3b5bdb', // glow blue
   '#5b3fd6', // glow purple
+  '#ffd43b', // needs review default
+  // Blue theme tokens
+  '#0e1120', '#141829', '#161a2c', '#1a1f33', '#1c2135', '#2a3150',
+  // Green theme tokens
+  '#090b0a', '#0f1411', '#141a16', '#161d18', '#1a221d', '#1d2620', '#2c3a30', '#4ade80', '#16a34a', '#15803d', '#0d9488',
+  // Yellow theme tokens
+  '#0b0a07', '#14120b', '#1a1810', '#1d1a11', '#232015', '#262216', '#3a3420', '#facc15', '#eab308', '#ca9a06', '#14110a', '#ca6a06', '#ff9f43',
+  // Purple theme tokens
+  '#0b0a10', '#120f20', '#18142a', '#1b162e', '#201a36', '#221c3a', '#352b57', '#8b6cff', '#7655f0', '#6a49e3', '#6d4cf0', '#c04cf0',
+  // Orange theme tokens
+  '#0b0a09', '#15110e', '#1b1612', '#1e1814', '#241d18', '#27201a', '#3b3027', '#ff7a2e', '#e8590c', '#d9500a', '#b83a0a',
+  // Pink theme tokens
+  '#0b090a', '#150e13', '#1c1219', '#1f141c', '#261823', '#2a1a26', '#40283a', '#f472b6', '#db2777', '#be185d', '#9333ea',
 ]);
 
 // 1. Google Brand SVG logo colors ("Continue with Google" button)
@@ -81,9 +94,9 @@ const SPREADSHEET_PICKER_COLORS = new Set([
   '#fee2e2', '#fecaca', '#fca5a5', '#f3e8ff', '#e9d5ff', '#d8b4fe',
 ]);
 
-// 7. Card shape mini previews (11-card-shapes.svg exact colors)
+// 7. Card shape mini previews (11-card-shapes.svg and New Cards exact colors)
 const CARD_SHAPES_COLORS = new Set([
-  '#1b1c20', '#3a3c44', '#f4f2ee', '#2b2b2b', '#c9c4ba',
+  '#1b1c20', '#3a3c44', '#f4f2ee', '#2b2b2b', '#c9c4ba', '#2e2f34',
   '#3d5a80', '#e0c3a3', '#f2b134', '#5b3a29', '#f1d3b3',
   '#e76f51', '#264653', '#e9c46a', '#2a9d8f',
 ]);

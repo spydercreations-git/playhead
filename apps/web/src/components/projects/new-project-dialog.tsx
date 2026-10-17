@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/icon";
 import { Select } from "@/components/ui/select";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
+import { ClientPickerDialog } from "@/components/clients/client-picker-dialog";
 
 interface Client {
   id: string;
@@ -54,6 +55,7 @@ export function NewProjectDialog({
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [showNewClientModal, setShowNewClientModal] = useState(false);
+  const [showClientPicker, setShowClientPicker] = useState(false);
 
   // Setup Step State
   const [setupStep, setSetupStep] = useState<"form" | "setting_up">("form");
@@ -365,35 +367,44 @@ export function NewProjectDialog({
 
                   {/* Client Select */}
                   <div>
-                    <label className="block text-[13px] font-medium text-[var(--text-2)] mb-1.5">
-                      Client
-                    </label>
-                    <Select
-                      value={clientId}
-                      onChange={(val) => setClientId(val)}
-                      searchable
-                      options={clients.map((c) => ({
-                        value: c.id,
-                        label: c.name,
-                        icon: (
-                          <div className="w-5 h-5 rounded bg-[var(--border)] flex items-center justify-center text-xs font-semibold text-[var(--text-2)] shrink-0">
-                            {c.name.charAt(0).toUpperCase()}
-                          </div>
-                        ),
-                      }))}
-                      placeholder={loadingClients ? "Loading clients..." : "Select client..."}
-                      actionButton={{
-                        label: "+ Create new client",
-                        icon: <Plus className="w-3.5 h-3.5" />,
-                        onClick: () => {
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-[13px] font-medium text-[var(--text-2)]">
+                        Client
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
                           if (onClientCreatedPrompt) {
                             onClientCreatedPrompt();
                           } else {
                             setShowNewClientModal(true);
                           }
-                        },
-                      }}
-                    />
+                        }}
+                        className="text-xs text-[var(--accent)] hover:underline flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>New client</span>
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowClientPicker(true)}
+                      className="w-full flex items-center justify-between h-10 px-3 rounded-[10px] bg-[var(--input)] border border-[var(--border)] hover:border-[var(--border-strong)] transition-colors text-left"
+                    >
+                      {clientId ? (
+                        <div className="flex items-center gap-2 text-xs font-semibold text-white">
+                          <div className="w-5 h-5 rounded-[6px] bg-[#0e7490] flex items-center justify-center text-xs font-bold text-white">
+                            {(clients.find((c) => c.id === clientId)?.name || "C").charAt(0).toUpperCase()}
+                          </div>
+                          <span>{clients.find((c) => c.id === clientId)?.name || "Selected Client"}</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-[var(--text-3)]">
+                          {loadingClients ? "Loading clients..." : "Select client..."}
+                        </span>
+                      )}
+                      <ChevronDown className="w-4 h-4 text-[var(--text-3)]" />
+                    </button>
                   </div>
 
                   {/* People Section */}
@@ -520,6 +531,23 @@ export function NewProjectDialog({
           }}
         />
       )}
+
+      {/* Client Picker Dialog */}
+      <ClientPickerDialog
+        isOpen={showClientPicker}
+        onClose={() => setShowClientPicker(false)}
+        selectedClientId={clientId}
+        onSelectClient={(c) => {
+          if (c) {
+            setClientId(c.id);
+            if (!clients.some((item) => item.id === c.id)) {
+              setClients((prev) => [...prev, { id: c.id, name: c.name }]);
+            }
+          }
+          setShowClientPicker(false);
+        }}
+        confirmLabel="Select client"
+      />
     </>
   );
 }

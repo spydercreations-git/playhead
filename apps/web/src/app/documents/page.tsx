@@ -15,6 +15,7 @@ import {
   Building2,
   FolderOpen,
 } from "@/components/ui/icon";
+import { ClientPickerDialog, ClientPickerTrigger } from "@/components/clients/client-picker-dialog";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 
@@ -34,6 +35,7 @@ export default function DocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
+  const [showClientPicker, setShowClientPicker] = useState(false);
   const [newDocOpen, setNewDocOpen] = useState(false);
   const [newlyCreatedDocId, setNewlyCreatedDocId] = useState<string | null>(null);
 
@@ -82,6 +84,12 @@ export default function DocumentsPage() {
     });
     return Array.from(map.values()).sort((a, b) => b.count - a.count);
   }, [documents]);
+
+  const selectedClient = useMemo(() => {
+    if (selectedClientId === "all") return null;
+    const found = clientChips.find((c) => c.id === selectedClientId);
+    return found ? { id: found.id, name: found.name } : null;
+  }, [clientChips, selectedClientId]);
 
   // Filter documents by search and client
   const filteredDocuments = useMemo(() => {
@@ -146,49 +154,20 @@ export default function DocumentsPage() {
           </button>
         </div>
 
-        {/* Filter Toolbar & Client Chips */}
-        <div className="space-y-4">
-          {/* Client Filter Chips */}
-          {clientChips.length > 0 && !isClient && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              <button
-                type="button"
-                onClick={() => setSelectedClientId("all")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors shrink-0 flex items-center gap-1.5 ${
-                  selectedClientId === "all"
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-muted/40 border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
-              >
-                <span>All clients</span>
-                <span className="opacity-80 font-mono text-xs">
-                  ({documents.length})
-                </span>
-              </button>
-
-              {clientChips.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setSelectedClientId(c.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors shrink-0 flex items-center gap-1.5 ${
-                    selectedClientId === c.id
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : "bg-muted/40 border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  <Building2 className="w-3 h-3 opacity-70" />
-                  <span>{c.name}</span>
-                  <span className="opacity-80 font-mono text-xs">
-                    ({c.count})
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+        {/* Filter Toolbar & Client Picker */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            {!isClient && (
+              <ClientPickerTrigger
+                selectedClient={selectedClient}
+                onOpenPicker={() => setShowClientPicker(true)}
+                onClearSelection={() => setSelectedClientId("all")}
+              />
+            )}
+          </div>
 
           {/* Search Bar */}
-          <div className="relative max-w-md">
+          <div className="relative w-full sm:w-72">
             <Search className="w-4 h-4 text-[var(--text-3)] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -272,6 +251,17 @@ export default function DocumentsPage() {
             router.push(`/d/${newDoc.id}?new=1`);
           }, 1000);
         }}
+      />
+
+      {/* Client Picker Dialog */}
+      <ClientPickerDialog
+        isOpen={showClientPicker}
+        onClose={() => setShowClientPicker(false)}
+        selectedClientId={selectedClientId === "all" ? undefined : selectedClientId}
+        onSelectClient={(client) => {
+          setSelectedClientId(client ? client.id : "all");
+        }}
+        confirmLabel="Filter documents"
       />
     </>
   );

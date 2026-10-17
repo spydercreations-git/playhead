@@ -241,6 +241,10 @@ func main() {
 			protected.Post("/users/onboarding/complete", onboardingHandler.CompleteOnboarding)
 			protected.Post("/users/avatar", onboardingHandler.UploadAvatar)
 			protected.Post("/clients/{id}/picture", onboardingHandler.UploadClientPicture)
+			protected.Patch("/users/theme", authHandler.UpdateTheme)
+			protected.Put("/users/theme", authHandler.UpdateTheme)
+			protected.Patch("/users/me/theme", authHandler.UpdateTheme)
+			protected.Put("/users/me/theme", authHandler.UpdateTheme)
 
 			// Company management
 			protected.Post("/companies", companyHandler.Create)

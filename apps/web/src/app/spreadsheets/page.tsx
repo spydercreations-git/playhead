@@ -24,6 +24,7 @@ import { useAuth } from "@/lib/use-auth";
 import { ProjectSelect } from "@/components/ui/project-select";
 import { toast } from "@/lib/toast";
 import { SpreadsheetCard } from "@/components/spreadsheets/spreadsheet-card";
+import { ClientPickerDialog, ClientPickerTrigger } from "@/components/clients/client-picker-dialog";
 
 interface SpreadsheetItem {
   id: string;
@@ -58,6 +59,7 @@ export default function SpreadsheetsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClientId, setSelectedClientId] = useState<string>("all");
+  const [showClientPicker, setShowClientPicker] = useState(false);
   const [newlyCreatedSheetId, setNewlyCreatedSheetId] = useState<string | null>(null);
 
   // New Spreadsheet Dialog
@@ -120,6 +122,12 @@ export default function SpreadsheetsPage() {
     });
     return Array.from(map.values()).sort((a, b) => b.count - a.count);
   }, [spreadsheets]);
+
+  const selectedClient = useMemo(() => {
+    if (selectedClientId === "all") return null;
+    const found = clientChips.find((c) => c.id === selectedClientId);
+    return found ? { id: found.id, name: found.name } : null;
+  }, [clientChips, selectedClientId]);
 
   // Filter spreadsheets by search and client
   const filteredSpreadsheets = useMemo(() => {
@@ -297,31 +305,14 @@ export default function SpreadsheetsPage() {
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        {/* Client Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <button
-            onClick={() => setSelectedClientId("all")}
-            className={`h-8 px-3 rounded-[8px] text-xs font-medium transition-colors shrink-0 ${
-              selectedClientId === "all"
-                ? "bg-[#4876F3] text-white"
-                : "bg-[var(--input)] text-[var(--text-2)] hover:text-white border border-[var(--border)]"
-            }`}
-          >
-            All Clients ({spreadsheets.length})
-          </button>
-          {clientChips.map((chip) => (
-            <button
-              key={chip.id}
-              onClick={() => setSelectedClientId(chip.id)}
-              className={`h-8 px-3 rounded-[8px] text-xs font-medium transition-colors shrink-0 ${
-                selectedClientId === chip.id
-                  ? "bg-[#4876F3] text-white"
-                  : "bg-[var(--input)] text-[var(--text-2)] hover:text-white border border-[var(--border)]"
-              }`}
-            >
-              {chip.name} ({chip.count})
-            </button>
-          ))}
+        <div className="flex items-center gap-2.5">
+          {!isClient && (
+            <ClientPickerTrigger
+              selectedClient={selectedClient}
+              onOpenPicker={() => setShowClientPicker(true)}
+              onClearSelection={() => setSelectedClientId("all")}
+            />
+          )}
         </div>
 
         <div className="relative w-full sm:w-64">
@@ -572,6 +563,17 @@ export default function SpreadsheetsPage() {
           </div>
         </div>
       )}
+
+      {/* Client Picker Dialog */}
+      <ClientPickerDialog
+        isOpen={showClientPicker}
+        onClose={() => setShowClientPicker(false)}
+        selectedClientId={selectedClientId === "all" ? undefined : selectedClientId}
+        onSelectClient={(client) => {
+          setSelectedClientId(client ? client.id : "all");
+        }}
+        confirmLabel="Filter spreadsheets"
+      />
     </div>
   );
 }

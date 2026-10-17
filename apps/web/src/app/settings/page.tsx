@@ -3,10 +3,13 @@
 import React from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/use-auth";
-import { Settings as SettingsIcon, Bell, Database, Building2, User, Shield } from "@/components/ui/icon";
+import { useTheme } from "@/lib/theme";
+import { Settings as SettingsIcon, Bell, Database, Building2, User, Shield, Palette } from "@/components/ui/icon";
+import { ThemePickerDialog } from "@/components/settings/theme-picker-dialog";
 
 export default function SettingsPage() {
   const { user, company, role, hasPermission, isClient } = useAuth();
+  const { isAppearanceOpen, openAppearance, closeAppearance } = useTheme();
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-8">
@@ -41,6 +44,24 @@ export default function SettingsPage() {
 
       {/* Settings Navigation Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Appearance Theme Picker Card */}
+        <button
+          type="button"
+          onClick={openAppearance}
+          className="flex items-start gap-4 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 hover:border-[#4876F3]/50 hover:bg-[var(--input)]/40 transition-colors text-left cursor-pointer"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--input)] text-[#4876F3]">
+            <Palette className="w-5 h-5 text-[#4876F3]" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white mb-1">
+              Appearance
+            </h3>
+            <p className="text-xs text-[var(--text-2)]">
+              Pick a colour for your Playhead. Only you see it. Clients always see Blue.
+            </p>
+          </div>
+        </button>
         <Link
           href="/settings/notifications"
           className="flex items-start gap-4 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 hover:border-[#4876F3]/50 hover:bg-[var(--input)]/40 transition-colors"
@@ -112,6 +133,8 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      <ThemePickerDialog isOpen={isAppearanceOpen} onClose={closeAppearance} />
     </div>
   );
 }

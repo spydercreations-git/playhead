@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -961,6 +962,14 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	userTheme := fullUser.Theme
+	if userTheme == "" {
+		userTheme = "blue"
+	}
+	if isClient {
+		userTheme = "blue"
+	}
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"user": map[string]interface{}{
 			"id":                user.ID,
@@ -972,6 +981,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 			"is_onboarded":      fullUser.IsOnboarded,
 			"has_temp_password": hasTemp,
 			"email_verified":    user.EmailVerifiedAt.Valid,
+			"theme":             userTheme,
 		},
 		"client_name":    clientName,
 		"client_logo":    clientLogo,
@@ -988,6 +998,67 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		"is_client": isClient,
 		"companies": companies,
 		"features":  features,
+	})
+}
+
+type UpdateThemeRequest struct {
+	Theme string `json:"theme"`
+}
+
+var validThemes = map[string]bool{
+	"blue":   true,
+	"green":  true,
+	"yellow": true,
+	"purple": true,
+	"orange": true,
+	"pink":   true,
+}
+
+// UpdateTheme updates the authenticated user's color theme
+func (h *AuthHandler) UpdateTheme(w http.ResponseWriter, r *http.Request) {
+	user, ok := middleware.GetAuthenticatedUser(r.Context())
+	if !ok {
+		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	var req UpdateThemeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_body", "message": "Invalid request body"})
+		return
+	}
+
+	theme := strings.ToLower(strings.TrimSpace(req.Theme))
+	if !validThemes[theme] {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "invalid_theme",
+			"message": "Theme must be one of: blue, green, yellow, purple, orange, pink",
+		})
+		return
+	}
+
+	updatedUser, err := h.queries.UpdateUserTheme(r.Context(), db.UpdateUserThemeParams{
+		ID:    user.ID,
+		Theme: theme,
+	})
+	if err != nil {
+		slog.Error("failed to update user theme", "error", err, "user_id", user.ID)
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to update theme"})
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "playhead_theme",
+		Value:    theme,
+		Path:     "/",
+		MaxAge:   365 * 24 * 3600,
+		HttpOnly: false,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   r.TLS != nil,
+	})
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"theme": updatedUser.Theme,
 	})
 }
 

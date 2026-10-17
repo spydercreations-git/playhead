@@ -777,6 +777,41 @@ Google Login is built into the backend and UI, but hidden until configured. When
   - All handler tests pass (`go test ./internal/handler/...`).
   - Web TypeScript compilation (`npm run typecheck`) and design token linter (`npm run lint:design`) pass with 0 errors.
 
+---
+
+## Theme System (6 Dark Themes), White Icons Default, Folder Size Fix, Card Shapes & Universal Client Picker ✅
+### What was built:
+1. **6 Dark Colour Themes**:
+   - Database migration `00017_user_theme.sql` added `theme` column to `users` with default `'blue'` and check constraint (`'blue'`, `'green'`, `'yellow'`, `'purple'`, `'orange'`, `'pink'`).
+   - Added `PATCH/PUT /users/theme` and `/users/me/theme` with validation. Enforced client contacts always receive `"blue"`.
+   - Added `playhead_theme` cookie read in `apps/web/src/app/layout.tsx` for zero-flash page loads.
+   - Defined all 6 themes in `apps/web/src/app/globals.css` with tailored tokens: `--bg`, `--panel`, `--panel-raised`, `--input`, `--hover`, `--border`, `--border-strong`, `--accent`, `--button`, `--button-hover`, `--button-text` (dark `#14110A` for yellow), `--bg-glow`, and `--status-needs-review`.
+   - Added `.theme-neutral` override so video review, player, and full-screen previews stay neutral dark.
+   - Implemented `ThemePreviewCard`, `MiniApp`, and `ThemePicker` in `apps/web/src/components/settings/theme-preview.tsx` rendering live previews using real CSS tokens via scoped `data-theme`.
+   - Appearance dialog (`apps/web/src/components/settings/theme-picker-dialog.tsx`) accessible from user profile avatar dropdown and Settings page.
+2. **All Icons White Default**:
+   - `Icon` component defaults to `#FFFFFF` unless a status color is present.
+   - Primary button icons use `var(--button-text)`.
+   - My Drive category cards use white icons on 22% accent color background.
+3. **Folder Size Bug Fix**:
+   - Rewrote `GetDriveFolderStats` and folder count updates with recursive CTE filtering `kind = 'file' AND deleted_at IS NULL` for both count and byte sum.
+   - Empty folders and folders whose files are moved to Trash immediately report 0 files and 0 B.
+4. **New Card Shapes**:
+   - Replaced folder and project cards with continuous outline SVG paths matching `New Cards/folder-card-shape.svg` and `project-card-shape.svg`.
+   - Replaced document and spreadsheet cards with exact mini preview layouts from `New Cards/document-card.svg` and `spreadsheet-card.svg`.
+5. **Step 4 Universal Client Picker**:
+   - Built `ClientPickerDialog` and `ClientPickerTrigger` in `apps/web/src/components/clients/client-picker-dialog.tsx` with search, keyboard navigation, project count badges, and avatar chips.
+   - Integrated into Projects, Documents, Spreadsheets pages, and New Project modal.
+
+### Automated Tests:
+- `services/api/internal/handler/theme_and_folder_test.go`:
+  - `TestThemeUpdateAndValidation`: PASS
+  - `TestClientUserThemeAlwaysBlue`: PASS
+  - `TestFolderSizeBugZeroFilesZeroBytes`: PASS
+- All Go handler tests pass (`go test ./internal/handler/...`).
+- TypeScript compilation (`npm run typecheck`) and design token audit (`node scripts/check-design-tokens.js --strict`) pass with 0 errors.
+
+
 
 
 

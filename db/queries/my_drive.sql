@@ -104,14 +104,26 @@ SET project_id = $3, drive_owner_id = NULL, updated_at = NOW()
 WHERE target.id IN (SELECT tree_id FROM item_tree) AND target.company_id = $2;
 
 -- name: GetDriveFolderStats :one
+WITH RECURSIVE item_tree AS (
+    SELECT items.id, items.kind, items.deleted_at, items.company_id, items.total_bytes
+    FROM items
+    WHERE items.parent_id = $2 AND items.company_id = $1 AND items.deleted_at IS NULL
+    UNION ALL
+    SELECT i.id, i.kind, i.deleted_at, i.company_id, i.total_bytes
+    FROM items i
+    JOIN item_tree t ON i.parent_id = t.id
+    WHERE i.company_id = $1 AND i.deleted_at IS NULL
+)
 SELECT 
-    COUNT(id)::int AS file_count,
-    COALESCE(SUM(total_bytes), 0)::bigint AS total_bytes
-FROM items
-WHERE company_id = $1
-  AND project_id IS NULL
-  AND parent_id = $2
-  AND deleted_at IS NULL;
+    COUNT(t.id) FILTER (WHERE t.kind = 'file')::int AS file_count,
+    COALESCE(SUM(
+        COALESCE(
+            (SELECT fv.size_bytes FROM file_versions fv WHERE fv.item_id = t.id ORDER BY fv.number DESC LIMIT 1),
+            t.total_bytes,
+            0
+        )
+    ) FILTER (WHERE t.kind = 'file'), 0)::bigint AS total_bytes
+FROM item_tree t;
 
 -- name: RecordRecentItem :exec
 INSERT INTO recent_items (

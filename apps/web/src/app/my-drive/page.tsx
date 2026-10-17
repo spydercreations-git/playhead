@@ -372,9 +372,9 @@ export default function MyDrivePage() {
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 h-9 px-3.5 rounded-lg bg-[#3B67E0] hover:bg-[#4876F3] text-sm font-semibold text-white transition-colors"
+              className="flex items-center gap-2 h-9 px-3.5 rounded-lg bg-[var(--button)] hover:bg-[var(--button-hover)] text-sm font-semibold text-[var(--button-text)] transition-colors"
             >
-              <Upload size={16} />
+              <Upload size={16} className="text-[var(--button-text)]" />
               <span>Upload</span>
             </button>
           </div>
@@ -725,7 +725,7 @@ export default function MyDrivePage() {
               <button
                 type="submit"
                 disabled={!newFolderName.trim()}
-                className="px-4 py-1.5 rounded-lg bg-[#3B67E0] hover:bg-[#4876F3] disabled:opacity-50 text-xs font-semibold text-white"
+                className="px-4 py-1.5 rounded-lg bg-[var(--button)] hover:bg-[var(--button-hover)] disabled:opacity-50 text-xs font-semibold text-[var(--button-text)]"
               >
                 Create
               </button>
@@ -760,7 +760,7 @@ export default function MyDrivePage() {
               <button
                 type="submit"
                 disabled={!renameInput.trim()}
-                className="px-4 py-1.5 rounded-lg bg-[#3B67E0] hover:bg-[#4876F3] disabled:opacity-50 text-xs font-semibold text-white"
+                className="px-4 py-1.5 rounded-lg bg-[var(--button)] hover:bg-[var(--button-hover)] disabled:opacity-50 text-xs font-semibold text-[var(--button-text)]"
               >
                 Save
               </button>
@@ -814,7 +814,7 @@ export default function MyDrivePage() {
               <button
                 onClick={handleExecuteProjectAction}
                 disabled={!selectedProjectId || projectActionLoading}
-                className="px-4 py-1.5 rounded-lg bg-[#3B67E0] hover:bg-[#4876F3] disabled:opacity-50 text-xs font-semibold text-white"
+                className="px-4 py-1.5 rounded-lg bg-[var(--button)] hover:bg-[var(--button-hover)] disabled:opacity-50 text-xs font-semibold text-[var(--button-text)]"
               >
                 {projectActionLoading ? "Processing..." : projectModalMode === "move" ? "Move" : "Copy"}
               </button>

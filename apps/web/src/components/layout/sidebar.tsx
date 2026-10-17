@@ -165,11 +165,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="relative px-4 pt-4 pb-2 shrink-0">
             <button
               onClick={() => setNewMenuOpen(!newMenuOpen)}
-              className={`flex h-10 w-[200px] mx-auto items-center justify-center gap-2 rounded-[10px] text-sm font-semibold text-white shadow-none transition-all duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] ${
-                newMenuOpen ? "bg-[#3560D6]" : "bg-[#3B67E0] hover:bg-[#3560D6] active:bg-[#3560D6]"
+              className={`flex h-10 w-[200px] mx-auto items-center justify-center gap-2 rounded-[10px] text-sm font-semibold text-[var(--button-text)] shadow-none transition-all duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] ${
+                newMenuOpen ? "bg-[var(--button-hover)]" : "bg-[var(--button)] hover:bg-[var(--button-hover)] active:bg-[var(--button-hover)]"
               }`}
             >
-              <Plus size={18} />
+              <Plus size={18} className="text-[var(--button-text)]" />
               <span>New</span>
             </button>
 

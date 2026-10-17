@@ -203,7 +203,7 @@ export function ClientPickerDialog({
                   onMouseEnter={() => setHighlightedIndex(idx)}
                   className={`flex items-center justify-between px-3.5 py-2.5 rounded-[10px] cursor-pointer transition-colors ${
                     isSelected
-                      ? "bg-[#3B67E0]/15 border border-[#3B67E0]/40 text-white"
+                      ? "bg-[var(--accent)]/15 border border-[var(--accent)]/40 text-white"
                       : isHighlighted
                       ? "bg-[var(--hover)] text-white border border-transparent"
                       : "text-white border border-transparent hover:bg-[var(--hover)]"
@@ -235,7 +235,7 @@ export function ClientPickerDialog({
                   </div>
 
                   {isSelected && (
-                    <div className="flex items-center justify-center w-5 h-5 rounded-full bg-[#3B67E0] text-white">
+                    <div className="flex items-center justify-center w-5 h-5 rounded-full bg-[var(--accent)] text-white">
                       <Check className="w-3 h-3" />
                     </div>
                   )}
@@ -271,7 +271,7 @@ export function ClientPickerDialog({
               type="button"
               onClick={handleConfirm}
               disabled={!pendingSelectedId}
-              className="h-9 px-4 rounded-[10px] bg-[#3B67E0] text-xs font-semibold text-white shadow hover:bg-[#3560D6] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="h-9 px-4 rounded-[10px] bg-[var(--button)] text-xs font-semibold text-[var(--button-text)] shadow hover:bg-[var(--button-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {confirmLabel}
             </button>
@@ -314,7 +314,7 @@ export function ClientPickerTrigger({
         <button
           type="button"
           onClick={onOpenPicker}
-          className="flex h-9 items-center gap-2 rounded-[10px] bg-[#3B67E0]/15 border border-[#3B67E0]/40 px-3 text-xs font-semibold text-white hover:bg-[#3B67E0]/25 transition-colors"
+          className="flex h-9 items-center gap-2 rounded-[10px] bg-[var(--accent)]/15 border border-[var(--accent)]/40 px-3 text-xs font-semibold text-white hover:bg-[var(--accent)]/25 transition-colors"
         >
           <div className="w-4 h-4 rounded-[6px] bg-[#0e7490] flex items-center justify-center text-xs font-bold text-white">
             {selectedClient.name.charAt(0).toUpperCase()}

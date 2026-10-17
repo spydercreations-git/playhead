@@ -178,7 +178,7 @@ export default function ProjectsPage() {
           {hasPermission("projects.create") && (
             <button
               onClick={() => setShowNewProject(true)}
-              className="flex h-9 items-center justify-center rounded-lg bg-[#4876F3] hover:bg-[#3B67E0] px-4 text-xs font-semibold text-white shadow transition-colors"
+              className="flex h-9 items-center justify-center rounded-lg bg-[var(--button)] hover:bg-[var(--button-hover)] px-4 text-xs font-semibold text-[var(--button-text)] shadow transition-colors"
             >
               + New Project
             </button>
@@ -271,7 +271,7 @@ export default function ProjectsPage() {
           {hasPermission("projects.create") && !search && (
             <button
               onClick={() => setShowNewProject(true)}
-              className="mt-4 rounded-lg bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3B67E0]"
+              className="mt-4 rounded-lg bg-[var(--button)] px-4 py-2 text-xs font-semibold text-[var(--button-text)] shadow hover:bg-[var(--button-hover)]"
             >
               + Create First Project
             </button>
@@ -414,7 +414,7 @@ export default function ProjectsPage() {
                     setIsMovingProject(false);
                   }
                 }}
-                className="px-4 py-2 rounded-lg bg-[#3B67E0] hover:bg-[#3B67E0] text-xs font-semibold text-white transition-colors shadow"
+                className="px-4 py-2 rounded-lg bg-[var(--button)] hover:bg-[var(--button-hover)] text-xs font-semibold text-[var(--button-text)] transition-colors shadow"
               >
                 {isMovingProject ? "Moving..." : "Move Project"}
               </button>

@@ -532,7 +532,7 @@ export function NewClientDialog({
                 <button
                   type="submit"
                   disabled={loading || !isFormValid}
-                  className="h-9 px-4 rounded-[10px] bg-[#3B67E0] text-xs font-semibold text-white shadow hover:bg-[#3560D6] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                  className="h-9 px-4 rounded-[10px] bg-[var(--button)] text-xs font-semibold text-[var(--button-text)] shadow hover:bg-[var(--button-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
                 >
                   {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>{isEditMode ? "Save changes" : "Create client"}</span>

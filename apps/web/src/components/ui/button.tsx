@@ -24,7 +24,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     }[size];
 
     const variantClasses = {
-      primary: "bg-[#3B67E0] hover:bg-[#3560D6] active:bg-[#3560D6] text-white border border-transparent shadow-none",
+      primary: "bg-[var(--button)] hover:bg-[var(--button-hover)] active:bg-[var(--button-hover)] text-[var(--button-text)] border border-transparent shadow-none",
       secondary: "bg-[var(--input)] hover:bg-[var(--hover)] active:bg-[var(--hover)] text-white border border-[var(--border)] hover:border-[var(--border-strong)]",
       outline: "bg-transparent hover:bg-[var(--hover)] active:bg-[var(--hover)] text-white border border-[var(--border)] hover:border-[var(--border-strong)]",
       danger: "bg-[#F0506E] hover:bg-[#F0506E] active:bg-[#F0506E] text-white border border-transparent",
@@ -35,7 +35,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         disabled={disabled || isLoading}
-        className={`inline-flex items-center justify-center rounded-[8px] transition-transform duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#4876F3]/60 focus:ring-offset-0 disabled:opacity-45 disabled:pointer-events-none disabled:hover:scale-100 disabled:active:scale-100 select-none ${sizeClasses} ${variantClasses} ${className}`}
+        className={`inline-flex items-center justify-center rounded-[8px] transition-transform duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:ring-offset-0 disabled:opacity-45 disabled:pointer-events-none disabled:hover:scale-100 disabled:active:scale-100 select-none ${sizeClasses} ${variantClasses} ${className}`}
         {...props}
       >
         {isLoading ? (

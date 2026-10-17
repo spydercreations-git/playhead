@@ -134,7 +134,7 @@ export default function ClientsPage() {
           {hasPermission("clients.create") && (
             <button
               onClick={() => setShowNewClient(true)}
-              className="flex h-9 items-center justify-center rounded-lg bg-[#4876F3] px-4 text-xs font-semibold text-white shadow hover:bg-[#3B67E0] transition-colors"
+              className="flex h-9 items-center justify-center rounded-lg bg-[var(--button)] px-4 text-xs font-semibold text-[var(--button-text)] shadow hover:bg-[var(--button-hover)] transition-colors"
             >
               + New Client
             </button>
@@ -165,7 +165,7 @@ export default function ClientsPage() {
           {!search && hasPermission("clients.create") && (
             <button
               onClick={() => setShowNewClient(true)}
-              className="mt-4 rounded-lg bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3B67E0]"
+              className="mt-4 rounded-lg bg-[var(--button)] px-4 py-2 text-xs font-semibold text-[var(--button-text)] shadow hover:bg-[var(--button-hover)]"
             >
               + Create Client
             </button>

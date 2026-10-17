@@ -339,9 +339,9 @@ export default function TeamPage() {
             canChangeRoles && (
               <button
                 onClick={() => setRoleModalOpen(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3B67E0] transition-colors"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--button)] px-4 py-2 text-xs font-semibold text-[var(--button-text)] shadow hover:bg-[var(--button-hover)] transition-colors"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 text-[var(--button-text)]" />
                 New Role
               </button>
             )
@@ -349,9 +349,9 @@ export default function TeamPage() {
             <button
               onClick={() => setInviteModalOpen(true)}
               disabled={seatsRemaining === 0}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3B67E0] disabled:opacity-40 transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--button)] px-4 py-2 text-xs font-semibold text-[var(--button-text)] shadow hover:bg-[var(--button-hover)] disabled:opacity-40 transition-colors"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 text-[var(--button-text)]" />
               Invite Member
             </button>
           )}

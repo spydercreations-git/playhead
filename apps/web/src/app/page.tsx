@@ -275,8 +275,8 @@ export default function HomePage() {
       {/* Global Drag Overlay on Home for all users */}
       {isDragging && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-none">
-          <div className="flex flex-col items-center justify-center rounded-2xl bg-[var(--panel)] border-2 border-dashed border-[#4876F3] p-12 text-center shadow-xl">
-            <Upload size={48} className="text-[#4876F3] animate-bounce mb-4" />
+          <div className="flex flex-col items-center justify-center rounded-2xl bg-[var(--panel)] border-2 border-dashed border-[var(--accent)] p-12 text-center shadow-xl">
+            <Upload size={48} className="text-[var(--accent)] animate-bounce mb-4" />
             <p className="text-xl font-bold text-white">Drop files anywhere to upload</p>
             <p className="text-sm text-[var(--text-2)] mt-1">They go to My Drive. Only you can see them.</p>
           </div>
@@ -312,9 +312,9 @@ export default function HomePage() {
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={handleUploadClick}
-          className="flex h-9 items-center gap-2 rounded-[8px] bg-[#3B67E0] hover:bg-[#3560D6] px-3.5 text-sm font-semibold text-white transition-colors shadow-sm"
+          className="flex h-9 items-center gap-2 rounded-[8px] bg-[var(--button)] hover:bg-[var(--button-hover)] px-3.5 text-sm font-semibold text-[var(--button-text)] transition-colors shadow-sm"
         >
-          <Upload size={18} />
+          <Upload size={18} className="text-[var(--button-text)]" />
           <span>Upload</span>
         </button>
 
@@ -562,7 +562,7 @@ export default function HomePage() {
                   {/* Card Content Footer */}
                   <div className="pt-2 px-1 flex flex-col justify-between flex-1">
                     <div>
-                      <p className="text-sm font-semibold text-white truncate group-hover:text-[#4876F3] transition-colors">
+                      <p className="text-sm font-semibold text-white truncate group-hover:text-[var(--accent)] transition-colors">
                         {rev.name}
                       </p>
                       <p className="text-xs text-[var(--text-3)] truncate mt-0.5">
@@ -611,9 +611,9 @@ export default function HomePage() {
       {isFirstTime && (
         <div
           onClick={handleUploadClick}
-          className="flex flex-col items-center justify-center h-[220px] w-full rounded-[12px] border border-dashed border-[#4876F3] bg-[#4876F3]/[0.04] hover:bg-[#4876F3]/[0.08] transition-all p-6 text-center cursor-pointer"
+          className="flex flex-col items-center justify-center h-[220px] w-full rounded-[12px] border border-dashed border-[var(--accent)] bg-[var(--accent)]/[0.04] hover:bg-[var(--accent)]/[0.08] hover:border-[var(--accent)] transition-all p-6 text-center cursor-pointer group"
         >
-          <div className="flex h-16 w-16 items-center justify-center rounded-[16px] bg-[var(--hover)] text-[var(--text-2)] mb-3">
+          <div className="flex h-16 w-16 items-center justify-center rounded-[16px] bg-[var(--hover)] text-white group-hover:text-[var(--accent)] transition-colors mb-3">
             <Upload size={32} />
           </div>
           <p className="text-base font-semibold text-white">Drop files anywhere to upload</p>
@@ -624,9 +624,9 @@ export default function HomePage() {
               e.stopPropagation();
               handleUploadClick();
             }}
-            className="flex h-9 items-center gap-2 rounded-[8px] bg-[#3B67E0] hover:bg-[#3560D6] px-4 text-sm font-semibold text-white transition-colors shadow-sm"
+            className="flex h-9 items-center gap-2 rounded-[8px] bg-[var(--button)] hover:bg-[var(--button-hover)] px-4 text-sm font-semibold text-[var(--button-text)] transition-colors shadow-sm"
           >
-            <Upload size={18} />
+            <Upload size={18} className="text-[var(--button-text)]" />
             <span>Choose files</span>
           </button>
         </div>

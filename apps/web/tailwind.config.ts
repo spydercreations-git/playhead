@@ -66,7 +66,7 @@ const config: Config = {
         },
         primary: {
           DEFAULT: "var(--button)",
-          foreground: "#FFFFFF",
+          foreground: "var(--button-text)",
         },
         muted: {
           DEFAULT: "var(--panel-raised)",

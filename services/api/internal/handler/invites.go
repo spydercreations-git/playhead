@@ -107,11 +107,12 @@ func (h *InviteHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Role escalation: only Admins can give or remove the Admin role
-	if strings.EqualFold(roleObj.Name, "admin") && !strings.EqualFold(person.Role, "admin") {
+	// Role escalation: only executive roles (CEO/COO) can invite someone to an executive role
+	if (strings.EqualFold(roleObj.Name, "admin") || authz.IsFullAccess(roleObj.Name)) &&
+		(!strings.EqualFold(person.Role, "admin") && !authz.CanChangeRoles(person.Role)) {
 		respondJSON(w, http.StatusForbidden, map[string]string{
 			"error":   "forbidden",
-			"message": "Only Admins can invite someone as Admin",
+			"message": "Only CEO or COO can invite someone to an executive role",
 		})
 		return
 	}

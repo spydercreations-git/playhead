@@ -1,6 +1,7 @@
 -- Roles queries
 -- name: ListCompanyRoles :many
 SELECT r.id, r.company_id, r.name, r.color, r.permissions, r.is_system, r.created_at, r.updated_at,
+       r.access_type, r.can_change_roles,
        COUNT(m.id)::int as member_count
 FROM roles r
 LEFT JOIN memberships m ON m.role_id = r.id
@@ -9,25 +10,25 @@ GROUP BY r.id
 ORDER BY r.is_system DESC, r.name ASC;
 
 -- name: GetRoleByID :one
-SELECT id, company_id, name, color, permissions, is_system, created_at, updated_at
+SELECT *
 FROM roles
 WHERE id = $1 AND company_id = $2;
 
 -- name: GetRoleByName :one
-SELECT id, company_id, name, color, permissions, is_system, created_at, updated_at
+SELECT *
 FROM roles
-WHERE company_id = $1 AND name = $2;
+WHERE company_id = @company_id AND LOWER(name) = LOWER(@name);
 
 -- name: CreateRole :one
-INSERT INTO roles (company_id, name, color, permissions, is_system)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, company_id, name, color, permissions, is_system, created_at, updated_at;
+INSERT INTO roles (company_id, name, color, permissions, is_system, access_type, can_change_roles)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING *;
 
 -- name: UpdateRole :one
 UPDATE roles
-SET name = $3, color = $4, permissions = $5, updated_at = NOW()
+SET name = $3, color = $4, permissions = $5, access_type = $6, can_change_roles = $7, updated_at = NOW()
 WHERE id = $1 AND company_id = $2 AND is_system = FALSE
-RETURNING id, company_id, name, color, permissions, is_system, created_at, updated_at;
+RETURNING *;
 
 -- name: DeleteRole :exec
 DELETE FROM roles
@@ -42,7 +43,7 @@ WHERE role_id = $1;
 SELECT COUNT(*)::int
 FROM memberships m
 JOIN roles r ON r.id = m.role_id
-WHERE m.company_id = $1 AND r.name = 'Admin';
+WHERE m.company_id = $1 AND (r.access_type = 'full' OR r.can_change_roles = true);
 
 -- Notification Prefs queries
 -- name: ListUserNotificationPrefs :many

@@ -1270,24 +1270,24 @@ func TestP3_AdvisorSecondReviewSecurityFixes(t *testing.T) {
 	}
 	adminRoleObj, _ := queries.GetRoleByName(ctx, db.GetRoleByNameParams{
 		CompanyID: comp.ID,
-		Name:      "Admin",
+		Name:      authz.RoleCEO,
 	})
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: comp.ID,
 		UserID:    adminUser.ID,
-		Role:      "admin",
+		Role:      authz.RoleCEO,
 	})
 	_ = queries.UpdateMembershipRole(ctx, db.UpdateMembershipRoleParams{
 		CompanyID: comp.ID,
 		UserID:    adminUser.ID,
-		Role:      "admin",
+		Role:      authz.RoleCEO,
 		RoleID:    adminRoleObj.ID,
 	})
 	adminPerson := authz.Person{
 		UserID:      uuid.UUID(adminUser.ID.Bytes),
 		CompanyID:   uuid.UUID(comp.ID.Bytes),
 		Email:       adminUser.Email,
-		Role:        "admin",
+		Role:        authz.RoleCEO,
 		RoleID:      uuid.UUID(adminRoleObj.ID.Bytes),
 		Permissions: authz.AllPermissions,
 	}
@@ -1920,14 +1920,14 @@ func TestP3_AdvisorSecondReviewSecurityFixes(t *testing.T) {
 	t.Run("non-Admin cannot make someone Admin", func(t *testing.T) {
 		managerRoleObj, _ := queries.GetRoleByName(ctx, db.GetRoleByNameParams{
 			CompanyID: comp.ID,
-			Name:      "Manager",
+			Name:      authz.RoleProjectManager,
 		})
 		editorRoleObj, _ := queries.GetRoleByName(ctx, db.GetRoleByNameParams{
 			CompanyID: comp.ID,
-			Name:      "Editor",
+			Name:      authz.RoleEditor,
 		})
 
-		// Manager Manny (has team.change_roles, but is NOT Admin)
+		// Manager Manny (Project Manager - can_change_roles is false)
 		managerUser, _ := queries.CreateUser(ctx, db.CreateUserParams{
 			Email: fmt.Sprintf("manny-%d@studio.com", time.Now().UnixNano()),
 			Name:  "Manny Manager",
@@ -1935,21 +1935,21 @@ func TestP3_AdvisorSecondReviewSecurityFixes(t *testing.T) {
 		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 			CompanyID: comp.ID,
 			UserID:    managerUser.ID,
-			Role:      "manager",
+			Role:      authz.RoleProjectManager,
 		})
 		_ = queries.UpdateMembershipRole(ctx, db.UpdateMembershipRoleParams{
 			CompanyID: comp.ID,
 			UserID:    managerUser.ID,
-			Role:      "manager",
+			Role:      authz.RoleProjectManager,
 			RoleID:    managerRoleObj.ID,
 		})
 		managerPerson := authz.Person{
 			UserID:      uuid.UUID(managerUser.ID.Bytes),
 			CompanyID:   uuid.UUID(comp.ID.Bytes),
 			Email:       managerUser.Email,
-			Role:        "manager",
+			Role:        authz.RoleProjectManager,
 			RoleID:      uuid.UUID(managerRoleObj.ID.Bytes),
-			Permissions: []string{authz.PermTeamChangeRoles, authz.PermTeamInvite},
+			Permissions: []string{authz.PermTeamInvite},
 		}
 
 		// Target Editor Ted
@@ -1960,12 +1960,12 @@ func TestP3_AdvisorSecondReviewSecurityFixes(t *testing.T) {
 		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 			CompanyID: comp.ID,
 			UserID:    targetUser.ID,
-			Role:      "editor",
+			Role:      authz.RoleEditor,
 		})
 		_ = queries.UpdateMembershipRole(ctx, db.UpdateMembershipRoleParams{
 			CompanyID: comp.ID,
 			UserID:    targetUser.ID,
-			Role:      "editor",
+			Role:      authz.RoleEditor,
 			RoleID:    editorRoleObj.ID,
 		})
 
@@ -1977,8 +1977,8 @@ func TestP3_AdvisorSecondReviewSecurityFixes(t *testing.T) {
 		compIDStr := pgUUIDToString(comp.ID)
 		targetIDStr := pgUUIDToString(targetUser.ID)
 
-		// 1. Manager tries to promote Ted to Admin -> 403 Forbidden!
-		promoteAdminBody, _ := json.Marshal(map[string]string{"role": "admin"})
+		// 1. Manager tries to promote Ted to CEO -> 403 Forbidden!
+		promoteAdminBody, _ := json.Marshal(map[string]string{"role": authz.RoleCEO})
 		reqPromote := httptest.NewRequest("PATCH", fmt.Sprintf("/api/v1/companies/%s/members/%s", compIDStr, targetIDStr), bytes.NewReader(promoteAdminBody))
 		reqPromote = reqPromote.WithContext(contextWithPerson(reqPromote.Context(), managerUser, comp.ID, managerPerson))
 		recPromote := httptest.NewRecorder()
@@ -1987,8 +1987,8 @@ func TestP3_AdvisorSecondReviewSecurityFixes(t *testing.T) {
 			t.Fatalf("expected 403 Forbidden when non-admin tries to assign Admin role, got %d: %s", recPromote.Code, recPromote.Body.String())
 		}
 
-		// 2. Manager tries to invite someone as Admin -> 403 Forbidden!
-		inviteAdminBody, _ := json.Marshal(map[string]string{"email": "superadmin@studio.com", "role": "admin"})
+		// 2. Manager tries to invite someone as CEO -> 403 Forbidden!
+		inviteAdminBody, _ := json.Marshal(map[string]string{"email": "superadmin@studio.com", "role": authz.RoleCEO})
 		reqInvAdmin := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/companies/%s/invites", compIDStr), bytes.NewReader(inviteAdminBody))
 		reqInvAdmin = reqInvAdmin.WithContext(contextWithPerson(reqInvAdmin.Context(), managerUser, comp.ID, managerPerson))
 		recInvAdmin := httptest.NewRecorder()
@@ -1997,7 +1997,7 @@ func TestP3_AdvisorSecondReviewSecurityFixes(t *testing.T) {
 			t.Fatalf("expected 403 Forbidden when non-admin invites someone as Admin, got %d: %s", recInvAdmin.Code, recInvAdmin.Body.String())
 		}
 
-		// 3. Admin Alice can promote Ted to Admin -> 200 OK
+		// 3. Admin Alice can promote Ted to CEO -> 200 OK
 		reqPromoteAdmin := httptest.NewRequest("PATCH", fmt.Sprintf("/api/v1/companies/%s/members/%s", compIDStr, targetIDStr), bytes.NewReader(promoteAdminBody))
 		reqPromoteAdmin = reqPromoteAdmin.WithContext(contextWithPerson(reqPromoteAdmin.Context(), adminUser, comp.ID, adminPerson))
 		recPromoteAdmin := httptest.NewRecorder()

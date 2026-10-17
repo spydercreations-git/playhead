@@ -1,29 +1,24 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   X,
-  Lock,
   ChevronDown,
-  Check,
-  User,
   Users,
-  Shield,
   Trash2,
-  Sparkles,
 } from "@/components/ui/icon";
 
-interface MemberAccess {
+export interface MemberAccess {
   id: string;
   name?: string;
   email: string;
-  level: "full" | "uploader" | "commenter" | "viewer";
+  level: "full" | "editor" | "uploader" | "commenter" | "viewer";
   can_download: boolean;
-  inherited_from?: string; // e.g. "Company Admin" or "Client"
+  inherited_from?: string; // e.g. "Company Leadership" or "Client"
 }
 
-interface SuggestedContact {
+export interface SuggestedContact {
   id: string;
   name: string;
   email: string;
@@ -34,8 +29,6 @@ interface ManageAccessDialogProps {
   isOpen: boolean;
   onClose: () => void;
   targetName: string;
-  isRestricted?: boolean;
-  onToggleRestricted?: (val: boolean) => void;
   members?: MemberAccess[];
   suggested?: SuggestedContact[];
   onAddMember?: (
@@ -53,8 +46,6 @@ export function ManageAccessDialog({
   isOpen,
   onClose,
   targetName,
-  isRestricted = false,
-  onToggleRestricted,
   members = [],
   suggested = [],
   onAddMember,
@@ -62,10 +53,9 @@ export function ManageAccessDialog({
   onRemoveMember,
   isLoading = false,
 }: ManageAccessDialogProps) {
-  const [restricted, setRestricted] = useState(isRestricted);
   const [query, setQuery] = useState("");
   const [selectedContact, setSelectedContact] = useState<SuggestedContact | null>(null);
-  const [accessLevel, setAccessLevel] = useState<"full" | "uploader" | "commenter" | "viewer">("commenter");
+  const [accessLevel, setAccessLevel] = useState<"full" | "editor" | "uploader" | "commenter" | "viewer">("commenter");
   const [canDownload, setCanDownload] = useState(true);
   const [message, setMessage] = useState("");
   const [isManagingMembers, setIsManagingMembers] = useState(false);
@@ -85,11 +75,6 @@ export function ManageAccessDialog({
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleToggleRestrictedSwitch = (newVal: boolean) => {
-    setRestricted(newVal);
-    onToggleRestricted?.(newVal);
   };
 
   const filteredSuggested = suggested.filter(
@@ -140,35 +125,6 @@ export function ManageAccessDialog({
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          {/* Restricted Switch */}
-          <div className="flex items-center justify-between p-3.5 rounded-xl border border-[#2E2F34] bg-[#181818]">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 mt-0.5">
-                <Lock className="w-3.5 h-3.5" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-white">Restricted access</p>
-                <p className="text-xs text-[#A3A6AD] mt-0.5 leading-snug">
-                  Only people added here and Admins can see this
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => handleToggleRestrictedSwitch(!restricted)}
-              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                restricted ? "bg-[#4876F3]" : "bg-[#2E2F34]"
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                  restricted ? "translate-x-4" : "translate-x-0"
-                }`}
-              />
-            </button>
-          </div>
-
           {/* Name or Email Input + Access Level Dropdown + Can Download switch */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -201,7 +157,8 @@ export function ManageAccessDialog({
                   onChange={(e) => setAccessLevel(e.target.value as any)}
                   className="h-9 rounded-xl bg-[#2A2B30] border border-[#2E2F34] pl-3 pr-7 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none"
                 >
-                  <option value="full">Full access</option>
+                  <option value="full">Full</option>
+                  <option value="editor">Editor</option>
                   <option value="uploader">Uploader</option>
                   <option value="commenter">Commenter</option>
                   <option value="viewer">Viewer</option>
@@ -228,7 +185,7 @@ export function ManageAccessDialog({
           {/* Suggested List (team and client contacts) */}
           {filteredSuggested.length > 0 && !selectedContact && (
             <div className="space-y-1.5">
-              <span className="text-xs font-semibold  text-[#7C7F87]">
+              <span className="text-xs font-semibold text-[#7C7F87]">
                 Suggested
               </span>
               <div className="space-y-1 max-h-32 overflow-y-auto rounded-xl border border-[#2E2F34] bg-[#181818] p-1.5">
@@ -242,7 +199,7 @@ export function ManageAccessDialog({
                     className="flex items-center justify-between p-2 rounded-lg hover:bg-[#2A2B30] cursor-pointer transition-colors"
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className="h-6 w-6 rounded-full bg-[#4876F3] text-white text-xs font-bold flex items-center justify-center ">
+                      <div className="h-6 w-6 rounded-full bg-[#4876F3] text-white text-xs font-bold flex items-center justify-center">
                         {s.name.slice(0, 1)}
                       </div>
                       <div>
@@ -251,7 +208,7 @@ export function ManageAccessDialog({
                       </div>
                     </div>
                     {s.role && (
-                      <span className="text-xs text-[#7C7F87] bg-[#2E2F34] px-1.5 py-0.5 rounded">
+                      <span className="text-xs px-2 py-0.5 rounded bg-[#2E2F34] text-[#A3A6AD]">
                         {s.role}
                       </span>
                     )}
@@ -261,8 +218,8 @@ export function ManageAccessDialog({
             </div>
           )}
 
-          {/* Optional Message */}
-          <div>
+          {/* Message Area */}
+          <div className="space-y-1.5">
             <textarea
               rows={2}
               value={message}
@@ -270,74 +227,6 @@ export function ManageAccessDialog({
               placeholder="Add a message (optional)"
               className="w-full rounded-xl bg-[#2A2B30] border border-[#2E2F34] p-3 text-xs text-white placeholder-[#7C7F87] focus:outline-none focus:border-[#4876F3] resize-none"
             />
-          </div>
-
-          {/* Restricted Access Toggle Card */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between rounded-xl border border-[#2E2F34] bg-[#181818] p-3.5">
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg bg-[#2A2B30] flex items-center justify-center text-[#A3A6AD] shrink-0">
-                  <Lock className={`w-4 h-4 ${restricted ? "text-amber-400" : "text-[#7C7F87]"}`} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-xs font-semibold text-white">Restricted access</h4>
-                    {restricted && (
-                      <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                        ON
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-[#A3A6AD]">
-                    Only invited members and Admins can access
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={restricted}
-                onClick={() => handleToggleRestrictedSwitch(!restricted)}
-                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  restricted ? "bg-[#3B67E0]" : "bg-[#2E2F34]"
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    restricted ? "translate-x-4" : "translate-x-0"
-                  }`}
-                />
-              </button>
-            </div>
-
-            {/* Warning banner when toggled ON */}
-            {restricted && members.filter((m) => !!m.inherited_from).length > 0 && (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-2">
-                <div className="flex items-center gap-2 text-amber-400 text-xs font-semibold">
-                  <Lock className="w-3.5 h-3.5 shrink-0" />
-                  <span>
-                    {members.filter((m) => !!m.inherited_from).length}{" "}
-                    {members.filter((m) => !!m.inherited_from).length === 1 ? "person" : "people"} will lose access
-                  </span>
-                </div>
-                <p className="text-xs text-amber-200/80 leading-relaxed">
-                  Inherited company and client members will no longer have access. Only Admins and explicitly invited people can view this.
-                </p>
-                <div className="flex items-center gap-1.5 pt-1 overflow-x-auto">
-                  {members
-                    .filter((m) => !!m.inherited_from)
-                    .map((m) => (
-                      <div
-                        key={m.id}
-                        title={m.name || m.email}
-                        className="h-6 w-6 rounded-full bg-[#2A2B30] border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center justify-center shrink-0 "
-                      >
-                        {(m.name || m.email).slice(0, 1)}
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Separate Card: "{n} members · Manage" */}
@@ -375,7 +264,7 @@ export function ManageAccessDialog({
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
-                          <div className="h-6 w-6 rounded-full bg-[#4876F3] text-white text-xs font-bold flex items-center justify-center  shrink-0">
+                          <div className="h-6 w-6 rounded-full bg-[#4876F3] text-white text-xs font-bold flex items-center justify-center shrink-0">
                             {(m.name || m.email).slice(0, 1)}
                           </div>
                           <div className="truncate">
@@ -404,7 +293,8 @@ export function ManageAccessDialog({
                                 }
                                 className="h-7 rounded-lg bg-[#212121] border border-[#2E2F34] px-2 text-xs text-white focus:outline-none"
                               >
-                                <option value="full">Full access</option>
+                                <option value="full">Full</option>
+                                <option value="editor">Editor</option>
                                 <option value="uploader">Uploader</option>
                                 <option value="commenter">Commenter</option>
                                 <option value="viewer">Viewer</option>
@@ -441,13 +331,9 @@ export function ManageAccessDialog({
           </button>
           <button
             type="button"
+            disabled={submitting || (!selectedContact && !query.trim())}
             onClick={handleAdd}
-            disabled={(!selectedContact && !query.trim()) || submitting}
-            className={`h-9 px-5 rounded-xl text-xs font-semibold text-white transition-all shadow flex items-center justify-center ${
-              (selectedContact || query.trim()) && !submitting
-                ? "bg-[#3B67E0] hover:bg-[#4876F3] cursor-pointer"
-                : "bg-[#2E2F34] text-[#7C7F87] cursor-not-allowed"
-            }`}
+            className="h-9 px-5 rounded-xl bg-[#4876F3] text-xs font-semibold text-white hover:bg-[#3B67E0] transition-colors disabled:opacity-50"
           >
             {submitting ? "Adding..." : "Add"}
           </button>

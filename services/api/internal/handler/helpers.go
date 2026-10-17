@@ -22,7 +22,7 @@ func pgUUIDToString(u pgtype.UUID) string {
 
 func SeedDefaultCompanyRoles(ctx context.Context, q *db.Queries, companyID pgtype.UUID) (db.Role, error) {
 	allPermsBytes, _ := json.Marshal(authz.AllPermissions)
-	managerPermsBytes, _ := json.Marshal([]string{
+	pmPermsBytes, _ := json.Marshal([]string{
 		authz.PermProjectsViewAll,
 		authz.PermFilesDownloadAll,
 		authz.PermSharingCreatePublicLinks,
@@ -32,28 +32,70 @@ func SeedDefaultCompanyRoles(ctx context.Context, q *db.Queries, companyID pgtyp
 		authz.PermFilesDownloadAll,
 	})
 
-	adminRole, err := q.CreateRole(ctx, db.CreateRoleParams{
-		CompanyID:   companyID,
-		Name:        "Admin",
-		Color:       "#0066FF",
-		Permissions: allPermsBytes,
-		IsSystem:    true,
+	ceoRole, err := q.CreateRole(ctx, db.CreateRoleParams{
+		CompanyID:      companyID,
+		Name:           authz.RoleCEO,
+		Color:          "#0066FF",
+		Permissions:    allPermsBytes,
+		IsSystem:       true,
+		AccessType:     authz.AccessTypeFull,
+		CanChangeRoles: true,
 	})
 	_, _ = q.CreateRole(ctx, db.CreateRoleParams{
-		CompanyID:   companyID,
-		Name:        "Manager",
-		Color:       "#10B981",
-		Permissions: managerPermsBytes,
-		IsSystem:    false,
+		CompanyID:      companyID,
+		Name:           authz.RoleCOO,
+		Color:          "#0066FF",
+		Permissions:    allPermsBytes,
+		IsSystem:       true,
+		AccessType:     authz.AccessTypeFull,
+		CanChangeRoles: true,
 	})
 	_, _ = q.CreateRole(ctx, db.CreateRoleParams{
-		CompanyID:   companyID,
-		Name:        "Editor",
-		Color:       "#8B5CF6",
-		Permissions: editorPermsBytes,
-		IsSystem:    false,
+		CompanyID:      companyID,
+		Name:           authz.RoleCFO,
+		Color:          "#0066FF",
+		Permissions:    allPermsBytes,
+		IsSystem:       true,
+		AccessType:     authz.AccessTypeFull,
+		CanChangeRoles: false,
 	})
-	return adminRole, err
+	_, _ = q.CreateRole(ctx, db.CreateRoleParams{
+		CompanyID:      companyID,
+		Name:           authz.RoleCSO,
+		Color:          "#0066FF",
+		Permissions:    allPermsBytes,
+		IsSystem:       true,
+		AccessType:     authz.AccessTypeFull,
+		CanChangeRoles: false,
+	})
+	_, _ = q.CreateRole(ctx, db.CreateRoleParams{
+		CompanyID:      companyID,
+		Name:           authz.RoleDesignHead,
+		Color:          "#0066FF",
+		Permissions:    allPermsBytes,
+		IsSystem:       true,
+		AccessType:     authz.AccessTypeFull,
+		CanChangeRoles: false,
+	})
+	_, _ = q.CreateRole(ctx, db.CreateRoleParams{
+		CompanyID:      companyID,
+		Name:           authz.RoleProjectManager,
+		Color:          "#10B981",
+		Permissions:    pmPermsBytes,
+		IsSystem:       true,
+		AccessType:     authz.AccessTypePerProject,
+		CanChangeRoles: false,
+	})
+	_, _ = q.CreateRole(ctx, db.CreateRoleParams{
+		CompanyID:      companyID,
+		Name:           authz.RoleEditor,
+		Color:          "#8B5CF6",
+		Permissions:    editorPermsBytes,
+		IsSystem:       true,
+		AccessType:     authz.AccessTypePerProject,
+		CanChangeRoles: false,
+	})
+	return ceoRole, err
 }
 
 func renderJSON(w http.ResponseWriter, status int, data interface{}) {

@@ -31,3 +31,4 @@ infra/data/
 
 /services/worker/worker
 test-results/
+db/backups/

@@ -275,23 +275,26 @@ func (h *CompanyHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	isTargetAdmin := strings.ToLower(targetMembership.Role) == "admin" || (targetMembership.RoleName.Valid && strings.ToLower(targetMembership.RoleName.String) == "admin")
-	isNewAdmin := strings.ToLower(newRoleName) == "admin"
-	isCallerAdmin := strings.EqualFold(person.Role, "admin")
+	isTargetAdmin := strings.EqualFold(targetMembership.Role, "admin") ||
+		(targetMembership.RoleName.Valid && strings.EqualFold(targetMembership.RoleName.String, "admin")) ||
+		authz.IsFullAccess(targetMembership.Role) ||
+		(targetMembership.RoleName.Valid && authz.IsFullAccess(targetMembership.RoleName.String))
+	isNewAdmin := strings.EqualFold(newRoleName, "admin") || authz.IsFullAccess(newRoleName)
+	isCallerAdmin := strings.EqualFold(person.Role, "admin") || authz.CanChangeRoles(person.Role)
 
-	// Role escalation: only Admins can give or remove the Admin role
+	// Role escalation: only Admins / CEO / COO can give or remove executive roles
 	if !isCallerAdmin {
 		if isTargetAdmin {
 			respondJSON(w, http.StatusForbidden, map[string]string{
 				"error":   "forbidden",
-				"message": "Only Admins can remove the Admin role",
+				"message": "Only CEO or COO can remove an executive role",
 			})
 			return
 		}
 		if isNewAdmin {
 			respondJSON(w, http.StatusForbidden, map[string]string{
 				"error":   "forbidden",
-				"message": "Only Admins can assign the Admin role",
+				"message": "Only CEO or COO can assign an executive role",
 			})
 			return
 		}

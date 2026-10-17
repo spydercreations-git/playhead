@@ -100,7 +100,7 @@ export default function TeamPage() {
   // Invite modal
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<string>("editor");
+  const [inviteRole, setInviteRole] = useState<string>("Editor");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
@@ -119,6 +119,7 @@ export default function TeamPage() {
   const maxTrialSeats = 5;
   const totalSeatsUsed = members.length + invites.length;
   const seatsRemaining = Math.max(0, maxTrialSeats - totalSeatsUsed);
+  const canChangeRoles = currentRole?.toLowerCase() === "ceo" || currentRole?.toLowerCase() === "coo";
 
   async function loadTeamData() {
     try {
@@ -273,13 +274,15 @@ export default function TeamPage() {
 
         <div className="flex items-center gap-2">
           {activeTab === "roles" ? (
-            <button
-              onClick={() => setRoleModalOpen(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3B67E0] transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              New Role
-            </button>
+            canChangeRoles && (
+              <button
+                onClick={() => setRoleModalOpen(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#4876F3] px-4 py-2 text-xs font-semibold text-white shadow hover:bg-[#3B67E0] transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                New Role
+              </button>
+            )
           ) : (
             <button
               onClick={() => setInviteModalOpen(true)}
@@ -365,29 +368,38 @@ export default function TeamPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <select
-                            value={m.role}
-                            disabled={isSelf}
-                            onChange={(e) => handleUpdateRole(m.user_id, e.target.value)}
-                            className="bg-[#181818] border border-[#424344] rounded-lg px-2.5 py-1 text-xs text-white disabled:opacity-50"
-                          >
-                            <option value="admin">Admin</option>
-                            <option value="manager">Manager</option>
-                            <option value="editor">Editor</option>
-                            {roles
-                              .filter((r) => !r.is_system && r.name.toLowerCase() !== "manager" && r.name.toLowerCase() !== "editor")
-                              .map((r) => (
-                                <option key={r.id} value={r.name}>
-                                  {r.name}
-                                </option>
-                              ))}
-                          </select>
+                          {canChangeRoles && !isSelf ? (
+                            <select
+                              value={m.role}
+                              onChange={(e) => handleUpdateRole(m.user_id, e.target.value)}
+                              className="bg-[#181818] border border-[#424344] rounded-lg px-2.5 py-1 text-xs text-white"
+                            >
+                              <option value="CEO">CEO</option>
+                              <option value="COO">COO</option>
+                              <option value="CFO">CFO</option>
+                              <option value="Chief Sales Officer">Chief Sales Officer</option>
+                              <option value="Design Head">Design Head</option>
+                              <option value="Project Manager">Project Manager</option>
+                              <option value="Editor">Editor</option>
+                              {roles
+                                .filter((r) => !r.is_system && !["ceo", "coo", "cfo", "chief sales officer", "design head", "project manager", "editor"].includes(r.name.toLowerCase()))
+                                .map((r) => (
+                                  <option key={r.id} value={r.name}>
+                                    {r.name}
+                                  </option>
+                                ))}
+                            </select>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#2A2B30] text-xs font-medium text-white border border-[#2E2F34]">
+                              {m.role}
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-[#A3A6AD]">
                           {m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "Active"}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          {!isSelf && (
+                          {canChangeRoles && !isSelf && (
                             <button
                               onClick={() => setMemberToRemove({ id: m.user_id, name: m.name || m.email })}
                               className="text-xs text-[#F0506E] hover:text-[#F0506E]/80 font-medium"
@@ -640,11 +652,19 @@ export default function TeamPage() {
                   onChange={(e) => setInviteRole(e.target.value)}
                   className="w-full h-10 bg-[#2A2B30] border border-[#2E2F34] rounded-[10px] px-3.5 pr-9 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors"
                 >
-                  <option value="editor">Editor</option>
-                  <option value="manager">Manager</option>
-                  <option value="admin">Admin</option>
+                  {canChangeRoles && (
+                    <>
+                      <option value="CEO">CEO</option>
+                      <option value="COO">COO</option>
+                      <option value="CFO">CFO</option>
+                      <option value="Chief Sales Officer">Chief Sales Officer</option>
+                      <option value="Design Head">Design Head</option>
+                    </>
+                  )}
+                  <option value="Project Manager">Project Manager</option>
+                  <option value="Editor">Editor</option>
                   {roles
-                    .filter((r) => !r.is_system && r.name.toLowerCase() !== "manager" && r.name.toLowerCase() !== "editor")
+                    .filter((r) => !r.is_system && !["ceo", "coo", "cfo", "chief sales officer", "design head", "project manager", "editor"].includes(r.name.toLowerCase()))
                     .map((r) => (
                       <option key={r.id} value={r.name}>
                         {r.name}

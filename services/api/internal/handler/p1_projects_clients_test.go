@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
@@ -159,6 +160,28 @@ func TestP1ProjectsAndClients(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create commenter user: %v", err)
 	}
+
+	// In the new access model, client people see projects they are added to
+	_, _ = queries.CreateGrant(ctx, db.CreateGrantParams{
+		CompanyID:   comp.ID,
+		TargetType:  "project",
+		TargetID:    projA1.ID,
+		Email:       authz.NormalizeEmail(commenterUser.Email),
+		UserID:      commenterUser.ID,
+		Level:       authz.LevelCommenter,
+		CanDownload: true,
+		GrantedBy:   adminUser.ID,
+	})
+	_, _ = queries.CreateGrant(ctx, db.CreateGrantParams{
+		CompanyID:   comp.ID,
+		TargetType:  "project",
+		TargetID:    projA2.ID,
+		Email:       authz.NormalizeEmail(commenterUser.Email),
+		UserID:      commenterUser.ID,
+		Level:       authz.LevelCommenter,
+		CanDownload: true,
+		GrantedBy:   adminUser.ID,
+	})
 
 	reqListCommenter := httptest.NewRequest("GET", "/api/v1/projects", nil)
 	reqListCommenter = reqListCommenter.WithContext(contextWithAuth(reqListCommenter.Context(), commenterUser, comp.ID, ""))
@@ -358,8 +381,15 @@ func contextWithAuth(parent context.Context, u db.User, companyID pgtype.UUID, r
 		Email: u.Email,
 		Name:  u.Name,
 	}
+	person := authz.Person{
+		UserID:    uuid.UUID(u.ID.Bytes),
+		Email:     u.Email,
+		Role:      role,
+		CompanyID: uuid.UUID(companyID.Bytes),
+	}
 	ctx := context.WithValue(parent, middleware.UserContextKey, authUser)
 	ctx = context.WithValue(ctx, middleware.CompanyContextKey, companyID)
 	ctx = context.WithValue(ctx, middleware.RoleContextKey, role)
+	ctx = context.WithValue(ctx, middleware.PersonContextKey, person)
 	return ctx
 }

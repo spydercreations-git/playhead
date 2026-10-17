@@ -10,7 +10,6 @@ interface ProjectCardProps {
   clientName?: string;
   videoCount?: number;
   totalBytes?: number;
-  isRestricted?: boolean;
   waitingReviewCount?: number;
   members?: { id?: string; email?: string; name?: string; color?: string }[];
   thumbnails?: string[];
@@ -31,7 +30,6 @@ export function ProjectCard({
   clientName,
   videoCount = 0,
   totalBytes = 0,
-  isRestricted = false,
   waitingReviewCount = 0,
   members = [],
   thumbnails = [],
@@ -133,14 +131,6 @@ export function ProjectCard({
                   )}
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Badges on preview: Restricted Lock badge */}
-          {isRestricted && (
-            <div className="absolute top-2 left-2 flex items-center gap-1 rounded-md bg-black/70 backdrop-blur-sm px-1.5 py-0.5 border border-[#FFBB56]/30 text-[#FFBB56] text-xs font-semibold z-20">
-              <Lock size={12} />
-              <span>Restricted</span>
             </div>
           )}
 

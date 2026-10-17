@@ -50,7 +50,7 @@ ORDER BY
   i.name ASC;
 
 -- name: ListAllProjectFolders :many
-SELECT id, project_id, parent_id, name, file_count, folder_count, video_count, total_bytes, is_restricted
+SELECT id, project_id, parent_id, name, file_count, folder_count, video_count, total_bytes
 FROM items
 WHERE company_id = @company_id
   AND project_id = @project_id
@@ -106,26 +106,18 @@ RETURNING *;
 DELETE FROM items
 WHERE id = @id AND company_id = @company_id;
 
--- name: SetItemRestricted :one
-UPDATE items
-SET is_restricted = @is_restricted,
-    updated_at = NOW()
-WHERE id = @id AND company_id = @company_id
-RETURNING *;
-
-
 -- Get path ancestors for an item
 -- name: GetItemAncestors :many
 WITH RECURSIVE item_ancestors AS (
-    SELECT items.id, items.parent_id, items.name, items.kind, items.is_restricted, 0 as depth
+    SELECT items.id, items.parent_id, items.name, items.kind, 0 as depth
     FROM items
     WHERE items.id = @item_id AND items.company_id = @company_id
     UNION ALL
-    SELECT i.id, i.parent_id, i.name, i.kind, i.is_restricted, ia.depth + 1
+    SELECT i.id, i.parent_id, i.name, i.kind, ia.depth + 1
     FROM items i
     JOIN item_ancestors ia ON i.id = ia.parent_id
 )
-SELECT ia.id, ia.parent_id, ia.name, ia.kind, ia.is_restricted
+SELECT ia.id, ia.parent_id, ia.name, ia.kind
 FROM item_ancestors ia
 ORDER BY ia.depth DESC;
 

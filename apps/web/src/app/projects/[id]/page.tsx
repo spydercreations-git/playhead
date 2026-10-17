@@ -1280,9 +1280,6 @@ export default function ProjectWorkspacePage() {
                         <div className="flex items-center gap-2 truncate">
                           <Folder className={`w-3.5 h-3.5 ${isActive || isOver ? "text-[#4876F3]" : "text-[#7C7F87]"}`} />
                           <span className="truncate">{f.name}</span>
-                          {f.is_restricted && (
-                            <Lock className="w-3 h-3 text-amber-400 shrink-0" />
-                          )}
                         </div>
                         <span className="text-xs text-[#7C7F87] tabular-nums">
                           {isOver ? "Move here" : (f.file_count || 0)}
@@ -1746,7 +1743,6 @@ export default function ProjectWorkspacePage() {
                                     name={folder.name}
                                     itemCount={(folder.file_count || 0) + (folder.folder_count || 0)}
                                     totalBytes={folder.total_bytes || 0}
-                                    isRestricted={Boolean(folder.is_restricted)}
                                     thumbnails={folder.thumbnails || []}
                                     isSelected={isSelected}
                                     isDropTarget={
@@ -1837,11 +1833,6 @@ export default function ProjectWorkspacePage() {
                               <td className="py-2.5 px-3 flex items-center gap-2.5 min-w-0">
                                 <Folder className="w-4 h-4 text-[#4876F3] shrink-0" />
                                 <span className="font-medium text-white truncate text-xs">{folder.name}</span>
-                                {folder.is_restricted && (
-                                  <span className="text-xs px-1.5 py-0.5 rounded bg-[#FFBB56]/10 text-[#FFBB56] border border-[#FFBB56]/20 shrink-0">
-                                    Restricted
-                                  </span>
-                                )}
                               </td>
                               <td className="py-2.5 px-3 text-xs text-[#A3A6AD] tabular-nums">
                                 {folder.file_count || 0} {folder.file_count === 1 ? "file" : "files"}
@@ -2354,16 +2345,6 @@ export default function ProjectWorkspacePage() {
         isOpen={!!manageAccessDialogState?.isOpen}
         targetName={manageAccessDialogState?.targetName || project.name}
         onClose={() => setManageAccessDialogState(null)}
-        isRestricted={Boolean(workspaceData?.project?.is_restricted)}
-        onToggleRestricted={(restricted) => {
-          apiRequest(`/projects/${projectId}`, {
-            method: "PATCH",
-            body: JSON.stringify({ is_restricted: restricted }),
-          }).then(() => {
-            queryClient.invalidateQueries({ queryKey: ["project-items", projectId] });
-            toast.success(restricted ? "Project restricted" : "Inherited access restored");
-          });
-        }}
         members={
           grantsData?.grants?.map((g: any) => ({
             id: g.id || g.user_id,

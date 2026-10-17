@@ -172,7 +172,7 @@ func (q *Queries) CreateGrant(ctx context.Context, arg CreateGrantParams) (Grant
 const createItem = `-- name: CreateItem :one
 INSERT INTO items (company_id, project_id, parent_id, kind, name, position, created_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
 `
 
 type CreateItemParams struct {
@@ -217,7 +217,6 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (Item, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VideoCount,
-		&i.IsRestricted,
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
@@ -255,7 +254,7 @@ func (q *Queries) CreateLoginCode(ctx context.Context, arg CreateLoginCodeParams
 const createProject = `-- name: CreateProject :one
 INSERT INTO projects (company_id, client_id, name, created_by)
 VALUES ($1, $2, $3, $4)
-RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at, is_restricted
+RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at
 `
 
 type CreateProjectParams struct {
@@ -289,7 +288,6 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
-		&i.IsRestricted,
 	)
 	return i, err
 }
@@ -517,7 +515,7 @@ func (q *Queries) GetGrantByTargetAndEmail(ctx context.Context, arg GetGrantByTa
 }
 
 const getProjectByID = `-- name: GetProjectByID :one
-SELECT p.id, p.company_id, p.client_id, p.name, p.status, p.tracker_item_id, p.file_count, p.folder_count, p.video_count, p.total_bytes, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.is_restricted, c.name AS client_name
+SELECT p.id, p.company_id, p.client_id, p.name, p.status, p.tracker_item_id, p.file_count, p.folder_count, p.video_count, p.total_bytes, p.created_by, p.created_at, p.updated_at, p.deleted_at, c.name AS client_name
 FROM projects p
 JOIN clients c ON c.id = p.client_id
 WHERE p.company_id = $1 AND p.id = $2 AND p.deleted_at IS NULL
@@ -543,7 +541,6 @@ type GetProjectByIDRow struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
-	IsRestricted  bool               `json:"is_restricted"`
 	ClientName    string             `json:"client_name"`
 }
 
@@ -565,7 +562,6 @@ func (q *Queries) GetProjectByID(ctx context.Context, arg GetProjectByIDParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
-		&i.IsRestricted,
 		&i.ClientName,
 	)
 	return i, err
@@ -892,7 +888,7 @@ func (q *Queries) ListGrantsByTarget(ctx context.Context, arg ListGrantsByTarget
 }
 
 const listItemsByProjectAndParent = `-- name: ListItemsByProjectAndParent :many
-SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category FROM items
+SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category FROM items
 WHERE company_id = $1
   AND project_id = $2
   AND ($3::uuid IS NULL AND parent_id IS NULL OR parent_id = $3)
@@ -935,7 +931,6 @@ func (q *Queries) ListItemsByProjectAndParent(ctx context.Context, arg ListItems
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.VideoCount,
-			&i.IsRestricted,
 			&i.DriveOwnerID,
 			&i.IsDefaultFolder,
 			&i.Category,
@@ -951,7 +946,7 @@ func (q *Queries) ListItemsByProjectAndParent(ctx context.Context, arg ListItems
 }
 
 const listProjectsForAdminOrManager = `-- name: ListProjectsForAdminOrManager :many
-SELECT p.id, p.company_id, p.client_id, p.name, p.status, p.tracker_item_id, p.file_count, p.folder_count, p.video_count, p.total_bytes, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.is_restricted, c.name AS client_name,
+SELECT p.id, p.company_id, p.client_id, p.name, p.status, p.tracker_item_id, p.file_count, p.folder_count, p.video_count, p.total_bytes, p.created_by, p.created_at, p.updated_at, p.deleted_at, c.name AS client_name,
     COALESCE((SELECT COUNT(*) FROM items i WHERE i.project_id = p.id AND i.deleted_at IS NULL AND i.kind = 'file' AND (i.review_status = 'needs_review' OR i.review_status = 'pending' OR i.review_status = 'in_review')), 0)::int AS to_review_count
 FROM projects p
 JOIN clients c ON c.id = p.client_id
@@ -983,7 +978,6 @@ type ListProjectsForAdminOrManagerRow struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
-	IsRestricted  bool               `json:"is_restricted"`
 	ClientName    string             `json:"client_name"`
 	ToReviewCount int32              `json:"to_review_count"`
 }
@@ -1012,7 +1006,6 @@ func (q *Queries) ListProjectsForAdminOrManager(ctx context.Context, arg ListPro
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
-			&i.IsRestricted,
 			&i.ClientName,
 			&i.ToReviewCount,
 		); err != nil {
@@ -1027,27 +1020,24 @@ func (q *Queries) ListProjectsForAdminOrManager(ctx context.Context, arg ListPro
 }
 
 const listProjectsForUserWithAccess = `-- name: ListProjectsForUserWithAccess :many
-SELECT DISTINCT p.id, p.company_id, p.client_id, p.name, p.status, p.tracker_item_id, p.file_count, p.folder_count, p.video_count, p.total_bytes, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.is_restricted, c.name AS client_name,
+SELECT DISTINCT p.id, p.company_id, p.client_id, p.name, p.status, p.tracker_item_id, p.file_count, p.folder_count, p.video_count, p.total_bytes, p.created_by, p.created_at, p.updated_at, p.deleted_at, c.name AS client_name,
     COALESCE((SELECT COUNT(*) FROM items i WHERE i.project_id = p.id AND i.deleted_at IS NULL AND i.kind = 'file' AND (i.review_status = 'needs_review' OR i.review_status = 'pending' OR i.review_status = 'in_review')), 0)::int AS to_review_count
 FROM projects p
 JOIN clients c ON c.id = p.client_id
-LEFT JOIN grants g ON g.target_type = 'project' AND g.target_id = p.id AND LOWER(g.email) = $1
-LEFT JOIN client_contacts cc ON cc.client_id = p.client_id AND LOWER(cc.email) = $1 AND cc.default_level != 'none'
+LEFT JOIN grants g ON g.target_type = 'project' AND g.target_id = p.id AND LOWER(g.email) = LOWER($1) AND g.level != 'none' AND g.level != ''
 WHERE p.company_id = $2
   AND p.deleted_at IS NULL
   AND ($3::uuid IS NULL OR p.client_id = $3)
   AND ($4::text IS NULL OR p.status = $4)
   AND (
-    (p.is_restricted = FALSE AND (g.id IS NOT NULL OR cc.id IS NOT NULL))
-    OR
-    (p.is_restricted = TRUE AND (g.id IS NOT NULL OR EXISTS (
+    g.id IS NOT NULL OR EXISTS (
         SELECT 1 FROM grants ig
         JOIN items i ON i.id = ig.target_id AND i.deleted_at IS NULL
         WHERE i.project_id = p.id
           AND (ig.target_type = 'item' OR ig.target_type = 'folder')
           AND LOWER(ig.email) = LOWER($1)
           AND ig.level != 'none' AND ig.level != ''
-    )))
+    )
   )
 ORDER BY p.updated_at DESC
 `
@@ -1074,7 +1064,6 @@ type ListProjectsForUserWithAccessRow struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
-	IsRestricted  bool               `json:"is_restricted"`
 	ClientName    string             `json:"client_name"`
 	ToReviewCount int32              `json:"to_review_count"`
 }
@@ -1108,7 +1097,6 @@ func (q *Queries) ListProjectsForUserWithAccess(ctx context.Context, arg ListPro
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
-			&i.IsRestricted,
 			&i.ClientName,
 			&i.ToReviewCount,
 		); err != nil {
@@ -1127,7 +1115,7 @@ UPDATE projects
 SET client_id = $1,
     updated_at = NOW()
 WHERE company_id = $2 AND id = $3 AND deleted_at IS NULL
-RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at, is_restricted
+RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at
 `
 
 type MoveProjectToClientParams struct {
@@ -1154,7 +1142,6 @@ func (q *Queries) MoveProjectToClient(ctx context.Context, arg MoveProjectToClie
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
-		&i.IsRestricted,
 	)
 	return i, err
 }
@@ -1164,7 +1151,7 @@ UPDATE projects
 SET status = $1,
     updated_at = NOW()
 WHERE company_id = $2 AND id = $3 AND deleted_at IS NULL
-RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at, is_restricted
+RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at
 `
 
 type SetProjectStatusParams struct {
@@ -1191,7 +1178,6 @@ func (q *Queries) SetProjectStatus(ctx context.Context, arg SetProjectStatusPara
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
-		&i.IsRestricted,
 	)
 	return i, err
 }
@@ -1371,26 +1357,19 @@ func (q *Queries) UpdateGrant(ctx context.Context, arg UpdateGrantParams) (Grant
 const updateProject = `-- name: UpdateProject :one
 UPDATE projects
 SET name = COALESCE($1, name),
-    is_restricted = COALESCE($2, is_restricted),
     updated_at = NOW()
-WHERE company_id = $3 AND id = $4 AND deleted_at IS NULL
-RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at, is_restricted
+WHERE company_id = $2 AND id = $3 AND deleted_at IS NULL
+RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at
 `
 
 type UpdateProjectParams struct {
-	Name         pgtype.Text `json:"name"`
-	IsRestricted pgtype.Bool `json:"is_restricted"`
-	CompanyID    pgtype.UUID `json:"company_id"`
-	ID           pgtype.UUID `json:"id"`
+	Name      pgtype.Text `json:"name"`
+	CompanyID pgtype.UUID `json:"company_id"`
+	ID        pgtype.UUID `json:"id"`
 }
 
 func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error) {
-	row := q.db.QueryRow(ctx, updateProject,
-		arg.Name,
-		arg.IsRestricted,
-		arg.CompanyID,
-		arg.ID,
-	)
+	row := q.db.QueryRow(ctx, updateProject, arg.Name, arg.CompanyID, arg.ID)
 	var i Project
 	err := row.Scan(
 		&i.ID,
@@ -1407,7 +1386,6 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
-		&i.IsRestricted,
 	)
 	return i, err
 }

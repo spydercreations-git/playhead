@@ -20,23 +20,45 @@ import (
 
 // Roles at Company Level
 const (
-	RoleAdmin   = "admin"
-	RoleManager = "manager"
-	RoleEditor  = "editor"
+	// Full access executive roles ("Admins" internally, no "Admin" word in UI)
+	RoleCEO        = "CEO"
+	RoleCOO        = "COO"
+	RoleCFO        = "CFO"
+	RoleCSO        = "Chief Sales Officer"
+	RoleDesignHead = "Design Head"
+
+	// Per-project roles
+	RoleProjectManager = "Project Manager"
+	RoleEditor         = "Editor"
+
+	// Access Types
+	AccessTypeFull       = "full_access"
+	AccessTypePerProject = "per_project"
 
 	// Legacy aliases maintained for backward compatibility
-	RoleOwner  = "owner"
-	RoleMember = "member"
-	RoleGuest  = "guest"
+	RoleAdmin   = "Admin"
+	RoleOwner   = "Owner"
+	RoleManager = "Manager"
+	RoleMember  = "Member"
+	RoleGuest   = "Guest"
 )
 
 var roleHierarchy = map[string]int{
-	RoleOwner:   40,
-	RoleAdmin:   30,
-	RoleManager: 20,
-	RoleEditor:  10,
-	RoleMember:  10,
-	RoleGuest:   5,
+	"owner":               60,
+	"ceo":                 50,
+	"coo":                 50,
+	"cfo":                 50,
+	"chief sales officer": 50,
+	"chief_sales_officer": 50,
+	"design head":         50,
+	"design_head":         50,
+	"admin":               50,
+	"project manager":     30,
+	"project_manager":     30,
+	"manager":             30,
+	"editor":              10,
+	"member":              10,
+	"guest":               5,
 }
 
 // Access Levels at Project, Folder, and File Level
@@ -45,11 +67,13 @@ const (
 	LevelViewer    = "viewer"
 	LevelCommenter = "commenter"
 	LevelUploader  = "uploader"
+	LevelEditor    = "editor"
 	LevelFull      = "full"
 )
 
 var accessHierarchy = map[string]int{
-	LevelFull:      40,
+	LevelFull:      50,
+	LevelEditor:    40,
 	LevelUploader:  30,
 	LevelCommenter: 20,
 	LevelViewer:    10,
@@ -70,8 +94,8 @@ func NormalizeEmail(email string) string {
 
 // IsAtLeast verifies that the user's role meets or exceeds the required minimum role.
 func IsAtLeast(userRole, requiredRole string) bool {
-	userLevel, okUser := roleHierarchy[userRole]
-	reqLevel, okReq := roleHierarchy[requiredRole]
+	userLevel, okUser := roleHierarchy[strings.ToLower(userRole)]
+	reqLevel, okReq := roleHierarchy[strings.ToLower(requiredRole)]
 	if !okUser || !okReq {
 		return false
 	}
@@ -126,29 +150,50 @@ var AllPermissions = []string{
 type Person struct {
 	UserID      uuid.UUID
 	Email       string
-	Role        string // Role name (e.g. "Admin", "Manager", "Editor")
+	Role        string // Role name (e.g. "CEO", "COO", "Project Manager", "Editor")
 	RoleID      uuid.UUID
 	Permissions []string
 	CompanyID   uuid.UUID
 }
 
+// IsFullAccess returns true if the role string represents a full access leadership role.
+func IsFullAccess(role string) bool {
+	r := strings.ToLower(strings.TrimSpace(role))
+	return r == "ceo" || r == "coo" || r == "cfo" || r == "chief sales officer" || r == "chief_sales_officer" || r == "design head" || r == "design_head" || r == "admin" || r == "owner"
+}
+
+// CanChangeRoles returns true if the role is authorized to change roles in Team (CEO or COO).
+func CanChangeRoles(role string) bool {
+	r := strings.ToLower(strings.TrimSpace(role))
+	return r == "ceo" || r == "coo" || r == "admin" || r == "owner"
+}
+
+// IsFullAccess returns true if the person has a full access leadership role.
+func (p Person) IsFullAccess() bool {
+	return IsFullAccess(p.Role)
+}
+
 // HasPermission checks if the person possesses the requested permission.
 func (p Person) HasPermission(permission string) bool {
+	if p.IsFullAccess() {
+		return true
+	}
 	for _, perm := range p.Permissions {
 		if perm == permission {
 			return true
 		}
-	}
-	r := strings.ToLower(p.Role)
-	if r == RoleAdmin || r == RoleOwner {
-		return true
 	}
 	return false
 }
 
 // IsAdmin returns true if the person has administrative permissions.
 func (p Person) IsAdmin() bool {
-	return p.HasPermission(PermAdminSettings)
+	return p.IsFullAccess()
+}
+
+// CanChangeRoles returns true if the user is authorized to change roles in Team.
+func (p Person) CanChangeRoles() bool {
+	return CanChangeRoles(p.Role)
 }
 
 // IsTeamMember returns true if the person is an authenticated team member of the company (not a client contact or guest).
@@ -161,16 +206,16 @@ func (p Person) IsTeamMember() bool {
 
 // ProjectTarget represents the project resource being accessed.
 type ProjectTarget struct {
-	ID           uuid.UUID
-	CompanyID    uuid.UUID
-	ClientID     uuid.UUID
-	IsRestricted bool
+	ID        uuid.UUID
+	CompanyID uuid.UUID
+	ClientID  uuid.UUID
 }
 
 // AccessResult describes the evaluated access level and download rights.
 type AccessResult struct {
-	Level       string
-	CanDownload bool
+	Level          string
+	CanDownload    bool
+	IsProjectLevel bool
 }
 
 func (a AccessResult) CanView() bool {
@@ -178,22 +223,32 @@ func (a AccessResult) CanView() bool {
 }
 
 func (a AccessResult) CanComment() bool {
-	return a.Level == LevelCommenter || a.Level == LevelUploader || a.Level == LevelFull
+	return a.Level == LevelCommenter || a.Level == LevelUploader || a.Level == LevelEditor || a.Level == LevelFull
 }
 
 func (a AccessResult) CanUpload() bool {
-	return a.Level == LevelUploader || a.Level == LevelFull
+	return a.Level == LevelUploader || a.Level == LevelEditor || a.Level == LevelFull
+}
+
+func (a AccessResult) CanEdit() bool {
+	return a.Level == LevelEditor || a.Level == LevelFull
 }
 
 func (a AccessResult) CanManage() bool {
 	return a.Level == LevelFull
 }
 
+func (a AccessResult) CanDeleteProject(person Person) bool {
+	return person.IsFullAccess() || a.Level == LevelFull
+}
+
+func (a AccessResult) CanRenameProject(person Person) bool {
+	return person.IsFullAccess() || a.Level == LevelFull || a.Level == LevelEditor
+}
+
 // CanModifyItem returns true if the person can rename, move, or delete an item.
-// Full access can modify any item. Uploader can only modify items they created themselves.
-// Viewers and Commenters can never modify items.
 func (a AccessResult) CanModifyItem(person Person, itemCreatedBy uuid.UUID) bool {
-	if a.Level == LevelFull {
+	if person.IsFullAccess() || a.Level == LevelFull || a.Level == LevelEditor {
 		return true
 	}
 	if a.Level == LevelUploader && person.UserID != uuid.Nil && itemCreatedBy != uuid.Nil && person.UserID == itemCreatedBy {
@@ -204,21 +259,33 @@ func (a AccessResult) CanModifyItem(person Person, itemCreatedBy uuid.UUID) bool
 
 // CanManagePeople checks if a person is allowed to add, edit, or remove members on a project.
 func CanManagePeople(person Person, access AccessResult) bool {
-	r := strings.ToLower(person.Role)
-	if person.IsAdmin() || person.HasPermission(PermProjectsManagePeople) || r == RoleManager || r == RoleAdmin || r == RoleOwner {
+	if person.IsFullAccess() {
 		return true
+	}
+	r := strings.ToLower(strings.TrimSpace(person.Role))
+	if r == "project manager" || r == "project_manager" || r == "manager" {
+		return access.Level == LevelFull || access.Level == LevelEditor
 	}
 	return access.Level == LevelFull
 }
 
+// CanCreateProjects checks if a person can create new projects.
+func CanCreateProjects(person Person) bool {
+	if person.IsFullAccess() {
+		return true
+	}
+	r := strings.ToLower(person.Role)
+	return r == RoleProjectManager || r == RoleManager || person.HasPermission(PermProjectsCreate)
+}
+
 // CanShareItem checks if a person is allowed to add or change people (grants) on an item.
 func CanShareItem(person Person, access AccessResult) bool {
-	return access.Level == LevelFull
+	return person.IsFullAccess() || access.Level == LevelFull
 }
 
 // CanCreatePublicShareLink checks if a person can create a public share link for an item.
 func CanCreatePublicShareLink(person Person, access AccessResult) bool {
-	return access.Level == LevelFull && person.HasPermission(PermSharingCreatePublicLinks)
+	return person.IsFullAccess() || (access.Level == LevelFull && person.HasPermission(PermSharingCreatePublicLinks))
 }
 
 // ItemTarget represents an item resource being accessed.
@@ -227,74 +294,21 @@ type ItemTarget struct {
 	ProjectID    uuid.UUID
 	CompanyID    uuid.UUID
 	CreatedBy    uuid.UUID
-	IsRestricted bool
 	DriveOwnerID uuid.UUID
 }
 
-// Access evaluates a person's permissions on a project by combining:
-// 1. Team role permissions (projects.view_all gives Full access + CanDownload=true)
-// 2. Project grants
-// 3. Client contact default access
-// Returning the highest level and appropriate CanDownload flag.
+// Access evaluates a person's permissions on a project.
 func Access(ctx context.Context, q *db.Queries, person Person, project ProjectTarget) (AccessResult, error) {
 	normEmail := NormalizeEmail(person.Email)
 
-	// Restricted project enforcement:
-	// When a project is marked restricted:
-	// - Inherited access from company role (Member) or client membership STOPS.
-	// - Only Admins/Owners and people with an explicit grant on that project can see it.
-	// - If a person has an explicit grant on a folder or file inside the project, they can view the project container.
-	// - For everyone else it does not exist (returns LevelNone -> 404).
-	if project.IsRestricted {
-		if person.IsAdmin() {
-			return AccessResult{
-				Level:       LevelFull,
-				CanDownload: true,
-			}, nil
-		}
-		// Non-admins must have an explicit project grant or an explicit grant on a folder/item in the project
-		if q != nil && project.ID != uuid.Nil && normEmail != "" {
-			grant, err := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
-				TargetType: "project",
-				TargetID:   pgtype.UUID{Bytes: project.ID, Valid: true},
-				Email:      normEmail,
-			})
-			if err == nil && grant.Level != LevelNone && grant.Level != "" {
-				return AccessResult{
-					Level:       grant.Level,
-					CanDownload: grant.CanDownload,
-				}, nil
-			}
-
-			hasItemGrant, hErr := q.UserHasAnyItemGrantInProject(ctx, db.UserHasAnyItemGrantInProjectParams{
-				ProjectID: pgtype.UUID{Bytes: project.ID, Valid: true},
-				Email:     normEmail,
-			})
-			if hErr == nil && hasItemGrant {
-				return AccessResult{
-					Level:       LevelViewer,
-					CanDownload: false,
-				}, nil
-			}
-		}
-		return AccessResult{Level: LevelNone, CanDownload: false}, nil
-	}
-
-	// 1. Team role / permissions: users with projects.view_all (Admins, Managers) get Full access
-	if person.HasPermission(PermProjectsViewAll) {
-		canDL := true
-		if !person.HasPermission(PermFilesDownloadAll) && !person.IsAdmin() {
-			canDL = false
-		}
+	// 1. Full access executive roles ("Admins") have universal access
+	if person.IsFullAccess() {
 		return AccessResult{
-			Level:       LevelFull,
-			CanDownload: canDL,
+			Level:          LevelFull,
+			CanDownload:    true,
+			IsProjectLevel: true,
 		}, nil
 	}
-
-	var hasGrant bool
-	var grantLevel string
-	var grantCanDownload bool
 
 	// 2. Check project grant
 	if q != nil && project.ID != uuid.Nil && normEmail != "" {
@@ -303,107 +317,44 @@ func Access(ctx context.Context, q *db.Queries, person Person, project ProjectTa
 			TargetID:   pgtype.UUID{Bytes: project.ID, Valid: true},
 			Email:      normEmail,
 		})
-		if err == nil {
-			hasGrant = true
-			grantLevel = grant.Level
-			grantCanDownload = grant.CanDownload
-		} else if !errors.Is(err, pgx.ErrNoRows) {
-			return AccessResult{Level: LevelNone, CanDownload: false}, err
-		}
-	}
-
-	var hasContactDefault bool
-	var contactLevel string
-	var contactCanDownload bool
-
-	// 3. Check client contact default access for this project's client
-	if q != nil && project.ClientID != uuid.Nil && normEmail != "" {
-		contact, err := q.GetClientContactByClientAndEmail(ctx, db.GetClientContactByClientAndEmailParams{
-			ClientID: pgtype.UUID{Bytes: project.ClientID, Valid: true},
-			Email:    normEmail,
-		})
-		if err == nil && contact.DefaultLevel != LevelNone && contact.DefaultLevel != "" {
-			hasContactDefault = true
-			contactLevel = contact.DefaultLevel
-			contactCanDownload = contact.CanDownload
+		if err == nil && grant.Level != LevelNone && grant.Level != "" {
+			return AccessResult{
+				Level:          grant.Level,
+				CanDownload:    grant.CanDownload,
+				IsProjectLevel: true,
+			}, nil
 		} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return AccessResult{Level: LevelNone, CanDownload: false}, err
 		}
-	}
 
-	// 4. Combine highest level
-	if !hasGrant && !hasContactDefault {
-		return AccessResult{Level: LevelNone, CanDownload: false}, nil
-	}
-
-	if hasGrant && !hasContactDefault {
-		return AccessResult{Level: grantLevel, CanDownload: grantCanDownload}, nil
-	}
-
-	if !hasGrant && hasContactDefault {
-		return AccessResult{Level: contactLevel, CanDownload: contactCanDownload}, nil
-	}
-
-	// Both grant and contact default exist: pick highest rank
-	grantRank := accessHierarchy[grantLevel]
-	contactRank := accessHierarchy[contactLevel]
-
-	if grantRank > contactRank {
-		return AccessResult{Level: grantLevel, CanDownload: grantCanDownload}, nil
-	} else if contactRank > grantRank {
-		return AccessResult{Level: contactLevel, CanDownload: contactCanDownload}, nil
-	}
-
-	// Equal rank: apply strictest CanDownload
-	return AccessResult{
-		Level:       grantLevel,
-		CanDownload: grantCanDownload && contactCanDownload,
-	}, nil
-}
-
-type accessSource struct {
-	Level       string
-	CanDownload bool
-}
-
-func resolveSources(sources []accessSource) AccessResult {
-	if len(sources) == 0 {
-		return AccessResult{Level: LevelNone, CanDownload: false}
-	}
-
-	maxRank := 0
-	bestLevel := LevelNone
-	for _, s := range sources {
-		r := accessHierarchy[s.Level]
-		if r > maxRank {
-			maxRank = r
-			bestLevel = s.Level
+		// Check if user has explicit grant on any folder or item inside this project
+		hasItemGrant, hErr := q.UserHasAnyItemGrantInProject(ctx, db.UserHasAnyItemGrantInProjectParams{
+			ProjectID: pgtype.UUID{Bytes: project.ID, Valid: true},
+			Email:     normEmail,
+		})
+		if hErr == nil && hasItemGrant {
+			return AccessResult{
+				Level:          LevelViewer,
+				CanDownload:    false,
+				IsProjectLevel: false,
+			}, nil
 		}
 	}
 
-	if maxRank == 0 {
-		return AccessResult{Level: LevelNone, CanDownload: false}
-	}
-
-	canDL := true
-	for _, s := range sources {
-		if accessHierarchy[s.Level] == maxRank {
-			if !s.CanDownload {
-				canDL = false
-			}
-		}
-	}
-
-	return AccessResult{
-		Level:       bestLevel,
-		CanDownload: canDL,
-	}
+	return AccessResult{Level: LevelNone, CanDownload: false}, nil
 }
 
-// AccessFolder evaluates permissions on a folder using ancestor chain in a single pass.
-// Fast rule: never check file by file. Resolve once for folder and apply to all children.
+// AccessFolder evaluates permissions on a folder with folder overrides.
 func AccessFolder(ctx context.Context, q *db.Queries, person Person, project ProjectTarget, folderID uuid.UUID) (AccessResult, error) {
 	normEmail := NormalizeEmail(person.Email)
+
+	// Full access executive roles always win
+	if person.IsFullAccess() {
+		return AccessResult{
+			Level:       LevelFull,
+			CanDownload: true,
+		}, nil
+	}
 
 	// Base project access
 	projAccess, err := Access(ctx, q, person, project)
@@ -411,126 +362,68 @@ func AccessFolder(ctx context.Context, q *db.Queries, person Person, project Pro
 		return AccessResult{Level: LevelNone, CanDownload: false}, err
 	}
 
-	// If root of project, return base project access immediately
 	if folderID == uuid.Nil {
-		// On restricted projects, only admins or users with an explicit PROJECT grant can view root items.
-		// A user who only has an item/folder grant inside the project cannot see the project root.
-		if project.IsRestricted && !person.IsAdmin() {
-			hasProjGrant := false
-			if q != nil && project.ID != uuid.Nil && normEmail != "" {
-				grant, gErr := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
-					TargetType: "project",
-					TargetID:   pgtype.UUID{Bytes: project.ID, Valid: true},
-					Email:      normEmail,
-				})
-				if gErr == nil && grant.Level != LevelNone && grant.Level != "" {
-					hasProjGrant = true
-				}
-			}
-			if !hasProjGrant {
-				return AccessResult{Level: LevelNone, CanDownload: false}, nil
-			}
-		}
 		return projAccess, nil
 	}
 
-	var sources []accessSource
-	// On restricted projects, base project access is only inherited if the user has an explicit PROJECT grant or is Admin.
-	// Users who only have item/folder grants inside the project can view the project container, but do NOT inherit access to other folders.
-	canInheritProjectAccess := true
-	if project.IsRestricted && !person.IsAdmin() {
-		hasProjGrant := false
-		if q != nil && project.ID != uuid.Nil && normEmail != "" {
-			grant, gErr := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
-				TargetType: "project",
-				TargetID:   pgtype.UUID{Bytes: project.ID, Valid: true},
-				Email:      normEmail,
-			})
-			if gErr == nil && grant.Level != LevelNone && grant.Level != "" {
-				hasProjGrant = true
-			}
-		}
-		if !hasProjGrant {
-			canInheritProjectAccess = false
-		}
-	}
-
-	if canInheritProjectAccess && projAccess.Level != LevelNone && projAccess.Level != "" {
-		sources = append(sources, accessSource{
-			Level:       projAccess.Level,
-			CanDownload: projAccess.CanDownload,
-		})
-	}
-
-	isFolderRestricted := false
-	var folderExplicitGrant *db.Grant
-
-	if q != nil {
+	// Check for folder overrides along ancestor chain. Specific folder override wins!
+	if q != nil && normEmail != "" {
 		ancestors, err := q.GetItemAncestors(ctx, db.GetItemAncestorsParams{
 			ItemID:    pgtype.UUID{Bytes: folderID, Valid: true},
 			CompanyID: pgtype.UUID{Bytes: project.CompanyID, Valid: true},
 		})
 		if err == nil {
-			for _, anc := range ancestors {
-				if anc.IsRestricted {
-					isFolderRestricted = true
-				}
+			for i := len(ancestors) - 1; i >= 0; i-- {
+				anc := ancestors[i]
 				grant, gErr := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
-					TargetType: "item",
+					TargetType: "folder",
 					TargetID:   anc.ID,
 					Email:      normEmail,
 				})
 				if gErr != nil {
 					grant, gErr = q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
-						TargetType: "folder",
+						TargetType: "item",
 						TargetID:   anc.ID,
 						Email:      normEmail,
 					})
 				}
-				if gErr == nil && grant.Level != LevelNone && grant.Level != "" {
-					folderExplicitGrant = &grant
-					sources = append(sources, accessSource{
-						Level:       grant.Level,
-						CanDownload: grant.CanDownload,
-					})
+				if gErr == nil && grant.Level != "" {
+					if grant.Level == LevelNone {
+						return AccessResult{Level: LevelNone, CanDownload: false}, nil
+					}
+					return AccessResult{
+						Level:          grant.Level,
+						CanDownload:    grant.CanDownload,
+						IsProjectLevel: false,
+					}, nil
 				}
 			}
 		}
 	}
 
-	// If folder or any ancestor is restricted:
-	// Inherited access from company role (Member) or client membership STOPS.
-	// Only Admins and people with an explicit grant on that project/folder can see it.
-	if isFolderRestricted {
-		if person.IsAdmin() {
-			return AccessResult{Level: LevelFull, CanDownload: true}, nil
-		}
-		if folderExplicitGrant != nil {
-			return AccessResult{
-				Level:       folderExplicitGrant.Level,
-				CanDownload: folderExplicitGrant.CanDownload,
-			}, nil
-		}
+	if !projAccess.IsProjectLevel {
 		return AccessResult{Level: LevelNone, CanDownload: false}, nil
 	}
 
-	return resolveSources(sources), nil
+	return projAccess, nil
 }
 
 // AccessItem evaluates permissions on an item by resolving its parent folder access.
 func AccessItem(ctx context.Context, q *db.Queries, person Person, project ProjectTarget, item ItemTarget) (AccessResult, error) {
-	// My Drive items: Strictly private to the drive owner.
-	// For any item with drive_owner_id set, NO grants, comments, or downloads by others are permitted.
+	// Full access executive roles always win
+	if person.IsFullAccess() {
+		return AccessResult{
+			Level:       LevelFull,
+			CanDownload: true,
+		}, nil
+	}
+
+	// My Drive items: Admins only (handled by person.IsFullAccess() check above)
 	if item.DriveOwnerID != uuid.Nil {
-		if person.UserID != uuid.Nil && person.UserID == item.DriveOwnerID {
-			return AccessResult{Level: LevelFull, CanDownload: true}, nil
-		}
 		return AccessResult{Level: LevelNone, CanDownload: false}, nil
 	}
 
-	// Unprojected items ("My documents" / unprojected spreadsheets):
-	// Visible ONLY to creator and people with explicit grants.
-	// Admins cannot see others' private docs unless explicitly granted.
+	// Unprojected items: creator or explicit grants
 	if item.ProjectID == uuid.Nil {
 		if person.UserID != uuid.Nil && item.CreatedBy != uuid.Nil && person.UserID == item.CreatedBy {
 			return AccessResult{Level: LevelFull, CanDownload: true}, nil
@@ -549,20 +442,13 @@ func AccessItem(ctx context.Context, q *db.Queries, person Person, project Proje
 		return AccessResult{Level: LevelNone, CanDownload: false}, nil
 	}
 
+	// Evaluate folder access
 	folderAccess, err := AccessFolder(ctx, q, person, project, item.ID)
 	if err != nil {
 		return AccessResult{Level: LevelNone, CanDownload: false}, err
 	}
 
-	var sources []accessSource
-	if folderAccess.Level != LevelNone && folderAccess.Level != "" {
-		sources = append(sources, accessSource{
-			Level:       folderAccess.Level,
-			CanDownload: folderAccess.CanDownload,
-		})
-	}
-
-	var itemExplicitGrant *db.Grant
+	// Item explicit grant override
 	if q != nil {
 		normEmail := NormalizeEmail(person.Email)
 		grant, gErr := q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
@@ -570,36 +456,18 @@ func AccessItem(ctx context.Context, q *db.Queries, person Person, project Proje
 			TargetID:   pgtype.UUID{Bytes: item.ID, Valid: true},
 			Email:      normEmail,
 		})
-		if gErr != nil {
-			grant, gErr = q.GetGrantByTargetAndEmail(ctx, db.GetGrantByTargetAndEmailParams{
-				TargetType: "folder",
-				TargetID:   pgtype.UUID{Bytes: item.ID, Valid: true},
-				Email:      normEmail,
-			})
-		}
-		if gErr == nil && grant.Level != LevelNone && grant.Level != "" {
-			itemExplicitGrant = &grant
-			sources = append(sources, accessSource{
+		if gErr == nil && grant.Level != "" {
+			if grant.Level == LevelNone {
+				return AccessResult{Level: LevelNone, CanDownload: false}, nil
+			}
+			return AccessResult{
 				Level:       grant.Level,
 				CanDownload: grant.CanDownload,
-			})
-		}
-	}
-
-	if item.IsRestricted {
-		if person.IsAdmin() {
-			return AccessResult{Level: LevelFull, CanDownload: true}, nil
-		}
-		if itemExplicitGrant != nil {
-			return AccessResult{
-				Level:       itemExplicitGrant.Level,
-				CanDownload: itemExplicitGrant.CanDownload,
 			}, nil
 		}
-		return AccessResult{Level: LevelNone, CanDownload: false}, nil
 	}
 
-	return resolveSources(sources), nil
+	return folderAccess, nil
 }
 
 // HashToken produces a SHA-256 hex digest of a token string.

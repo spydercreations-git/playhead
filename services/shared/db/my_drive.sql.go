@@ -20,7 +20,7 @@ VALUES (
     $1, $2, NULL, $3, 'file', $4, $5, $2,
     0, 0, 0, $6, 'none', FALSE, $7, FALSE
 )
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
 `
 
 type CreateDriveFileItemParams struct {
@@ -64,7 +64,6 @@ func (q *Queries) CreateDriveFileItem(ctx context.Context, arg CreateDriveFileIt
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VideoCount,
-		&i.IsRestricted,
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
@@ -77,7 +76,7 @@ INSERT INTO items (
     company_id, drive_owner_id, project_id, parent_id, kind, name, position, created_by, is_default_folder, category
 ) VALUES (
     $1, $2, NULL, $3, 'folder', $4, $5, $2, $6, $7
-) RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
+) RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
 `
 
 type CreateDriveFolderParams struct {
@@ -121,7 +120,6 @@ func (q *Queries) CreateDriveFolder(ctx context.Context, arg CreateDriveFolderPa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VideoCount,
-		&i.IsRestricted,
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
@@ -199,7 +197,7 @@ func (q *Queries) CreateDriveUpload(ctx context.Context, arg CreateDriveUploadPa
 }
 
 const getDefaultDriveFolderByCategory = `-- name: GetDefaultDriveFolderByCategory :one
-SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category FROM items
+SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category FROM items
 WHERE company_id = $1
   AND drive_owner_id = $2
   AND project_id IS NULL
@@ -239,7 +237,6 @@ func (q *Queries) GetDefaultDriveFolderByCategory(ctx context.Context, arg GetDe
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VideoCount,
-		&i.IsRestricted,
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
@@ -277,7 +274,7 @@ func (q *Queries) GetDriveFolderStats(ctx context.Context, arg GetDriveFolderSta
 }
 
 const getDriveItemByID = `-- name: GetDriveItemByID :one
-SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category FROM items
+SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category FROM items
 WHERE id = $1
   AND company_id = $2
   AND drive_owner_id = $3
@@ -313,7 +310,6 @@ func (q *Queries) GetDriveItemByID(ctx context.Context, arg GetDriveItemByIDPara
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VideoCount,
-		&i.IsRestricted,
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
@@ -369,7 +365,7 @@ WITH RECURSIVE item_tree(tree_id) AS (
     UNION ALL
     SELECT c.id FROM items c JOIN item_tree t ON c.parent_id = t.tree_id WHERE c.company_id = $2 AND c.drive_owner_id = $3
 )
-SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.is_restricted, i.drive_owner_id, i.is_default_folder, i.category FROM items i
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category FROM items i
 JOIN item_tree ON i.id = item_tree.tree_id
 ORDER BY i.kind = 'folder' DESC, i.created_at ASC
 `
@@ -409,7 +405,6 @@ func (q *Queries) ListDriveDescendants(ctx context.Context, arg ListDriveDescend
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.VideoCount,
-			&i.IsRestricted,
 			&i.DriveOwnerID,
 			&i.IsDefaultFolder,
 			&i.Category,
@@ -425,7 +420,7 @@ func (q *Queries) ListDriveDescendants(ctx context.Context, arg ListDriveDescend
 }
 
 const listDriveFolders = `-- name: ListDriveFolders :many
-SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category FROM items
+SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category FROM items
 WHERE company_id = $1
   AND drive_owner_id = $2
   AND project_id IS NULL
@@ -469,7 +464,6 @@ func (q *Queries) ListDriveFolders(ctx context.Context, arg ListDriveFoldersPara
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.VideoCount,
-			&i.IsRestricted,
 			&i.DriveOwnerID,
 			&i.IsDefaultFolder,
 			&i.Category,
@@ -485,7 +479,7 @@ func (q *Queries) ListDriveFolders(ctx context.Context, arg ListDriveFoldersPara
 }
 
 const listDriveItems = `-- name: ListDriveItems :many
-SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category FROM items
+SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category FROM items
 WHERE company_id = $1
   AND drive_owner_id = $2
   AND project_id IS NULL
@@ -532,7 +526,6 @@ func (q *Queries) ListDriveItems(ctx context.Context, arg ListDriveItemsParams) 
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.VideoCount,
-			&i.IsRestricted,
 			&i.DriveOwnerID,
 			&i.IsDefaultFolder,
 			&i.Category,
@@ -615,7 +608,7 @@ func (q *Queries) ListRecentItems(ctx context.Context, arg ListRecentItemsParams
 }
 
 const listTrashedDriveItems = `-- name: ListTrashedDriveItems :many
-SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category FROM items
+SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category FROM items
 WHERE company_id = $1
   AND drive_owner_id = $2
   AND deleted_at IS NOT NULL
@@ -656,7 +649,6 @@ func (q *Queries) ListTrashedDriveItems(ctx context.Context, arg ListTrashedDriv
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.VideoCount,
-			&i.IsRestricted,
 			&i.DriveOwnerID,
 			&i.IsDefaultFolder,
 			&i.Category,
@@ -700,7 +692,7 @@ WHERE id = $1
   AND company_id = $2
   AND drive_owner_id = $3
   AND project_id IS NULL
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
 `
 
 type MoveDriveItemToProjectParams struct {
@@ -740,7 +732,6 @@ func (q *Queries) MoveDriveItemToProject(ctx context.Context, arg MoveDriveItemT
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VideoCount,
-		&i.IsRestricted,
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
@@ -889,7 +880,7 @@ WHERE id = $1
   AND drive_owner_id = $3
   AND project_id IS NULL
   AND is_default_folder = FALSE
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
 `
 
 type UpdateDriveItemNameParams struct {
@@ -927,7 +918,6 @@ func (q *Queries) UpdateDriveItemName(ctx context.Context, arg UpdateDriveItemNa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VideoCount,
-		&i.IsRestricted,
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,

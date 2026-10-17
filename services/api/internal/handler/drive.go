@@ -114,6 +114,12 @@ func (h *DriveHandler) ListFolders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	person := middleware.GetPerson(ctx)
+	if !person.IsFullAccess() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "My Drive is only accessible to executive roles"})
+		return
+	}
+
 	if _, err := h.EnsureDefaultFolders(ctx, companyID, user.ID); err != nil {
 		slog.Error("failed to ensure default folders", "error", err)
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_initialize_drive"})
@@ -216,6 +222,12 @@ func (h *DriveHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	person := middleware.GetPerson(ctx)
+	if !person.IsFullAccess() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "My Drive is only accessible to executive roles"})
+		return
+	}
+
 	var parentID pgtype.UUID
 	folderParam := r.URL.Query().Get("folder_id")
 	if folderParam != "" {
@@ -265,6 +277,12 @@ func (h *DriveHandler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	person := middleware.GetPerson(ctx)
+	if !person.IsFullAccess() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "My Drive is only accessible to executive roles"})
 		return
 	}
 
@@ -332,6 +350,12 @@ func (h *DriveHandler) RenameItem(w http.ResponseWriter, r *http.Request) {
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	person := middleware.GetPerson(ctx)
+	if !person.IsFullAccess() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "My Drive is only accessible to executive roles"})
 		return
 	}
 
@@ -403,6 +427,12 @@ func (h *DriveHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	person := middleware.GetPerson(ctx)
+	if !person.IsFullAccess() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "My Drive is only accessible to executive roles"})
 		return
 	}
 

@@ -249,6 +249,16 @@ func TestP4VideoReviewAndPermissions(t *testing.T) {
 			Role:      "client",
 			CompanyID: uuid.UUID(company.ID.Bytes),
 		}
+		_, _ = queries.CreateGrant(ctx, db.CreateGrantParams{
+			CompanyID:   company.ID,
+			TargetType:  "project",
+			TargetID:    proj.ID,
+			Email:       authz.NormalizeEmail(clientUser.Email),
+			UserID:      clientUser.ID,
+			Level:       authz.LevelCommenter,
+			CanDownload: true,
+			GrantedBy:   compOwner.ID,
+		})
 
 		// Create test item
 		testItem, err := queries.CreateItem(ctx, db.CreateItemParams{
@@ -749,6 +759,16 @@ func TestP4_AdvisorReviewFixes(t *testing.T) {
 		Role:      "client",
 		CompanyID: uuid.UUID(company.ID.Bytes),
 	}
+	_, _ = queries.CreateGrant(ctx, db.CreateGrantParams{
+		CompanyID:   company.ID,
+		TargetType:  "project",
+		TargetID:    projA.ID,
+		Email:       authz.NormalizeEmail(clientUserA.Email),
+		UserID:      clientUserA.ID,
+		Level:       authz.LevelCommenter,
+		CanDownload: true,
+		GrantedBy:   compOwner.ID,
+	})
 
 	// Client Contact User B
 	clientUserB, _ := queries.CreateUser(ctx, db.CreateUserParams{

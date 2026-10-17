@@ -57,7 +57,6 @@ interface ProjectItem {
   client_name?: string;
   video_count?: number;
   total_bytes?: number;
-  is_restricted?: boolean;
   waiting_review_count?: number;
   members?: { id?: string; email?: string; name?: string; color?: string }[];
   thumbnails?: string[];
@@ -655,7 +654,6 @@ export default function HomePage() {
                 clientName={proj.client_name}
                 videoCount={proj.video_count || 0}
                 totalBytes={proj.total_bytes || 0}
-                isRestricted={proj.is_restricted}
                 waitingReviewCount={proj.waiting_review_count}
                 members={proj.members}
                 thumbnails={proj.thumbnails || []}

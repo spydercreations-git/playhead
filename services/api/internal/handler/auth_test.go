@@ -676,8 +676,8 @@ func TestMe_PermissionsAndRoleGranularity(t *testing.T) {
 	if adminMe["is_client"] != false {
 		t.Fatalf("expected admin is_client == false")
 	}
-	if adminMe["role_name"] != "Admin" {
-		t.Fatalf("expected admin role_name == Admin, got %v", adminMe["role_name"])
+	if adminMe["role_name"] != authz.RoleCEO {
+		t.Fatalf("expected admin role_name == %s, got %v", authz.RoleCEO, adminMe["role_name"])
 	}
 	adminPerms := adminMe["permissions"].([]interface{})
 	hasProjectsCreate := false

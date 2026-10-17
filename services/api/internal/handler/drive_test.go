@@ -69,10 +69,10 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: comp.ID,
 		UserID:    alice.ID,
-		Role:      authz.RoleMember,
+		Role:      authz.RoleCEO,
 	})
 
-	// 2. Another Member user (Bob)
+	// 2. Another Member user (Bob) - Project Manager (no drive access)
 	bob, err := queries.CreateUser(ctx, db.CreateUserParams{
 		Email: fmt.Sprintf("bob-%d@test.com", time.Now().UnixNano()),
 		Name:  "Bob Colleague",
@@ -83,10 +83,10 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: comp.ID,
 		UserID:    bob.ID,
-		Role:      authz.RoleMember,
+		Role:      authz.RoleProjectManager,
 	})
 
-	// 3. Viewer user (Charlie)
+	// 3. Viewer user (Charlie) - Editor (no drive access)
 	charlie, err := queries.CreateUser(ctx, db.CreateUserParams{
 		Email: fmt.Sprintf("charlie-%d@test.com", time.Now().UnixNano()),
 		Name:  "Charlie Viewer",
@@ -97,7 +97,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: comp.ID,
 		UserID:    charlie.ID,
-		Role:      authz.RoleGuest,
+		Role:      authz.RoleEditor,
 	})
 
 	// 4. Admin user (Dave)
@@ -154,7 +154,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 	// -------------------------------------------------------------------------
 	t.Run("Alice lists drive folders: auto-seeds 4 default folders", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/api/v1/drive/folders", nil)
-		req = req.WithContext(contextWithAuth(req.Context(), alice, comp.ID, authz.RoleMember))
+		req = req.WithContext(contextWithAuth(req.Context(), alice, comp.ID, authz.RoleCEO))
 		rr := httptest.NewRecorder()
 		router.ServeHTTP(rr, req)
 
@@ -197,7 +197,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 	t.Run("Default folders cannot be renamed", func(t *testing.T) {
 		renameBody, _ := json.Marshal(map[string]string{"name": "Renamed Videos"})
 		req := httptest.NewRequest("PATCH", fmt.Sprintf("/api/v1/drive/items/%s", defaultVideosFolderID), bytes.NewReader(renameBody))
-		req = req.WithContext(contextWithAuth(req.Context(), alice, comp.ID, authz.RoleMember))
+		req = req.WithContext(contextWithAuth(req.Context(), alice, comp.ID, authz.RoleCEO))
 		rr := httptest.NewRecorder()
 		router.ServeHTTP(rr, req)
 
@@ -208,7 +208,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 
 	t.Run("Default folders cannot be deleted", func(t *testing.T) {
 		req := httptest.NewRequest("DELETE", fmt.Sprintf("/api/v1/drive/items/%s", defaultVideosFolderID), nil)
-		req = req.WithContext(contextWithAuth(req.Context(), alice, comp.ID, authz.RoleMember))
+		req = req.WithContext(contextWithAuth(req.Context(), alice, comp.ID, authz.RoleCEO))
 		rr := httptest.NewRecorder()
 		router.ServeHTTP(rr, req)
 
@@ -222,7 +222,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 			"target_project_id": uuid.UUID(proj.ID.Bytes).String(),
 		})
 		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/drive/items/%s/move", defaultVideosFolderID), bytes.NewReader(moveBody))
-		req = req.WithContext(contextWithAuth(req.Context(), alice, comp.ID, authz.RoleMember))
+		req = req.WithContext(contextWithAuth(req.Context(), alice, comp.ID, authz.RoleCEO))
 		rr := httptest.NewRecorder()
 		router.ServeHTTP(rr, req)
 
@@ -239,7 +239,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 		// 1. Create custom folder
 		createBody, _ := json.Marshal(map[string]string{"name": "Project Pitches"})
 		req := httptest.NewRequest("POST", "/api/v1/drive/folders", bytes.NewReader(createBody))
-		req = req.WithContext(contextWithAuth(req.Context(), alice, comp.ID, authz.RoleMember))
+		req = req.WithContext(contextWithAuth(req.Context(), alice, comp.ID, authz.RoleCEO))
 		rr := httptest.NewRecorder()
 		router.ServeHTTP(rr, req)
 
@@ -253,7 +253,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 		// 2. Rename custom folder
 		renameBody, _ := json.Marshal(map[string]string{"name": "Project Pitches 2026"})
 		reqRename := httptest.NewRequest("PATCH", fmt.Sprintf("/api/v1/drive/items/%s", customFolderID), bytes.NewReader(renameBody))
-		reqRename = reqRename.WithContext(contextWithAuth(reqRename.Context(), alice, comp.ID, authz.RoleMember))
+		reqRename = reqRename.WithContext(contextWithAuth(reqRename.Context(), alice, comp.ID, authz.RoleCEO))
 		rrRename := httptest.NewRecorder()
 		router.ServeHTTP(rrRename, reqRename)
 
@@ -263,7 +263,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 
 		// 3. Trash custom folder
 		reqTrash := httptest.NewRequest("DELETE", fmt.Sprintf("/api/v1/drive/items/%s", customFolderID), nil)
-		reqTrash = reqTrash.WithContext(contextWithAuth(reqTrash.Context(), alice, comp.ID, authz.RoleMember))
+		reqTrash = reqTrash.WithContext(contextWithAuth(reqTrash.Context(), alice, comp.ID, authz.RoleCEO))
 		rrTrash := httptest.NewRecorder()
 		router.ServeHTTP(rrTrash, reqTrash)
 
@@ -273,7 +273,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 
 		// 4. Verify in trash list
 		reqListTrash := httptest.NewRequest("GET", "/api/v1/drive/trash", nil)
-		reqListTrash = reqListTrash.WithContext(contextWithAuth(reqListTrash.Context(), alice, comp.ID, authz.RoleMember))
+		reqListTrash = reqListTrash.WithContext(contextWithAuth(reqListTrash.Context(), alice, comp.ID, authz.RoleCEO))
 		rrListTrash := httptest.NewRecorder()
 		router.ServeHTTP(rrListTrash, reqListTrash)
 
@@ -294,7 +294,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 
 		// 5. Restore custom folder
 		reqRestore := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/drive/items/%s/restore", customFolderID), nil)
-		reqRestore = reqRestore.WithContext(contextWithAuth(reqRestore.Context(), alice, comp.ID, authz.RoleMember))
+		reqRestore = reqRestore.WithContext(contextWithAuth(reqRestore.Context(), alice, comp.ID, authz.RoleCEO))
 		rrRestore := httptest.NewRecorder()
 		router.ServeHTTP(rrRestore, reqRestore)
 
@@ -309,7 +309,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 	// -------------------------------------------------------------------------
 	t.Run("Another user (Bob) gets blocked (403) from accessing Alice's folder", func(t *testing.T) {
 		req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/drive/items?folder_id=%s", customFolderID), nil)
-		req = req.WithContext(contextWithAuth(req.Context(), bob, comp.ID, authz.RoleMember))
+		req = req.WithContext(contextWithAuth(req.Context(), bob, comp.ID, authz.RoleProjectManager))
 		rr := httptest.NewRecorder()
 		router.ServeHTTP(rr, req)
 
@@ -320,7 +320,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 
 	t.Run("A Viewer (Charlie) gets blocked (403) from accessing Alice's folder", func(t *testing.T) {
 		req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/drive/items?folder_id=%s", customFolderID), nil)
-		req = req.WithContext(contextWithAuth(req.Context(), charlie, comp.ID, authz.RoleGuest))
+		req = req.WithContext(contextWithAuth(req.Context(), charlie, comp.ID, authz.RoleEditor))
 		rr := httptest.NewRecorder()
 		router.ServeHTTP(rr, req)
 
@@ -360,7 +360,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 			"target_project_id": uuid.UUID(proj.ID.Bytes).String(),
 		})
 		req := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/drive/items/%s/move", customFolderID), bytes.NewReader(moveBody))
-		req = req.WithContext(contextWithAuth(req.Context(), alice, comp.ID, authz.RoleMember))
+		req = req.WithContext(contextWithAuth(req.Context(), alice, comp.ID, authz.RoleCEO))
 		rr := httptest.NewRecorder()
 		router.ServeHTTP(rr, req)
 
@@ -386,7 +386,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 		// Create a new custom folder for copy test
 		createBody, _ := json.Marshal(map[string]string{"name": "Assets To Copy"})
 		req := httptest.NewRequest("POST", "/api/v1/drive/folders", bytes.NewReader(createBody))
-		req = req.WithContext(contextWithAuth(req.Context(), alice, comp.ID, authz.RoleMember))
+		req = req.WithContext(contextWithAuth(req.Context(), alice, comp.ID, authz.RoleCEO))
 		rr := httptest.NewRecorder()
 		router.ServeHTTP(rr, req)
 
@@ -398,7 +398,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 			"target_project_id": uuid.UUID(proj.ID.Bytes).String(),
 		})
 		reqCopy := httptest.NewRequest("POST", fmt.Sprintf("/api/v1/drive/items/%s/copy", folderToCopyID), bytes.NewReader(copyBody))
-		reqCopy = reqCopy.WithContext(contextWithAuth(reqCopy.Context(), alice, comp.ID, authz.RoleMember))
+		reqCopy = reqCopy.WithContext(contextWithAuth(reqCopy.Context(), alice, comp.ID, authz.RoleCEO))
 		rrCopy := httptest.NewRecorder()
 		router.ServeHTTP(rrCopy, reqCopy)
 
@@ -425,7 +425,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 			"item_type": "folder",
 		})
 		reqRec := httptest.NewRequest("POST", "/api/v1/drive/recent", bytes.NewReader(recordBody))
-		reqRec = reqRec.WithContext(contextWithAuth(reqRec.Context(), alice, comp.ID, authz.RoleMember))
+		reqRec = reqRec.WithContext(contextWithAuth(reqRec.Context(), alice, comp.ID, authz.RoleCEO))
 		rrRec := httptest.NewRecorder()
 		router.ServeHTTP(rrRec, reqRec)
 
@@ -434,7 +434,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 		}
 
 		reqList := httptest.NewRequest("GET", "/api/v1/drive/recent", nil)
-		reqList = reqList.WithContext(contextWithAuth(reqList.Context(), alice, comp.ID, authz.RoleMember))
+		reqList = reqList.WithContext(contextWithAuth(reqList.Context(), alice, comp.ID, authz.RoleCEO))
 		rrList := httptest.NewRecorder()
 		router.ServeHTTP(rrList, reqList)
 
@@ -533,7 +533,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 			"body": "Sneaking a comment onto Alice's drive item",
 		})
 		reqCommentBob := httptest.NewRequest("POST", "/api/v1/items/"+driveFileIDStr+"/comments", bytes.NewReader(commentBody))
-		reqCommentBob = reqCommentBob.WithContext(contextWithAuth(reqCommentBob.Context(), bob, comp.ID, authz.RoleMember))
+		reqCommentBob = reqCommentBob.WithContext(contextWithAuth(reqCommentBob.Context(), bob, comp.ID, authz.RoleProjectManager))
 		rrCommentBob := httptest.NewRecorder()
 		rReview.ServeHTTP(rrCommentBob, reqCommentBob)
 
@@ -547,7 +547,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 		rStorage.Get("/api/v1/items/{id}/download", storageH.DownloadItem)
 
 		reqDlBob := httptest.NewRequest("GET", "/api/v1/items/"+driveFileIDStr+"/download", nil)
-		reqDlBob = reqDlBob.WithContext(contextWithAuth(reqDlBob.Context(), bob, comp.ID, authz.RoleMember))
+		reqDlBob = reqDlBob.WithContext(contextWithAuth(reqDlBob.Context(), bob, comp.ID, authz.RoleProjectManager))
 		rrDlBob := httptest.NewRecorder()
 		rStorage.ServeHTTP(rrDlBob, reqDlBob)
 
@@ -557,7 +557,7 @@ func TestMyDriveAccessAndPermissions(t *testing.T) {
 
 		// 5. Download endpoint: GET /api/v1/items/{drive_item_id}/download from owner Alice MUST succeed (200 OK)
 		reqDlAlice := httptest.NewRequest("GET", "/api/v1/items/"+driveFileIDStr+"/download", nil)
-		reqDlAlice = reqDlAlice.WithContext(contextWithAuth(reqDlAlice.Context(), alice, comp.ID, authz.RoleMember))
+		reqDlAlice = reqDlAlice.WithContext(contextWithAuth(reqDlAlice.Context(), alice, comp.ID, authz.RoleCEO))
 		rrDlAlice := httptest.NewRecorder()
 		rStorage.ServeHTTP(rrDlAlice, reqDlAlice)
 

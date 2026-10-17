@@ -213,7 +213,7 @@ VALUES (
     $1, $2, $3, $4, $5, $6, $7,
     0, 0, 0, 0, 'none', FALSE
 )
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
 `
 
 type CreateItemWithCountsParams struct {
@@ -257,7 +257,6 @@ func (q *Queries) CreateItemWithCounts(ctx context.Context, arg CreateItemWithCo
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VideoCount,
-		&i.IsRestricted,
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
@@ -533,15 +532,15 @@ func (q *Queries) GetFolderFilesRecursive(ctx context.Context, folderID pgtype.U
 
 const getItemAncestors = `-- name: GetItemAncestors :many
 WITH RECURSIVE item_ancestors AS (
-    SELECT items.id, items.parent_id, items.name, items.kind, items.is_restricted, 0 as depth
+    SELECT items.id, items.parent_id, items.name, items.kind, 0 as depth
     FROM items
     WHERE items.id = $1 AND items.company_id = $2
     UNION ALL
-    SELECT i.id, i.parent_id, i.name, i.kind, i.is_restricted, ia.depth + 1
+    SELECT i.id, i.parent_id, i.name, i.kind, ia.depth + 1
     FROM items i
     JOIN item_ancestors ia ON i.id = ia.parent_id
 )
-SELECT ia.id, ia.parent_id, ia.name, ia.kind, ia.is_restricted
+SELECT ia.id, ia.parent_id, ia.name, ia.kind
 FROM item_ancestors ia
 ORDER BY ia.depth DESC
 `
@@ -552,11 +551,10 @@ type GetItemAncestorsParams struct {
 }
 
 type GetItemAncestorsRow struct {
-	ID           pgtype.UUID `json:"id"`
-	ParentID     pgtype.UUID `json:"parent_id"`
-	Name         string      `json:"name"`
-	Kind         string      `json:"kind"`
-	IsRestricted bool        `json:"is_restricted"`
+	ID       pgtype.UUID `json:"id"`
+	ParentID pgtype.UUID `json:"parent_id"`
+	Name     string      `json:"name"`
+	Kind     string      `json:"kind"`
 }
 
 // Get path ancestors for an item
@@ -574,7 +572,6 @@ func (q *Queries) GetItemAncestors(ctx context.Context, arg GetItemAncestorsPara
 			&i.ParentID,
 			&i.Name,
 			&i.Kind,
-			&i.IsRestricted,
 		); err != nil {
 			return nil, err
 		}
@@ -587,7 +584,7 @@ func (q *Queries) GetItemAncestors(ctx context.Context, arg GetItemAncestorsPara
 }
 
 const getItemByID = `-- name: GetItemByID :one
-SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.is_restricted, i.drive_owner_id, i.is_default_folder, i.category, 
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category, 
        COALESCE(fv.storage_key, '') AS latest_storage_key,
        COALESCE(fv.size_bytes, 0) AS latest_size_bytes,
        COALESCE(fv.mime, '') AS latest_mime,
@@ -627,7 +624,6 @@ type GetItemByIDRow struct {
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	VideoCount          int32              `json:"video_count"`
-	IsRestricted        bool               `json:"is_restricted"`
 	DriveOwnerID        pgtype.UUID        `json:"drive_owner_id"`
 	IsDefaultFolder     bool               `json:"is_default_folder"`
 	Category            pgtype.Text        `json:"category"`
@@ -663,7 +659,6 @@ func (q *Queries) GetItemByID(ctx context.Context, arg GetItemByIDParams) (GetIt
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VideoCount,
-		&i.IsRestricted,
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
@@ -832,7 +827,7 @@ func (q *Queries) GetUploadByIDSimple(ctx context.Context, id pgtype.UUID) (Uplo
 }
 
 const listAllProjectFolders = `-- name: ListAllProjectFolders :many
-SELECT id, project_id, parent_id, name, file_count, folder_count, video_count, total_bytes, is_restricted
+SELECT id, project_id, parent_id, name, file_count, folder_count, video_count, total_bytes
 FROM items
 WHERE company_id = $1
   AND project_id = $2
@@ -847,15 +842,14 @@ type ListAllProjectFoldersParams struct {
 }
 
 type ListAllProjectFoldersRow struct {
-	ID           pgtype.UUID `json:"id"`
-	ProjectID    pgtype.UUID `json:"project_id"`
-	ParentID     pgtype.UUID `json:"parent_id"`
-	Name         string      `json:"name"`
-	FileCount    int32       `json:"file_count"`
-	FolderCount  int32       `json:"folder_count"`
-	VideoCount   int32       `json:"video_count"`
-	TotalBytes   int64       `json:"total_bytes"`
-	IsRestricted bool        `json:"is_restricted"`
+	ID          pgtype.UUID `json:"id"`
+	ProjectID   pgtype.UUID `json:"project_id"`
+	ParentID    pgtype.UUID `json:"parent_id"`
+	Name        string      `json:"name"`
+	FileCount   int32       `json:"file_count"`
+	FolderCount int32       `json:"folder_count"`
+	VideoCount  int32       `json:"video_count"`
+	TotalBytes  int64       `json:"total_bytes"`
 }
 
 func (q *Queries) ListAllProjectFolders(ctx context.Context, arg ListAllProjectFoldersParams) ([]ListAllProjectFoldersRow, error) {
@@ -876,7 +870,6 @@ func (q *Queries) ListAllProjectFolders(ctx context.Context, arg ListAllProjectF
 			&i.FolderCount,
 			&i.VideoCount,
 			&i.TotalBytes,
-			&i.IsRestricted,
 		); err != nil {
 			return nil, err
 		}
@@ -1000,7 +993,7 @@ func (q *Queries) ListFileVersions(ctx context.Context, itemID pgtype.UUID) ([]L
 }
 
 const listItemsWithVersions = `-- name: ListItemsWithVersions :many
-SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.is_restricted, i.drive_owner_id, i.is_default_folder, i.category,
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category,
        COALESCE(fv.storage_key, '') AS latest_storage_key,
        COALESCE(fv.size_bytes, 0) AS latest_size_bytes,
        COALESCE(fv.mime, '') AS latest_mime,
@@ -1052,7 +1045,6 @@ type ListItemsWithVersionsRow struct {
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	VideoCount          int32              `json:"video_count"`
-	IsRestricted        bool               `json:"is_restricted"`
 	DriveOwnerID        pgtype.UUID        `json:"drive_owner_id"`
 	IsDefaultFolder     bool               `json:"is_default_folder"`
 	Category            pgtype.Text        `json:"category"`
@@ -1099,7 +1091,6 @@ func (q *Queries) ListItemsWithVersions(ctx context.Context, arg ListItemsWithVe
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.VideoCount,
-			&i.IsRestricted,
 			&i.DriveOwnerID,
 			&i.IsDefaultFolder,
 			&i.Category,
@@ -1122,7 +1113,7 @@ func (q *Queries) ListItemsWithVersions(ctx context.Context, arg ListItemsWithVe
 }
 
 const listStarredItems = `-- name: ListStarredItems :many
-SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.is_restricted, i.drive_owner_id, i.is_default_folder, i.category, 
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category, 
        COALESCE(fv.storage_key, '') AS latest_storage_key,
        COALESCE(fv.size_bytes, 0) AS latest_size_bytes,
        COALESCE(fv.mime, '') AS latest_mime,
@@ -1166,7 +1157,6 @@ type ListStarredItemsRow struct {
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	VideoCount       int32              `json:"video_count"`
-	IsRestricted     bool               `json:"is_restricted"`
 	DriveOwnerID     pgtype.UUID        `json:"drive_owner_id"`
 	IsDefaultFolder  bool               `json:"is_default_folder"`
 	Category         pgtype.Text        `json:"category"`
@@ -1208,7 +1198,6 @@ func (q *Queries) ListStarredItems(ctx context.Context, arg ListStarredItemsPara
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.VideoCount,
-			&i.IsRestricted,
 			&i.DriveOwnerID,
 			&i.IsDefaultFolder,
 			&i.Category,
@@ -1231,7 +1220,7 @@ func (q *Queries) ListStarredItems(ctx context.Context, arg ListStarredItemsPara
 }
 
 const listTrashItems = `-- name: ListTrashItems :many
-SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.is_restricted, i.drive_owner_id, i.is_default_folder, i.category, 
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category, 
        u.name AS deleted_by_name,
        COALESCE(fv.size_bytes, 0) AS latest_size_bytes,
        COALESCE(fv.mime, '') AS latest_mime,
@@ -1267,7 +1256,6 @@ type ListTrashItemsRow struct {
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	VideoCount       int32              `json:"video_count"`
-	IsRestricted     bool               `json:"is_restricted"`
 	DriveOwnerID     pgtype.UUID        `json:"drive_owner_id"`
 	IsDefaultFolder  bool               `json:"is_default_folder"`
 	Category         pgtype.Text        `json:"category"`
@@ -1308,7 +1296,6 @@ func (q *Queries) ListTrashItems(ctx context.Context, companyID pgtype.UUID) ([]
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.VideoCount,
-			&i.IsRestricted,
 			&i.DriveOwnerID,
 			&i.IsDefaultFolder,
 			&i.Category,
@@ -1333,7 +1320,7 @@ UPDATE items
 SET parent_id = $1,
     updated_at = NOW()
 WHERE id = $2 AND company_id = $3
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
 `
 
 type MoveItemParams struct {
@@ -1365,7 +1352,6 @@ func (q *Queries) MoveItem(ctx context.Context, arg MoveItemParams) (Item, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VideoCount,
-		&i.IsRestricted,
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
@@ -1475,7 +1461,7 @@ UPDATE items
 SET name = $1,
     updated_at = NOW()
 WHERE id = $2 AND company_id = $3
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
 `
 
 type RenameItemParams struct {
@@ -1507,7 +1493,6 @@ func (q *Queries) RenameItem(ctx context.Context, arg RenameItemParams) (Item, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VideoCount,
-		&i.IsRestricted,
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
@@ -1540,7 +1525,7 @@ SET deleted_at = NULL,
     parent_id = original_parent_id,
     updated_at = NOW()
 WHERE id = $1 AND company_id = $2
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
 `
 
 type RestoreItemParams struct {
@@ -1571,52 +1556,6 @@ func (q *Queries) RestoreItem(ctx context.Context, arg RestoreItemParams) (Item,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VideoCount,
-		&i.IsRestricted,
-		&i.DriveOwnerID,
-		&i.IsDefaultFolder,
-		&i.Category,
-	)
-	return i, err
-}
-
-const setItemRestricted = `-- name: SetItemRestricted :one
-UPDATE items
-SET is_restricted = $1,
-    updated_at = NOW()
-WHERE id = $2 AND company_id = $3
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
-`
-
-type SetItemRestrictedParams struct {
-	IsRestricted bool        `json:"is_restricted"`
-	ID           pgtype.UUID `json:"id"`
-	CompanyID    pgtype.UUID `json:"company_id"`
-}
-
-func (q *Queries) SetItemRestricted(ctx context.Context, arg SetItemRestrictedParams) (Item, error) {
-	row := q.db.QueryRow(ctx, setItemRestricted, arg.IsRestricted, arg.ID, arg.CompanyID)
-	var i Item
-	err := row.Scan(
-		&i.ID,
-		&i.CompanyID,
-		&i.ProjectID,
-		&i.ParentID,
-		&i.Kind,
-		&i.Name,
-		&i.Position,
-		&i.CreatedBy,
-		&i.FileCount,
-		&i.FolderCount,
-		&i.TotalBytes,
-		&i.ReviewStatus,
-		&i.Locked,
-		&i.DeletedAt,
-		&i.DeletedBy,
-		&i.OriginalParentID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.VideoCount,
-		&i.IsRestricted,
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
@@ -1632,7 +1571,7 @@ SET deleted_at = NOW(),
     parent_id = NULL,
     updated_at = NOW()
 WHERE id = $2 AND company_id = $3
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, is_restricted, drive_owner_id, is_default_folder, category
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
 `
 
 type SoftDeleteItemParams struct {
@@ -1664,7 +1603,6 @@ func (q *Queries) SoftDeleteItem(ctx context.Context, arg SoftDeleteItemParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.VideoCount,
-		&i.IsRestricted,
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,

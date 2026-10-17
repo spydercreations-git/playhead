@@ -8,7 +8,6 @@ interface FolderCardProps {
   name: string;
   itemCount: number;
   totalBytes?: number;
-  isRestricted?: boolean;
   thumbnails?: string[];
   isSelected: boolean;
   onToggleSelect: () => void;
@@ -36,7 +35,6 @@ export function FolderCard({
   name,
   itemCount,
   totalBytes = 0,
-  isRestricted = false,
   thumbnails = [],
   isSelected,
   onToggleSelect,
@@ -175,14 +173,6 @@ export function FolderCard({
           >
             <Check size={14} className="text-white" />
           </button>
-
-          {/* Restricted Badge (Top-right of preview) */}
-          {isRestricted && (
-            <div className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-black/70 backdrop-blur-sm px-1.5 py-0.5 border border-[#FFBB56]/30 text-[#FFBB56] text-xs font-semibold z-20">
-              <Lock size={12} />
-              <span>Restricted</span>
-            </div>
-          )}
         </div>
 
         {/* Folder Footer */}

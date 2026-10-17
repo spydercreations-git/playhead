@@ -72,7 +72,7 @@ func TestUnprojectedDocumentsAndSpreadsheets(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: comp.ID,
 		UserID:    userB.ID,
-		Role:      authz.RoleAdmin, // User B is Admin, but shouldn't see unprojected private doc without grant
+		Role:      authz.RoleEditor, // User B is Editor (non-admin), shouldn't see unprojected private doc without grant
 	})
 
 	// 2. User A creates a document with NO project
@@ -132,15 +132,15 @@ func TestUnprojectedDocumentsAndSpreadsheets(t *testing.T) {
 		t.Errorf("expected project_name 'My documents', got %v", getDocRes["project_name"])
 	}
 
-	// 4. User B (admin) CANNOT view User A's private document without grant
+	// 4. User B (non-admin editor) CANNOT view User A's private document without grant
 	reqGetDocB := httptest.NewRequest("GET", "/api/v1/documents/"+createdDoc.ID, nil)
 	reqGetDocB = withChiURLParams(reqGetDocB, map[string]string{"id": createdDoc.ID})
-	reqGetDocB = reqGetDocB.WithContext(contextWithAuth(reqGetDocB.Context(), userB, comp.ID, authz.RoleAdmin))
+	reqGetDocB = reqGetDocB.WithContext(contextWithAuth(reqGetDocB.Context(), userB, comp.ID, authz.RoleEditor))
 	recGetDocB := httptest.NewRecorder()
 
 	docH.Get(recGetDocB, reqGetDocB)
 	if recGetDocB.Code != http.StatusForbidden {
-		t.Fatalf("User B (admin) should NOT be able to view User A's private doc without grant, got %d", recGetDocB.Code)
+		t.Fatalf("User B (non-admin editor) should NOT be able to view User A's private doc without grant, got %d", recGetDocB.Code)
 	}
 
 	// 5. User A creates an unprojected spreadsheet
@@ -182,7 +182,7 @@ func TestUnprojectedDocumentsAndSpreadsheets(t *testing.T) {
 
 	reqGetSheetB := httptest.NewRequest("GET", "/api/v1/spreadsheets/"+createdSheet.ID, nil)
 	reqGetSheetB = withChiURLParams(reqGetSheetB, map[string]string{"id": createdSheet.ID})
-	reqGetSheetB = reqGetSheetB.WithContext(contextWithAuth(reqGetSheetB.Context(), userB, comp.ID, authz.RoleAdmin))
+	reqGetSheetB = reqGetSheetB.WithContext(contextWithAuth(reqGetSheetB.Context(), userB, comp.ID, authz.RoleEditor))
 	recGetSheetB := httptest.NewRecorder()
 
 	sheetH.GetSpreadsheet(recGetSheetB, reqGetSheetB)

@@ -91,17 +91,21 @@ func TestNormalizeEmail(t *testing.T) {
 }
 
 func TestCanManagePeople(t *testing.T) {
-	admin := Person{Role: RoleAdmin}
-	manager := Person{Role: RoleManager}
+	ceo := Person{Role: RoleCEO}
+	pm := Person{Role: RoleProjectManager}
 	editor := Person{Role: RoleEditor}
 	client := Person{Role: ""}
 
-	if !CanManagePeople(admin, AccessResult{Level: LevelViewer}) {
-		t.Errorf("Admin must always be able to manage people")
+	if !CanManagePeople(ceo, AccessResult{Level: LevelViewer}) {
+		t.Errorf("CEO must always be able to manage people")
 	}
 
-	if !CanManagePeople(manager, AccessResult{Level: LevelViewer}) {
-		t.Errorf("Manager must always be able to manage people")
+	if CanManagePeople(pm, AccessResult{Level: LevelViewer}) {
+		t.Errorf("Project Manager with Viewer must not be able to manage people")
+	}
+
+	if !CanManagePeople(pm, AccessResult{Level: LevelFull}) {
+		t.Errorf("Project Manager with Full access must be able to manage people")
 	}
 
 	if CanManagePeople(editor, AccessResult{Level: LevelCommenter}) {

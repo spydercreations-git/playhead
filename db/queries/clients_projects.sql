@@ -171,30 +171,26 @@ SELECT DISTINCT p.*, c.name AS client_name,
     COALESCE((SELECT COUNT(*) FROM items i WHERE i.project_id = p.id AND i.deleted_at IS NULL AND i.kind = 'file' AND (i.review_status = 'needs_review' OR i.review_status = 'pending' OR i.review_status = 'in_review')), 0)::int AS to_review_count
 FROM projects p
 JOIN clients c ON c.id = p.client_id
-LEFT JOIN grants g ON g.target_type = 'project' AND g.target_id = p.id AND LOWER(g.email) = @email
-LEFT JOIN client_contacts cc ON cc.client_id = p.client_id AND LOWER(cc.email) = @email AND cc.default_level != 'none'
+LEFT JOIN grants g ON g.target_type = 'project' AND g.target_id = p.id AND LOWER(g.email) = LOWER(@email) AND g.level != 'none' AND g.level != ''
 WHERE p.company_id = @company_id
   AND p.deleted_at IS NULL
   AND (sqlc.narg('client_id')::uuid IS NULL OR p.client_id = sqlc.narg('client_id'))
   AND (sqlc.narg('status')::text IS NULL OR p.status = sqlc.narg('status'))
   AND (
-    (p.is_restricted = FALSE AND (g.id IS NOT NULL OR cc.id IS NOT NULL))
-    OR
-    (p.is_restricted = TRUE AND (g.id IS NOT NULL OR EXISTS (
+    g.id IS NOT NULL OR EXISTS (
         SELECT 1 FROM grants ig
         JOIN items i ON i.id = ig.target_id AND i.deleted_at IS NULL
         WHERE i.project_id = p.id
           AND (ig.target_type = 'item' OR ig.target_type = 'folder')
           AND LOWER(ig.email) = LOWER(@email)
           AND ig.level != 'none' AND ig.level != ''
-    )))
+    )
   )
 ORDER BY p.updated_at DESC;
 
 -- name: UpdateProject :one
 UPDATE projects
 SET name = COALESCE(sqlc.narg('name'), name),
-    is_restricted = COALESCE(sqlc.narg('is_restricted'), is_restricted),
     updated_at = NOW()
 WHERE company_id = @company_id AND id = @id AND deleted_at IS NULL
 RETURNING *;

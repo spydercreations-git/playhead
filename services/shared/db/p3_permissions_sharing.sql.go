@@ -65,7 +65,7 @@ const countCompanyAdmins = `-- name: CountCompanyAdmins :one
 SELECT COUNT(*)::int
 FROM memberships m
 JOIN roles r ON r.id = m.role_id
-WHERE m.company_id = $1 AND r.name = 'Admin'
+WHERE m.company_id = $1 AND (r.access_type = 'full' OR r.can_change_roles = true)
 `
 
 func (q *Queries) CountCompanyAdmins(ctx context.Context, companyID pgtype.UUID) (int32, error) {
@@ -89,17 +89,19 @@ func (q *Queries) CountRoleMembers(ctx context.Context, roleID pgtype.UUID) (int
 }
 
 const createRole = `-- name: CreateRole :one
-INSERT INTO roles (company_id, name, color, permissions, is_system)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, company_id, name, color, permissions, is_system, created_at, updated_at
+INSERT INTO roles (company_id, name, color, permissions, is_system, access_type, can_change_roles)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, company_id, name, color, permissions, is_system, created_at, updated_at, access_type, can_change_roles
 `
 
 type CreateRoleParams struct {
-	CompanyID   pgtype.UUID `json:"company_id"`
-	Name        string      `json:"name"`
-	Color       string      `json:"color"`
-	Permissions []byte      `json:"permissions"`
-	IsSystem    bool        `json:"is_system"`
+	CompanyID      pgtype.UUID `json:"company_id"`
+	Name           string      `json:"name"`
+	Color          string      `json:"color"`
+	Permissions    []byte      `json:"permissions"`
+	IsSystem       bool        `json:"is_system"`
+	AccessType     string      `json:"access_type"`
+	CanChangeRoles bool        `json:"can_change_roles"`
 }
 
 func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error) {
@@ -109,6 +111,8 @@ func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, e
 		arg.Color,
 		arg.Permissions,
 		arg.IsSystem,
+		arg.AccessType,
+		arg.CanChangeRoles,
 	)
 	var i Role
 	err := row.Scan(
@@ -120,6 +124,8 @@ func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, e
 		&i.IsSystem,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AccessType,
+		&i.CanChangeRoles,
 	)
 	return i, err
 }
@@ -262,7 +268,7 @@ func (q *Queries) GetProjectNotificationPref(ctx context.Context, arg GetProject
 }
 
 const getRoleByID = `-- name: GetRoleByID :one
-SELECT id, company_id, name, color, permissions, is_system, created_at, updated_at
+SELECT id, company_id, name, color, permissions, is_system, created_at, updated_at, access_type, can_change_roles
 FROM roles
 WHERE id = $1 AND company_id = $2
 `
@@ -284,14 +290,16 @@ func (q *Queries) GetRoleByID(ctx context.Context, arg GetRoleByIDParams) (Role,
 		&i.IsSystem,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AccessType,
+		&i.CanChangeRoles,
 	)
 	return i, err
 }
 
 const getRoleByName = `-- name: GetRoleByName :one
-SELECT id, company_id, name, color, permissions, is_system, created_at, updated_at
+SELECT id, company_id, name, color, permissions, is_system, created_at, updated_at, access_type, can_change_roles
 FROM roles
-WHERE company_id = $1 AND name = $2
+WHERE company_id = $1 AND LOWER(name) = LOWER($2)
 `
 
 type GetRoleByNameParams struct {
@@ -311,6 +319,8 @@ func (q *Queries) GetRoleByName(ctx context.Context, arg GetRoleByNameParams) (R
 		&i.IsSystem,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AccessType,
+		&i.CanChangeRoles,
 	)
 	return i, err
 }
@@ -509,6 +519,7 @@ func (q *Queries) IsItemInShareLinkScope(ctx context.Context, arg IsItemInShareL
 
 const listCompanyRoles = `-- name: ListCompanyRoles :many
 SELECT r.id, r.company_id, r.name, r.color, r.permissions, r.is_system, r.created_at, r.updated_at,
+       r.access_type, r.can_change_roles,
        COUNT(m.id)::int as member_count
 FROM roles r
 LEFT JOIN memberships m ON m.role_id = r.id
@@ -518,15 +529,17 @@ ORDER BY r.is_system DESC, r.name ASC
 `
 
 type ListCompanyRolesRow struct {
-	ID          pgtype.UUID        `json:"id"`
-	CompanyID   pgtype.UUID        `json:"company_id"`
-	Name        string             `json:"name"`
-	Color       string             `json:"color"`
-	Permissions []byte             `json:"permissions"`
-	IsSystem    bool               `json:"is_system"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	MemberCount int32              `json:"member_count"`
+	ID             pgtype.UUID        `json:"id"`
+	CompanyID      pgtype.UUID        `json:"company_id"`
+	Name           string             `json:"name"`
+	Color          string             `json:"color"`
+	Permissions    []byte             `json:"permissions"`
+	IsSystem       bool               `json:"is_system"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	AccessType     string             `json:"access_type"`
+	CanChangeRoles bool               `json:"can_change_roles"`
+	MemberCount    int32              `json:"member_count"`
 }
 
 // Roles queries
@@ -548,6 +561,8 @@ func (q *Queries) ListCompanyRoles(ctx context.Context, companyID pgtype.UUID) (
 			&i.IsSystem,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.AccessType,
+			&i.CanChangeRoles,
 			&i.MemberCount,
 		); err != nil {
 			return nil, err
@@ -870,17 +885,19 @@ func (q *Queries) ReserveShareLinkUpload(ctx context.Context, arg ReserveShareLi
 
 const updateRole = `-- name: UpdateRole :one
 UPDATE roles
-SET name = $3, color = $4, permissions = $5, updated_at = NOW()
+SET name = $3, color = $4, permissions = $5, access_type = $6, can_change_roles = $7, updated_at = NOW()
 WHERE id = $1 AND company_id = $2 AND is_system = FALSE
-RETURNING id, company_id, name, color, permissions, is_system, created_at, updated_at
+RETURNING id, company_id, name, color, permissions, is_system, created_at, updated_at, access_type, can_change_roles
 `
 
 type UpdateRoleParams struct {
-	ID          pgtype.UUID `json:"id"`
-	CompanyID   pgtype.UUID `json:"company_id"`
-	Name        string      `json:"name"`
-	Color       string      `json:"color"`
-	Permissions []byte      `json:"permissions"`
+	ID             pgtype.UUID `json:"id"`
+	CompanyID      pgtype.UUID `json:"company_id"`
+	Name           string      `json:"name"`
+	Color          string      `json:"color"`
+	Permissions    []byte      `json:"permissions"`
+	AccessType     string      `json:"access_type"`
+	CanChangeRoles bool        `json:"can_change_roles"`
 }
 
 func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, error) {
@@ -890,6 +907,8 @@ func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, e
 		arg.Name,
 		arg.Color,
 		arg.Permissions,
+		arg.AccessType,
+		arg.CanChangeRoles,
 	)
 	var i Role
 	err := row.Scan(
@@ -901,6 +920,8 @@ func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, e
 		&i.IsSystem,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AccessType,
+		&i.CanChangeRoles,
 	)
 	return i, err
 }

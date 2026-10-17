@@ -153,12 +153,13 @@ type FileVersion struct {
 }
 
 type Grant struct {
-	ID          pgtype.UUID        `json:"id"`
-	CompanyID   pgtype.UUID        `json:"company_id"`
-	TargetType  string             `json:"target_type"`
-	TargetID    pgtype.UUID        `json:"target_id"`
-	Email       string             `json:"email"`
-	UserID      pgtype.UUID        `json:"user_id"`
+	ID         pgtype.UUID `json:"id"`
+	CompanyID  pgtype.UUID `json:"company_id"`
+	TargetType string      `json:"target_type"`
+	TargetID   pgtype.UUID `json:"target_id"`
+	Email      string      `json:"email"`
+	UserID     pgtype.UUID `json:"user_id"`
+	// Access level: full, editor, uploader, commenter, viewer, none
 	Level       string             `json:"level"`
 	CanDownload bool               `json:"can_download"`
 	GrantedBy   pgtype.UUID        `json:"granted_by"`
@@ -199,7 +200,6 @@ type Item struct {
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 	VideoCount       int32              `json:"video_count"`
-	IsRestricted     bool               `json:"is_restricted"`
 	DriveOwnerID     pgtype.UUID        `json:"drive_owner_id"`
 	IsDefaultFolder  bool               `json:"is_default_folder"`
 	Category         pgtype.Text        `json:"category"`
@@ -258,7 +258,6 @@ type Project struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
-	IsRestricted  bool               `json:"is_restricted"`
 }
 
 type ProjectNotificationPref struct {
@@ -294,14 +293,16 @@ type Review struct {
 }
 
 type Role struct {
-	ID          pgtype.UUID        `json:"id"`
-	CompanyID   pgtype.UUID        `json:"company_id"`
-	Name        string             `json:"name"`
-	Color       string             `json:"color"`
-	Permissions []byte             `json:"permissions"`
-	IsSystem    bool               `json:"is_system"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID             pgtype.UUID        `json:"id"`
+	CompanyID      pgtype.UUID        `json:"company_id"`
+	Name           string             `json:"name"`
+	Color          string             `json:"color"`
+	Permissions    []byte             `json:"permissions"`
+	IsSystem       bool               `json:"is_system"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	AccessType     string             `json:"access_type"`
+	CanChangeRoles bool               `json:"can_change_roles"`
 }
 
 type Session struct {

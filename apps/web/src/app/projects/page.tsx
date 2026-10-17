@@ -21,7 +21,6 @@ interface ProjectItem {
   folder_count: number;
   video_count: number;
   total_bytes: number;
-  is_restricted?: boolean;
   updated_at: string;
 }
 
@@ -308,7 +307,6 @@ export default function ProjectsPage() {
                 clientName={project.client_name || "Client"}
                 videoCount={project.video_count || 0}
                 totalBytes={project.total_bytes || 0}
-                isRestricted={Boolean(project.is_restricted)}
               />
             </div>
           ))}
@@ -339,9 +337,6 @@ export default function ProjectsPage() {
                       className="hover:text-[#4876F3] inline-flex items-center gap-1.5"
                     >
                       <span>{project.name}</span>
-                      {project.is_restricted && (
-                        <Lock className="w-3 h-3 text-amber-400 shrink-0" />
-                      )}
                     </Link>
                   </td>
                   <td className="py-3.5 px-4 text-[#4876F3]">

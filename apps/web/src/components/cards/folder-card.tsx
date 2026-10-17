@@ -13,7 +13,7 @@ interface FolderCardProps {
   isSelected: boolean;
   onToggleSelect: () => void;
   onOpen: () => void;
-  onContextMenu: (e: React.MouseEvent) => void;
+  onContextMenu: (e: React.MouseEvent | HTMLElement) => void;
   isRenaming?: boolean;
   renameValue?: string;
   onRenameChange?: (val: string) => void;
@@ -210,7 +210,7 @@ export function FolderCard({
               />
             ) : (
               <>
-                <p className="text-base font-semibold text-white truncate group-hover:text-[#4876F3] transition-colors leading-tight flex items-center gap-1.5">
+                <p className="text-base font-semibold text-white truncate leading-tight flex items-center gap-1.5">
                   <span className="truncate">{name}</span>
                 </p>
                 {isDropTarget ? (
@@ -232,7 +232,7 @@ export function FolderCard({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onContextMenu(e);
+                onContextMenu(e.currentTarget);
               }}
               className="folder-menu-btn flex h-7 w-7 items-center justify-center rounded-md text-[#A3A6AD] hover:bg-[#2A2B30] hover:text-white transition-colors shrink-0"
             >

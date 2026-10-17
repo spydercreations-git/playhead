@@ -8,7 +8,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { toast } from "@/lib/toast";
-import { useContextMenu, MenuGroup } from "@/components/ui/menu";
+import { useContextMenu, MenuGroup, Menu } from "@/components/ui/menu";
 import { useUploadStore } from "@/lib/upload-store";
 import {
   DownloadTray,
@@ -585,11 +585,47 @@ export default function ProjectWorkspacePage() {
     openContextMenu(e, groups);
   };
 
+  const newMenuGroups: MenuGroup[] = [
+    {
+      items: [
+        {
+          label: "New folder",
+          icon: <FolderPlus className="w-4 h-4 text-amber-400" />,
+          onClick: triggerInlineNewFolder,
+        },
+        {
+          label: "Upload files",
+          icon: <Upload className="w-4 h-4 text-[#4876F3]" />,
+          onClick: () => fileInputRef.current?.click(),
+        },
+        {
+          label: "Upload folder",
+          icon: <Folder className="w-4 h-4 text-amber-400" />,
+          onClick: () => folderInputRef.current?.click(),
+        },
+      ],
+    },
+    {
+      items: [
+        {
+          label: "New document",
+          icon: <FileText className="w-4 h-4 text-blue-400" />,
+          onClick: () => setShowNewDocModal(true),
+        },
+        {
+          label: "New spreadsheet",
+          icon: <FileSpreadsheet className="w-4 h-4 text-emerald-400" />,
+          onClick: () => setShowNewSheetModal(true),
+        },
+      ],
+    },
+  ];
+
   const handleItemContextMenu = (
-    e: React.MouseEvent | { clientX: number; clientY: number },
+    e: React.MouseEvent | HTMLElement | { clientX: number; clientY: number },
     item: any
   ) => {
-    if ("preventDefault" in e) {
+    if (e && "preventDefault" in e && typeof e.preventDefault === "function") {
       e.preventDefault();
       e.stopPropagation();
     }
@@ -1212,7 +1248,7 @@ export default function ProjectWorkspacePage() {
                       <Folder className="w-4 h-4 text-[#4876F3]" />
                       <span className="truncate">Files</span>
                     </div>
-                    <span className="text-xs text-[#7C7F87] tabular-nums font-mono">
+                    <span className="text-xs text-[#7C7F87] tabular-nums">
                       {overDropTargetId === "tree-root" ? "Move here" : (project.file_count || 0)}
                     </span>
                   </button>
@@ -1248,7 +1284,7 @@ export default function ProjectWorkspacePage() {
                             <Lock className="w-3 h-3 text-amber-400 shrink-0" />
                           )}
                         </div>
-                        <span className="text-xs text-[#7C7F87] tabular-nums font-mono">
+                        <span className="text-xs text-[#7C7F87] tabular-nums">
                           {isOver ? "Move here" : (f.file_count || 0)}
                         </span>
                       </button>
@@ -1506,79 +1542,20 @@ export default function ProjectWorkspacePage() {
 
               {/* + Menu Button */}
               {canUpload && (
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setPlusMenuOpen(!plusMenuOpen)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[#4876F3] hover:bg-[#3B67E0] text-xs font-semibold text-white transition-colors shadow"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>New</span>
-                    <ChevronDown className={`w-3 h-3 transition-transform ${plusMenuOpen ? "rotate-180" : ""}`} />
-                  </button>
-
-                  {plusMenuOpen && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-30"
-                        onClick={() => setPlusMenuOpen(false)}
-                      />
-                      <div className="absolute left-0 top-9 z-40 w-48 rounded-xl border border-[#2E2F34] bg-[#212121] py-1 shadow-overlay">
-                        <button
-                          onClick={() => {
-                            setPlusMenuOpen(false);
-                            triggerInlineNewFolder();
-                          }}
-                          className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
-                        >
-                          <FolderPlus className="w-4 h-4 text-amber-400" />
-                          <span>New folder</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setPlusMenuOpen(false);
-                            fileInputRef.current?.click();
-                          }}
-                          className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
-                        >
-                          <Upload className="w-4 h-4 text-[#4876F3]" />
-                          <span>Upload files</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setPlusMenuOpen(false);
-                            folderInputRef.current?.click();
-                          }}
-                          className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
-                        >
-                          <Folder className="w-4 h-4 text-amber-400" />
-                          <span>Upload folder</span>
-                        </button>
-                        <div className="my-1 border-t border-[#2E2F34]" />
-                        <button
-                          onClick={() => {
-                            setPlusMenuOpen(false);
-                            setShowNewDocModal(true);
-                          }}
-                          className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
-                        >
-                          <FileText className="w-4 h-4 text-blue-400" />
-                          <span>New document</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setPlusMenuOpen(false);
-                            setShowNewSheetModal(true);
-                          }}
-                          className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-xs font-medium text-white hover:bg-[#2A2B30] transition-colors"
-                        >
-                          <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-                          <span>New spreadsheet</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
+                <Menu
+                  align="end"
+                  trigger={
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[#4876F3] hover:bg-[#3B67E0] text-xs font-semibold text-white transition-colors shadow"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>New</span>
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+                  }
+                  groups={newMenuGroups}
+                />
               )}
             </div>
 
@@ -1644,171 +1621,257 @@ export default function ProjectWorkspacePage() {
               />
 
               {!isFoldersCollapsed && (
-                <motion.div
-                  initial="hidden"
-                  animate="visible"
-                  variants={
-                    shouldReduceMotion
-                      ? {}
-                      : {
-                          hidden: { opacity: 0 },
-                          visible: {
-                            opacity: 1,
-                            transition: { staggerChildren: 0.03 },
-                          },
-                        }
-                  }
-                  className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                >
-                  <AnimatePresence mode="popLayout">
-                    {/* Inline New Folder Input Card per Phase 3 spec */}
-                    {isCreatingInlineFolder && (
-                      <motion.div
-                        layout
-                        initial={{ opacity: 0, scale: 0.95, y: 6 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                      >
-                        <FolderCard
-                          id="inline-new-folder"
-                          name={inlineFolderName}
-                          itemCount={0}
-                          totalBytes={0}
-                          isSelected={false}
-                          onToggleSelect={() => {}}
-                          onOpen={() => {}}
-                          onContextMenu={() => {}}
-                          isRenaming={true}
-                          renameValue={inlineFolderName}
-                          onRenameChange={(val) => setInlineFolderName(val)}
-                          onRenameSubmit={() => {
-                            if (inlineFolderName.trim()) {
-                              createFolderMutation.mutate(inlineFolderName.trim());
-                            } else {
-                              setIsCreatingInlineFolder(false);
-                            }
-                          }}
-                          onRenameCancel={() => setIsCreatingInlineFolder(false)}
-                        />
-                      </motion.div>
-                    )}
-
-                    {/* Folder Cards */}
-                    {foldersList.map((folder: any) => {
-                      const isSelected = selectedItemIds.includes(folder.id);
-                      const isRenaming = renamingItemId === folder.id;
-
-                      return (
+                viewMode === "grid" ? (
+                  <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    variants={
+                      shouldReduceMotion
+                        ? {}
+                        : {
+                            hidden: { opacity: 0 },
+                            visible: {
+                              opacity: 1,
+                              transition: { staggerChildren: 0.03 },
+                            },
+                          }
+                    }
+                    className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                  >
+                    <AnimatePresence mode="popLayout">
+                      {/* Inline New Folder Input Card per Phase 3 spec */}
+                      {isCreatingInlineFolder && (
                         <motion.div
                           layout
-                          key={folder.id}
-                          variants={
-                            shouldReduceMotion
-                              ? {}
-                              : {
-                                  hidden: { opacity: 0, scale: 0.98, y: 6 },
-                                  visible: {
-                                    opacity: 1,
-                                    scale: 1,
-                                    y: 0,
-                                    transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] },
-                                  },
-                                }
-                          }
-                          exit={{
-                            opacity: 0,
-                            scale: 0.95,
-                            y: -6,
-                            transition: { duration: 0.12, ease: [0.4, 0, 1, 1] },
-                          }}
+                          initial={{ opacity: 0, scale: 0.95, y: 6 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                         >
-                          <DroppableTarget
-                            id={`canvas-folder-${folder.id}`}
-                            data={{ type: "folder", id: folder.id, name: folder.name }}
-                            activeDragId={activeDragItem?.id || null}
-                            draggedDescendants={activeDragDescendants}
+                          <FolderCard
+                            id="inline-new-folder"
+                            name={inlineFolderName}
+                            itemCount={0}
+                            totalBytes={0}
+                            isSelected={false}
+                            onToggleSelect={() => {}}
+                            onOpen={() => {}}
+                            onContextMenu={() => {}}
+                            isRenaming={true}
+                            renameValue={inlineFolderName}
+                            onRenameChange={(val) => setInlineFolderName(val)}
+                            onRenameSubmit={() => {
+                              if (inlineFolderName.trim()) {
+                                createFolderMutation.mutate(inlineFolderName.trim());
+                              } else {
+                                setIsCreatingInlineFolder(false);
+                              }
+                            }}
+                            onRenameCancel={() => setIsCreatingInlineFolder(false)}
+                          />
+                        </motion.div>
+                      )}
+
+                      {/* Folder Cards */}
+                      {foldersList.map((folder: any) => {
+                        const isSelected = selectedItemIds.includes(folder.id);
+                        const isRenaming = renamingItemId === folder.id;
+
+                        return (
+                          <motion.div
+                            layout
+                            key={folder.id}
+                            variants={
+                              shouldReduceMotion
+                                ? {}
+                                : {
+                                    hidden: { opacity: 0, scale: 0.98, y: 6 },
+                                    visible: {
+                                      opacity: 1,
+                                      scale: 1,
+                                      y: 0,
+                                      transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] },
+                                    },
+                                  }
+                            }
+                            exit={{
+                              opacity: 0,
+                              scale: 0.95,
+                              y: -6,
+                              transition: { duration: 0.12, ease: [0.4, 0, 1, 1] },
+                            }}
                           >
-                            <div
-                              onDragOver={(e) => {
-                                if (e.dataTransfer?.types?.includes("Files")) {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setComputerHoverFolderId(folder.id);
-                                }
-                              }}
-                              onDragLeave={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setComputerHoverFolderId(null);
-                              }}
-                              onDrop={(e) => {
-                                if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+                            <DroppableTarget
+                              id={`canvas-folder-${folder.id}`}
+                              data={{ type: "folder", id: folder.id, name: folder.name }}
+                              activeDragId={activeDragItem?.id || null}
+                              draggedDescendants={activeDragDescendants}
+                            >
+                              <div
+                                onDragOver={(e) => {
+                                  if (e.dataTransfer?.types?.includes("Files")) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setComputerHoverFolderId(folder.id);
+                                  }
+                                }}
+                                onDragLeave={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
                                   setComputerHoverFolderId(null);
-                                  Array.from(e.dataTransfer.files).forEach((f) =>
-                                    startFileUpload(f, undefined, undefined, folder.id)
-                                  );
-                                }
-                              }}
-                            >
-                              <DraggableItem
-                                id={folder.id}
-                                data={{
-                                  type: "folder",
-                                  id: folder.id,
-                                  name: folder.name,
-                                  itemCount: (folder.file_count || 0) + (folder.folder_count || 0),
-                                  totalBytes: folder.total_bytes || 0,
+                                }}
+                                onDrop={(e) => {
+                                  if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setComputerHoverFolderId(null);
+                                    Array.from(e.dataTransfer.files).forEach((f) =>
+                                      startFileUpload(f, undefined, undefined, folder.id)
+                                    );
+                                  }
                                 }}
                               >
-                                <FolderCard
+                                <DraggableItem
                                   id={folder.id}
-                                  name={folder.name}
-                                  itemCount={(folder.file_count || 0) + (folder.folder_count || 0)}
-                                  totalBytes={folder.total_bytes || 0}
-                                  isRestricted={Boolean(folder.is_restricted)}
-                                  thumbnails={folder.thumbnails || []}
-                                  isSelected={isSelected}
-                                  isDropTarget={
-                                    overDropTargetId === `canvas-folder-${folder.id}` ||
-                                    computerHoverFolderId === folder.id
-                                  }
-                                  dropLabel={
-                                    computerHoverFolderId === folder.id
-                                      ? "Upload to folder"
-                                      : "Move to folder"
-                                  }
-                                  onToggleSelect={() => {
+                                  data={{
+                                    type: "folder",
+                                    id: folder.id,
+                                    name: folder.name,
+                                    itemCount: (folder.file_count || 0) + (folder.folder_count || 0),
+                                    totalBytes: folder.total_bytes || 0,
+                                  }}
+                                >
+                                  <FolderCard
+                                    id={folder.id}
+                                    name={folder.name}
+                                    itemCount={(folder.file_count || 0) + (folder.folder_count || 0)}
+                                    totalBytes={folder.total_bytes || 0}
+                                    isRestricted={Boolean(folder.is_restricted)}
+                                    thumbnails={folder.thumbnails || []}
+                                    isSelected={isSelected}
+                                    isDropTarget={
+                                      overDropTargetId === `canvas-folder-${folder.id}` ||
+                                      computerHoverFolderId === folder.id
+                                    }
+                                    dropLabel={
+                                      computerHoverFolderId === folder.id
+                                        ? "Upload to folder"
+                                        : "Move to folder"
+                                    }
+                                    onToggleSelect={() => {
+                                      if (isSelected) {
+                                        setSelectedItemIds(selectedItemIds.filter((id) => id !== folder.id));
+                                      } else {
+                                        setSelectedItemIds([...selectedItemIds, folder.id]);
+                                      }
+                                    }}
+                                    onOpen={() => router.push(`/projects/${projectId}?folder=${folder.id}`)}
+                                    onContextMenu={(e) => handleItemContextMenu(e, folder)}
+                                    isRenaming={isRenaming}
+                                    renameValue={inlineRenameName}
+                                    onRenameChange={(val) => setInlineRenameName(val)}
+                                    onRenameSubmit={() => {
+                                      if (inlineRenameName.trim()) {
+                                        renameMutation.mutate({ id: folder.id, name: inlineRenameName.trim() });
+                                      } else {
+                                        setRenamingItemId(null);
+                                      }
+                                    }}
+                                    onRenameCancel={() => setRenamingItemId(null)}
+                                  />
+                                </DraggableItem>
+                              </div>
+                            </DroppableTarget>
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
+                  </motion.div>
+                ) : (
+                  <div className="rounded-xl border border-[#2E2F34] overflow-hidden bg-[#212121]">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-[#2E2F34] text-xs font-semibold text-[#7C7F87]">
+                          <th className="py-2.5 px-3 w-10"></th>
+                          <th className="py-2.5 px-3">Name</th>
+                          <th className="py-2.5 px-3">Items</th>
+                          <th className="py-2.5 px-3">Size</th>
+                          <th className="py-2.5 px-3">Modified</th>
+                          <th className="py-2.5 px-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#2E2F34]">
+                        {foldersList.map((folder: any) => {
+                          const isSelected = selectedItemIds.includes(folder.id);
+                          return (
+                            <tr
+                              key={folder.id}
+                              data-item-id={folder.id}
+                              onClick={() => {
+                                if (isSelected) {
+                                  setSelectedItemIds(selectedItemIds.filter((id) => id !== folder.id));
+                                } else {
+                                  setSelectedItemIds([...selectedItemIds, folder.id]);
+                                }
+                              }}
+                              onDoubleClick={() => router.push(`/projects/${projectId}?folder=${folder.id}`)}
+                              onContextMenu={(e) => handleItemContextMenu(e, folder)}
+                              className={`group hover:bg-[#2A2B30]/50 cursor-pointer transition-colors ${
+                                isSelected ? "bg-[#4876F3]/10" : ""
+                              }`}
+                            >
+                              <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {
                                     if (isSelected) {
                                       setSelectedItemIds(selectedItemIds.filter((id) => id !== folder.id));
                                     } else {
                                       setSelectedItemIds([...selectedItemIds, folder.id]);
                                     }
                                   }}
-                                  onOpen={() => router.push(`/projects/${projectId}?folder=${folder.id}`)}
-                                  onContextMenu={(e) => handleItemContextMenu(e, folder)}
-                                  isRenaming={isRenaming}
-                                  renameValue={inlineRenameName}
-                                  onRenameChange={(val) => setInlineRenameName(val)}
-                                  onRenameSubmit={() => {
-                                    if (inlineRenameName.trim()) {
-                                      renameMutation.mutate({ id: folder.id, name: inlineRenameName.trim() });
-                                    } else {
-                                      setRenamingItemId(null);
-                                    }
-                                  }}
-                                  onRenameCancel={() => setRenamingItemId(null)}
+                                  className="rounded border-[#424344] text-[#4876F3] focus:ring-0"
                                 />
-                              </DraggableItem>
-                            </div>
-                          </DroppableTarget>
-                        </motion.div>
-                      );
-                    })}
-                  </AnimatePresence>
-                </motion.div>
+                              </td>
+                              <td className="py-2.5 px-3 flex items-center gap-2.5 min-w-0">
+                                <Folder className="w-4 h-4 text-[#4876F3] shrink-0" />
+                                <span className="font-medium text-white truncate text-xs">{folder.name}</span>
+                                {folder.is_restricted && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded bg-[#FFBB56]/10 text-[#FFBB56] border border-[#FFBB56]/20 shrink-0">
+                                    Restricted
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-xs text-[#A3A6AD] tabular-nums">
+                                {folder.file_count || 0} {folder.file_count === 1 ? "file" : "files"}
+                              </td>
+                              <td className="py-2.5 px-3 text-xs text-[#A3A6AD] tabular-nums">
+                                {formatBytes(folder.total_bytes || 0)}
+                              </td>
+                              <td className="py-2.5 px-3 text-xs text-[#7C7F87] tabular-nums">
+                                {folder.updated_at ? new Date(folder.updated_at).toLocaleDateString() : "—"}
+                              </td>
+                              <td className="py-2.5 px-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleItemContextMenu(e, folder);
+                                  }}
+                                  className="item-menu-btn p-1.5 rounded-md hover:bg-[#2A2B30] text-[#A3A6AD] hover:text-white transition-colors"
+                                  aria-label="Item options"
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )
               )}
             </div>
           )}
@@ -1828,10 +1891,11 @@ export default function ProjectWorkspacePage() {
               />
 
               {!isFilesCollapsed && (
-                <motion.div
-                  layout
-                  className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                >
+                viewMode === "grid" ? (
+                  <motion.div
+                    layout
+                    className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                  >
                   <AnimatePresence mode="popLayout">
                     {/* Active Uploads in Grid with Progress Bar per Part C */}
                     {activeUploadsHere.map((upload) => (
@@ -1941,7 +2005,7 @@ export default function ProjectWorkspacePage() {
                                 <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-[#4876F3] text-xs font-bold text-white ">
                                   v{file.latest_version_number || 1}
                                 </span>
-                                <span className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/60 text-xs font-mono text-white">
+                                <span className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/60 text-xs tabular-nums text-white">
                                   01:15
                                 </span>
                                 <div className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/60 text-xs text-white flex items-center gap-1.5 font-medium">
@@ -1956,7 +2020,7 @@ export default function ProjectWorkspacePage() {
                                   <div className="h-1.5 w-full bg-emerald-500/20 rounded" />
                                   <div className="h-1.5 w-2/3 bg-emerald-500/10 rounded" />
                                 </div>
-                                <span className="text-xs text-emerald-400 font-mono">Tracker | Summary</span>
+                                <span className="text-xs text-emerald-400">Tracker | Summary</span>
                               </div>
                             ) : (
                               <div className="w-full h-full bg-[#181818] flex flex-col justify-between p-3">
@@ -2032,6 +2096,110 @@ export default function ProjectWorkspacePage() {
                     })}
                   </AnimatePresence>
                 </motion.div>
+                ) : (
+                  <div className="rounded-xl border border-[#2E2F34] overflow-hidden bg-[#212121]">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-[#2E2F34] text-xs font-semibold text-[#7C7F87]">
+                          <th className="py-2.5 px-3 w-10"></th>
+                          <th className="py-2.5 px-3">Name</th>
+                          <th className="py-2.5 px-3">Type</th>
+                          <th className="py-2.5 px-3">Size</th>
+                          <th className="py-2.5 px-3">Modified</th>
+                          <th className="py-2.5 px-3">Status</th>
+                          <th className="py-2.5 px-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#2E2F34]">
+                        {filesList.map((file: any) => {
+                          const isSelected = selectedItemIds.includes(file.id);
+                          const isVideo = file.name?.endsWith(".mp4") || file.name?.endsWith(".mov");
+                          const isAudio = file.name?.endsWith(".mp3") || file.name?.endsWith(".wav");
+                          const isSheet = file.name?.endsWith(".xlsx") || file.name?.endsWith(".csv");
+
+                          return (
+                            <tr
+                              key={file.id}
+                              data-item-id={file.id}
+                              onClick={() => {
+                                if (isSelected) {
+                                  setSelectedItemIds(selectedItemIds.filter((id) => id !== file.id));
+                                } else {
+                                  setSelectedItemIds([...selectedItemIds, file.id]);
+                                }
+                              }}
+                              onDoubleClick={() => setActiveViewerItem(file)}
+                              onContextMenu={(e) => handleItemContextMenu(e, file)}
+                              className={`group hover:bg-[#2A2B30]/50 cursor-pointer transition-colors ${
+                                isSelected ? "bg-[#4876F3]/10" : ""
+                              }`}
+                            >
+                              <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    if (isSelected) {
+                                      setSelectedItemIds(selectedItemIds.filter((id) => id !== file.id));
+                                    } else {
+                                      setSelectedItemIds([...selectedItemIds, file.id]);
+                                    }
+                                  }}
+                                  className="rounded border-[#424344] text-[#4876F3] focus:ring-0"
+                                />
+                              </td>
+                              <td className="py-2.5 px-3 flex items-center gap-2.5 min-w-0">
+                                {isVideo ? (
+                                  <Film className="w-4 h-4 text-violet-400 shrink-0" />
+                                ) : isAudio ? (
+                                  <Music className="w-4 h-4 text-emerald-400 shrink-0" />
+                                ) : isSheet ? (
+                                  <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
+                                ) : (
+                                  <FileText className="w-4 h-4 text-blue-400 shrink-0" />
+                                )}
+                                <span className="font-medium text-white truncate text-xs">{file.name}</span>
+                                {file.version && (
+                                  <span className="text-xs px-1 py-0.5 rounded bg-[#2A2B30] text-[#A3A6AD] tabular-nums shrink-0">
+                                    v{file.version}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-xs text-[#A3A6AD] capitalize">
+                                {file.type ? file.type.split("/").pop() : "File"}
+                              </td>
+                              <td className="py-2.5 px-3 text-xs text-[#A3A6AD] tabular-nums">
+                                {formatBytes(file.size_bytes || file.latest_size_bytes || 0)}
+                              </td>
+                              <td className="py-2.5 px-3 text-xs text-[#7C7F87] tabular-nums">
+                                {file.updated_at ? new Date(file.updated_at).toLocaleDateString() : "—"}
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                  <span>Approved</span>
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleItemContextMenu(e, file);
+                                  }}
+                                  className="item-menu-btn p-1.5 rounded-md hover:bg-[#2A2B30] text-[#A3A6AD] hover:text-white transition-colors"
+                                  aria-label="Item options"
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )
               )}
             </div>
           )}

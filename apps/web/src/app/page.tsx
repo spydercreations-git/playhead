@@ -413,7 +413,9 @@ export default function HomePage() {
                   }
                 }}
                 onContextMenu={(e) => {
-                  e.preventDefault();
+                  if (e && "preventDefault" in e && typeof e.preventDefault === "function") {
+                    e.preventDefault();
+                  }
                 }}
               />
             ))}

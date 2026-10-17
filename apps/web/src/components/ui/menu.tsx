@@ -81,27 +81,42 @@ export function Menu({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const { refs, floatingStyles, context } = useFloating({
+  // Close on any window / container scroll
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleScroll = () => {
+      setIsOpen(false);
+    };
+    window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", handleScroll, { capture: true });
+  }, [isOpen, setIsOpen]);
+
+  const { refs, floatingStyles, context, isPositioned } = useFloating({
     open: isOpen,
     onOpenChange: setIsOpen,
     placement: align === "end" ? "bottom-end" : "bottom-start",
+    strategy: "fixed",
+    transform: false,
     whileElementsMounted: autoUpdate,
     middleware: [
       offset(4),
       flip({
         fallbackPlacements: [
+          align === "end" ? "top-end" : "top-start",
+          align === "end" ? "bottom-start" : "bottom-end",
           "top-start",
           "top-end",
-          "bottom-end",
-          "left-start",
-          "right-start",
         ],
       }),
-      shift({ padding: 12 }),
+      shift({ padding: 8 }),
     ],
   });
 
-  const dismiss = useDismiss(context);
+  const dismiss = useDismiss(context, {
+    outsidePress: true,
+    escapeKey: true,
+    ancestorScroll: true,
+  });
   const role = useRole(context, { role: "menu" });
   const { getReferenceProps, getFloatingProps } = useInteractions([
     dismiss,
@@ -138,7 +153,7 @@ export function Menu({
 
   const menuTransition = shouldReduceMotion
     ? { duration: 0 }
-    : { duration: 0.16, ease: "easeOut" as const };
+    : { duration: 0.14, ease: "easeOut" as const };
 
   const closeTransition = shouldReduceMotion
     ? { duration: 0 }
@@ -243,11 +258,15 @@ export function Menu({
               <FloatingFocusManager context={context} modal={false}>
                 <motion.div
                   ref={refs.setFloating}
-                  style={floatingStyles}
+                  style={{
+                    ...floatingStyles,
+                    visibility: isPositioned ? "visible" : "hidden",
+                  }}
                   initial={{ opacity: 0, scale: 0.98, y: -2 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  animate={{ opacity: isPositioned ? 1 : 0, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.98, y: -2 }}
                   transition={menuTransition}
+                  data-testid="dropdown-menu"
                   {...getFloatingProps({
                     onKeyDown: handleKeyDown,
                   })}
@@ -332,18 +351,27 @@ export function Menu({
 }
 
 // -----------------------------------------------------------------------------
-// Unified Context Menu System (Right Click & Touch Long-Press)
+// Unified Context Menu System (Right Click & ⋯ Button Anchor)
 // -----------------------------------------------------------------------------
 
 export interface ContextMenuState {
   isOpen: boolean;
-  x: number;
-  y: number;
+  domReference: HTMLElement | null;
+  positionReference: any;
+  placement: "bottom-end" | "bottom-start";
   groups: MenuGroup[];
 }
 
 interface ContextMenuContextValue {
-  openContextMenu: (e: React.MouseEvent | { clientX: number; clientY: number }, groups: MenuGroup[]) => void;
+  openContextMenu: (
+    e:
+      | React.MouseEvent
+      | React.TouchEvent
+      | HTMLElement
+      | { clientX: number; clientY: number }
+      | any,
+    groups: MenuGroup[]
+  ) => void;
   closeContextMenu: () => void;
 }
 
@@ -360,11 +388,13 @@ export function useContextMenu() {
 export function ContextMenuProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<ContextMenuState>({
     isOpen: false,
-    x: 0,
-    y: 0,
+    domReference: null,
+    positionReference: null,
+    placement: "bottom-end",
     groups: [],
   });
 
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const [isMobile, setIsMobile] = useState(false);
   const shouldReduceMotion = useReducedMotion();
 
@@ -377,69 +407,189 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  const closeContextMenu = useCallback(() => {
+    setState((prev) => ({ ...prev, isOpen: false }));
+    setActiveIndex(-1);
+  }, []);
+
   const openContextMenu = useCallback(
-    (e: React.MouseEvent | { clientX: number; clientY: number }, groups: MenuGroup[]) => {
-      if ("preventDefault" in e) {
-        e.preventDefault();
-        e.stopPropagation();
+    (
+      target:
+        | React.MouseEvent
+        | React.TouchEvent
+        | HTMLElement
+        | { clientX: number; clientY: number }
+        | any,
+      groups: MenuGroup[]
+    ) => {
+      if (target && typeof target === "object" && "preventDefault" in target) {
+        try {
+          target.preventDefault?.();
+          target.stopPropagation?.();
+        } catch {}
       }
-      setState({
-        isOpen: true,
-        x: e.clientX,
-        y: e.clientY,
-        groups,
-      });
+
+      let domReference: HTMLElement | null = null;
+      let positionReference: any = null;
+      let placement: "bottom-end" | "bottom-start" = "bottom-end";
+
+      if (typeof HTMLElement !== "undefined" && target instanceof HTMLElement) {
+        // Direct HTMLElement passed (e.g. ⋯ button)
+        domReference = target;
+        positionReference = target;
+        placement = "bottom-end";
+      } else if (
+        target &&
+        typeof target === "object" &&
+        target.currentTarget instanceof HTMLElement &&
+        target.type !== "contextmenu"
+      ) {
+        // Click event on a button / element
+        domReference = target.currentTarget;
+        positionReference = target.currentTarget;
+        placement = "bottom-end";
+      } else if (
+        target &&
+        typeof target === "object" &&
+        target.target instanceof HTMLElement &&
+        target.type !== "contextmenu"
+      ) {
+        // Target element or its closest button
+        const btn = target.target.closest("button") || target.target;
+        domReference = btn;
+        positionReference = btn;
+        placement = "bottom-end";
+      } else if (
+        target &&
+        typeof target === "object" &&
+        typeof target.clientX === "number" &&
+        typeof target.clientY === "number"
+      ) {
+        // Right-click contextmenu event or touch coordinate
+        const x = target.clientX;
+        const y = target.clientY;
+        const fallbackDom =
+          target.currentTarget instanceof HTMLElement
+            ? target.currentTarget
+            : target.target instanceof HTMLElement
+            ? target.target
+            : typeof document !== "undefined"
+            ? document.body
+            : null;
+
+        domReference = fallbackDom;
+        positionReference = {
+          getBoundingClientRect() {
+            return {
+              width: 0,
+              height: 0,
+              x,
+              y,
+              top: y,
+              left: x,
+              right: x,
+              bottom: y,
+            };
+          },
+          contextElement: fallbackDom || undefined,
+        };
+        placement = "bottom-start";
+      }
+
+      if (positionReference) {
+        setState({
+          isOpen: true,
+          domReference,
+          positionReference,
+          placement,
+          groups,
+        });
+        setActiveIndex(-1);
+      }
     },
     []
   );
 
-  const closeContextMenu = useCallback(() => {
-    setState((prev) => ({ ...prev, isOpen: false }));
-  }, []);
+  // Close on window/ancestor scroll
+  useEffect(() => {
+    if (!state.isOpen) return;
+    const handleScroll = () => {
+      closeContextMenu();
+    };
+    window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", handleScroll, { capture: true });
+  }, [state.isOpen, closeContextMenu]);
 
-  // Floating UI virtual reference
-  const virtualElement = {
-    getBoundingClientRect() {
-      return {
-        width: 0,
-        height: 0,
-        x: state.x,
-        y: state.y,
-        top: state.y,
-        left: state.x,
-        right: state.x,
-        bottom: state.y,
-      };
-    },
-  };
-
-  const { refs, floatingStyles, context } = useFloating({
+  const { refs, floatingStyles, context, isPositioned } = useFloating({
     open: state.isOpen,
     onOpenChange: (open) => !open && closeContextMenu(),
-    placement: "bottom-start",
+    placement: state.placement,
+    strategy: "fixed",
+    transform: false,
     whileElementsMounted: autoUpdate,
     middleware: [
-      offset(2),
+      offset(4),
       flip({
-        fallbackPlacements: ["top-start", "bottom-end", "top-end", "left-start"],
+        fallbackPlacements: [
+          state.placement === "bottom-end" ? "top-end" : "top-start",
+          "bottom-start",
+          "top-start",
+          "bottom-end",
+        ],
       }),
-      shift({ padding: 12 }),
+      shift({ padding: 8 }),
     ],
   });
 
   useEffect(() => {
     if (state.isOpen) {
-      refs.setReference(virtualElement as any);
+      if (state.domReference) {
+        refs.setReference(state.domReference);
+      }
+      if (state.positionReference) {
+        refs.setPositionReference(state.positionReference);
+      }
     }
-  }, [state.isOpen, state.x, state.y, refs]);
+  }, [state.isOpen, state.domReference, state.positionReference, refs]);
 
-  const dismiss = useDismiss(context);
+  const dismiss = useDismiss(context, {
+    outsidePress: true,
+    escapeKey: true,
+    ancestorScroll: true,
+  });
   const role = useRole(context, { role: "menu" });
   const { getFloatingProps } = useInteractions([dismiss, role]);
 
+  const visibleItems = state.groups
+    .flatMap((g) => g.items)
+    .filter((item) => item.show !== false);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!state.isOpen) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev + 1) % visibleItems.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((prev) =>
+        prev <= 0 ? visibleItems.length - 1 : prev - 1
+      );
+    } else if (e.key === "Enter" && activeIndex >= 0) {
+      e.preventDefault();
+      const item = visibleItems[activeIndex];
+      if (item && !item.disabled && item.onClick) {
+        item.onClick();
+        closeContextMenu();
+      }
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      closeContextMenu();
+    }
+  };
+
   const menuTransition = shouldReduceMotion
     ? { duration: 0 }
-    : { duration: 0.16, ease: "easeOut" as const };
+    : { duration: 0.14, ease: "easeOut" as const };
 
   const closeTransition = shouldReduceMotion
     ? { duration: 0 }
@@ -527,15 +677,21 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                 </motion.div>
               </div>
             ) : (
-              <FloatingFocusManager context={context} modal={false}>
+              <FloatingFocusManager context={context} modal={false} initialFocus={-1}>
                 <motion.div
                   ref={refs.setFloating}
-                  style={floatingStyles}
+                  style={{
+                    ...floatingStyles,
+                    visibility: isPositioned ? "visible" : "hidden",
+                  }}
                   initial={{ opacity: 0, scale: 0.98, y: -2 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  animate={{ opacity: isPositioned ? 1 : 0, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.98, y: -2 }}
                   transition={menuTransition}
-                  {...getFloatingProps()}
+                  data-testid="item-menu"
+                  {...getFloatingProps({
+                    onKeyDown: handleKeyDown,
+                  })}
                   className="z-50 w-56 rounded-[10px] border border-[#2E2F34] bg-[#212121] p-1.5 shadow-overlay outline-none max-h-[min(480px,80vh)] overflow-y-auto"
                 >
                   {state.groups.map((group, gIdx) => {
@@ -550,43 +706,57 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                             : "space-y-0.5"
                         }
                       >
-                        {groupItems.map((item, iIdx) => (
-                          <button
-                            key={iIdx}
-                            disabled={item.disabled}
-                            onClick={() => {
-                              if (!item.disabled && item.onClick) {
-                                item.onClick();
-                                closeContextMenu();
-                              }
-                            }}
-                            className={`flex h-9 w-full items-center justify-between rounded-[8px] px-2.5 text-sm font-normal transition-colors outline-none ${
-                              item.disabled
-                                ? "opacity-40 cursor-not-allowed text-[#7C7F87]"
-                                : item.danger
-                                ? "text-[#F0506E] hover:bg-[#F0506E]/10"
-                                : "text-white hover:bg-[#2C2D33]"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5 truncate">
-                              {item.icon && (
-                                <span
-                                  className={`shrink-0 ${
-                                    item.danger ? "text-[#F0506E]" : "text-[#A3A6AD]"
-                                  }`}
-                                >
-                                  {item.icon}
+                        {groupItems.map((item, iIdx) => {
+                          const globalIndex = visibleItems.indexOf(item);
+                          const isFocused = globalIndex === activeIndex;
+
+                          return (
+                            <button
+                              key={iIdx}
+                              disabled={item.disabled}
+                              onClick={() => {
+                                if (!item.disabled && item.onClick) {
+                                  item.onClick();
+                                  closeContextMenu();
+                                }
+                              }}
+                              onMouseEnter={() => setActiveIndex(globalIndex)}
+                              className={`flex h-9 w-full items-center justify-between rounded-[8px] px-2.5 text-sm font-normal transition-colors outline-none ${
+                                item.disabled
+                                  ? "opacity-40 cursor-not-allowed text-[#7C7F87]"
+                                  : item.danger
+                                  ? isFocused
+                                    ? "bg-[#F0506E]/15 text-[#F0506E]"
+                                    : "text-[#F0506E] hover:bg-[#F0506E]/10"
+                                  : isFocused
+                                  ? "bg-[#2C2D33] text-white"
+                                  : "text-white hover:bg-[#2C2D33]"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 truncate">
+                                {item.icon && (
+                                  <span
+                                    className={`shrink-0 ${
+                                      item.danger
+                                        ? "text-[#F0506E]"
+                                        : isFocused
+                                        ? "text-white"
+                                        : "text-[#A3A6AD]"
+                                    }`}
+                                  >
+                                    {item.icon}
+                                  </span>
+                                )}
+                                <span className="truncate">{item.label}</span>
+                              </div>
+                              {item.shortcut && (
+                                <span className="shrink-0 font-mono text-xs text-[#7C7F87] pl-2">
+                                  {item.shortcut}
                                 </span>
                               )}
-                              <span className="truncate">{item.label}</span>
-                            </div>
-                            {item.shortcut && (
-                              <span className="shrink-0 font-mono text-xs text-[#7C7F87] pl-2">
-                                {item.shortcut}
-                              </span>
-                            )}
-                          </button>
-                        ))}
+                            </button>
+                          );
+                        })}
                       </div>
                     );
                   })}
@@ -599,3 +769,4 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
     </ContextMenuContext.Provider>
   );
 }
+

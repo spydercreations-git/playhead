@@ -95,7 +95,23 @@ export function Select({
     ],
   });
 
-  const dismiss = useDismiss(context);
+  // Close on window/container scroll
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleScroll = () => {
+      setIsOpen(false);
+      setSearch("");
+      setActiveIndex(-1);
+    };
+    window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", handleScroll, { capture: true });
+  }, [isOpen]);
+
+  const dismiss = useDismiss(context, {
+    outsidePress: true,
+    escapeKey: true,
+    ancestorScroll: true,
+  });
   const role = useRole(context, { role: "listbox" });
   const { getReferenceProps, getFloatingProps } = useInteractions([
     dismiss,

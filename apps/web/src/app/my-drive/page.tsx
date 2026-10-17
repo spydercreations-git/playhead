@@ -468,7 +468,9 @@ export default function MyDrivePage() {
                       onToggleSelect={() => {}}
                       onOpen={() => setCurrentFolder(folder)}
                       onContextMenu={(e) => {
-                        e.preventDefault();
+                        if (e && "preventDefault" in e && typeof e.preventDefault === "function") {
+                          e.preventDefault();
+                        }
                         setActionMenuTarget(folder);
                       }}
                     />

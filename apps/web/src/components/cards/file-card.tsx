@@ -24,7 +24,7 @@ export interface FileCardProps {
   isSelected?: boolean;
   onToggleSelect?: () => void;
   onOpen?: () => void;
-  onContextMenu?: (e: React.MouseEvent) => void;
+  onContextMenu?: (e: React.MouseEvent | HTMLElement) => void;
   className?: string;
 }
 
@@ -150,7 +150,7 @@ export function FileCard({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onContextMenu?.(e);
+            onContextMenu?.(e.currentTarget);
           }}
           className="file-menu-btn rounded-[6px] p-1 text-[#A3A6AD] hover:bg-[#2C2D33] hover:text-white transition-colors"
           aria-label="More options"

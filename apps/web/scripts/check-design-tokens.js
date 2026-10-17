@@ -106,6 +106,7 @@ const EXEMPTED_FILE_PATTERNS = [
   'video-card.tsx',
   'avatar.tsx',
   'design-tokens.ts',
+  'auth-showcase.tsx',
 ];
 
 // 8. Prohibited Mockup Sample Strings (Everygen, Jada, Bri, Truvani, Pizza Hut, "38.5 GB", "480 Files")

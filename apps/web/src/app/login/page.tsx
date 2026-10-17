@@ -235,12 +235,12 @@ function LoginForm() {
       {/* SCREEN: 6-DIGIT CODE */}
       {screen === "code" && (
         <div className="w-full">
-          <h1 className="text-[28px] font-bold text-white tracking-tight leading-none mb-3">
+          <h1 className="text-[28px] font-semibold text-white tracking-tight leading-tight mb-1.5">
             Check your email
           </h1>
-          <div className="flex items-center gap-1.5 text-sm text-[#A3A6AD] mb-8">
-            <span>We sent a 6 digit code to</span>
-            <span className="font-semibold text-white truncate max-w-[200px]">
+          <div className="flex items-center gap-1.5 text-sm text-[#7C7F87] mb-6">
+            <span>We sent a 6-digit code to</span>
+            <span className="font-medium text-white truncate max-w-[190px]">
               {email}
             </span>
             <button
@@ -249,7 +249,7 @@ function LoginForm() {
                 setScreen("email");
                 setError(null);
               }}
-              className="text-[#A3A6AD] hover:text-[#4876F3] transition p-0.5 ml-0.5"
+              className="text-[#7C7F87] hover:text-[#4876F3] transition p-0.5 ml-0.5"
               title="Edit email"
             >
               <svg
@@ -270,7 +270,7 @@ function LoginForm() {
 
           {/* 6 Code Boxes */}
           <div
-            className={`flex items-center justify-between gap-2.5 sm:gap-3 mb-6 ${
+            className={`flex items-center justify-between gap-2 sm:gap-2.5 mb-6 ${
               isShaking ? "animate-shake" : ""
             }`}
           >
@@ -288,14 +288,14 @@ function LoginForm() {
                 onKeyDown={(e) => handleKeyDown(idx, e)}
                 onPaste={handlePaste}
                 autoFocus={idx === 0}
-                className="w-12 h-14 sm:w-14 sm:h-16 rounded-[12px] bg-[#2A2B30] border border-[#2E2F34] text-center text-2xl font-bold text-white focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition-all"
+                className="w-12 h-14 sm:w-[50px] sm:h-[56px] rounded-[8px] bg-[#2A2B30] border border-[#2E2F34] text-center text-xl font-bold font-mono tabular-nums text-white focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition-all"
               />
             ))}
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mb-5 rounded-[10px] bg-red-500/10 border border-red-500/30 p-3 text-xs text-red-400">
+            <div className="mb-5 rounded-[8px] bg-red-500/10 border border-red-500/30 p-3 text-xs text-red-400">
               {error}
             </div>
           )}
@@ -305,7 +305,7 @@ function LoginForm() {
             type="button"
             disabled={loading || codeDigits.some((d) => d === "")}
             onClick={() => handleVerifyCode()}
-            className="w-full h-[48px] rounded-[10px] bg-[#3B67E0] hover:bg-[#4876F3] disabled:opacity-50 disabled:pointer-events-none text-white text-sm font-semibold transition flex items-center justify-center shadow-md mb-6"
+            className="w-full h-[44px] rounded-[8px] bg-[#4876F3] hover:bg-[#3B67E0] disabled:opacity-50 disabled:pointer-events-none text-white text-sm font-semibold transition flex items-center justify-center shadow-md mb-6"
           >
             {loading ? "Verifying..." : "Verify and sign in"}
           </button>
@@ -315,8 +315,8 @@ function LoginForm() {
             <p>
               Didn&apos;t get it? Check spam, or{" "}
               {countdown > 0 ? (
-                <span className="text-[#A3A6AD]">
-                  resend in 0:{countdown < 10 ? `0${countdown}` : countdown}
+                <span className="text-[#A3A6AD] font-mono tabular-nums">
+                  resend in {countdown}s
                 </span>
               ) : (
                 <button
@@ -338,18 +338,18 @@ function LoginForm() {
       {/* SCREEN: EMAIL CODE OR PASSWORD */}
       {screen !== "code" && (
         <div className="w-full">
-          <h1 className="text-[28px] font-bold text-white tracking-tight leading-none mb-2">
+          <h1 className="text-[28px] font-semibold text-white tracking-tight leading-tight mb-1.5">
             Sign in to Playhead
           </h1>
-          <p className="text-sm text-[#A3A6AD] mb-8">
-            Welcome back. Use the email Idyll invited.
+          <p className="text-sm text-[#7C7F87] mb-6 font-normal">
+            Use the email Idyll invited.
           </p>
 
           {/* Continue with Google Button */}
           <button
             type="button"
             onClick={handleGoogleLogin}
-            className="w-full h-[50px] rounded-[10px] bg-white hover:bg-neutral-100 text-[#181818] font-medium text-sm transition flex items-center justify-center gap-3 shadow-sm"
+            className="w-full h-[44px] rounded-[8px] bg-white hover:bg-neutral-100 text-[#181818] font-medium text-sm transition flex items-center justify-center gap-2.5 shadow-sm"
           >
             {/* Google Icon */}
             <svg width="18" height="18" viewBox="0 0 24 24">
@@ -374,8 +374,8 @@ function LoginForm() {
           </button>
 
           {/* Divider "or" */}
-          <div className="relative my-7 flex items-center justify-center">
-            <div className="w-full border-t border-[#2A2B30]"></div>
+          <div className="relative my-6 flex items-center justify-center">
+            <div className="w-full border-t border-[#2E2F34]"></div>
             <span className="absolute bg-[#181818] px-3 text-xs text-[#7C7F87]">
               or
             </span>
@@ -383,7 +383,7 @@ function LoginForm() {
 
           {/* Error Message */}
           {error && (
-            <div className="mb-5 rounded-[10px] bg-red-500/10 border border-red-500/30 p-3 text-xs text-red-400">
+            <div className="mb-5 rounded-[8px] bg-red-500/10 border border-red-500/30 p-3 text-xs text-red-400">
               {error}
             </div>
           )}
@@ -392,8 +392,8 @@ function LoginForm() {
           {screen === "email" ? (
             <form onSubmit={handleSendCode} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[#A3A6AD] mb-2">
-                  Work email
+                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+                  Email
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7C7F87]">
@@ -417,8 +417,8 @@ function LoginForm() {
                     autoFocus
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="harsh@idyllproductions.com"
-                    className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
+                    placeholder="name@company.com"
+                    className="w-full h-[44px] rounded-[8px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
                   />
                 </div>
               </div>
@@ -426,25 +426,16 @@ function LoginForm() {
               <button
                 type="submit"
                 disabled={loading || !email.trim()}
-                className="w-full h-[48px] rounded-[10px] bg-[#3B67E0] hover:bg-[#4876F3] disabled:opacity-50 text-white text-sm font-semibold transition flex items-center justify-center gap-2 shadow-md"
+                className="w-full h-[44px] rounded-[8px] bg-[#4876F3] hover:bg-[#3B67E0] disabled:opacity-50 text-white text-sm font-semibold transition flex items-center justify-center gap-2 shadow-md cursor-pointer"
               >
                 <span>{loading ? "Sending code..." : "Email me a sign in code"}</span>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                  <polyline points="12 5 19 12 12 19" />
-                </svg>
               </button>
 
-              <div className="pt-1 text-center text-xs text-[#A3A6AD]">
+              <p className="text-center text-xs text-[#7C7F87] pt-1">
+                Playhead is invite only.
+              </p>
+
+              <div className="pt-2 text-center text-xs text-[#7C7F87]">
                 <span>Team member? </span>
                 <button
                   type="button"
@@ -452,7 +443,7 @@ function LoginForm() {
                     setScreen("password");
                     setError(null);
                   }}
-                  className="text-[#4876F3] hover:underline font-medium"
+                  className="text-[#A3A6AD] hover:text-white transition font-medium cursor-pointer"
                 >
                   Sign in with password
                 </button>
@@ -462,8 +453,8 @@ function LoginForm() {
             /* PASSWORD MODE */
             <form onSubmit={handlePasswordLogin} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[#A3A6AD] mb-2">
-                  Work email
+                <label className="block text-xs font-medium text-[#A3A6AD] mb-1.5">
+                  Email
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7C7F87]">
@@ -487,13 +478,13 @@ function LoginForm() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@company.com"
-                    className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
+                    className="w-full h-[44px] rounded-[8px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
                   />
                 </div>
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-medium text-[#A3A6AD]">
                     Password
                   </label>
@@ -527,7 +518,7 @@ function LoginForm() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full h-[48px] rounded-[10px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
+                    className="w-full h-[44px] rounded-[8px] bg-[#2A2B30] border border-[#2E2F34] pl-10 pr-4 text-sm text-white placeholder-[#7C7F87] focus:border-[#4876F3] focus:outline-none focus:ring-1 focus:ring-[#4876F3] transition"
                   />
                 </div>
               </div>
@@ -535,12 +526,12 @@ function LoginForm() {
               <button
                 type="submit"
                 disabled={loading || !email.trim() || !password}
-                className="w-full h-[48px] rounded-[10px] bg-[#3B67E0] hover:bg-[#4876F3] disabled:opacity-50 text-white text-sm font-semibold transition flex items-center justify-center gap-2 shadow-md"
+                className="w-full h-[44px] rounded-[8px] bg-[#4876F3] hover:bg-[#3B67E0] disabled:opacity-50 text-white text-sm font-semibold transition flex items-center justify-center gap-2 shadow-md cursor-pointer"
               >
                 <span>{loading ? "Signing in..." : "Sign in with password"}</span>
               </button>
 
-              <div className="pt-1 text-center text-xs text-[#A3A6AD]">
+              <div className="pt-2 text-center text-xs text-[#7C7F87]">
                 <span>Client or fast login? </span>
                 <button
                   type="button"
@@ -548,38 +539,13 @@ function LoginForm() {
                     setScreen("email");
                     setError(null);
                   }}
-                  className="text-[#4876F3] hover:underline font-medium"
+                  className="text-[#A3A6AD] hover:text-white transition font-medium cursor-pointer"
                 >
                   Sign in with email code
                 </button>
               </div>
             </form>
           )}
-
-          {/* Note Box with Lock Icon */}
-          <div className="mt-8 rounded-[12px] bg-[#212121] border border-[#2E2F34] p-3.5 flex items-start gap-3">
-            <div className="w-8 h-8 rounded-[8px] bg-[#2A2B30] flex items-center justify-center text-[#A3A6AD] shrink-0 mt-0.5">
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-            </div>
-            <div className="text-xs">
-              <p className="font-semibold text-white">Playhead is invite only.</p>
-              <p className="text-[#7C7F87] mt-0.5">
-                Ask the person who invited you for access.
-              </p>
-            </div>
-          </div>
         </div>
       )}
     </AuthContainer>

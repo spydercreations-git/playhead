@@ -20,7 +20,7 @@ async function runPage1LoginSmokeTest() {
 
     // Verify P01 visual elements
     await page.waitForSelector('text=Sign in to Playhead', { timeout: 8000 });
-    await page.waitForSelector('text=Welcome back. Use the email Idyll invited.', { timeout: 5000 });
+    await page.waitForSelector('text=Use the email Idyll invited.', { timeout: 5000 });
     await page.waitForSelector('button:has-text("Continue with Google")', { timeout: 5000 });
     await page.waitForSelector('button:has-text("Email me a sign in code")', { timeout: 5000 });
     await page.waitForSelector('button:has-text("Sign in with password")', { timeout: 5000 });
@@ -48,7 +48,7 @@ async function runPage1LoginSmokeTest() {
 
     // Verify P02 visual elements
     await page.waitForSelector('text=Check your email', { timeout: 10000 });
-    await page.waitForSelector('text=We sent a 6 digit code to', { timeout: 5000 });
+    await page.waitForSelector('text=We sent a 6-digit code to', { timeout: 5000 });
     await page.waitForSelector('text=The code works for 10 minutes.', { timeout: 5000 });
     await page.waitForSelector('button:has-text("Verify and sign in")', { timeout: 5000 });
     console.log("✔ P02 screen loaded with 6 code inputs matching design");

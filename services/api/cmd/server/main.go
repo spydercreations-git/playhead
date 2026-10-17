@@ -128,6 +128,7 @@ func main() {
 	if pgxPool != nil {
 		projectHandler.SetPool(pgxPool)
 		clientHandler.SetPool(pgxPool)
+		onboardingHandler.SetPool(pgxPool)
 	}
 	if storageClient != nil {
 		projectHandler.SetStorage(storageClient)
@@ -262,6 +263,7 @@ func main() {
 			// Invites
 			protected.With(middleware.RequirePermission(authz.PermTeamInvite)).Post("/companies/{company_id}/invites", inviteHandler.Create)
 			protected.With(middleware.RequirePermission(authz.PermTeamInvite)).Get("/companies/{company_id}/invites", inviteHandler.ListForCompany)
+			protected.Post("/companies/{company_id}/invites/{id}/resend", inviteHandler.Resend)
 			protected.Post("/invites/{token}/accept", inviteHandler.Accept)
 
 			// Clients and Contacts (P1)
@@ -275,6 +277,7 @@ func main() {
 			protected.Post("/clients/{id}/contacts", clientHandler.AddContact)
 			protected.Patch("/contacts/{id}", clientHandler.UpdateContact)
 			protected.Delete("/contacts/{id}", clientHandler.DeleteContact)
+			protected.Post("/contacts/{id}/resend", clientHandler.ResendContactInvite)
 
 			// Projects and People (P1 & P3)
 			protected.Get("/projects", projectHandler.List)

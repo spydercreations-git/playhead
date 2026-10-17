@@ -536,8 +536,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			if authz.VerifyPassword(req.Password, user.TempPasswordHash.String) {
 				authenticated = true
 				isTempPassword = true
-				// Single-use: mark temporary password as used immediately upon login
-				_ = h.queries.MarkTempPasswordUsed(r.Context(), user.ID)
+				// Note: Temporary password remains valid until onboarding completes or expires
 			}
 		}
 	}

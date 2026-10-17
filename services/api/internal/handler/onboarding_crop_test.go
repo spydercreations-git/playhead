@@ -133,12 +133,39 @@ func TestTemporaryPasswordSingleUse(t *testing.T) {
 		t.Fatalf("expected has_temp_password=true on first temp login")
 	}
 
-	// 2. Second login with the same temporary password must FAIL (Single-use enforcement)
+	// 2. Second login with the same temporary password must SUCCEED (No lockout before onboarding)
 	req2 := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewReader(body))
 	w2 := httptest.NewRecorder()
 	authHandler.Login(w2, req2)
-	if w2.Code != http.StatusUnauthorized {
-		t.Fatalf("second temp password login expected 401 Unauthorized, got %d", w2.Code)
+	if w2.Code != http.StatusOK {
+		t.Fatalf("second temp password login expected 200 OK (no lockout), got %d: %s", w2.Code, w2.Body.String())
+	}
+
+	// 3. Complete onboarding with new password
+	onboardingHandler := NewOnboardingHandler(queries, nil)
+	authCtx := context.WithValue(ctx, middleware.UserContextKey, &middleware.AuthenticatedUser{
+		ID:    user.ID,
+		Email: user.Email,
+		Name:  user.Name,
+	})
+	onboardBody, _ := json.Marshal(map[string]string{
+		"name":         "New Name",
+		"username":     fmt.Sprintf("user.%d", time.Now().UnixNano()%100000),
+		"new_password": "NewPermanentPassword123!",
+	})
+	onboardReq := httptest.NewRequest(http.MethodPost, "/users/onboarding", bytes.NewReader(onboardBody)).WithContext(authCtx)
+	onboardW := httptest.NewRecorder()
+	onboardingHandler.CompleteOnboarding(onboardW, onboardReq)
+	if onboardW.Code != http.StatusOK {
+		t.Fatalf("complete onboarding expected 200, got %d: %s", onboardW.Code, onboardW.Body.String())
+	}
+
+	// 4. Third login with old temp password must FAIL (401 Unauthorized)
+	req3 := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewReader(body))
+	w3 := httptest.NewRecorder()
+	authHandler.Login(w3, req3)
+	if w3.Code != http.StatusUnauthorized {
+		t.Fatalf("third temp password login after onboarding expected 401 Unauthorized, got %d", w3.Code)
 	}
 }
 

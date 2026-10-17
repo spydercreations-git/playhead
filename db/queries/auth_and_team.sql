@@ -184,6 +184,17 @@ WHERE id = $1;
 DELETE FROM invites
 WHERE id = $1 AND company_id = $2;
 
+-- name: GetInviteByID :one
+SELECT * FROM invites
+WHERE id = $1 AND company_id = $2
+LIMIT 1;
+
+-- name: UpdateInviteToken :one
+UPDATE invites
+SET token_hash = $2, expires_at = $3, updated_at = NOW()
+WHERE id = $1 AND company_id = $4
+RETURNING *;
+
 -- name: CheckUserBelongsToCompany :one
 SELECT EXISTS (
     SELECT 1 FROM memberships m

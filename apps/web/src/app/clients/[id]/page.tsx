@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ProjectCard } from "@/components/cards/project-card";
 import { ChevronDown, X, MoreHorizontal, Edit, Trash2, Camera } from "@/components/ui/icon";
 import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
+import { toast } from "@/lib/toast";
 
 export default function ClientDetailPage() {
   const params = useParams();
@@ -135,6 +136,17 @@ export default function ClientDetailPage() {
       setNewContactName("");
       setNewContactEmail("");
       setNewContactLevel("none");
+    },
+  });
+
+  const resendContactMutation = useMutation({
+    mutationFn: (contactId: string) =>
+      apiRequest(`/contacts/${contactId}/resend`, { method: "POST" }),
+    onSuccess: () => {
+      toast.success("Invitation resent with new temporary password");
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || err?.error || "Failed to resend invitation");
     },
   });
 
@@ -480,12 +492,23 @@ export default function ClientDetailPage() {
                         </label>
                       </td>
                       <td className="py-3 px-3 text-right">
-                        <button
-                          onClick={() => removeContactMutation.mutate(c.id)}
-                          className="text-xs text-red-400 hover:underline"
-                        >
-                          Remove
-                        </button>
+                        <div className="flex items-center justify-end gap-3">
+                          {hasPermission("clients.edit") && (
+                            <button
+                              onClick={() => resendContactMutation.mutate(c.id)}
+                              disabled={resendContactMutation.isPending}
+                              className="text-xs text-[#3B67E0] hover:underline font-medium disabled:opacity-50"
+                            >
+                              Resend invite
+                            </button>
+                          )}
+                          <button
+                            onClick={() => removeContactMutation.mutate(c.id)}
+                            className="text-xs text-red-400 hover:underline"
+                          >
+                            Remove
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

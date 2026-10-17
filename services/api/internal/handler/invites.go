@@ -141,6 +141,34 @@ func (h *InviteHandler) Create(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Provision or fetch user record to assign temporary password
+	invitedUser, err := h.queries.GetUserByEmail(r.Context(), email)
+	if err != nil {
+		invitedUser, err = h.queries.CreateUser(r.Context(), db.CreateUserParams{
+			Email: email,
+			Name:  strings.Split(email, "@")[0],
+		})
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to provision user for invite"})
+			return
+		}
+	}
+
+	// Generate secure temporary password (at least 12 characters, expires in 7 days)
+	tempPassword := generateSecureTempPassword()
+	tempPasswordHash, err := authz.HashPassword(tempPassword)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
+		return
+	}
+
+	tempExpiresAt := time.Now().Add(7 * 24 * time.Hour)
+	_ = h.queries.SetUserTempPassword(r.Context(), db.SetUserTempPasswordParams{
+		ID:                    invitedUser.ID,
+		TempPasswordHash:      pgtype.Text{String: tempPasswordHash, Valid: true},
+		TempPasswordExpiresAt: pgtype.Timestamptz{Time: tempExpiresAt, Valid: true},
+	})
+
 	// Generate 7-day token
 	rawToken, err := authz.GenerateSecureToken(32)
 	if err != nil {
@@ -163,13 +191,14 @@ func (h *InviteHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Send transactional invite email
-	_ = h.mailer.SendTeamInvite(email, company.Name, user.Name, rawToken)
+	// Send transactional invite email with temporary password & Google sign-in
+	_ = h.mailer.SendTeamInvite(email, company.Name, user.Name, rawToken, tempPassword)
 
 	respondJSON(w, http.StatusCreated, map[string]interface{}{
-		"status":  "created",
-		"invite":  invite,
-		"token":   rawToken, // Provided in response for easy testing / copy link
+		"status":        "created",
+		"invite":        invite,
+		"token":         rawToken, // Provided in response for easy testing / copy link
+		"temp_password": tempPassword,
 	})
 }
 
@@ -279,5 +308,122 @@ func (h *InviteHandler) ListForCompany(w http.ResponseWriter, r *http.Request) {
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"invites": invites,
+	})
+}
+
+// Resend re-issues an invitation with a fresh temporary password and sends the email again.
+func (h *InviteHandler) Resend(w http.ResponseWriter, r *http.Request) {
+	user, ok := middleware.GetAuthenticatedUser(r.Context())
+	if !ok {
+		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	companyIDStr := chi.URLParam(r, "company_id")
+	var companyID pgtype.UUID
+	if err := companyID.Scan(companyIDStr); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_company_id"})
+		return
+	}
+
+	activeCompID, ok := middleware.GetActiveCompanyID(r.Context())
+	if !ok || !activeCompID.Valid || activeCompID != companyID {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Cannot manage invitations of another company",
+		})
+		return
+	}
+
+	person := middleware.GetPerson(r.Context())
+	if !person.HasPermission(authz.PermTeamInvite) && !authz.IsAtLeast(person.Role, authz.RoleManager) {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Only leaders and managers can resend invitations",
+		})
+		return
+	}
+
+	inviteIDStr := chi.URLParam(r, "id")
+	var inviteID pgtype.UUID
+	if err := inviteID.Scan(inviteIDStr); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_invite_id"})
+		return
+	}
+
+	invite, err := h.queries.GetInviteByID(r.Context(), db.GetInviteByIDParams{
+		ID:        inviteID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{
+			"error":   "invite_not_found",
+			"message": "Invitation not found",
+		})
+		return
+	}
+
+	company, err := h.queries.GetCompanyByID(r.Context(), companyID)
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "company_not_found"})
+		return
+	}
+
+	// 1. Generate NEW temporary password (invalidates old temp password immediately)
+	newTempPassword := generateSecureTempPassword()
+	newTempHash, err := authz.HashPassword(newTempPassword)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
+		return
+	}
+
+	// 2. Look up or provision user
+	invitedUser, err := h.queries.GetUserByEmail(r.Context(), invite.Email)
+	if err != nil {
+		invitedUser, err = h.queries.CreateUser(r.Context(), db.CreateUserParams{
+			Email: invite.Email,
+			Name:  strings.Split(invite.Email, "@")[0],
+		})
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
+			return
+		}
+	}
+
+	// Update user's temporary password in DB (old temp password immediately stops working)
+	tempExpiresAt := time.Now().Add(7 * 24 * time.Hour)
+	_ = h.queries.SetUserTempPassword(r.Context(), db.SetUserTempPasswordParams{
+		ID:                    invitedUser.ID,
+		TempPasswordHash:      pgtype.Text{String: newTempHash, Valid: true},
+		TempPasswordExpiresAt: pgtype.Timestamptz{Time: tempExpiresAt, Valid: true},
+	})
+
+	// 3. Generate new 7-day invite token and update invite record
+	rawToken, err := authz.GenerateSecureToken(32)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
+		return
+	}
+	tokenHash := authz.HashToken(rawToken)
+
+	_, err = h.queries.UpdateInviteToken(r.Context(), db.UpdateInviteTokenParams{
+		ID:        invite.ID,
+		TokenHash: tokenHash,
+		ExpiresAt: pgtype.Timestamptz{Time: tempExpiresAt, Valid: true},
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to update invitation"})
+		return
+	}
+
+	// 4. Send email again with the new temporary password
+	_ = h.mailer.SendTeamInvite(invite.Email, company.Name, user.Name, rawToken, newTempPassword)
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"status":        "ok",
+		"message":       "Invitation resent successfully",
+		"token":         rawToken,
+		"temp_password": newTempPassword,
 	})
 }

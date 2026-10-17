@@ -162,23 +162,41 @@ func (m *Mailer) SendPasswordReset(toEmail, toName, token string) error {
 	return m.send(toEmail, subject, html)
 }
 
-// SendTeamInvite sends an invitation link to a new team member.
-func (m *Mailer) SendTeamInvite(toEmail, companyName, inviterName, token string) error {
+// SendTeamInvite sends an invitation link to a new team member with their temporary password and Google sign-in options.
+func (m *Mailer) SendTeamInvite(toEmail, companyName, inviterName, token, tempPassword string) error {
 	inviteURL := fmt.Sprintf("%s/invite/%s", strings.TrimRight(m.FrontendURL, "/"), token)
 	subject := fmt.Sprintf("You're invited to join %s on Playhead", companyName)
+	toName := strings.Split(toEmail, "@")[0]
+
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
-<body style="background-color: #181818; color: #FFFFFF; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px;">
-  <div style="max-width: 500px; margin: 0 auto; background-color: #212121; border-radius: 12px; border: 1px solid #424344; padding: 32px;">
-    <h2 style="color: #FFFFFF; margin-top: 0;">Join %s on Playhead</h2>
-    <p style="color: #9A9DA0; font-size: 14px; line-height: 1.5;">%s invited you to collaborate on video projects, cuts, and reviews in <strong>%s</strong>.</p>
-    <div style="margin: 28px 0;">
-      <a href="%s" style="background-color: #4876F3; color: #FFFFFF; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; display: inline-block;">Accept Invitation</a>
+<head>
+  <meta charset="utf-8">
+  <title>%s</title>
+</head>
+<body style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0A0A0B; color: #FFFFFF; padding: 40px 20px; margin: 0;">
+  <div style="max-width: 520px; margin: 0 auto; background-color: #111113; border: 1px solid #232327; border-radius: 12px; padding: 32px;">
+    <div style="margin-bottom: 24px;">
+      <span style="font-size: 20px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">playhead</span>
     </div>
-    <p style="color: #747678; font-size: 12px;">This invitation will expire in 7 days. Note: This invite can only be accepted by an account with email %s.</p>
+    <h1 style="font-size: 18px; font-weight: 600; color: #FFFFFF; margin: 0 0 12px 0;">Join %s on Playhead</h1>
+    <p style="font-size: 14px; line-height: 22px; color: #A1A1AA; margin: 0 0 20px 0;">
+      Hi %s, <strong>%s</strong> invited you to collaborate in <strong>%s</strong> on Playhead.
+    </p>
+    <div style="background-color: #1A1A1E; border: 1px solid #232327; border-radius: 8px; padding: 16px; margin: 0 0 24px 0;">
+      <p style="font-size: 12px; color: #71717A; margin: 0 0 6px 0;">Your temporary login password:</p>
+      <p style="font-size: 16px; font-family: monospace; font-weight: 700; color: #FFFFFF; margin: 0 0 8px 0; letter-spacing: 1px;">%s</p>
+      <p style="font-size: 12px; color: #A1A1AA; margin: 0;">You can also sign in instantly using <strong>Sign in with Google</strong> with this email address.</p>
+    </div>
+    <div style="text-align: center; margin: 0 0 24px 0;">
+      <a href="%s" style="display: inline-block; background-color: #3B67E0; color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 28px; border-radius: 8px;">Accept Invitation</a>
+    </div>
+    <p style="font-size: 12px; line-height: 18px; color: #71717A; margin: 0;">
+      This temporary password and invitation will expire in 7 days. Note: This invite can only be accepted by an account with email %s.
+    </p>
   </div>
 </body>
-</html>`, companyName, inviterName, companyName, inviteURL, toEmail)
+</html>`, subject, companyName, toName, inviterName, companyName, tempPassword, inviteURL, toEmail)
 
 	return m.send(toEmail, subject, html)
 }

@@ -506,6 +506,35 @@ func (q *Queries) GetCompanyBySlug(ctx context.Context, slug string) (Company, e
 	return i, err
 }
 
+const getInviteByID = `-- name: GetInviteByID :one
+SELECT id, company_id, email, role, project_id, token_hash, expires_at, accepted_at, created_at, updated_at FROM invites
+WHERE id = $1 AND company_id = $2
+LIMIT 1
+`
+
+type GetInviteByIDParams struct {
+	ID        pgtype.UUID `json:"id"`
+	CompanyID pgtype.UUID `json:"company_id"`
+}
+
+func (q *Queries) GetInviteByID(ctx context.Context, arg GetInviteByIDParams) (Invite, error) {
+	row := q.db.QueryRow(ctx, getInviteByID, arg.ID, arg.CompanyID)
+	var i Invite
+	err := row.Scan(
+		&i.ID,
+		&i.CompanyID,
+		&i.Email,
+		&i.Role,
+		&i.ProjectID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getInviteByTokenHash = `-- name: GetInviteByTokenHash :one
 SELECT i.id, i.company_id, i.email, i.role, i.project_id, i.token_hash, i.expires_at, i.accepted_at, i.created_at, i.updated_at, c.name as company_name
 FROM invites i
@@ -900,6 +929,43 @@ type UpdateClientLogoKeyParams struct {
 func (q *Queries) UpdateClientLogoKey(ctx context.Context, arg UpdateClientLogoKeyParams) error {
 	_, err := q.db.Exec(ctx, updateClientLogoKey, arg.ID, arg.LogoKey, arg.CompanyID)
 	return err
+}
+
+const updateInviteToken = `-- name: UpdateInviteToken :one
+UPDATE invites
+SET token_hash = $2, expires_at = $3, updated_at = NOW()
+WHERE id = $1 AND company_id = $4
+RETURNING id, company_id, email, role, project_id, token_hash, expires_at, accepted_at, created_at, updated_at
+`
+
+type UpdateInviteTokenParams struct {
+	ID        pgtype.UUID        `json:"id"`
+	TokenHash string             `json:"token_hash"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	CompanyID pgtype.UUID        `json:"company_id"`
+}
+
+func (q *Queries) UpdateInviteToken(ctx context.Context, arg UpdateInviteTokenParams) (Invite, error) {
+	row := q.db.QueryRow(ctx, updateInviteToken,
+		arg.ID,
+		arg.TokenHash,
+		arg.ExpiresAt,
+		arg.CompanyID,
+	)
+	var i Invite
+	err := row.Scan(
+		&i.ID,
+		&i.CompanyID,
+		&i.Email,
+		&i.Role,
+		&i.ProjectID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.AcceptedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateMembershipRole = `-- name: UpdateMembershipRole :exec

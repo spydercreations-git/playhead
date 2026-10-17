@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
@@ -22,6 +23,7 @@ var usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9.]{3,30}$`)
 type OnboardingHandler struct {
 	queries *db.Queries
 	storage *storage.Client
+	dbPool  *pgxpool.Pool
 }
 
 func NewOnboardingHandler(queries *db.Queries, storage *storage.Client) *OnboardingHandler {
@@ -29,6 +31,10 @@ func NewOnboardingHandler(queries *db.Queries, storage *storage.Client) *Onboard
 		queries: queries,
 		storage: storage,
 	}
+}
+
+func (h *OnboardingHandler) SetPool(pool *pgxpool.Pool) {
+	h.dbPool = pool
 }
 
 // CheckUsername checks if a username is valid and available.
@@ -162,16 +168,43 @@ func (h *OnboardingHandler) CompleteOnboarding(w http.ResponseWriter, r *http.Re
 		avatarURL = pgtype.Text{String: strings.TrimSpace(req.AvatarURL), Valid: true}
 	}
 
-	updatedUser, err := h.queries.CompleteUserOnboarding(r.Context(), db.CompleteUserOnboardingParams{
-		ID:           user.ID,
-		Name:         name,
-		Username:     pgtype.Text{String: username, Valid: true},
-		AvatarUrl:    avatarURL,
-		PasswordHash: newPasswordHash,
-	})
-	if err != nil {
-		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
-		return
+	var updatedUser db.User
+	if h.dbPool != nil {
+		tx, err := h.dbPool.Begin(r.Context())
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
+			return
+		}
+		defer tx.Rollback(r.Context())
+		qtx := h.queries.WithTx(tx)
+		updatedUser, err = qtx.CompleteUserOnboarding(r.Context(), db.CompleteUserOnboardingParams{
+			ID:           user.ID,
+			Name:         name,
+			Username:     pgtype.Text{String: username, Valid: true},
+			AvatarUrl:    avatarURL,
+			PasswordHash: newPasswordHash,
+		})
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
+			return
+		}
+		if err := tx.Commit(r.Context()); err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
+			return
+		}
+	} else {
+		var err error
+		updatedUser, err = h.queries.CompleteUserOnboarding(r.Context(), db.CompleteUserOnboardingParams{
+			ID:           user.ID,
+			Name:         name,
+			Username:     pgtype.Text{String: username, Valid: true},
+			AvatarUrl:    avatarURL,
+			PasswordHash: newPasswordHash,
+		})
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
+			return
+		}
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
@@ -300,6 +333,20 @@ func (h *OnboardingHandler) UploadClientPicture(w http.ResponseWriter, r *http.R
 	var clientID pgtype.UUID
 	if err := clientID.Scan(clientIDStr); err != nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_client_id"})
+		return
+	}
+
+	// BEFORE decoding or saving any image, load the client with GetClientByID(id, active company).
+	// If not found, return 404 and save nothing.
+	_, err := h.queries.GetClientByID(r.Context(), db.GetClientByIDParams{
+		CompanyID: companyID,
+		ID:        clientID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{
+			"error":   "client_not_found",
+			"message": "Client not found in active company",
+		})
 		return
 	}
 

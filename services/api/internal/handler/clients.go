@@ -694,3 +694,106 @@ func (h *ClientHandler) DeleteContact(w http.ResponseWriter, r *http.Request) {
 
 	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
+
+// ResendContactInvite re-generates a temporary password and re-sends the invite email to a client contact.
+func (h *ClientHandler) ResendContactInvite(w http.ResponseWriter, r *http.Request) {
+	user, ok := middleware.GetAuthenticatedUser(r.Context())
+	if !ok {
+		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	companyID, ok := middleware.GetActiveCompanyID(r.Context())
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	person := middleware.GetPerson(r.Context())
+	if !person.HasPermission(authz.PermClientsEdit) && !authz.IsAtLeast(person.Role, authz.RoleManager) {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Only leaders and managers can resend client contact invitations",
+		})
+		return
+	}
+
+	contactIDStr := chi.URLParam(r, "id")
+	var contactID pgtype.UUID
+	if err := contactID.Scan(contactIDStr); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_contact_id"})
+		return
+	}
+
+	contact, err := h.queries.GetClientContactByID(r.Context(), contactID)
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{
+			"error":   "contact_not_found",
+			"message": "Contact not found",
+		})
+		return
+	}
+
+	if contact.CompanyID != companyID {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Contact does not belong to active company",
+		})
+		return
+	}
+
+	client, err := h.queries.GetClientByID(r.Context(), db.GetClientByIDParams{
+		CompanyID: companyID,
+		ID:        contact.ClientID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "client_not_found"})
+		return
+	}
+
+	company, err := h.queries.GetCompanyByID(r.Context(), companyID)
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "company_not_found"})
+		return
+	}
+
+	// 1. Generate NEW temporary password (at least 12 characters, expires in 7 days)
+	newTempPassword := generateSecureTempPassword()
+	newTempHash, err := authz.HashPassword(newTempPassword)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
+		return
+	}
+
+	// 2. Fetch or provision user record
+	contactEmail := authz.NormalizeEmail(contact.Email)
+	targetUser, err := h.queries.GetUserByEmail(r.Context(), contactEmail)
+	if err != nil {
+		targetUser, err = h.queries.CreateUser(r.Context(), db.CreateUserParams{
+			Email: contactEmail,
+			Name:  contact.Name,
+		})
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
+			return
+		}
+	}
+
+	// 3. Set temporary password (old one stops working immediately)
+	tempExpiresAt := time.Now().Add(7 * 24 * time.Hour)
+	_ = h.queries.SetUserTempPassword(r.Context(), db.SetUserTempPasswordParams{
+		ID:                    targetUser.ID,
+		TempPasswordHash:      pgtype.Text{String: newTempHash, Valid: true},
+		TempPasswordExpiresAt: pgtype.Timestamptz{Time: tempExpiresAt, Valid: true},
+	})
+
+	// 4. Send email again
+	_ = h.mailer.SendClientPersonInviteEmail(contact.Email, contact.Name, client.Name, company.Name, newTempPassword, "")
+
+	_ = user
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"status":        "ok",
+		"message":       "Invitation resent successfully",
+		"temp_password": newTempPassword,
+	})
+}

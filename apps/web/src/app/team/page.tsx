@@ -120,6 +120,7 @@ export default function TeamPage() {
   const totalSeatsUsed = (Array.isArray(members) ? members.length : 0) + (Array.isArray(invites) ? invites.length : 0);
   const seatsRemaining = Math.max(0, maxTrialSeats - totalSeatsUsed);
   const canChangeRoles = currentRole?.toLowerCase() === "ceo" || currentRole?.toLowerCase() === "coo";
+  const canResend = ["ceo", "coo", "cfo", "chief sales officer", "design head", "project manager", "admin", "owner", "manager"].includes(currentRole?.toLowerCase());
 
   async function loadTeamData() {
     try {
@@ -220,6 +221,25 @@ export default function TeamPage() {
       setInviteError(apiErr.error || "Unable to send invitation.");
     } finally {
       setInviteLoading(false);
+    }
+  }
+
+  const [resendingInviteId, setResendingInviteId] = useState<string | null>(null);
+
+  async function handleResendInvite(inviteId: string) {
+    if (!companyId) return;
+    try {
+      setResendingInviteId(inviteId);
+      await apiRequest(`/companies/${companyId}/invites/${inviteId}/resend`, {
+        method: "POST",
+      });
+      toast.success("Invitation resent with new temporary password");
+      loadTeamData();
+    } catch (err: any) {
+      const apiErr = err as ApiError;
+      toast.error(apiErr.message || apiErr.error || "Failed to resend invitation.");
+    } finally {
+      setResendingInviteId(null);
     }
   }
 
@@ -490,7 +510,18 @@ export default function TeamPage() {
                           {inv.created_at ? new Date(inv.created_at).toLocaleDateString() : "Pending"}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <span className="text-xs text-[#F59E0B] font-medium">Invited</span>
+                          <div className="flex items-center justify-end gap-3">
+                            <span className="text-xs text-[#F59E0B] font-medium">Invited</span>
+                            {canResend && (
+                              <button
+                                onClick={() => handleResendInvite(inv.id)}
+                                disabled={resendingInviteId === inv.id}
+                                className="text-xs text-[#3B67E0] hover:underline font-medium disabled:opacity-50"
+                              >
+                                {resendingInviteId === inv.id ? "Resending..." : "Resend invite"}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

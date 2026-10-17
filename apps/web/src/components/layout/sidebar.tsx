@@ -162,7 +162,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Action: + New Button (width 200px, centered, height 40px, rx 10) */}
         {!isClient && (
-          <div className="relative px-4 pt-4 pb-2 shrink-0">
+          <div className="relative px-4 pt-6 pb-2.5 shrink-0">
             <button
               onClick={() => setNewMenuOpen(!newMenuOpen)}
               className={`flex h-10 w-[200px] mx-auto items-center justify-center gap-2 rounded-[10px] text-sm font-semibold text-[var(--button-text)] shadow-none transition-all duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] ${
@@ -180,7 +180,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   className="fixed inset-0 z-30"
                   onClick={() => setNewMenuOpen(false)}
                 />
-                <div className="absolute left-4 right-4 top-[62px] z-40 rounded-[10px] border border-[var(--border)] bg-[var(--panel-raised)] py-2 shadow-[0_8px_24px_rgba(0,0,0,0.5)] animate-in fade-in-0 zoom-in-[0.98] duration-160 ease-out">
+                <div className="absolute left-4 right-4 top-[70px] z-40 rounded-[10px] border border-[var(--border)] bg-[var(--panel-raised)] py-2 shadow-[0_8px_24px_rgba(0,0,0,0.5)] animate-in fade-in-0 zoom-in-[0.98] duration-160 ease-out">
                   <div className="px-3.5 pb-1 text-xs font-medium text-[var(--text-3)]">
                     Create in My Drive
                   </div>

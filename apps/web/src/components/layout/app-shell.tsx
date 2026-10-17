@@ -21,7 +21,7 @@ function AppSkeleton() {
         <div className="flex h-14 items-center px-5 border-b border-[var(--border)]">
           <div className="h-6 w-28 rounded-[6px] bg-[var(--input)] animate-pulse" />
         </div>
-        <div className="px-4 pt-4 pb-2">
+        <div className="px-4 pt-6 pb-2.5">
           <div className="h-10 w-[200px] mx-auto rounded-[10px] bg-[var(--input)] animate-pulse" />
         </div>
         <div className="flex-1 px-2 py-2 space-y-1">
@@ -49,7 +49,7 @@ function AppSkeleton() {
             <div className="h-8 w-8 rounded-full bg-[var(--input)] animate-pulse" />
           </div>
         </header>
-        <main className="flex-1 p-6 md:p-8 bg-[var(--bg)]">
+        <main className="flex-1 px-4 pt-7 pb-8 sm:px-6 sm:pt-8 sm:pb-10 lg:px-8 lg:pt-9 lg:pb-12 bg-[var(--bg)]">
           <div className="w-full max-w-[1920px] mx-auto space-y-6">
             <div className="h-8 w-44 rounded-[8px] bg-[var(--input)] animate-pulse" />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -141,7 +141,7 @@ function ProtectedAppShell({
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="relative z-10 flex flex-1 flex-col overflow-hidden min-w-0 h-full">
           <Header onOpenSidebar={() => setSidebarOpen(true)} />
-          <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8 bg-transparent">
+          <main className="flex-1 overflow-y-auto px-4 pt-7 pb-8 sm:px-6 sm:pt-8 sm:pb-10 lg:px-8 lg:pt-9 lg:pb-12 bg-transparent">
             <div className="w-full max-w-[1920px] mx-auto">{children}</div>
           </main>
         </div>

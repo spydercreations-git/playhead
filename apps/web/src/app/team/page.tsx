@@ -117,7 +117,7 @@ export default function TeamPage() {
   const [roleToDelete, setRoleToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const maxTrialSeats = 5;
-  const totalSeatsUsed = members.length + invites.length;
+  const totalSeatsUsed = (Array.isArray(members) ? members.length : 0) + (Array.isArray(invites) ? invites.length : 0);
   const seatsRemaining = Math.max(0, maxTrialSeats - totalSeatsUsed);
   const canChangeRoles = currentRole?.toLowerCase() === "ceo" || currentRole?.toLowerCase() === "coo";
 
@@ -139,13 +139,55 @@ export default function TeamPage() {
 
       const [membersData, invitesData, rolesData] = await Promise.all([
         apiRequest(`/companies/${activeComp.id}/members`),
-        apiRequest(`/companies/${activeComp.id}/invites`).catch(() => []),
+        apiRequest(`/companies/${activeComp.id}/invites`).catch(() => ({ invites: [] })),
         apiRequest("/roles").catch(() => []),
       ]);
 
-      setMembers(membersData);
-      setInvites(invitesData);
-      setRoles(rolesData);
+      const rawMembers: any[] = Array.isArray(membersData)
+        ? membersData
+        : Array.isArray(membersData?.members)
+        ? membersData.members
+        : [];
+
+      const parsedMembers: Member[] = rawMembers.map((m: any) => ({
+        user_id: m.user_id || m.id,
+        name: m.name || m.user_name || "Anonymous",
+        email: m.email || m.user_email || "",
+        avatar_url:
+          typeof m.avatar_url === "string"
+            ? m.avatar_url
+            : typeof m.user_avatar_url === "string"
+            ? m.user_avatar_url
+            : m.user_avatar_url?.Valid
+            ? m.user_avatar_url.String
+            : "",
+        role: m.role || "member",
+        joined_at: m.joined_at || m.created_at || "",
+      }));
+
+      const rawInvites: any[] = Array.isArray(invitesData)
+        ? invitesData
+        : Array.isArray(invitesData?.invites)
+        ? invitesData.invites
+        : [];
+
+      const parsedInvites: Invite[] = rawInvites.map((inv: any) => ({
+        id: inv.id,
+        email: inv.email,
+        role: inv.role,
+        created_at: inv.created_at,
+        expires_at: inv.expires_at,
+      }));
+
+      const rawRoles: any[] = Array.isArray(rolesData)
+        ? rolesData
+        : Array.isArray(rolesData?.roles)
+        ? rolesData.roles
+        : [];
+
+      setMembers(parsedMembers);
+      setInvites(parsedInvites);
+      setRoles(rawRoles);
     } catch (err: any) {
       const apiErr = err as ApiError;
       setError(apiErr.error || "Failed to load team data.");
@@ -307,7 +349,7 @@ export default function TeamPage() {
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>Members ({members.length})</span>
+          <span>Members ({(members || []).length})</span>
         </button>
         <button
           onClick={() => setActiveTab("roles")}
@@ -318,7 +360,7 @@ export default function TeamPage() {
           }`}
         >
           <Shield className="w-4 h-4" />
-          <span>Roles & Permissions ({roles.length})</span>
+          <span>Roles & Permissions ({(roles || []).length})</span>
         </button>
       </div>
 
@@ -330,89 +372,131 @@ export default function TeamPage() {
 
       {/* TAB 1: MEMBERS */}
       {activeTab === "members" && (
-        <div className="overflow-hidden rounded-xl border border-[#424344] bg-[#212121]">
-          <div className="border-b border-[#424344] px-6 py-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-white">Active Members</h2>
-            <span className="text-xs text-[#A3A6AD]">{members.length} people</span>
+        <div className="space-y-6">
+          <div className="overflow-hidden rounded-xl border border-[#424344] bg-[#212121]">
+            <div className="border-b border-[#424344] px-6 py-4 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-white">Active Members</h2>
+              <span className="text-xs text-[#A3A6AD]">{(members || []).length} people</span>
+            </div>
+
+            {loading ? (
+              <div className="py-12 text-center text-xs text-[#A3A6AD]">Loading members...</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-[#424344] bg-[#181818]/50 text-[#A3A6AD]">
+                    <tr>
+                      <th className="px-6 py-3 font-medium">User</th>
+                      <th className="px-6 py-3 font-medium">Role</th>
+                      <th className="px-6 py-3 font-medium">Joined</th>
+                      <th className="px-6 py-3 text-right font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#424344]">
+                    {(members || []).map((m) => {
+                      const isSelf = m.user_id === currentUserId;
+                      return (
+                        <tr key={m.user_id} className="hover:bg-[#2E2F34]/30">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-full bg-[#4876F3]/20 text-[#4876F3] flex items-center justify-center font-bold text-xs ">
+                                {m.name ? m.name.charAt(0).toUpperCase() : (m.email ? m.email.charAt(0).toUpperCase() : "?")}
+                              </div>
+                              <div>
+                                <div className="font-semibold text-white">
+                                  {m.name || "Anonymous"} {isSelf && "(You)"}
+                                </div>
+                                <div className="text-xs text-[#A3A6AD]">{m.email}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            {canChangeRoles && !isSelf ? (
+                              <select
+                                value={m.role}
+                                onChange={(e) => handleUpdateRole(m.user_id, e.target.value)}
+                                className="bg-[#181818] border border-[#424344] rounded-lg px-2.5 py-1 text-xs text-white"
+                              >
+                                <option value="CEO">CEO</option>
+                                <option value="COO">COO</option>
+                                <option value="CFO">CFO</option>
+                                <option value="Chief Sales Officer">Chief Sales Officer</option>
+                                <option value="Design Head">Design Head</option>
+                                <option value="Project Manager">Project Manager</option>
+                                <option value="Editor">Editor</option>
+                                {(roles || [])
+                                  .filter((r) => !r.is_system && !["ceo", "coo", "cfo", "chief sales officer", "design head", "project manager", "editor"].includes(r.name.toLowerCase()))
+                                  .map((r) => (
+                                    <option key={r.id} value={r.name}>
+                                      {r.name}
+                                    </option>
+                                  ))}
+                              </select>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#2A2B30] text-xs font-medium text-white border border-[#2E2F34]">
+                                {m.role}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-[#A3A6AD]">
+                            {m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "Active"}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {canChangeRoles && !isSelf && (
+                              <button
+                                onClick={() => setMemberToRemove({ id: m.user_id, name: m.name || m.email })}
+                                className="text-xs text-[#F0506E] hover:text-[#F0506E]/80 font-medium"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
-          {loading ? (
-            <div className="py-12 text-center text-xs text-[#A3A6AD]">Loading members...</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-[#424344] bg-[#181818]/50 text-[#A3A6AD]">
-                  <tr>
-                    <th className="px-6 py-3 font-medium">User</th>
-                    <th className="px-6 py-3 font-medium">Role</th>
-                    <th className="px-6 py-3 font-medium">Joined</th>
-                    <th className="px-6 py-3 text-right font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#424344]">
-                  {members.map((m) => {
-                    const isSelf = m.user_id === currentUserId;
-                    return (
-                      <tr key={m.user_id} className="hover:bg-[#2E2F34]/30">
+          {/* Pending Invitations */}
+          {(invites || []).length > 0 && (
+            <div className="overflow-hidden rounded-xl border border-[#424344] bg-[#212121]">
+              <div className="border-b border-[#424344] px-6 py-4 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-white">Pending Invitations</h2>
+                <span className="text-xs text-[#A3A6AD]">{invites.length} pending</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-[#424344] bg-[#181818]/50 text-[#A3A6AD]">
+                    <tr>
+                      <th className="px-6 py-3 font-medium">Email</th>
+                      <th className="px-6 py-3 font-medium">Role</th>
+                      <th className="px-6 py-3 font-medium">Sent</th>
+                      <th className="px-6 py-3 text-right font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#424344]">
+                    {invites.map((inv) => (
+                      <tr key={inv.id} className="hover:bg-[#2E2F34]/30">
+                        <td className="px-6 py-4 font-medium text-white">{inv.email}</td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-[#4876F3]/20 text-[#4876F3] flex items-center justify-center font-bold text-xs ">
-                              {m.name ? m.name.charAt(0) : m.email.charAt(0)}
-                            </div>
-                            <div>
-                              <div className="font-semibold text-white">
-                                {m.name || "Anonymous"} {isSelf && "(You)"}
-                              </div>
-                              <div className="text-xs text-[#A3A6AD]">{m.email}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {canChangeRoles && !isSelf ? (
-                            <select
-                              value={m.role}
-                              onChange={(e) => handleUpdateRole(m.user_id, e.target.value)}
-                              className="bg-[#181818] border border-[#424344] rounded-lg px-2.5 py-1 text-xs text-white"
-                            >
-                              <option value="CEO">CEO</option>
-                              <option value="COO">COO</option>
-                              <option value="CFO">CFO</option>
-                              <option value="Chief Sales Officer">Chief Sales Officer</option>
-                              <option value="Design Head">Design Head</option>
-                              <option value="Project Manager">Project Manager</option>
-                              <option value="Editor">Editor</option>
-                              {roles
-                                .filter((r) => !r.is_system && !["ceo", "coo", "cfo", "chief sales officer", "design head", "project manager", "editor"].includes(r.name.toLowerCase()))
-                                .map((r) => (
-                                  <option key={r.id} value={r.name}>
-                                    {r.name}
-                                  </option>
-                                ))}
-                            </select>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#2A2B30] text-xs font-medium text-white border border-[#2E2F34]">
-                              {m.role}
-                            </span>
-                          )}
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#2A2B30] text-xs font-medium text-[#A3A6AD] border border-[#2E2F34]">
+                            {inv.role}
+                          </span>
                         </td>
                         <td className="px-6 py-4 text-[#A3A6AD]">
-                          {m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "Active"}
+                          {inv.created_at ? new Date(inv.created_at).toLocaleDateString() : "Pending"}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          {canChangeRoles && !isSelf && (
-                            <button
-                              onClick={() => setMemberToRemove({ id: m.user_id, name: m.name || m.email })}
-                              className="text-xs text-[#F0506E] hover:text-[#F0506E]/80 font-medium"
-                            >
-                              Remove
-                            </button>
-                          )}
+                          <span className="text-xs text-[#F59E0B] font-medium">Invited</span>
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
@@ -422,7 +506,7 @@ export default function TeamPage() {
       {activeTab === "roles" && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {roles.map((role) => (
+            {(roles || []).map((role) => (
               <div
                 key={role.id}
                 className="bg-[#212121] border border-[#424344] rounded-xl p-5 space-y-4 flex flex-col justify-between"

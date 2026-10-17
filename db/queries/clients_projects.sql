@@ -68,6 +68,10 @@ RETURNING *;
 SELECT * FROM clients
 WHERE company_id = @company_id AND id = @id AND deleted_at IS NULL;
 
+-- name: GetClientByIDAnyStatus :one
+SELECT * FROM clients
+WHERE company_id = @company_id AND id = @id;
+
 -- name: ListClients :many
 SELECT c.*,
     COALESCE((SELECT COUNT(*) FROM client_contacts cc WHERE cc.client_id = c.id), 0)::int AS contacts_count,
@@ -155,6 +159,12 @@ FROM projects p
 JOIN clients c ON c.id = p.client_id
 WHERE p.company_id = @company_id AND p.id = @id AND p.deleted_at IS NULL;
 
+-- name: GetProjectByIDAnyStatus :one
+SELECT p.*, c.name AS client_name, c.deleted_at AS client_deleted_at
+FROM projects p
+JOIN clients c ON c.id = p.client_id
+WHERE p.company_id = @company_id AND p.id = @id;
+
 -- name: ListProjectsForAdminOrManager :many
 SELECT p.*, c.name AS client_name,
     COALESCE((SELECT COUNT(*) FROM items i WHERE i.project_id = p.id AND i.deleted_at IS NULL AND i.kind = 'file' AND (i.review_status = 'needs_review' OR i.review_status = 'pending' OR i.review_status = 'in_review')), 0)::int AS to_review_count
@@ -215,6 +225,65 @@ SET deleted_at = NOW(),
     updated_at = NOW()
 WHERE company_id = @company_id AND id = @id;
 
+-- name: SoftDeleteProjectWithBatch :exec
+UPDATE projects
+SET deleted_at = NOW(),
+    delete_batch_id = @delete_batch_id,
+    updated_at = NOW()
+WHERE company_id = @company_id AND id = @id;
+
+-- name: SoftDeleteItemsByProjectWithBatch :exec
+UPDATE items
+SET deleted_at = NOW(),
+    delete_batch_id = @delete_batch_id,
+    deleted_by = @deleted_by,
+    updated_at = NOW()
+WHERE company_id = @company_id AND project_id = @project_id AND deleted_at IS NULL;
+
+-- name: RestoreProjectWithBatch :exec
+UPDATE projects
+SET deleted_at = NULL,
+    delete_batch_id = NULL,
+    updated_at = NOW()
+WHERE company_id = @company_id AND id = @id;
+
+-- name: SoftDeleteClientWithBatch :exec
+UPDATE clients
+SET deleted_at = NOW(),
+    delete_batch_id = @delete_batch_id,
+    updated_at = NOW()
+WHERE company_id = @company_id AND id = @id;
+
+-- name: SoftDeleteProjectsByClientWithBatch :many
+UPDATE projects
+SET deleted_at = NOW(),
+    delete_batch_id = @delete_batch_id,
+    updated_at = NOW()
+WHERE company_id = @company_id AND client_id = @client_id AND deleted_at IS NULL
+RETURNING id;
+
+-- name: RestoreClientWithBatch :exec
+UPDATE clients
+SET deleted_at = NULL,
+    delete_batch_id = NULL,
+    updated_at = NOW()
+WHERE company_id = @company_id AND id = @id;
+
+-- name: RestoreProjectsByBatch :exec
+UPDATE projects
+SET deleted_at = NULL,
+    delete_batch_id = NULL,
+    updated_at = NOW()
+WHERE company_id = @company_id AND delete_batch_id = @delete_batch_id;
+
+-- name: RestoreItemsByBatch :exec
+UPDATE items
+SET deleted_at = NULL,
+    delete_batch_id = NULL,
+    deleted_by = NULL,
+    updated_at = NOW()
+WHERE company_id = @company_id AND delete_batch_id = @delete_batch_id;
+
 -- name: SoftDeleteProjectsByClient :exec
 UPDATE projects
 SET deleted_at = NOW(),
@@ -231,6 +300,11 @@ WHERE id = @id;
 -- name: CreateItem :one
 INSERT INTO items (company_id, project_id, parent_id, kind, name, position, created_by)
 VALUES (@company_id, sqlc.narg('project_id'), @parent_id, @kind, @name, @position, @created_by)
+RETURNING *;
+
+-- name: CreateTrackerItem :one
+INSERT INTO items (company_id, project_id, parent_id, kind, name, position, is_tracker, created_by)
+VALUES (@company_id, @project_id, NULL, 'spreadsheet', 'Project tracker', 0, true, @created_by)
 RETURNING *;
 
 -- name: ListItemsByProjectAndParent :many

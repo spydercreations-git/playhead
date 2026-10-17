@@ -109,17 +109,78 @@ func (h *StorageUploadsHandler) InitiateUpload(w http.ResponseWriter, r *http.Re
 		}
 
 		person := middleware.GetPerson(ctx)
+		projTarget := authz.ProjectTarget{
+			ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+		}
 
-		var targetFolderUUID uuid.UUID
-		if req.ParentID != nil && *req.ParentID != "" && *req.ParentID != "null" {
-			if pid, err := uuid.Parse(*req.ParentID); err == nil {
-				targetFolderUUID = pid
+		// If ParentID is not specified, check project upload permission and auto-route to "Raw files" folder
+		if req.ParentID == nil || *req.ParentID == "" || *req.ParentID == "null" {
+			projAccess, pErr := authz.Access(ctx, h.queries, person, projTarget)
+			if pErr != nil || (!projAccess.CanUpload() && projAccess.Level != authz.LevelFull) {
+				respondJSON(w, http.StatusForbidden, map[string]string{
+					"error":   "forbidden",
+					"message": "You do not have permission to upload files to this project",
+				})
+				return
+			}
+
+			rawFolder, rErr := h.queries.FindItemInParentByName(ctx, db.FindItemInParentByNameParams{
+				CompanyID: companyID,
+				ProjectID: proj.ID,
+				ParentID:  pgtype.UUID{Valid: false},
+				Name:      "Raw files",
+			})
+			if rErr == nil && rawFolder.Kind == "folder" {
+				fIDStr := uuid.UUID(rawFolder.ID.Bytes).String()
+				req.ParentID = &fIDStr
+			} else {
+				var pos pgtype.Numeric
+				_ = pos.Scan("1")
+				createdFolder, cErr := h.queries.CreateItem(ctx, db.CreateItemParams{
+					CompanyID: companyID,
+					ProjectID: proj.ID,
+					ParentID:  pgtype.UUID{Valid: false},
+					Kind:      "folder",
+					Name:      "Raw files",
+					Position:  pos,
+					CreatedBy: user.ID,
+				})
+				if cErr == nil {
+					fIDStr := uuid.UUID(createdFolder.ID.Bytes).String()
+					req.ParentID = &fIDStr
+					_ = h.queries.UpdateProjectFolderCount(ctx, db.UpdateProjectFolderCountParams{
+						ID:          proj.ID,
+						FolderCount: 1,
+					})
+				} else {
+					respondJSON(w, http.StatusBadRequest, map[string]string{
+						"error":   "folder_required",
+						"message": "Files must be uploaded inside a folder. Direct uploads to project root are not allowed.",
+					})
+					return
+				}
 			}
 		}
 
-		access, err := authz.AccessFolder(ctx, h.queries, person, authz.ProjectTarget{
-			ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
-		}, targetFolderUUID)
+		targetFolderUUID, err := uuid.Parse(*req.ParentID)
+		if err != nil {
+			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_folder_id"})
+			return
+		}
+
+		targetFolder, fErr := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+			CompanyID: companyID,
+			ID:        pgtype.UUID{Bytes: targetFolderUUID, Valid: true},
+		})
+		if fErr != nil || targetFolder.Kind != "folder" || targetFolder.DeletedAt.Valid {
+			respondJSON(w, http.StatusBadRequest, map[string]string{
+				"error":   "invalid_folder",
+				"message": "Target must be an active folder within the project.",
+			})
+			return
+		}
+
+		access, err := authz.AccessFolder(ctx, h.queries, person, projTarget, targetFolderUUID)
 		if err != nil || !access.CanUpload() {
 			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to upload files to this folder"})
 			return

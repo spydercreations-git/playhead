@@ -39,7 +39,7 @@ func (q *Queries) CheckEmailIsKnown(ctx context.Context, email string) (bool, er
 const createClient = `-- name: CreateClient :one
 INSERT INTO clients (company_id, name, website, notes, created_by)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at
+RETURNING id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at, delete_batch_id
 `
 
 type CreateClientParams struct {
@@ -72,6 +72,7 @@ func (q *Queries) CreateClient(ctx context.Context, arg CreateClientParams) (Cli
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.DeleteBatchID,
 	)
 	return i, err
 }
@@ -172,7 +173,7 @@ func (q *Queries) CreateGrant(ctx context.Context, arg CreateGrantParams) (Grant
 const createItem = `-- name: CreateItem :one
 INSERT INTO items (company_id, project_id, parent_id, kind, name, position, created_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category, delete_batch_id, is_tracker
 `
 
 type CreateItemParams struct {
@@ -220,6 +221,8 @@ func (q *Queries) CreateItem(ctx context.Context, arg CreateItemParams) (Item, e
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
+		&i.DeleteBatchID,
+		&i.IsTracker,
 	)
 	return i, err
 }
@@ -254,7 +257,7 @@ func (q *Queries) CreateLoginCode(ctx context.Context, arg CreateLoginCodeParams
 const createProject = `-- name: CreateProject :one
 INSERT INTO projects (company_id, client_id, name, created_by)
 VALUES ($1, $2, $3, $4)
-RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at
+RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at, delete_batch_id
 `
 
 type CreateProjectParams struct {
@@ -288,6 +291,51 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.DeleteBatchID,
+	)
+	return i, err
+}
+
+const createTrackerItem = `-- name: CreateTrackerItem :one
+INSERT INTO items (company_id, project_id, parent_id, kind, name, position, is_tracker, created_by)
+VALUES ($1, $2, NULL, 'spreadsheet', 'Project tracker', 0, true, $3)
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category, delete_batch_id, is_tracker
+`
+
+type CreateTrackerItemParams struct {
+	CompanyID pgtype.UUID `json:"company_id"`
+	ProjectID pgtype.UUID `json:"project_id"`
+	CreatedBy pgtype.UUID `json:"created_by"`
+}
+
+func (q *Queries) CreateTrackerItem(ctx context.Context, arg CreateTrackerItemParams) (Item, error) {
+	row := q.db.QueryRow(ctx, createTrackerItem, arg.CompanyID, arg.ProjectID, arg.CreatedBy)
+	var i Item
+	err := row.Scan(
+		&i.ID,
+		&i.CompanyID,
+		&i.ProjectID,
+		&i.ParentID,
+		&i.Kind,
+		&i.Name,
+		&i.Position,
+		&i.CreatedBy,
+		&i.FileCount,
+		&i.FolderCount,
+		&i.TotalBytes,
+		&i.ReviewStatus,
+		&i.Locked,
+		&i.DeletedAt,
+		&i.DeletedBy,
+		&i.OriginalParentID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.VideoCount,
+		&i.DriveOwnerID,
+		&i.IsDefaultFolder,
+		&i.Category,
+		&i.DeleteBatchID,
+		&i.IsTracker,
 	)
 	return i, err
 }
@@ -339,7 +387,7 @@ func (q *Queries) DeleteLoginCodesForEmail(ctx context.Context, email string) er
 }
 
 const getClientByID = `-- name: GetClientByID :one
-SELECT id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at FROM clients
+SELECT id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at, delete_batch_id FROM clients
 WHERE company_id = $1 AND id = $2 AND deleted_at IS NULL
 `
 
@@ -363,6 +411,37 @@ func (q *Queries) GetClientByID(ctx context.Context, arg GetClientByIDParams) (C
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.DeleteBatchID,
+	)
+	return i, err
+}
+
+const getClientByIDAnyStatus = `-- name: GetClientByIDAnyStatus :one
+SELECT id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at, delete_batch_id FROM clients
+WHERE company_id = $1 AND id = $2
+`
+
+type GetClientByIDAnyStatusParams struct {
+	CompanyID pgtype.UUID `json:"company_id"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) GetClientByIDAnyStatus(ctx context.Context, arg GetClientByIDAnyStatusParams) (Client, error) {
+	row := q.db.QueryRow(ctx, getClientByIDAnyStatus, arg.CompanyID, arg.ID)
+	var i Client
+	err := row.Scan(
+		&i.ID,
+		&i.CompanyID,
+		&i.Name,
+		&i.Website,
+		&i.Notes,
+		&i.NotesItemID,
+		&i.LogoKey,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeleteBatchID,
 	)
 	return i, err
 }
@@ -515,7 +594,7 @@ func (q *Queries) GetGrantByTargetAndEmail(ctx context.Context, arg GetGrantByTa
 }
 
 const getProjectByID = `-- name: GetProjectByID :one
-SELECT p.id, p.company_id, p.client_id, p.name, p.status, p.tracker_item_id, p.file_count, p.folder_count, p.video_count, p.total_bytes, p.created_by, p.created_at, p.updated_at, p.deleted_at, c.name AS client_name
+SELECT p.id, p.company_id, p.client_id, p.name, p.status, p.tracker_item_id, p.file_count, p.folder_count, p.video_count, p.total_bytes, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.delete_batch_id, c.name AS client_name
 FROM projects p
 JOIN clients c ON c.id = p.client_id
 WHERE p.company_id = $1 AND p.id = $2 AND p.deleted_at IS NULL
@@ -541,6 +620,7 @@ type GetProjectByIDRow struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
+	DeleteBatchID pgtype.UUID        `json:"delete_batch_id"`
 	ClientName    string             `json:"client_name"`
 }
 
@@ -562,7 +642,65 @@ func (q *Queries) GetProjectByID(ctx context.Context, arg GetProjectByIDParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.DeleteBatchID,
 		&i.ClientName,
+	)
+	return i, err
+}
+
+const getProjectByIDAnyStatus = `-- name: GetProjectByIDAnyStatus :one
+SELECT p.id, p.company_id, p.client_id, p.name, p.status, p.tracker_item_id, p.file_count, p.folder_count, p.video_count, p.total_bytes, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.delete_batch_id, c.name AS client_name, c.deleted_at AS client_deleted_at
+FROM projects p
+JOIN clients c ON c.id = p.client_id
+WHERE p.company_id = $1 AND p.id = $2
+`
+
+type GetProjectByIDAnyStatusParams struct {
+	CompanyID pgtype.UUID `json:"company_id"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+type GetProjectByIDAnyStatusRow struct {
+	ID              pgtype.UUID        `json:"id"`
+	CompanyID       pgtype.UUID        `json:"company_id"`
+	ClientID        pgtype.UUID        `json:"client_id"`
+	Name            string             `json:"name"`
+	Status          string             `json:"status"`
+	TrackerItemID   pgtype.UUID        `json:"tracker_item_id"`
+	FileCount       int32              `json:"file_count"`
+	FolderCount     int32              `json:"folder_count"`
+	VideoCount      int32              `json:"video_count"`
+	TotalBytes      int64              `json:"total_bytes"`
+	CreatedBy       pgtype.UUID        `json:"created_by"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+	DeleteBatchID   pgtype.UUID        `json:"delete_batch_id"`
+	ClientName      string             `json:"client_name"`
+	ClientDeletedAt pgtype.Timestamptz `json:"client_deleted_at"`
+}
+
+func (q *Queries) GetProjectByIDAnyStatus(ctx context.Context, arg GetProjectByIDAnyStatusParams) (GetProjectByIDAnyStatusRow, error) {
+	row := q.db.QueryRow(ctx, getProjectByIDAnyStatus, arg.CompanyID, arg.ID)
+	var i GetProjectByIDAnyStatusRow
+	err := row.Scan(
+		&i.ID,
+		&i.CompanyID,
+		&i.ClientID,
+		&i.Name,
+		&i.Status,
+		&i.TrackerItemID,
+		&i.FileCount,
+		&i.FolderCount,
+		&i.VideoCount,
+		&i.TotalBytes,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeleteBatchID,
+		&i.ClientName,
+		&i.ClientDeletedAt,
 	)
 	return i, err
 }
@@ -719,7 +857,7 @@ func (q *Queries) ListClientContactsByCompany(ctx context.Context, companyID pgt
 }
 
 const listClients = `-- name: ListClients :many
-SELECT c.id, c.company_id, c.name, c.website, c.notes, c.notes_item_id, c.logo_key, c.created_by, c.created_at, c.updated_at, c.deleted_at,
+SELECT c.id, c.company_id, c.name, c.website, c.notes, c.notes_item_id, c.logo_key, c.created_by, c.created_at, c.updated_at, c.deleted_at, c.delete_batch_id,
     COALESCE((SELECT COUNT(*) FROM client_contacts cc WHERE cc.client_id = c.id), 0)::int AS contacts_count,
     COALESCE((SELECT COUNT(*) FROM projects p WHERE p.client_id = c.id AND p.deleted_at IS NULL), 0)::int AS projects_count,
     COALESCE((SELECT SUM(p.total_bytes) FROM projects p WHERE p.client_id = c.id AND p.deleted_at IS NULL), 0)::bigint AS total_size_bytes,
@@ -742,6 +880,7 @@ type ListClientsRow struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+	DeleteBatchID  pgtype.UUID        `json:"delete_batch_id"`
 	ContactsCount  int32              `json:"contacts_count"`
 	ProjectsCount  int32              `json:"projects_count"`
 	TotalSizeBytes int64              `json:"total_size_bytes"`
@@ -770,6 +909,7 @@ func (q *Queries) ListClients(ctx context.Context, companyID pgtype.UUID) ([]Lis
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.DeleteBatchID,
 			&i.ContactsCount,
 			&i.ProjectsCount,
 			&i.TotalSizeBytes,
@@ -888,7 +1028,7 @@ func (q *Queries) ListGrantsByTarget(ctx context.Context, arg ListGrantsByTarget
 }
 
 const listItemsByProjectAndParent = `-- name: ListItemsByProjectAndParent :many
-SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category FROM items
+SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category, delete_batch_id, is_tracker FROM items
 WHERE company_id = $1
   AND project_id = $2
   AND ($3::uuid IS NULL AND parent_id IS NULL OR parent_id = $3)
@@ -934,6 +1074,8 @@ func (q *Queries) ListItemsByProjectAndParent(ctx context.Context, arg ListItems
 			&i.DriveOwnerID,
 			&i.IsDefaultFolder,
 			&i.Category,
+			&i.DeleteBatchID,
+			&i.IsTracker,
 		); err != nil {
 			return nil, err
 		}
@@ -946,7 +1088,7 @@ func (q *Queries) ListItemsByProjectAndParent(ctx context.Context, arg ListItems
 }
 
 const listProjectsForAdminOrManager = `-- name: ListProjectsForAdminOrManager :many
-SELECT p.id, p.company_id, p.client_id, p.name, p.status, p.tracker_item_id, p.file_count, p.folder_count, p.video_count, p.total_bytes, p.created_by, p.created_at, p.updated_at, p.deleted_at, c.name AS client_name,
+SELECT p.id, p.company_id, p.client_id, p.name, p.status, p.tracker_item_id, p.file_count, p.folder_count, p.video_count, p.total_bytes, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.delete_batch_id, c.name AS client_name,
     COALESCE((SELECT COUNT(*) FROM items i WHERE i.project_id = p.id AND i.deleted_at IS NULL AND i.kind = 'file' AND (i.review_status = 'needs_review' OR i.review_status = 'pending' OR i.review_status = 'in_review')), 0)::int AS to_review_count
 FROM projects p
 JOIN clients c ON c.id = p.client_id
@@ -978,6 +1120,7 @@ type ListProjectsForAdminOrManagerRow struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
+	DeleteBatchID pgtype.UUID        `json:"delete_batch_id"`
 	ClientName    string             `json:"client_name"`
 	ToReviewCount int32              `json:"to_review_count"`
 }
@@ -1006,6 +1149,7 @@ func (q *Queries) ListProjectsForAdminOrManager(ctx context.Context, arg ListPro
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.DeleteBatchID,
 			&i.ClientName,
 			&i.ToReviewCount,
 		); err != nil {
@@ -1020,7 +1164,7 @@ func (q *Queries) ListProjectsForAdminOrManager(ctx context.Context, arg ListPro
 }
 
 const listProjectsForUserWithAccess = `-- name: ListProjectsForUserWithAccess :many
-SELECT DISTINCT p.id, p.company_id, p.client_id, p.name, p.status, p.tracker_item_id, p.file_count, p.folder_count, p.video_count, p.total_bytes, p.created_by, p.created_at, p.updated_at, p.deleted_at, c.name AS client_name,
+SELECT DISTINCT p.id, p.company_id, p.client_id, p.name, p.status, p.tracker_item_id, p.file_count, p.folder_count, p.video_count, p.total_bytes, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.delete_batch_id, c.name AS client_name,
     COALESCE((SELECT COUNT(*) FROM items i WHERE i.project_id = p.id AND i.deleted_at IS NULL AND i.kind = 'file' AND (i.review_status = 'needs_review' OR i.review_status = 'pending' OR i.review_status = 'in_review')), 0)::int AS to_review_count
 FROM projects p
 JOIN clients c ON c.id = p.client_id
@@ -1064,6 +1208,7 @@ type ListProjectsForUserWithAccessRow struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
+	DeleteBatchID pgtype.UUID        `json:"delete_batch_id"`
 	ClientName    string             `json:"client_name"`
 	ToReviewCount int32              `json:"to_review_count"`
 }
@@ -1097,6 +1242,7 @@ func (q *Queries) ListProjectsForUserWithAccess(ctx context.Context, arg ListPro
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.DeleteBatchID,
 			&i.ClientName,
 			&i.ToReviewCount,
 		); err != nil {
@@ -1115,7 +1261,7 @@ UPDATE projects
 SET client_id = $1,
     updated_at = NOW()
 WHERE company_id = $2 AND id = $3 AND deleted_at IS NULL
-RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at
+RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at, delete_batch_id
 `
 
 type MoveProjectToClientParams struct {
@@ -1142,8 +1288,82 @@ func (q *Queries) MoveProjectToClient(ctx context.Context, arg MoveProjectToClie
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.DeleteBatchID,
 	)
 	return i, err
+}
+
+const restoreClientWithBatch = `-- name: RestoreClientWithBatch :exec
+UPDATE clients
+SET deleted_at = NULL,
+    delete_batch_id = NULL,
+    updated_at = NOW()
+WHERE company_id = $1 AND id = $2
+`
+
+type RestoreClientWithBatchParams struct {
+	CompanyID pgtype.UUID `json:"company_id"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) RestoreClientWithBatch(ctx context.Context, arg RestoreClientWithBatchParams) error {
+	_, err := q.db.Exec(ctx, restoreClientWithBatch, arg.CompanyID, arg.ID)
+	return err
+}
+
+const restoreItemsByBatch = `-- name: RestoreItemsByBatch :exec
+UPDATE items
+SET deleted_at = NULL,
+    delete_batch_id = NULL,
+    deleted_by = NULL,
+    updated_at = NOW()
+WHERE company_id = $1 AND delete_batch_id = $2
+`
+
+type RestoreItemsByBatchParams struct {
+	CompanyID     pgtype.UUID `json:"company_id"`
+	DeleteBatchID pgtype.UUID `json:"delete_batch_id"`
+}
+
+func (q *Queries) RestoreItemsByBatch(ctx context.Context, arg RestoreItemsByBatchParams) error {
+	_, err := q.db.Exec(ctx, restoreItemsByBatch, arg.CompanyID, arg.DeleteBatchID)
+	return err
+}
+
+const restoreProjectWithBatch = `-- name: RestoreProjectWithBatch :exec
+UPDATE projects
+SET deleted_at = NULL,
+    delete_batch_id = NULL,
+    updated_at = NOW()
+WHERE company_id = $1 AND id = $2
+`
+
+type RestoreProjectWithBatchParams struct {
+	CompanyID pgtype.UUID `json:"company_id"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) RestoreProjectWithBatch(ctx context.Context, arg RestoreProjectWithBatchParams) error {
+	_, err := q.db.Exec(ctx, restoreProjectWithBatch, arg.CompanyID, arg.ID)
+	return err
+}
+
+const restoreProjectsByBatch = `-- name: RestoreProjectsByBatch :exec
+UPDATE projects
+SET deleted_at = NULL,
+    delete_batch_id = NULL,
+    updated_at = NOW()
+WHERE company_id = $1 AND delete_batch_id = $2
+`
+
+type RestoreProjectsByBatchParams struct {
+	CompanyID     pgtype.UUID `json:"company_id"`
+	DeleteBatchID pgtype.UUID `json:"delete_batch_id"`
+}
+
+func (q *Queries) RestoreProjectsByBatch(ctx context.Context, arg RestoreProjectsByBatchParams) error {
+	_, err := q.db.Exec(ctx, restoreProjectsByBatch, arg.CompanyID, arg.DeleteBatchID)
+	return err
 }
 
 const setProjectStatus = `-- name: SetProjectStatus :one
@@ -1151,7 +1371,7 @@ UPDATE projects
 SET status = $1,
     updated_at = NOW()
 WHERE company_id = $2 AND id = $3 AND deleted_at IS NULL
-RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at
+RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at, delete_batch_id
 `
 
 type SetProjectStatusParams struct {
@@ -1178,6 +1398,7 @@ func (q *Queries) SetProjectStatus(ctx context.Context, arg SetProjectStatusPara
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.DeleteBatchID,
 	)
 	return i, err
 }
@@ -1199,6 +1420,51 @@ func (q *Queries) SoftDeleteClient(ctx context.Context, arg SoftDeleteClientPara
 	return err
 }
 
+const softDeleteClientWithBatch = `-- name: SoftDeleteClientWithBatch :exec
+UPDATE clients
+SET deleted_at = NOW(),
+    delete_batch_id = $1,
+    updated_at = NOW()
+WHERE company_id = $2 AND id = $3
+`
+
+type SoftDeleteClientWithBatchParams struct {
+	DeleteBatchID pgtype.UUID `json:"delete_batch_id"`
+	CompanyID     pgtype.UUID `json:"company_id"`
+	ID            pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) SoftDeleteClientWithBatch(ctx context.Context, arg SoftDeleteClientWithBatchParams) error {
+	_, err := q.db.Exec(ctx, softDeleteClientWithBatch, arg.DeleteBatchID, arg.CompanyID, arg.ID)
+	return err
+}
+
+const softDeleteItemsByProjectWithBatch = `-- name: SoftDeleteItemsByProjectWithBatch :exec
+UPDATE items
+SET deleted_at = NOW(),
+    delete_batch_id = $1,
+    deleted_by = $2,
+    updated_at = NOW()
+WHERE company_id = $3 AND project_id = $4 AND deleted_at IS NULL
+`
+
+type SoftDeleteItemsByProjectWithBatchParams struct {
+	DeleteBatchID pgtype.UUID `json:"delete_batch_id"`
+	DeletedBy     pgtype.UUID `json:"deleted_by"`
+	CompanyID     pgtype.UUID `json:"company_id"`
+	ProjectID     pgtype.UUID `json:"project_id"`
+}
+
+func (q *Queries) SoftDeleteItemsByProjectWithBatch(ctx context.Context, arg SoftDeleteItemsByProjectWithBatchParams) error {
+	_, err := q.db.Exec(ctx, softDeleteItemsByProjectWithBatch,
+		arg.DeleteBatchID,
+		arg.DeletedBy,
+		arg.CompanyID,
+		arg.ProjectID,
+	)
+	return err
+}
+
 const softDeleteProject = `-- name: SoftDeleteProject :exec
 UPDATE projects
 SET deleted_at = NOW(),
@@ -1213,6 +1479,25 @@ type SoftDeleteProjectParams struct {
 
 func (q *Queries) SoftDeleteProject(ctx context.Context, arg SoftDeleteProjectParams) error {
 	_, err := q.db.Exec(ctx, softDeleteProject, arg.CompanyID, arg.ID)
+	return err
+}
+
+const softDeleteProjectWithBatch = `-- name: SoftDeleteProjectWithBatch :exec
+UPDATE projects
+SET deleted_at = NOW(),
+    delete_batch_id = $1,
+    updated_at = NOW()
+WHERE company_id = $2 AND id = $3
+`
+
+type SoftDeleteProjectWithBatchParams struct {
+	DeleteBatchID pgtype.UUID `json:"delete_batch_id"`
+	CompanyID     pgtype.UUID `json:"company_id"`
+	ID            pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) SoftDeleteProjectWithBatch(ctx context.Context, arg SoftDeleteProjectWithBatchParams) error {
+	_, err := q.db.Exec(ctx, softDeleteProjectWithBatch, arg.DeleteBatchID, arg.CompanyID, arg.ID)
 	return err
 }
 
@@ -1233,6 +1518,41 @@ func (q *Queries) SoftDeleteProjectsByClient(ctx context.Context, arg SoftDelete
 	return err
 }
 
+const softDeleteProjectsByClientWithBatch = `-- name: SoftDeleteProjectsByClientWithBatch :many
+UPDATE projects
+SET deleted_at = NOW(),
+    delete_batch_id = $1,
+    updated_at = NOW()
+WHERE company_id = $2 AND client_id = $3 AND deleted_at IS NULL
+RETURNING id
+`
+
+type SoftDeleteProjectsByClientWithBatchParams struct {
+	DeleteBatchID pgtype.UUID `json:"delete_batch_id"`
+	CompanyID     pgtype.UUID `json:"company_id"`
+	ClientID      pgtype.UUID `json:"client_id"`
+}
+
+func (q *Queries) SoftDeleteProjectsByClientWithBatch(ctx context.Context, arg SoftDeleteProjectsByClientWithBatchParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, softDeleteProjectsByClientWithBatch, arg.DeleteBatchID, arg.CompanyID, arg.ClientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateClient = `-- name: UpdateClient :one
 UPDATE clients
 SET name = COALESCE($1, name),
@@ -1241,7 +1561,7 @@ SET name = COALESCE($1, name),
     logo_key = COALESCE($4, logo_key),
     updated_at = NOW()
 WHERE company_id = $5 AND id = $6 AND deleted_at IS NULL
-RETURNING id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at
+RETURNING id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at, delete_batch_id
 `
 
 type UpdateClientParams struct {
@@ -1275,6 +1595,7 @@ func (q *Queries) UpdateClient(ctx context.Context, arg UpdateClientParams) (Cli
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.DeleteBatchID,
 	)
 	return i, err
 }
@@ -1359,7 +1680,7 @@ UPDATE projects
 SET name = COALESCE($1, name),
     updated_at = NOW()
 WHERE company_id = $2 AND id = $3 AND deleted_at IS NULL
-RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at
+RETURNING id, company_id, client_id, name, status, tracker_item_id, file_count, folder_count, video_count, total_bytes, created_by, created_at, updated_at, deleted_at, delete_batch_id
 `
 
 type UpdateProjectParams struct {
@@ -1386,6 +1707,7 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.DeleteBatchID,
 	)
 	return i, err
 }

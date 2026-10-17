@@ -159,7 +159,7 @@ type Person struct {
 // IsFullAccess returns true if the role string represents a full access leadership role.
 func IsFullAccess(role string) bool {
 	r := strings.ToLower(strings.TrimSpace(role))
-	return r == "ceo" || r == "coo" || r == "cfo" || r == "chief sales officer" || r == "chief_sales_officer" || r == "design head" || r == "design_head" || r == "admin" || r == "owner"
+	return r == "ceo" || r == "coo" || r == "cfo" || r == "cso" || r == "chief sales officer" || r == "chief_sales_officer" || r == "design head" || r == "design_head" || r == "admin" || r == "owner"
 }
 
 // CanChangeRoles returns true if the role is authorized to change roles in Team (CEO or COO).

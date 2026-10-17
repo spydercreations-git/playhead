@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -432,6 +433,14 @@ func (h *ItemsHandler) RenameItem(w http.ResponseWriter, r *http.Request) {
 
 	var resultItem interface{} = item
 
+	if item.IsTracker {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "cannot_rename_tracker",
+			"message": "Project tracker cannot be renamed",
+		})
+		return
+	}
+
 	if req.Name != nil {
 		trimmedName := strings.TrimSpace(*req.Name)
 		if trimmedName == "" {
@@ -515,6 +524,14 @@ func (h *ItemsHandler) MoveItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if item.IsTracker {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "cannot_move_tracker",
+			"message": "Project tracker cannot be moved",
+		})
+		return
+	}
+
 	var createdByUUID uuid.UUID
 	if item.CreatedBy.Valid {
 		createdByUUID = uuid.UUID(item.CreatedBy.Bytes)
@@ -579,12 +596,12 @@ func (h *ItemsHandler) MoveItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update counts for old parent and new parent
+	// Update counts for old parent and new parent and their ancestors
 	if oldParentUUID.Valid {
-		_ = h.queries.RecalculateFolderCounts(ctx, oldParentUUID)
+		h.updateAncestorsFolderCounts(ctx, oldParentUUID, companyID)
 	}
 	if targetParentUUID.Valid {
-		_ = h.queries.RecalculateFolderCounts(ctx, targetParentUUID)
+		h.updateAncestorsFolderCounts(ctx, targetParentUUID, companyID)
 	}
 	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, item.ProjectID)
 
@@ -748,6 +765,14 @@ func (h *ItemsHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if item.IsTracker {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "cannot_delete_tracker",
+			"message": "Project tracker cannot be deleted",
+		})
+		return
+	}
+
 	var createdByUUID uuid.UUID
 	if item.CreatedBy.Valid {
 		createdByUUID = uuid.UUID(item.CreatedBy.Bytes)
@@ -757,23 +782,44 @@ func (h *ItemsHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deleted, err := h.queries.SoftDeleteItem(ctx, db.SoftDeleteItemParams{
-		ID:        itemID,
-		CompanyID: companyID,
-		DeletedBy: user.ID,
-	})
-	if err != nil {
-		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_delete_item"})
-		return
+	batchID := uuid.New()
+	batchPgUUID := pgtype.UUID{Bytes: batchID, Valid: true}
+
+	if item.Kind == "folder" {
+		descendants, dErr := h.queries.GetItemDescendants(ctx, db.GetItemDescendantsParams{
+			ItemID:    itemID,
+			CompanyID: companyID,
+		})
+		var itemIDs []pgtype.UUID
+		if dErr == nil && len(descendants) > 0 {
+			for _, d := range descendants {
+				itemIDs = append(itemIDs, d.ID)
+			}
+		} else {
+			itemIDs = []pgtype.UUID{itemID}
+		}
+		_ = h.queries.SoftDeleteItemsCascade(ctx, db.SoftDeleteItemsCascadeParams{
+			CompanyID:     companyID,
+			ItemIds:       itemIDs,
+			DeletedBy:     user.ID,
+			DeleteBatchID: batchPgUUID,
+		})
+	} else {
+		_ = h.queries.SoftDeleteItemsCascade(ctx, db.SoftDeleteItemsCascadeParams{
+			CompanyID:     companyID,
+			ItemIds:       []pgtype.UUID{itemID},
+			DeletedBy:     user.ID,
+			DeleteBatchID: batchPgUUID,
+		})
 	}
 
 	// Recalculate counts without Trash
 	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, item.ProjectID)
 	if item.ParentID.Valid {
-		_ = h.queries.RecalculateFolderCounts(ctx, item.ParentID)
+		h.updateAncestorsFolderCounts(ctx, item.ParentID, companyID)
 	}
 
-	respondJSON(w, http.StatusOK, deleted)
+	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
 type batchActionReq struct {
@@ -1295,21 +1341,32 @@ func (h *ItemsHandler) RestoreTrashItem(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	restored, err := h.queries.RestoreItem(ctx, db.RestoreItemParams{
-		ID:        itemID,
-		CompanyID: companyID,
-	})
-	if err != nil {
-		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_restore_item"})
-		return
+	// Addition 4: restoring anything restores only items with the same delete_batch_id
+	if item.DeleteBatchID.Valid {
+		_ = h.queries.RestoreItemsCascade(ctx, db.RestoreItemsCascadeParams{
+			CompanyID:     companyID,
+			DeleteBatchID: item.DeleteBatchID,
+		})
+	} else {
+		_, err = h.queries.RestoreItem(ctx, db.RestoreItemParams{
+			ID:        itemID,
+			CompanyID: companyID,
+		})
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_restore_item"})
+			return
+		}
 	}
 
-	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, restored.ProjectID)
-	if restored.ParentID.Valid {
-		_ = h.queries.RecalculateFolderCounts(ctx, restored.ParentID)
+	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, item.ProjectID)
+	if item.ParentID.Valid {
+		h.updateAncestorsFolderCounts(ctx, item.ParentID, companyID)
+	}
+	if item.OriginalParentID.Valid {
+		h.updateAncestorsFolderCounts(ctx, item.OriginalParentID, companyID)
 	}
 
-	respondJSON(w, http.StatusOK, restored)
+	respondJSON(w, http.StatusOK, map[string]string{"status": "restored"})
 }
 
 // PermanentDeleteTrashItem permanently removes an item and deletes all versions from S3 (Requirement 9)
@@ -1433,4 +1490,23 @@ func (h *ItemsHandler) CheckNameConflict(w http.ResponseWriter, r *http.Request)
 		"existing_kind": existing.Kind,
 		"existing_name": existing.Name,
 	})
+}
+
+// updateAncestorsFolderCounts updates counts for a folder and its parent hierarchy
+func (h *ItemsHandler) updateAncestorsFolderCounts(ctx context.Context, folderID pgtype.UUID, companyID pgtype.UUID) {
+	if !folderID.Valid {
+		return
+	}
+	_ = h.queries.RecalculateFolderCounts(ctx, folderID)
+	ancestors, err := h.queries.GetItemAncestors(ctx, db.GetItemAncestorsParams{
+		ItemID:    folderID,
+		CompanyID: companyID,
+	})
+	if err == nil {
+		for _, a := range ancestors {
+			if a.Kind == "folder" {
+				_ = h.queries.RecalculateFolderCounts(ctx, a.ID)
+			}
+		}
+	}
 }

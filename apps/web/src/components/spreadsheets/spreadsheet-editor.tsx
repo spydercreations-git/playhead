@@ -392,8 +392,8 @@ export function SpreadsheetEditor({
     [canEdit, isTeamMember, id, sheets, activeSheetId]
   );
 
-  // Column Locking & Hiding (Admins/Managers)
-  const handleSaveColumnMeta = async (colId: string, locked: boolean, hidden: boolean) => {
+  // Column Locking & Hiding (Team only)
+  const handleSaveColumnMeta = async (colId: string, locked: boolean, hidden: boolean, hiddenFromClients?: boolean) => {
     try {
       const currentSheet = sheets.find((s) => s.id === activeSheetId) || sheets[0];
       const sId = currentSheet?.id || "sheet_1";
@@ -405,6 +405,7 @@ export function SpreadsheetEditor({
           col_id: colId,
           locked,
           hidden,
+          hidden_from_clients: hiddenFromClients !== undefined ? hiddenFromClients : (hidden || undefined),
         }),
       });
       notify("success", "Column settings updated");
@@ -1059,14 +1060,14 @@ export function SpreadsheetEditor({
                       <label className="flex items-center gap-1.5 text-xs text-[#A3A6AD] cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={!!meta.hidden}
+                          checked={!!meta.hidden_from_clients || !!meta.hidden}
                           onChange={(e) =>
-                            handleSaveColumnMeta(colId, !!meta.locked, e.target.checked)
+                            handleSaveColumnMeta(colId, !!meta.locked, e.target.checked, e.target.checked)
                           }
                           className="rounded border-[#424344] bg-[#181818] text-[#4876F3]"
                         />
                         <EyeOff className="h-3 w-3 text-[#F0506E]" />
-                        <span>Hide</span>
+                        <span>Hide from clients</span>
                       </label>
                     </div>
                   </div>

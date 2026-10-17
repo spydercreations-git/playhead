@@ -324,7 +324,7 @@ func (q *Queries) GetDocumentVersion(ctx context.Context, arg GetDocumentVersion
 }
 
 const getItemByIDOnly = `-- name: GetItemByIDOnly :one
-SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category FROM items WHERE id = $1 AND deleted_at IS NULL
+SELECT id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category, delete_batch_id, is_tracker FROM items WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetItemByIDOnly(ctx context.Context, id pgtype.UUID) (Item, error) {
@@ -353,6 +353,8 @@ func (q *Queries) GetItemByIDOnly(ctx context.Context, id pgtype.UUID) (Item, er
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
+		&i.DeleteBatchID,
+		&i.IsTracker,
 	)
 	return i, err
 }

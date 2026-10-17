@@ -258,6 +258,7 @@ func main() {
 			protected.Get("/clients/{id}", clientHandler.Get)
 			protected.Patch("/clients/{id}", clientHandler.Update)
 			protected.Delete("/clients/{id}", clientHandler.Delete)
+			protected.Post("/clients/{id}/restore", clientHandler.Restore)
 			protected.Get("/clients/{id}/contacts", clientHandler.ListContacts)
 			protected.Post("/clients/{id}/contacts", clientHandler.AddContact)
 			protected.Patch("/contacts/{id}", clientHandler.UpdateContact)
@@ -270,6 +271,7 @@ func main() {
 			protected.Patch("/projects/{id}", projectHandler.Update)
 			protected.Post("/projects/{id}/archive", projectHandler.Archive)
 			protected.Delete("/projects/{id}", projectHandler.Delete)
+			protected.Post("/projects/{id}/restore", projectHandler.Restore)
 
 			protected.Get("/projects/{id}/people", projectHandler.GetPeople)
 			protected.Post("/projects/{id}/people", projectHandler.AddPerson)
@@ -383,6 +385,9 @@ func main() {
 			protected.Get("/spreadsheets/{id}/comments", spreadsheetsHandler.ListComments)
 			protected.Post("/spreadsheets/{id}/comments", spreadsheetsHandler.CreateComment)
 			protected.Patch("/spreadsheets/{id}/comments/{commentId}/resolve", spreadsheetsHandler.ResolveComment)
+			protected.Post("/spreadsheets/{id}/clear", spreadsheetsHandler.ClearSpreadsheet)
+			protected.Get("/items/{id}/tracker-access", spreadsheetsHandler.GetTrackerAccess)
+			protected.Post("/items/{id}/tracker-access", spreadsheetsHandler.UpdateTrackerAccess)
 
 			// My Drive & Recent Items (P2 & P3)
 			protected.Get("/drive/folders", driveHandler.ListFolders)

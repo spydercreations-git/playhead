@@ -720,6 +720,34 @@ Google Login is built into the backend and UI, but hidden until configured. When
 - Client isolation: Hidden "My Drive" navigation link in sidebar for Project Managers, Editors, and clients.
 - Automated tests: `services/api/internal/handler/drive_test.go` (`TestMyDriveAccessAndPermissions` 13/13 passing).
 
+### Step 3: Project Structure, Default Folders, Tracker Isolation & Cascade Trash ✅
+- Added migration `00015_step3_project_structure.sql`:
+  - Added `delete_batch_id UUID` column to `clients`, `projects`, and `items` for batch-isolated cascading deletes and restores.
+  - Added `is_tracker BOOLEAN NOT NULL DEFAULT false` to `items` and `spreadsheets`.
+  - Added `hidden_from_clients BOOLEAN NOT NULL DEFAULT false` to `spreadsheet_columns`.
+  - Backfilled existing root files into their respective project's `Raw files` folder (automatically created if missing).
+- Project Lifecycle & Default Folders:
+  - New projects automatically create `Raw files` and `Edited files` default folders, as well as a pre-populated `Project tracker` (`is_tracker = true`, 7 default columns).
+  - Empty projects with 0 folders show a dedicated empty state: "Create a folder to start uploading" with a "New folder" button.
+  - Inactive project status is displayed with an "Inactive" pill badge in the sidebar header and project switcher dropdown.
+- Section Partitioning in Folders and Root:
+  - Folder contents partitioned cleanly into: Files first, followed by divider and "Documents", followed by divider and "Spreadsheets". Empty sections are hidden automatically.
+- Project Tracker Protections & Access Isolation:
+  - Display name "Project tracker" with a green badge.
+  - Cannot be deleted, moved, or renamed (enforced on both server and client); can only be cleared via `POST /api/v1/spreadsheets/{id}/clear`.
+  - Dedicated `TrackerAccessDialog` allowing project members to be granted No access / View / Edit (`GET/POST /api/v1/items/{id}/tracker-access`).
+  - Added "Hide from clients" switch on column headers; server strips hidden columns and cells for client contacts, and forbids edits with 403 Forbidden.
+  - Shows on Spreadsheets page under client and project with Tracker badge.
+- Cascading Soft-Delete & Restore with Batch Isolation:
+  - Client delete requires full-access executive role (CEO, COO, CFO, CSO, Design Head) and cascades a unique `delete_batch_id` to client, projects, and items.
+  - Project delete requires `Full` project access level or full-access role.
+  - Restoring a client or project only restores items with matching `delete_batch_id`. Projects deleted separately prior to client deletion keep their own batch ID and remain in Trash.
+  - Restoring a project whose client is in Trash returns 400 Bad Request (`client_in_trash`).
+- Dynamic Folder Aggregates:
+  - Maintained ancestor folder counts and sizes inside mutating transactions without requiring full-tree recursive recalculations on page reads.
+- Automated Tests:
+  - Created `services/api/internal/handler/step3_project_structure_test.go` covering additions 1, 3, 4, 5 (all subtests passing).
+
 
 
 

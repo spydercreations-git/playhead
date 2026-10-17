@@ -71,14 +71,15 @@ type InsertRowRequest struct {
 }
 
 type UpdateColumnMetaRequest struct {
-	SheetID string   `json:"sheet_id"`
-	ColID   string   `json:"col_id"`
-	Name    string   `json:"name,omitempty"`
-	Width   int      `json:"width,omitempty"`
-	Locked  *bool    `json:"locked,omitempty"`
-	Hidden  *bool    `json:"hidden,omitempty"`
-	Type    string   `json:"type,omitempty"`
-	Options []string `json:"options,omitempty"`
+	SheetID           string   `json:"sheet_id"`
+	ColID             string   `json:"col_id"`
+	Name              string   `json:"name,omitempty"`
+	Width             int      `json:"width,omitempty"`
+	Locked            *bool    `json:"locked,omitempty"`
+	Hidden            *bool    `json:"hidden,omitempty"`
+	HiddenFromClients *bool    `json:"hidden_from_clients,omitempty"`
+	Type              string   `json:"type,omitempty"`
+	Options           []string `json:"options,omitempty"`
 }
 
 type CreateCommentRequest struct {
@@ -558,7 +559,9 @@ func (h *SpreadsheetsHandler) GetSpreadsheetView(w http.ResponseWriter, r *http.
 					hiddenIndices := make(map[int]bool)
 					for cIdx, c := range colMeta {
 						if cm, ok := c.(map[string]interface{}); ok {
-							if hid, _ := cm["hidden"].(bool); hid {
+							hid, _ := cm["hidden"].(bool)
+							hfc, _ := cm["hidden_from_clients"].(bool)
+							if hid || hfc {
 								hiddenIndices[cIdx] = true
 								continue
 							}
@@ -707,8 +710,10 @@ func (h *SpreadsheetsHandler) SetCellValue(w http.ResponseWriter, r *http.Reques
 								renderJSON(w, http.StatusForbidden, map[string]string{"error": "column_locked", "message": "This column is locked by an administrator"})
 								return
 							}
-							if hidden, _ := cm["hidden"].(bool); hidden {
-								renderJSON(w, http.StatusForbidden, map[string]string{"error": "column_hidden", "message": "This column is hidden"})
+							hidden, _ := cm["hidden"].(bool)
+							hiddenFromClients, _ := cm["hidden_from_clients"].(bool)
+							if hidden || hiddenFromClients {
+								renderJSON(w, http.StatusForbidden, map[string]string{"error": "column_hidden", "message": "This column is hidden from clients"})
 								return
 							}
 							// Value type validation
@@ -890,6 +895,9 @@ func (h *SpreadsheetsHandler) UpdateColumnMeta(w http.ResponseWriter, r *http.Re
 	}
 	if req.Hidden != nil {
 		metaUpdates["hidden"] = *req.Hidden
+	}
+	if req.HiddenFromClients != nil {
+		metaUpdates["hidden_from_clients"] = *req.HiddenFromClients
 	}
 	if req.Type != "" {
 		metaUpdates["type"] = req.Type
@@ -1732,6 +1740,307 @@ func (h *SpreadsheetsHandler) PreviewPdfHtml(w http.ResponseWriter, r *http.Requ
 
 	renderJSON(w, http.StatusOK, map[string]string{
 		"html": previewHtml,
+	})
+}
+
+// ClearSpreadsheet (POST /api/v1/spreadsheets/{id}/clear)
+// Clears cell data while keeping columns intact (Addition 3)
+func (h *SpreadsheetsHandler) ClearSpreadsheet(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	caller := getCaller(ctx)
+	if caller == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	sheetIDStr := chi.URLParam(r, "id")
+	sheetUUID, err := uuid.Parse(sheetIDStr)
+	if err != nil {
+		renderJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_spreadsheet_id"})
+		return
+	}
+
+	sheetRow, err := h.q.GetSpreadsheet(ctx, db.GetSpreadsheetParams{
+		ID:        pgtype.UUID{Bytes: sheetUUID, Valid: true},
+		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+	})
+	if err != nil {
+		renderJSON(w, http.StatusNotFound, map[string]string{"error": "spreadsheet_not_found"})
+		return
+	}
+
+	projTarget := authz.ProjectTarget{
+		ID:        sheetRow.ProjectID.Bytes,
+		CompanyID: caller.CompanyID,
+		ClientID:  sheetRow.ClientID.Bytes,
+	}
+	itemTarget := authz.ItemTarget{
+		ID:        sheetUUID,
+		ProjectID: sheetRow.ProjectID.Bytes,
+		CompanyID: caller.CompanyID,
+		CreatedBy: sheetRow.CreatedBy.Bytes,
+	}
+
+	access, err := authz.AccessItem(ctx, h.q, *caller, projTarget, itemTarget)
+	if err != nil || !canEditSheet(access) {
+		renderJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to clear this spreadsheet"})
+		return
+	}
+
+	var sheets []map[string]interface{}
+	if err := json.Unmarshal(sheetRow.ContentJson, &sheets); err == nil {
+		for sIdx := range sheets {
+			sheets[sIdx]["celldata"] = []interface{}{}
+		}
+	}
+	clearedJSON, _ := json.Marshal(sheets)
+
+	_, _ = h.q.UpdateSpreadsheetCollab(ctx, db.UpdateSpreadsheetCollabParams{
+		ID:              sheetRow.ID,
+		CompanyID:       sheetRow.CompanyID,
+		ContentState:    nil,
+		ContentJson:     clearedJSON,
+		PlainText:       sheetRow.PlainText,
+		PublicPlainText: sheetRow.PublicPlainText,
+		RowCount:        sheetRow.RowCount,
+		ColCount:        sheetRow.ColCount,
+		CellCount:       0,
+	})
+
+	_, _, _ = h.callCollabInternal("sheet/clear", map[string]interface{}{
+		"spreadsheet_id": uuid.UUID(sheetUUID).String(),
+	})
+
+	renderJSON(w, http.StatusOK, map[string]interface{}{
+		"cleared":        true,
+		"spreadsheet_id": uuid.UUID(sheetUUID).String(),
+	})
+}
+
+type TrackerPersonAccess struct {
+	Email     string `json:"email"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url"`
+	Access    string `json:"access"` // "no_access", "viewer", "editor"
+}
+
+type UpdateTrackerAccessRequest struct {
+	People []TrackerPersonAccess `json:"people"`
+}
+
+// GetTrackerAccess (GET /api/v1/items/{id}/tracker-access)
+// Lists only people in the project, each with No access / View / Edit (Addition 3)
+func (h *SpreadsheetsHandler) GetTrackerAccess(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	caller := getCaller(ctx)
+	if caller == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	itemIDStr := chi.URLParam(r, "id")
+	itemUUID, err := uuid.Parse(itemIDStr)
+	if err != nil {
+		renderJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
+		return
+	}
+
+	item, err := h.q.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:        pgtype.UUID{Bytes: itemUUID, Valid: true},
+		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+	})
+	if err != nil {
+		renderJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+	if !item.IsTracker {
+		renderJSON(w, http.StatusBadRequest, map[string]string{"error": "not_a_tracker", "message": "Manage access is only for the project tracker"})
+		return
+	}
+
+	// Caller must have Full access to project or full-access role
+	projTarget := authz.ProjectTarget{
+		ID:        item.ProjectID.Bytes,
+		CompanyID: caller.CompanyID,
+	}
+	projAccess, err := authz.Access(ctx, h.q, *caller, projTarget)
+	if err != nil || (!caller.IsFullAccess() && projAccess.Level != authz.LevelFull) {
+		renderJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Full access required to manage tracker access"})
+		return
+	}
+
+	// 1. Get project-level grants
+	projGrants, err := h.q.ListGrantsByTarget(ctx, db.ListGrantsByTargetParams{
+		CompanyID:  pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+		TargetType: "project",
+		TargetID:   item.ProjectID,
+	})
+	if err != nil {
+		renderJSON(w, http.StatusInternalServerError, map[string]string{"error": "database_error"})
+		return
+	}
+
+	// 2. Get item-level grants on the tracker
+	trackerGrants, _ := h.q.ListGrantsByTarget(ctx, db.ListGrantsByTargetParams{
+		CompanyID:  pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+		TargetType: "item",
+		TargetID:   item.ID,
+	})
+	itemGrantsMap := make(map[string]db.ListGrantsByTargetRow)
+	for _, tg := range trackerGrants {
+		itemGrantsMap[strings.ToLower(tg.Email)] = tg
+	}
+
+	people := make([]TrackerPersonAccess, 0, len(projGrants))
+	for _, pg := range projGrants {
+		normEmail := strings.ToLower(pg.Email)
+		accessLevel := "viewer"
+		if pg.Level == authz.LevelFull || pg.Level == authz.LevelEditor || pg.Level == authz.LevelUploader {
+			accessLevel = "editor"
+		}
+
+		// Explicit item grant takes precedence
+		if tg, exists := itemGrantsMap[normEmail]; exists {
+			if tg.Level == authz.LevelNone {
+				accessLevel = "no_access"
+			} else if tg.Level == authz.LevelEditor || tg.Level == authz.LevelFull {
+				accessLevel = "editor"
+			} else {
+				accessLevel = "viewer"
+			}
+		}
+
+		displayName := pg.Email
+		if pg.UserName.Valid && pg.UserName.String != "" {
+			displayName = pg.UserName.String
+		}
+		avatarURL := ""
+		if pg.AvatarUrl.Valid {
+			avatarURL = pg.AvatarUrl.String
+		}
+
+		people = append(people, TrackerPersonAccess{
+			Email:     pg.Email,
+			Name:      displayName,
+			AvatarURL: avatarURL,
+			Access:    accessLevel,
+		})
+	}
+
+	renderJSON(w, http.StatusOK, map[string]interface{}{
+		"people": people,
+	})
+}
+
+// UpdateTrackerAccess (POST /api/v1/items/{id}/tracker-access)
+// Server-checks that only people in the project can be granted access (Addition 3)
+func (h *SpreadsheetsHandler) UpdateTrackerAccess(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	caller := getCaller(ctx)
+	if caller == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	itemIDStr := chi.URLParam(r, "id")
+	itemUUID, err := uuid.Parse(itemIDStr)
+	if err != nil {
+		renderJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_item_id"})
+		return
+	}
+
+	item, err := h.q.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:        pgtype.UUID{Bytes: itemUUID, Valid: true},
+		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+	})
+	if err != nil {
+		renderJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+		return
+	}
+	if !item.IsTracker {
+		renderJSON(w, http.StatusBadRequest, map[string]string{"error": "not_a_tracker", "message": "Manage access is only for the project tracker"})
+		return
+	}
+
+	// Caller must have Full access to project or full-access role
+	projTarget := authz.ProjectTarget{
+		ID:        item.ProjectID.Bytes,
+		CompanyID: caller.CompanyID,
+	}
+	projAccess, err := authz.Access(ctx, h.q, *caller, projTarget)
+	if err != nil || (!caller.IsFullAccess() && projAccess.Level != authz.LevelFull) {
+		renderJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Full access required to update tracker access"})
+		return
+	}
+
+	var req UpdateTrackerAccessRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		renderJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
+		return
+	}
+
+	// Query project grants to verify each person is in the project
+	projGrants, err := h.q.ListGrantsByTarget(ctx, db.ListGrantsByTargetParams{
+		CompanyID:  pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+		TargetType: "project",
+		TargetID:   item.ProjectID,
+	})
+	if err != nil {
+		renderJSON(w, http.StatusInternalServerError, map[string]string{"error": "database_error"})
+		return
+	}
+	projectEmails := make(map[string]db.ListGrantsByTargetRow)
+	for _, pg := range projGrants {
+		projectEmails[strings.ToLower(pg.Email)] = pg
+	}
+
+	// Server-check each person
+	for _, p := range req.People {
+		normEmail := strings.ToLower(strings.TrimSpace(p.Email))
+		pg, inProject := projectEmails[normEmail]
+		if !inProject && !caller.IsFullAccess() {
+			renderJSON(w, http.StatusBadRequest, map[string]string{
+				"error":   "person_not_in_project",
+				"message": fmt.Sprintf("Person %s is not in the project", p.Email),
+			})
+			return
+		}
+
+		targetUserID := pg.UserID
+		if !targetUserID.Valid {
+			if u, uErr := h.q.GetUserByEmail(ctx, normEmail); uErr == nil {
+				targetUserID = u.ID
+			}
+		}
+
+		var grantLevel string
+		canDownload := true
+		switch strings.ToLower(p.Access) {
+		case "no_access", "none":
+			grantLevel = authz.LevelNone
+			canDownload = false
+		case "viewer":
+			grantLevel = authz.LevelViewer
+		case "editor":
+			grantLevel = authz.LevelEditor
+		default:
+			grantLevel = authz.LevelViewer
+		}
+
+		_, _ = h.q.CreateGrant(ctx, db.CreateGrantParams{
+			CompanyID:   pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+			TargetType:  "item",
+			TargetID:    item.ID,
+			Email:       normEmail,
+			UserID:      targetUserID,
+			Level:       grantLevel,
+			CanDownload: canDownload,
+			GrantedBy:   pgtype.UUID{Bytes: caller.UserID, Valid: true},
+		})
+	}
+
+	renderJSON(w, http.StatusOK, map[string]interface{}{
+		"ok": true,
 	})
 }
 

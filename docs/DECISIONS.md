@@ -274,6 +274,15 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
   - Locked templates: Documents (`Blank`, `Brief`, `Script`, `Shot list`, `Creator notes`) and Spreadsheets (`Blank`, `Tracker`, `Creator payments`, `Budget`, `Shot schedule`).
 - **Reason**: Enables rapid note-taking, script drafts, and private budgets without forcing dummy project creation.
 
+## 43. Step 3: Project Structure, Batch-Isolated Cascade Trash, Tracker Protections & Permissions
+- **Decision**:
+  - **Cascading Trash & Restores via `delete_batch_id`**: Soft-deleting a client or project stamps active descendant entities with a freshly generated `delete_batch_id UUID`. Restoring checks this ID and only restores items sharing the exact same `delete_batch_id`. Projects or items soft-deleted individually prior to the client keep their own `delete_batch_id` and stay safely in Trash. Restoring a project whose client is currently soft-deleted is blocked with HTTP 400 (`client_in_trash`).
+  - **Deletion Role Enforcement**: Deleting a client requires an executive full-access role (`person.IsFullAccess()`: CEO, COO, CFO, CSO, Design Head). Deleting a project requires `Full` project access level or a full-access role. Others receive 403 Forbidden.
+  - **Tracker Immutability**: Project tracker items (`is_tracker = true`) cannot be deleted, moved, or renamed via any item endpoint. They can only be cleared (`POST /api/v1/spreadsheets/{id}/clear`), which empties cell data while preserving column configurations.
+  - **Tracker Access Delegation Scoping**: Dedicated Manage Access for tracker items (`GET/POST /api/v1/items/{id}/tracker-access`) verifies that any user granted tracker access (`none`, `viewer`, `editor`) already has access to the parent project.
+  - **Client Column Sanitization**: Column meta updates support `hidden_from_clients`. External client contacts receive sanitized spreadsheet views with hidden columns and cells stripped, and cell edits to hidden columns return 403 Forbidden.
+  - **Dynamic Aggregate Counts**: Rather than recursive full-tree queries on every folder load, ancestor folder counts and sizes are maintained within item mutation transactions.
+
 
 
 

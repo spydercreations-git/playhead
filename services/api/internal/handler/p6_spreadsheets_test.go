@@ -315,8 +315,8 @@ func TestAutoTrackerCreationOnProjectCreation(t *testing.T) {
 		t.Fatalf("Failed to load auto-created Tracker spreadsheet: %v", sErr)
 	}
 
-	if sheetRow.Title != "Tracker" {
-		t.Errorf("Expected title 'Tracker', got '%s'", sheetRow.Title)
+	if sheetRow.Title != "Project tracker" {
+		t.Errorf("Expected title 'Project tracker', got '%s'", sheetRow.Title)
 	}
 	if sheetRow.ColCount != 7 {
 		t.Errorf("Expected 7 columns in default Tracker (Video, File, Editor, Status, Due date, Revisions, Notes), got %d", sheetRow.ColCount)

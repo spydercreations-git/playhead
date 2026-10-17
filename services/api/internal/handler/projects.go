@@ -58,9 +58,9 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Only Admin and Manager can create projects
-	if role != authz.RoleAdmin && role != authz.RoleManager && role != authz.RoleOwner {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only admins and managers can create projects"})
+	// Full-access roles, Admin and Manager can create projects
+	if !authz.IsFullAccess(role) && role != authz.RoleAdmin && role != authz.RoleManager && role != authz.RoleOwner {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only leadership, admins and managers can create projects"})
 		return
 	}
 
@@ -103,40 +103,35 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Template handling
+	// Template handling & Default folders (Addition 1)
+	defaultFolders := []string{"Raw files", "Edited files"}
 	template := strings.ToLower(strings.TrimSpace(req.Template))
 	if template == "video_project" {
-		defaultFolders := []string{"Briefs", "Raw footage", "Edits", "Deliverables"}
-		for i, folderName := range defaultFolders {
-			var pos pgtype.Numeric
-			_ = pos.Scan(fmt.Sprintf("%d", i+1))
-			_, _ = h.queries.CreateItem(r.Context(), db.CreateItemParams{
-				CompanyID: companyID,
-				ProjectID: project.ID,
-				ParentID:  pgtype.UUID{Valid: false},
-				Kind:      "folder",
-				Name:      folderName,
-				Position:  pos,
-				CreatedBy: user.ID,
-			})
-		}
-		_ = h.queries.UpdateProjectFolderCount(r.Context(), db.UpdateProjectFolderCountParams{
-			ID:          project.ID,
-			FolderCount: int32(len(defaultFolders)),
-		})
-		project.FolderCount = int32(len(defaultFolders))
+		defaultFolders = []string{"Raw files", "Edited files", "Briefs", "Deliverables"}
 	}
+	for i, folderName := range defaultFolders {
+		var pos pgtype.Numeric
+		_ = pos.Scan(fmt.Sprintf("%d", i+1))
+		_, _ = h.queries.CreateItem(r.Context(), db.CreateItemParams{
+			CompanyID: companyID,
+			ProjectID: project.ID,
+			ParentID:  pgtype.UUID{Valid: false},
+			Kind:      "folder",
+			Name:      folderName,
+			Position:  pos,
+			CreatedBy: user.ID,
+		})
+	}
+	_ = h.queries.UpdateProjectFolderCount(r.Context(), db.UpdateProjectFolderCountParams{
+		ID:          project.ID,
+		FolderCount: int32(len(defaultFolders)),
+	})
+	project.FolderCount = int32(len(defaultFolders))
 
-	// Auto-create Tracker spreadsheet for the project
-	var trackerPos pgtype.Numeric
-	_ = trackerPos.Scan("0")
-	trackerItem, tErr := h.queries.CreateItem(r.Context(), db.CreateItemParams{
+	// Auto-create Project tracker spreadsheet with is_tracker = true (Addition 3)
+	trackerItem, tErr := h.queries.CreateTrackerItem(r.Context(), db.CreateTrackerItemParams{
 		CompanyID: companyID,
 		ProjectID: project.ID,
-		ParentID:  pgtype.UUID{Valid: false},
-		Kind:      "spreadsheet",
-		Name:      "Tracker",
-		Position:  trackerPos,
 		CreatedBy: user.ID,
 	})
 	if tErr == nil {
@@ -147,8 +142,8 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 			CompanyID:       companyID,
 			ContentState:    nil,
 			ContentJson:     tJSON,
-			PlainText:       "Tracker Video File Editor Status Due date Revisions Notes",
-			PublicPlainText: "Tracker Video File Editor Status Due date Revisions Notes",
+			PlainText:       "Project tracker Video File Editor Status Due date Revisions Notes",
+			PublicPlainText: "Project tracker Video File Editor Status Due date Revisions Notes",
 			RowCount:        30,
 			ColCount:        7,
 			CellCount:       7,
@@ -418,6 +413,7 @@ func (h *ProjectHandler) Get(w http.ResponseWriter, r *http.Request) {
 type UpdateProjectRequest struct {
 	Name     *string `json:"name"`
 	ClientID *string `json:"client_id"`
+	Status   *string `json:"status"`
 }
 
 func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -468,7 +464,7 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if (req.Name == nil || strings.TrimSpace(*req.Name) == "") && req.ClientID == nil {
+	if (req.Name == nil || strings.TrimSpace(*req.Name) == "") && req.ClientID == nil && req.Status == nil {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_changes_provided"})
 		return
 	}
@@ -518,6 +514,20 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to rename project"})
 			return
+		}
+	}
+
+	if req.Status != nil && strings.TrimSpace(*req.Status) != "" {
+		statusVal := strings.ToLower(strings.TrimSpace(*req.Status))
+		if statusVal == "active" || statusVal == "inactive" || statusVal == "archived" {
+			if _, err := h.queries.SetProjectStatus(r.Context(), db.SetProjectStatusParams{
+				CompanyID: companyID,
+				ID:        projectID,
+				Status:    statusVal,
+			}); err != nil {
+				respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to update project status"})
+				return
+			}
 		}
 	}
 
@@ -596,16 +606,10 @@ func (h *ProjectHandler) Archive(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ProjectHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	role, _ := middleware.GetUserRole(r.Context())
+	person := middleware.GetPerson(r.Context())
 	companyID, ok := middleware.GetActiveCompanyID(r.Context())
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
-		return
-	}
-
-	// Deleting project moves to Trash for 30 days (Admins and Managers)
-	if role != authz.RoleAdmin && role != authz.RoleManager && role != authz.RoleOwner {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only admins and managers can delete a project"})
 		return
 	}
 
@@ -615,7 +619,100 @@ func (h *ProjectHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.queries.SoftDeleteProject(r.Context(), db.SoftDeleteProjectParams{
+	project, err := h.queries.GetProjectByID(r.Context(), db.GetProjectByIDParams{
+		CompanyID: companyID,
+		ID:        projectID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	// Addition 5: project delete needs project Full access or a full-access role
+	target := authz.ProjectTarget{
+		ID:        uuid.UUID(project.ID.Bytes),
+		CompanyID: uuid.UUID(companyID.Bytes),
+		ClientID:  uuid.UUID(project.ClientID.Bytes),
+	}
+	access, err := authz.Access(r.Context(), h.queries, person, target)
+	if err != nil || (!person.IsFullAccess() && access.Level != authz.LevelFull) {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Full access or full-access role required to delete project"})
+		return
+	}
+
+	// Addition 4: Cascading trash with delete_batch_id
+	batchID := uuid.New()
+	batchPgUUID := pgtype.UUID{Bytes: batchID, Valid: true}
+
+	if err := h.queries.SoftDeleteProjectWithBatch(r.Context(), db.SoftDeleteProjectWithBatchParams{
+		CompanyID:     companyID,
+		ID:            projectID,
+		DeleteBatchID: batchPgUUID,
+	}); err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
+		return
+	}
+
+	// Soft-delete all active items in the project with the same batch ID
+	_ = h.queries.SoftDeleteItemsByProjectWithBatch(r.Context(), db.SoftDeleteItemsByProjectWithBatchParams{
+		CompanyID:     companyID,
+		ProjectID:     projectID,
+		DeleteBatchID: batchPgUUID,
+	})
+
+	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+// Restore restores a project from Trash (Addition 4 & 5)
+func (h *ProjectHandler) Restore(w http.ResponseWriter, r *http.Request) {
+	person := middleware.GetPerson(r.Context())
+	companyID, ok := middleware.GetActiveCompanyID(r.Context())
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var projectID pgtype.UUID
+	if err := projectID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_project_id"})
+		return
+	}
+
+	project, err := h.queries.GetProjectByIDAnyStatus(r.Context(), db.GetProjectByIDAnyStatusParams{
+		CompanyID: companyID,
+		ID:        projectID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+	if !project.DeletedAt.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "project_not_in_trash"})
+		return
+	}
+
+	// Addition 4: Cannot restore project while its client is in Trash
+	if project.ClientDeletedAt.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "client_in_trash",
+			"message": "Cannot restore project while its client is in Trash",
+		})
+		return
+	}
+
+	// Addition 5: project restore needs project Full access or a full-access role
+	target := authz.ProjectTarget{
+		ID:        uuid.UUID(project.ID.Bytes),
+		CompanyID: uuid.UUID(companyID.Bytes),
+		ClientID:  uuid.UUID(project.ClientID.Bytes),
+	}
+	access, err := authz.Access(r.Context(), h.queries, person, target)
+	if err != nil || (!person.IsFullAccess() && access.Level != authz.LevelFull) {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Full access or full-access role required to restore project"})
+		return
+	}
+
+	if err := h.queries.RestoreProjectWithBatch(r.Context(), db.RestoreProjectWithBatchParams{
 		CompanyID: companyID,
 		ID:        projectID,
 	}); err != nil {
@@ -623,7 +720,17 @@ func (h *ProjectHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+	// Addition 4: Restoring project restores items with the same delete_batch_id
+	if project.DeleteBatchID.Valid {
+		_ = h.queries.RestoreItemsByBatch(r.Context(), db.RestoreItemsByBatchParams{
+			CompanyID:     companyID,
+			DeleteBatchID: project.DeleteBatchID,
+		})
+	}
+
+	_ = h.queries.RecalculateProjectAndFolderCounts(r.Context(), projectID)
+
+	respondJSON(w, http.StatusOK, map[string]string{"status": "restored"})
 }
 
 // People and Access handlers

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
@@ -252,9 +253,9 @@ func (h *ClientHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Deleting client requires clients.delete permission
-	if !person.HasPermission(authz.PermClientsDelete) {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only members with clients.delete can delete a client"})
+	// Addition 5: client delete needs a full-access role (CEO, COO, CFO, CSO, Design Head). Others get 403.
+	if !person.IsFullAccess() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only full-access roles can delete a client"})
 		return
 	}
 
@@ -264,17 +265,100 @@ func (h *ClientHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Soft-delete client and soft-delete all its projects
-	_ = h.queries.SoftDeleteProjectsByClient(r.Context(), db.SoftDeleteProjectsByClientParams{
+	// Verify client exists
+	_, err := h.queries.GetClientByID(r.Context(), db.GetClientByIDParams{
 		CompanyID: companyID,
-		ClientID:  clientID,
+		ID:        clientID,
 	})
-	_ = h.queries.SoftDeleteClient(r.Context(), db.SoftDeleteClientParams{
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "client_not_found"})
+		return
+	}
+
+	// Addition 4: Cascading trash with delete_batch_id
+	batchID := uuid.New()
+	batchPgUUID := pgtype.UUID{Bytes: batchID, Valid: true}
+
+	// 1. Soft delete client with batch
+	_ = h.queries.SoftDeleteClientWithBatch(r.Context(), db.SoftDeleteClientWithBatchParams{
+		CompanyID:     companyID,
+		ID:            clientID,
+		DeleteBatchID: batchPgUUID,
+	})
+
+	// 2. Soft delete active projects under client with batch
+	deletedProjectIDs, _ := h.queries.SoftDeleteProjectsByClientWithBatch(r.Context(), db.SoftDeleteProjectsByClientWithBatchParams{
+		CompanyID:     companyID,
+		ClientID:      clientID,
+		DeleteBatchID: batchPgUUID,
+	})
+
+	// 3. Soft delete active items under those projects with batch
+	for _, pid := range deletedProjectIDs {
+		_ = h.queries.SoftDeleteItemsByProjectWithBatch(r.Context(), db.SoftDeleteItemsByProjectWithBatchParams{
+			CompanyID:     companyID,
+			ProjectID:     pid,
+			DeleteBatchID: batchPgUUID,
+		})
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+// Restore restores a client and its batched projects/items from Trash (Addition 4 & 5)
+func (h *ClientHandler) Restore(w http.ResponseWriter, r *http.Request) {
+	person := middleware.GetPerson(r.Context())
+	companyID, ok := middleware.GetActiveCompanyID(r.Context())
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	// Addition 5: client restore needs a full-access role
+	if !person.IsFullAccess() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only full-access roles can restore a client"})
+		return
+	}
+
+	var clientID pgtype.UUID
+	if err := clientID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_client_id"})
+		return
+	}
+
+	client, err := h.queries.GetClientByIDAnyStatus(r.Context(), db.GetClientByIDAnyStatusParams{
+		CompanyID: companyID,
+		ID:        clientID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "client_not_found"})
+		return
+	}
+	if !client.DeletedAt.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "client_not_in_trash"})
+		return
+	}
+
+	// Restore client
+	_ = h.queries.RestoreClientWithBatch(r.Context(), db.RestoreClientWithBatchParams{
 		CompanyID: companyID,
 		ID:        clientID,
 	})
 
-	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+	// Addition 4: restoring anything restores only items with the same delete_batch_id.
+	// Projects deleted separately before the client keep their own batch and stay in Trash.
+	if client.DeleteBatchID.Valid {
+		_ = h.queries.RestoreProjectsByBatch(r.Context(), db.RestoreProjectsByBatchParams{
+			CompanyID:     companyID,
+			DeleteBatchID: client.DeleteBatchID,
+		})
+		_ = h.queries.RestoreItemsByBatch(r.Context(), db.RestoreItemsByBatchParams{
+			CompanyID:     companyID,
+			DeleteBatchID: client.DeleteBatchID,
+		})
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"status": "restored"})
 }
 
 // Contacts handlers

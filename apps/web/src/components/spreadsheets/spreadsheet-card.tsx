@@ -11,6 +11,7 @@ export interface SpreadsheetCardItem {
   client_name?: string;
   updated_at?: string;
   author_name?: string;
+  is_tracker?: boolean;
   members?: { id?: string; name?: string; color?: string }[];
 }
 
@@ -132,9 +133,16 @@ export function SpreadsheetCard({ sheet, onContextMenu }: SpreadsheetCardProps) 
       <div className="pt-2 px-0.5 flex flex-col justify-between flex-1 min-h-[92px]">
         <div>
           <div className="flex items-center justify-between gap-1">
-            <h4 className="text-sm font-semibold text-white group-hover:text-[#4876F3] transition-colors truncate">
-              {sheet.title}
-            </h4>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h4 className="text-sm font-semibold text-white group-hover:text-[#4876F3] transition-colors truncate">
+                {sheet.title}
+              </h4>
+              {sheet.is_tracker && (
+                <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-[#3FCF8E]/20 text-[#3FCF8E] border border-[#3FCF8E]/30 shrink-0">
+                  Tracker
+                </span>
+              )}
+            </div>
             {onContextMenu && (
               <button
                 type="button"

@@ -106,6 +106,34 @@ RETURNING *;
 DELETE FROM items
 WHERE id = @id AND company_id = @company_id;
 
+-- name: GetItemDescendants :many
+WITH RECURSIVE item_descendants AS (
+    SELECT items.id, items.parent_id, items.kind FROM items
+    WHERE items.id = @item_id AND items.company_id = @company_id
+    UNION ALL
+    SELECT i.id, i.parent_id, i.kind
+    FROM items i
+    JOIN item_descendants d ON i.parent_id = d.id
+    WHERE i.company_id = @company_id
+)
+SELECT d_res.id, d_res.parent_id, d_res.kind FROM item_descendants d_res;
+
+-- name: SoftDeleteItemsCascade :exec
+UPDATE items
+SET deleted_at = NOW(),
+    deleted_by = @deleted_by,
+    delete_batch_id = @delete_batch_id,
+    updated_at = NOW()
+WHERE company_id = @company_id AND id = ANY(@item_ids::uuid[]) AND deleted_at IS NULL;
+
+-- name: RestoreItemsCascade :exec
+UPDATE items
+SET deleted_at = NULL,
+    deleted_by = NULL,
+    delete_batch_id = NULL,
+    updated_at = NOW()
+WHERE company_id = @company_id AND delete_batch_id = @delete_batch_id;
+
 -- Get path ancestors for an item
 -- name: GetItemAncestors :many
 WITH RECURSIVE item_ancestors AS (

@@ -20,17 +20,18 @@ type Activity struct {
 }
 
 type Client struct {
-	ID          pgtype.UUID        `json:"id"`
-	CompanyID   pgtype.UUID        `json:"company_id"`
-	Name        string             `json:"name"`
-	Website     pgtype.Text        `json:"website"`
-	Notes       pgtype.Text        `json:"notes"`
-	NotesItemID pgtype.UUID        `json:"notes_item_id"`
-	LogoKey     pgtype.Text        `json:"logo_key"`
-	CreatedBy   pgtype.UUID        `json:"created_by"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+	ID            pgtype.UUID        `json:"id"`
+	CompanyID     pgtype.UUID        `json:"company_id"`
+	Name          string             `json:"name"`
+	Website       pgtype.Text        `json:"website"`
+	Notes         pgtype.Text        `json:"notes"`
+	NotesItemID   pgtype.UUID        `json:"notes_item_id"`
+	LogoKey       pgtype.Text        `json:"logo_key"`
+	CreatedBy     pgtype.UUID        `json:"created_by"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
+	DeleteBatchID pgtype.UUID        `json:"delete_batch_id"`
 }
 
 type ClientContact struct {
@@ -203,6 +204,8 @@ type Item struct {
 	DriveOwnerID     pgtype.UUID        `json:"drive_owner_id"`
 	IsDefaultFolder  bool               `json:"is_default_folder"`
 	Category         pgtype.Text        `json:"category"`
+	DeleteBatchID    pgtype.UUID        `json:"delete_batch_id"`
+	IsTracker        bool               `json:"is_tracker"`
 }
 
 type LoginCode struct {
@@ -258,6 +261,7 @@ type Project struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
+	DeleteBatchID pgtype.UUID        `json:"delete_batch_id"`
 }
 
 type ProjectNotificationPref struct {

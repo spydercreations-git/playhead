@@ -213,7 +213,7 @@ VALUES (
     $1, $2, $3, $4, $5, $6, $7,
     0, 0, 0, 0, 'none', FALSE
 )
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category, delete_batch_id, is_tracker
 `
 
 type CreateItemWithCountsParams struct {
@@ -260,6 +260,8 @@ func (q *Queries) CreateItemWithCounts(ctx context.Context, arg CreateItemWithCo
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
+		&i.DeleteBatchID,
+		&i.IsTracker,
 	)
 	return i, err
 }
@@ -584,7 +586,7 @@ func (q *Queries) GetItemAncestors(ctx context.Context, arg GetItemAncestorsPara
 }
 
 const getItemByID = `-- name: GetItemByID :one
-SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category, 
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category, i.delete_batch_id, i.is_tracker, 
        COALESCE(fv.storage_key, '') AS latest_storage_key,
        COALESCE(fv.size_bytes, 0) AS latest_size_bytes,
        COALESCE(fv.mime, '') AS latest_mime,
@@ -627,6 +629,8 @@ type GetItemByIDRow struct {
 	DriveOwnerID        pgtype.UUID        `json:"drive_owner_id"`
 	IsDefaultFolder     bool               `json:"is_default_folder"`
 	Category            pgtype.Text        `json:"category"`
+	DeleteBatchID       pgtype.UUID        `json:"delete_batch_id"`
+	IsTracker           bool               `json:"is_tracker"`
 	LatestStorageKey    string             `json:"latest_storage_key"`
 	LatestSizeBytes     int64              `json:"latest_size_bytes"`
 	LatestMime          string             `json:"latest_mime"`
@@ -662,6 +666,8 @@ func (q *Queries) GetItemByID(ctx context.Context, arg GetItemByIDParams) (GetIt
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
+		&i.DeleteBatchID,
+		&i.IsTracker,
 		&i.LatestStorageKey,
 		&i.LatestSizeBytes,
 		&i.LatestMime,
@@ -670,6 +676,50 @@ func (q *Queries) GetItemByID(ctx context.Context, arg GetItemByIDParams) (GetIt
 		&i.CreatedByEmail,
 	)
 	return i, err
+}
+
+const getItemDescendants = `-- name: GetItemDescendants :many
+WITH RECURSIVE item_descendants AS (
+    SELECT items.id, items.parent_id, items.kind FROM items
+    WHERE items.id = $1 AND items.company_id = $2
+    UNION ALL
+    SELECT i.id, i.parent_id, i.kind
+    FROM items i
+    JOIN item_descendants d ON i.parent_id = d.id
+    WHERE i.company_id = $2
+)
+SELECT d_res.id, d_res.parent_id, d_res.kind FROM item_descendants d_res
+`
+
+type GetItemDescendantsParams struct {
+	ItemID    pgtype.UUID `json:"item_id"`
+	CompanyID pgtype.UUID `json:"company_id"`
+}
+
+type GetItemDescendantsRow struct {
+	ID       pgtype.UUID `json:"id"`
+	ParentID pgtype.UUID `json:"parent_id"`
+	Kind     string      `json:"kind"`
+}
+
+func (q *Queries) GetItemDescendants(ctx context.Context, arg GetItemDescendantsParams) ([]GetItemDescendantsRow, error) {
+	rows, err := q.db.Query(ctx, getItemDescendants, arg.ItemID, arg.CompanyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetItemDescendantsRow{}
+	for rows.Next() {
+		var i GetItemDescendantsRow
+		if err := rows.Scan(&i.ID, &i.ParentID, &i.Kind); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getLatestFileVersion = `-- name: GetLatestFileVersion :one
@@ -993,7 +1043,7 @@ func (q *Queries) ListFileVersions(ctx context.Context, itemID pgtype.UUID) ([]L
 }
 
 const listItemsWithVersions = `-- name: ListItemsWithVersions :many
-SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category,
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category, i.delete_batch_id, i.is_tracker,
        COALESCE(fv.storage_key, '') AS latest_storage_key,
        COALESCE(fv.size_bytes, 0) AS latest_size_bytes,
        COALESCE(fv.mime, '') AS latest_mime,
@@ -1048,6 +1098,8 @@ type ListItemsWithVersionsRow struct {
 	DriveOwnerID        pgtype.UUID        `json:"drive_owner_id"`
 	IsDefaultFolder     bool               `json:"is_default_folder"`
 	Category            pgtype.Text        `json:"category"`
+	DeleteBatchID       pgtype.UUID        `json:"delete_batch_id"`
+	IsTracker           bool               `json:"is_tracker"`
 	LatestStorageKey    string             `json:"latest_storage_key"`
 	LatestSizeBytes     int64              `json:"latest_size_bytes"`
 	LatestMime          string             `json:"latest_mime"`
@@ -1094,6 +1146,8 @@ func (q *Queries) ListItemsWithVersions(ctx context.Context, arg ListItemsWithVe
 			&i.DriveOwnerID,
 			&i.IsDefaultFolder,
 			&i.Category,
+			&i.DeleteBatchID,
+			&i.IsTracker,
 			&i.LatestStorageKey,
 			&i.LatestSizeBytes,
 			&i.LatestMime,
@@ -1113,7 +1167,7 @@ func (q *Queries) ListItemsWithVersions(ctx context.Context, arg ListItemsWithVe
 }
 
 const listStarredItems = `-- name: ListStarredItems :many
-SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category, 
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category, i.delete_batch_id, i.is_tracker, 
        COALESCE(fv.storage_key, '') AS latest_storage_key,
        COALESCE(fv.size_bytes, 0) AS latest_size_bytes,
        COALESCE(fv.mime, '') AS latest_mime,
@@ -1160,6 +1214,8 @@ type ListStarredItemsRow struct {
 	DriveOwnerID     pgtype.UUID        `json:"drive_owner_id"`
 	IsDefaultFolder  bool               `json:"is_default_folder"`
 	Category         pgtype.Text        `json:"category"`
+	DeleteBatchID    pgtype.UUID        `json:"delete_batch_id"`
+	IsTracker        bool               `json:"is_tracker"`
 	LatestStorageKey string             `json:"latest_storage_key"`
 	LatestSizeBytes  int64              `json:"latest_size_bytes"`
 	LatestMime       string             `json:"latest_mime"`
@@ -1201,6 +1257,8 @@ func (q *Queries) ListStarredItems(ctx context.Context, arg ListStarredItemsPara
 			&i.DriveOwnerID,
 			&i.IsDefaultFolder,
 			&i.Category,
+			&i.DeleteBatchID,
+			&i.IsTracker,
 			&i.LatestStorageKey,
 			&i.LatestSizeBytes,
 			&i.LatestMime,
@@ -1220,7 +1278,7 @@ func (q *Queries) ListStarredItems(ctx context.Context, arg ListStarredItemsPara
 }
 
 const listTrashItems = `-- name: ListTrashItems :many
-SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category, 
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category, i.delete_batch_id, i.is_tracker, 
        u.name AS deleted_by_name,
        COALESCE(fv.size_bytes, 0) AS latest_size_bytes,
        COALESCE(fv.mime, '') AS latest_mime,
@@ -1259,6 +1317,8 @@ type ListTrashItemsRow struct {
 	DriveOwnerID     pgtype.UUID        `json:"drive_owner_id"`
 	IsDefaultFolder  bool               `json:"is_default_folder"`
 	Category         pgtype.Text        `json:"category"`
+	DeleteBatchID    pgtype.UUID        `json:"delete_batch_id"`
+	IsTracker        bool               `json:"is_tracker"`
 	DeletedByName    pgtype.Text        `json:"deleted_by_name"`
 	LatestSizeBytes  int64              `json:"latest_size_bytes"`
 	LatestMime       string             `json:"latest_mime"`
@@ -1299,6 +1359,8 @@ func (q *Queries) ListTrashItems(ctx context.Context, companyID pgtype.UUID) ([]
 			&i.DriveOwnerID,
 			&i.IsDefaultFolder,
 			&i.Category,
+			&i.DeleteBatchID,
+			&i.IsTracker,
 			&i.DeletedByName,
 			&i.LatestSizeBytes,
 			&i.LatestMime,
@@ -1320,7 +1382,7 @@ UPDATE items
 SET parent_id = $1,
     updated_at = NOW()
 WHERE id = $2 AND company_id = $3
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category, delete_batch_id, is_tracker
 `
 
 type MoveItemParams struct {
@@ -1355,6 +1417,8 @@ func (q *Queries) MoveItem(ctx context.Context, arg MoveItemParams) (Item, error
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
+		&i.DeleteBatchID,
+		&i.IsTracker,
 	)
 	return i, err
 }
@@ -1461,7 +1525,7 @@ UPDATE items
 SET name = $1,
     updated_at = NOW()
 WHERE id = $2 AND company_id = $3
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category, delete_batch_id, is_tracker
 `
 
 type RenameItemParams struct {
@@ -1496,6 +1560,8 @@ func (q *Queries) RenameItem(ctx context.Context, arg RenameItemParams) (Item, e
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
+		&i.DeleteBatchID,
+		&i.IsTracker,
 	)
 	return i, err
 }
@@ -1525,7 +1591,7 @@ SET deleted_at = NULL,
     parent_id = original_parent_id,
     updated_at = NOW()
 WHERE id = $1 AND company_id = $2
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category, delete_batch_id, is_tracker
 `
 
 type RestoreItemParams struct {
@@ -1559,8 +1625,29 @@ func (q *Queries) RestoreItem(ctx context.Context, arg RestoreItemParams) (Item,
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
+		&i.DeleteBatchID,
+		&i.IsTracker,
 	)
 	return i, err
+}
+
+const restoreItemsCascade = `-- name: RestoreItemsCascade :exec
+UPDATE items
+SET deleted_at = NULL,
+    deleted_by = NULL,
+    delete_batch_id = NULL,
+    updated_at = NOW()
+WHERE company_id = $1 AND delete_batch_id = $2
+`
+
+type RestoreItemsCascadeParams struct {
+	CompanyID     pgtype.UUID `json:"company_id"`
+	DeleteBatchID pgtype.UUID `json:"delete_batch_id"`
+}
+
+func (q *Queries) RestoreItemsCascade(ctx context.Context, arg RestoreItemsCascadeParams) error {
+	_, err := q.db.Exec(ctx, restoreItemsCascade, arg.CompanyID, arg.DeleteBatchID)
+	return err
 }
 
 const softDeleteItem = `-- name: SoftDeleteItem :one
@@ -1571,7 +1658,7 @@ SET deleted_at = NOW(),
     parent_id = NULL,
     updated_at = NOW()
 WHERE id = $2 AND company_id = $3
-RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category
+RETURNING id, company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes, review_status, locked, deleted_at, deleted_by, original_parent_id, created_at, updated_at, video_count, drive_owner_id, is_default_folder, category, delete_batch_id, is_tracker
 `
 
 type SoftDeleteItemParams struct {
@@ -1606,8 +1693,36 @@ func (q *Queries) SoftDeleteItem(ctx context.Context, arg SoftDeleteItemParams) 
 		&i.DriveOwnerID,
 		&i.IsDefaultFolder,
 		&i.Category,
+		&i.DeleteBatchID,
+		&i.IsTracker,
 	)
 	return i, err
+}
+
+const softDeleteItemsCascade = `-- name: SoftDeleteItemsCascade :exec
+UPDATE items
+SET deleted_at = NOW(),
+    deleted_by = $1,
+    delete_batch_id = $2,
+    updated_at = NOW()
+WHERE company_id = $3 AND id = ANY($4::uuid[]) AND deleted_at IS NULL
+`
+
+type SoftDeleteItemsCascadeParams struct {
+	DeletedBy     pgtype.UUID   `json:"deleted_by"`
+	DeleteBatchID pgtype.UUID   `json:"delete_batch_id"`
+	CompanyID     pgtype.UUID   `json:"company_id"`
+	ItemIds       []pgtype.UUID `json:"item_ids"`
+}
+
+func (q *Queries) SoftDeleteItemsCascade(ctx context.Context, arg SoftDeleteItemsCascadeParams) error {
+	_, err := q.db.Exec(ctx, softDeleteItemsCascade,
+		arg.DeletedBy,
+		arg.DeleteBatchID,
+		arg.CompanyID,
+		arg.ItemIds,
+	)
+	return err
 }
 
 const starItem = `-- name: StarItem :exec

@@ -39,6 +39,7 @@ interface SpreadsheetItem {
   created_at: string;
   is_starred: boolean;
   can_edit: boolean;
+  is_tracker?: boolean;
 }
 
 interface ClientChip {
@@ -385,6 +386,7 @@ export default function SpreadsheetsPage() {
                 project_name: sheet.project_name,
                 client_name: sheet.client_name,
                 updated_at: sheet.updated_at,
+                is_tracker: sheet.is_tracker,
               }}
             />
           ))}

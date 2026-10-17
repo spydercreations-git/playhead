@@ -681,6 +681,8 @@ export const ICON_NAME_MAP: Record<string, string> = {
   "Plus": "add",
   "Printer": "print",
   "RotateCcw": "restart_alt",
+  "RotateCw": "refresh",
+  "Camera": "add_photo_alternate",
   "Search": "search",
   "Send": "send",
   "Settings": "settings",

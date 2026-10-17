@@ -433,15 +433,21 @@ type Upload struct {
 }
 
 type User struct {
-	ID              pgtype.UUID        `json:"id"`
-	Email           string             `json:"email"`
-	Name            string             `json:"name"`
-	AvatarUrl       pgtype.Text        `json:"avatar_url"`
-	PasswordHash    pgtype.Text        `json:"password_hash"`
-	GoogleID        pgtype.Text        `json:"google_id"`
-	EmailVerifiedAt pgtype.Timestamptz `json:"email_verified_at"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	ID                    pgtype.UUID        `json:"id"`
+	Email                 string             `json:"email"`
+	Name                  string             `json:"name"`
+	AvatarUrl             pgtype.Text        `json:"avatar_url"`
+	PasswordHash          pgtype.Text        `json:"password_hash"`
+	GoogleID              pgtype.Text        `json:"google_id"`
+	EmailVerifiedAt       pgtype.Timestamptz `json:"email_verified_at"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
+	Username              pgtype.Text        `json:"username"`
+	TempPasswordHash      pgtype.Text        `json:"temp_password_hash"`
+	TempPasswordExpiresAt pgtype.Timestamptz `json:"temp_password_expires_at"`
+	TempPasswordUsed      bool               `json:"temp_password_used"`
+	IsOnboarded           bool               `json:"is_onboarded"`
+	OnboardedAt           pgtype.Timestamptz `json:"onboarded_at"`
 }
 
 type UserSetting struct {

@@ -9,6 +9,7 @@ interface MentionPerson {
   name: string;
   email: string;
   role: string;
+  username?: string;
 }
 
 interface CommentComposerProps {
@@ -67,7 +68,7 @@ export function CommentComposer({
   };
 
   const handleSelectMention = (person: MentionPerson) => {
-    const handle = `@${person.name.replace(/\s+/g, "")} `;
+    const handle = `@${person.username || person.name.replace(/\s+/g, "")} `;
     setBody((prev) => prev + handle);
     setShowMentionMenu(false);
     textareaRef.current?.focus();
@@ -92,6 +93,7 @@ export function CommentComposer({
   };
 
   const filteredMentions = mentionableList.filter((m) =>
+    (m.username && m.username.toLowerCase().includes(mentionFilter.toLowerCase())) ||
     m.name.toLowerCase().includes(mentionFilter.toLowerCase()) ||
     m.email.toLowerCase().includes(mentionFilter.toLowerCase())
   );
@@ -139,7 +141,19 @@ export function CommentComposer({
         <textarea
           ref={textareaRef}
           value={body}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={(e) => {
+            setBody(e.target.value);
+            const lastAt = e.target.value.lastIndexOf("@");
+            if (lastAt !== -1 && lastAt >= e.target.value.length - 15) {
+              const query = e.target.value.slice(lastAt + 1);
+              if (!query.includes(" ")) {
+                setMentionFilter(query);
+                setShowMentionMenu(true);
+                return;
+              }
+            }
+            if (showMentionMenu) setShowMentionMenu(false);
+          }}
           onKeyDown={handleKeyDown}
           disabled={disabled || submitting}
           rows={2}
@@ -149,8 +163,8 @@ export function CommentComposer({
 
         {/* Mention suggestions popover */}
         {showMentionMenu && filteredMentions.length > 0 && (
-          <div className="absolute bottom-full left-0 mb-1 w-60 max-h-48 overflow-y-auto bg-[#181818] border border-[#2E2F34] rounded-xl shadow-overlay p-1 z-50">
-            <div className="px-2 py-1 text-xs text-[#A3A6AD]  font-semibold">
+          <div className="absolute bottom-full left-0 mb-1 w-64 max-h-48 overflow-y-auto bg-[#181818] border border-[#2E2F34] rounded-xl shadow-overlay p-1 z-50">
+            <div className="px-2 py-1 text-xs text-[#A3A6AD] font-semibold">
               Mention someone
             </div>
             {filteredMentions.map((p) => (
@@ -160,8 +174,11 @@ export function CommentComposer({
                 className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left hover:bg-[#212121] text-xs transition-colors"
               >
                 <div>
-                  <div className="font-medium text-white">{p.name}</div>
-                  <div className="text-xs text-[#A3A6AD]">{p.email}</div>
+                  <div className="font-medium text-white flex items-center gap-1.5">
+                    <span>{p.name}</span>
+                    {p.username && <span className="text-[#A3A6AD] font-normal text-xs">@{p.username}</span>}
+                  </div>
+                  {p.email && <div className="text-xs text-[#7C7F87]">{p.email}</div>}
                 </div>
                 {p.role && (
                   <span className="text-xs bg-[#212121] px-1.5 py-0.5 rounded text-[#A3A6AD] capitalize">

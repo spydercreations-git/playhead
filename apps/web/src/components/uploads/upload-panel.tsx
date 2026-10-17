@@ -10,12 +10,12 @@ import {
   Pause,
   RotateCcw,
   CheckCircle2,
-  Film,
+  VideoFileIcon as Film,
   Music,
-  Image as ImageIcon,
+  ImageFileIcon as ImageIcon,
   FileText,
-  FolderArchive,
-} from "lucide-react";
+  Folder as FolderArchive,
+} from "@/components/ui/icon";
 
 function formatBytes(bytes: number): string {
   if (!bytes || bytes === 0) return "0 B";

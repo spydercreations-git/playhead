@@ -124,6 +124,7 @@ func main() {
 	documentsHandler := handler.NewDocumentsHandler(pgxPool, queries, rdb, storageClient, cfg)
 	spreadsheetsHandler := handler.NewSpreadsheetsHandler(pgxPool, queries, rdb, storageClient, cfg)
 	driveHandler := handler.NewDriveHandler(queries, pgxPool, storageClient, cfg)
+	onboardingHandler := handler.NewOnboardingHandler(queries, storageClient)
 	if pgxPool != nil {
 		projectHandler.SetPool(pgxPool)
 	}
@@ -220,6 +221,10 @@ func main() {
 			share.Get("/documents/{id}/items/{itemId}/card-preview", documentsHandler.PublicShareGetCardPreview)
 		})
 
+		// Public avatar and client picture serving (cached 24h)
+		api.Get("/users/avatar/{id}/{size}", onboardingHandler.GetAvatar)
+		api.Get("/clients/{id}/picture/{size}", onboardingHandler.GetClientPicture)
+
 		// Protected endpoints (Requires authentication, CSRF token validation, and verified email)
 		api.Group(func(protected chi.Router) {
 			protected.Use(authMw.Authenticate)
@@ -228,6 +233,12 @@ func main() {
 
 			protected.Get("/me", authHandler.Me)
 			protected.Get("/auth/me", authHandler.Me)
+
+			// Onboarding & Profile
+			protected.Get("/users/check-username", onboardingHandler.CheckUsername)
+			protected.Post("/users/onboarding/complete", onboardingHandler.CompleteOnboarding)
+			protected.Post("/users/avatar", onboardingHandler.UploadAvatar)
+			protected.Post("/clients/{id}/picture", onboardingHandler.UploadClientPicture)
 
 			// Company management
 			protected.Post("/companies", companyHandler.Create)

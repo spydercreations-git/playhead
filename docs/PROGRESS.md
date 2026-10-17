@@ -748,6 +748,36 @@ Google Login is built into the backend and UI, but hidden until configured. When
 - Automated Tests:
   - Created `services/api/internal/handler/step3_project_structure_test.go` covering additions 1, 3, 4, 5 (all subtests passing).
 
+### Home as First Page, Image Crop Tool (C1, C2) & Onboarding Flow (O1 to O4) ✅
+- **Part 1: Home as First Page**:
+  - Directs all authenticated visits to `/` directly to Home (`apps/web/src/app/page.tsx`).
+  - Deep links (`?redirect=...`) faithfully return users to their destination upon sign in.
+  - Playhead logo in navigation routes directly to `/`.
+  - Client contacts land on Home with scoped access: "My Drive" is completely hidden, only permitted projects and recent activity are displayed.
+- **Part 2: Image Crop Tool (`C1`, `C2`)**:
+  - Built unified `ImageCropDialog` (`apps/web/src/components/ui/image-crop-dialog.tsx`) supporting both `shape="circle"` (profiles) and `shape="square"` (client logos).
+  - Enforces boundary restrictions (`restrictPosition={true}`), thirds grid overlay, 62% dimming layer, and white corner bracket guides for square mode.
+  - Interactive zoom slider + `-`/`+` steppers (100%–400%) with exact percentage readouts, 90° rotation button, reset button, and keyboard shortcuts (arrow keys to pan, `+`/`-` to zoom, `Esc` to cancel, `Enter` to save).
+  - Real-time side preview at 56px, 32px, and 20px.
+  - Pure Go image pipeline (`services/api/internal/handler/image_process.go`): strict SVG rejection, CatmullRom high-fidelity resizing, stripping EXIF metadata, and pure Go WebP encoding generating 512, 256, 128, and 64 px variants.
+- **Part 3: Onboarding Flow (`O1`–`O4`)**:
+  - Database migration `00016_onboarding_and_usernames.sql`: added `username`, `temp_password_hash`, `temp_password_expires_at`, `temp_password_used`, `is_onboarded`, and `onboarded_at` with unique index `idx_users_username_lower`.
+  - Unskippable two-step onboarding modal (`apps/web/src/components/onboarding/onboarding-dialog.tsx`):
+    - **Step 1 (Profile)**: Photo crop upload, full name input, live-debounced unique `@username` check (`GET /api/v1/users/check-username`), and password setting for temp password invitees.
+    - **Step 2 (Welcome)**: `O3` Team Welcome ("You're joining Idyll Productions as <Role>") with 3 mini UI cards (`Projects and folders`, `Frame accurate review`, `Fast uploads`); `O4` Client Welcome with client logo, personalized greeting, and 3 mini UI cards (`Watch and comment`, `Approve`, `Everything in one place`).
+    - Clicking "Get started" calls `POST /api/v1/users/onboarding/complete` and routes to Home.
+  - Review comment composer updated to display and insert `@username` in mentions autocomplete.
+- **Automated Tests**:
+  - `services/api/internal/handler/onboarding_crop_test.go`:
+    - `TestCheckUsernameEndpoint`: PASS
+    - `TestTemporaryPasswordSingleUse`: PASS
+    - `TestCompleteOnboardingEndpoint`: PASS
+    - `TestImageCropValidation`: PASS
+    - `TestUploadAvatarSVGRejectionHTTP`: PASS
+  - All handler tests pass (`go test ./internal/handler/...`).
+  - Web TypeScript compilation (`npm run typecheck`) and design token linter (`npm run lint:design`) pass with 0 errors.
+
+
 
 
 

@@ -10,7 +10,8 @@ import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ProjectCard } from "@/components/cards/project-card";
-import { ChevronDown, X, MoreHorizontal, Edit, Trash2 } from "@/components/ui/icon";
+import { ChevronDown, X, MoreHorizontal, Edit, Trash2, Camera } from "@/components/ui/icon";
+import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
 
 export default function ClientDetailPage() {
   const params = useParams();
@@ -36,6 +37,52 @@ export default function ClientDetailPage() {
   // Notes state
   const [notesText, setNotesText] = useState("");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
+
+  // Picture crop state
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [pictureError, setPictureError] = useState<string | null>(null);
+  const clientFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleSelectClientFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type === "image/svg+xml") {
+      setPictureError("SVG files are not supported for client pictures. Please use PNG, JPG, or WebP.");
+      if (clientFileInputRef.current) clientFileInputRef.current.value = "";
+      return;
+    }
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      setPictureError("Unsupported file format. Please upload a PNG, JPG, or WebP image.");
+      if (clientFileInputRef.current) clientFileInputRef.current.value = "";
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      setPictureError("Image exceeds 20 MB limit. Please choose a smaller image.");
+      if (clientFileInputRef.current) clientFileInputRef.current.value = "";
+      return;
+    }
+    setPictureError(null);
+    const url = URL.createObjectURL(file);
+    setCropSrc(url);
+    if (clientFileInputRef.current) clientFileInputRef.current.value = "";
+  };
+
+  const handleUploadClientPicture = async (blob: Blob) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", blob, "client-picture.webp");
+      await apiRequest(`/clients/${clientId}/picture`, {
+        method: "POST",
+        body: formData,
+      });
+      queryClient.invalidateQueries({ queryKey: ["client-detail", clientId] });
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+    } catch (err: any) {
+      setPictureError(err?.message || "Failed to upload client picture");
+    } finally {
+      setCropSrc(null);
+    }
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["client-detail", clientId],
@@ -157,8 +204,36 @@ export default function ClientDetailPage() {
       <div className="rounded-xl border border-[#2E2F34] bg-[#212121] p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#4876F3]/20 text-xl font-bold text-[#4876F3]">
-              {client?.name ? client.name.slice(0, 2).toUpperCase() : "CL"}
+            <div className="relative group">
+              <input
+                ref={clientFileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={handleSelectClientFile}
+              />
+              {client?.logo_key?.Valid && client.logo_key.String ? (
+                <img
+                  src={client.logo_key.String}
+                  alt={client?.name || "Client"}
+                  className="h-14 w-14 shrink-0 rounded-xl object-cover border border-[#2E2F34]"
+                />
+              ) : (
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#4876F3]/20 text-xl font-bold text-[#4876F3]">
+                  {client?.name ? client.name.slice(0, 2).toUpperCase() : "CL"}
+                </div>
+              )}
+              {hasPermission("clients.update") && (
+                <button
+                  type="button"
+                  onClick={() => clientFileInputRef.current?.click()}
+                  title="Change client picture"
+                  aria-label="Change client picture"
+                  className="absolute inset-0 rounded-xl bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity"
+                >
+                  <Camera className="w-5 h-5" />
+                </button>
+              )}
             </div>
             <div>
               <div className="flex items-center gap-3">
@@ -606,6 +681,29 @@ export default function ClientDetailPage() {
         onConfirm={() => deleteClientMutation.mutate()}
         loading={deleteClientMutation.isPending}
       />
+
+      {pictureError && (
+        <div className="fixed bottom-6 right-6 z-50 rounded-xl bg-red-500/90 text-white text-xs px-4 py-2.5 shadow-lg backdrop-blur flex items-center gap-2">
+          <span>{pictureError}</span>
+          <button
+            onClick={() => setPictureError(null)}
+            className="p-1 hover:bg-white/20 rounded"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {cropSrc && (
+        <ImageCropDialog
+          isOpen={true}
+          onClose={() => setCropSrc(null)}
+          imageSrc={cropSrc}
+          shape="square"
+          title="Crop client picture"
+          onCropComplete={handleUploadClientPicture}
+        />
+      )}
     </div>
   );
 }

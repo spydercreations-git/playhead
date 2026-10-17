@@ -12,6 +12,7 @@ interface ClientListItem {
   id: string;
   name: string;
   website: { String: string; Valid: boolean };
+  logo_key?: { String: string; Valid: boolean };
   contacts_count: number;
   projects_count: number;
   total_size_bytes: number;
@@ -194,9 +195,17 @@ export default function ClientsPage() {
                       href={`/clients/${client.id}`}
                       className="flex items-center gap-3 hover:text-[#4876F3]"
                     >
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#4876F3]/20 font-bold text-[#4876F3] text-xs">
-                        {client.name.slice(0, 2).toUpperCase()}
-                      </div>
+                      {client.logo_key?.Valid && client.logo_key.String ? (
+                        <img
+                          src={client.logo_key.String}
+                          alt={client.name}
+                          className="h-8 w-8 rounded-lg object-cover border border-[#2E2F34]"
+                        />
+                      ) : (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#4876F3]/20 font-bold text-[#4876F3] text-xs">
+                          {client.name.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
                       <div className="flex flex-col">
                         <span>{client.name}</span>
                         {client.website?.Valid && (
@@ -252,9 +261,17 @@ export default function ClientsPage() {
             >
               <div>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#4876F3]/20 font-bold text-[#4876F3] text-sm">
-                    {client.name.slice(0, 2).toUpperCase()}
-                  </div>
+                  {client.logo_key?.Valid && client.logo_key.String ? (
+                    <img
+                      src={client.logo_key.String}
+                      alt={client.name}
+                      className="h-10 w-10 rounded-lg object-cover border border-[#2E2F34]"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#4876F3]/20 font-bold text-[#4876F3] text-sm">
+                      {client.name.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
                   <div>
                     <h3 className="text-sm font-bold text-white">
                       {client.name}

@@ -7,6 +7,7 @@ import { ProjectIconRail } from "./project-icon-rail";
 import { UploadPanel } from "@/components/uploads/upload-panel";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/use-auth";
+import { OnboardingDialog } from "@/components/onboarding/onboarding-dialog";
 
 function AppSkeleton() {
   return (
@@ -75,13 +76,13 @@ function ProtectedAppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isLoading, error } = useAuth();
+  const { user, isLoading, error, isOnboarded } = useAuth();
 
   useEffect(() => {
     if (!isLoading && (!user || error)) {
       const search = typeof window !== "undefined" ? window.location.search : "";
       const currentUrl = (pathname || "/") + search;
-      const target = `/login?redirect=${encodeURIComponent(currentUrl)}`;
+      const target = currentUrl === "/" ? "/login" : `/login?redirect=${encodeURIComponent(currentUrl)}`;
       router.replace(target);
     }
   }, [isLoading, user, error, pathname, router]);
@@ -95,13 +96,16 @@ function ProtectedAppShell({
 
   if (isProjectWorkspace) {
     return (
-      <div className="flex h-screen w-screen overflow-hidden bg-[#181818]">
-        <ProjectIconRail />
-        <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#181818]">
-          {children}
-        </main>
-        <UploadPanel />
-      </div>
+      <>
+        <div className="flex h-screen w-screen overflow-hidden bg-[#181818]">
+          <ProjectIconRail />
+          <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#181818]">
+            {children}
+          </main>
+          <UploadPanel />
+        </div>
+        <OnboardingDialog isOpen={!isOnboarded} />
+      </>
     );
   }
 
@@ -111,24 +115,30 @@ function ProtectedAppShell({
 
   if (isFullscreenEditor) {
     return (
-      <main className="h-screen w-screen overflow-hidden bg-[#181818]">
-        {children}
-        <UploadPanel />
-      </main>
+      <>
+        <main className="h-screen w-screen overflow-hidden bg-[#181818]">
+          {children}
+          <UploadPanel />
+        </main>
+        <OnboardingDialog isOpen={!isOnboarded} />
+      </>
     );
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#181818]">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex flex-1 flex-col overflow-hidden min-w-0 h-full">
-        <Header onOpenSidebar={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8 bg-[#181818]">
-          <div className="w-full max-w-[1920px] mx-auto">{children}</div>
-        </main>
+    <>
+      <div className="flex h-screen overflow-hidden bg-[#181818]">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex flex-1 flex-col overflow-hidden min-w-0 h-full">
+          <Header onOpenSidebar={() => setSidebarOpen(true)} />
+          <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8 bg-[#181818]">
+            <div className="w-full max-w-[1920px] mx-auto">{children}</div>
+          </main>
+        </div>
+        <UploadPanel />
       </div>
-      <UploadPanel />
-    </div>
+      <OnboardingDialog isOpen={!isOnboarded} />
+    </>
   );
 }
 

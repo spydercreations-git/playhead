@@ -8,8 +8,11 @@ export interface CurrentUser {
   id: string;
   email: string;
   name: string;
+  username?: string;
   avatar?: string;
   avatar_url?: string;
+  is_onboarded?: boolean;
+  has_temp_password?: boolean;
   email_verified: boolean;
 }
 
@@ -40,6 +43,8 @@ export interface MeResponse {
   permissions?: string[];
   role?: RoleDetails;
   is_client: boolean;
+  client_name?: string;
+  client_logo?: string;
   companies: any[];
 }
 
@@ -96,6 +101,11 @@ export function useAuth() {
   const isEditor = !isClient && !isManager;
   const canCreateClientOrProject = hasPermission("projects.create") || hasPermission("clients.create");
 
+  const clientName = data?.client_name || "";
+  const clientLogo = data?.client_logo || "";
+  const isOnboarded = user ? (user.is_onboarded ?? true) : true;
+  const isDriveAccessible = isExecutive;
+
   return {
     user,
     company,
@@ -104,6 +114,10 @@ export function useAuth() {
     roleId,
     permissions,
     isClient,
+    clientName,
+    clientLogo,
+    isOnboarded,
+    isDriveAccessible,
     hasPermission,
     isExecutive,
     canChangeRoles,

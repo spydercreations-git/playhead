@@ -515,12 +515,34 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := h.queries.GetUserByEmail(r.Context(), email)
-	if err != nil || !user.PasswordHash.Valid {
+	if err != nil {
 		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials", "message": "Invalid email or password"})
 		return
 	}
 
-	if !authz.VerifyPassword(req.Password, user.PasswordHash.String) {
+	authenticated := false
+	isTempPassword := false
+
+	// Try regular password first
+	if user.PasswordHash.Valid && user.PasswordHash.String != "" {
+		if authz.VerifyPassword(req.Password, user.PasswordHash.String) {
+			authenticated = true
+		}
+	}
+
+	// Try temporary password if regular password failed
+	if !authenticated && user.TempPasswordHash.Valid && user.TempPasswordHash.String != "" {
+		if !user.TempPasswordUsed && user.TempPasswordExpiresAt.Valid && user.TempPasswordExpiresAt.Time.After(time.Now()) {
+			if authz.VerifyPassword(req.Password, user.TempPasswordHash.String) {
+				authenticated = true
+				isTempPassword = true
+				// Single-use: mark temporary password as used immediately upon login
+				_ = h.queries.MarkTempPasswordUsed(r.Context(), user.ID)
+			}
+		}
+	}
+
+	if !authenticated {
 		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials", "message": "Invalid email or password"})
 		return
 	}
@@ -576,11 +598,14 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		"status":     "ok",
 		"csrf_token": rawCSRFToken,
 		"user": map[string]interface{}{
-			"id":             user.ID,
-			"email":          user.Email,
-			"name":           user.Name,
-			"avatar_url":     user.AvatarUrl.String,
-			"email_verified": user.EmailVerifiedAt.Valid,
+			"id":                user.ID,
+			"email":             user.Email,
+			"name":              user.Name,
+			"avatar_url":        user.AvatarUrl.String,
+			"username":          user.Username.String,
+			"is_onboarded":      user.IsOnboarded,
+			"has_temp_password": isTempPassword,
+			"email_verified":    user.EmailVerifiedAt.Valid,
 		},
 	})
 }
@@ -918,15 +943,39 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	fullUser, _ := h.queries.GetUserByID(r.Context(), user.ID)
+	hasTemp := fullUser.TempPasswordHash.Valid && (!fullUser.PasswordHash.Valid || fullUser.PasswordHash.String == "")
+
+	clientName := ""
+	clientLogo := ""
+	if isClient {
+		contacts, err := h.queries.GetClientContactsByEmail(r.Context(), user.Email)
+		if err == nil && len(contacts) > 0 {
+			cl, cErr := h.queries.GetClientByID(r.Context(), db.GetClientByIDParams{
+				ID:        contacts[0].ClientID,
+				CompanyID: activeCompanyID,
+			})
+			if cErr == nil {
+				clientName = cl.Name
+				clientLogo = cl.LogoKey.String
+			}
+		}
+	}
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"user": map[string]interface{}{
-			"id":             user.ID,
-			"email":          user.Email,
-			"name":           user.Name,
-			"avatar":         user.AvatarURL.String,
-			"avatar_url":     user.AvatarURL.String,
-			"email_verified": user.EmailVerifiedAt.Valid,
+			"id":                user.ID,
+			"email":             user.Email,
+			"name":              user.Name,
+			"avatar":            user.AvatarURL.String,
+			"avatar_url":        user.AvatarURL.String,
+			"username":          fullUser.Username.String,
+			"is_onboarded":      fullUser.IsOnboarded,
+			"has_temp_password": hasTemp,
+			"email_verified":    user.EmailVerifiedAt.Valid,
 		},
+		"client_name":    clientName,
+		"client_logo":    clientLogo,
 		"active_company": activeCompany,
 		"active_role":    activeRole,
 		"role_id":        roleID,
@@ -937,9 +986,9 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 			"name":        roleName,
 			"permissions": permissions,
 		},
-		"is_client":      isClient,
-		"companies":      companies,
-		"features":       features,
+		"is_client": isClient,
+		"companies": companies,
+		"features":  features,
 	})
 }
 

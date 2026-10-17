@@ -146,7 +146,7 @@ function getRecentItemCategoryStyle(kind: string, category?: string) {
 export default function HomePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user, isClient, hasPermission } = useAuth();
+  const { user, isClient, hasPermission, isDriveAccessible } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [showNewProject, setShowNewProject] = useState(false);
@@ -177,7 +177,7 @@ export default function HomePage() {
         ],
       })),
     staleTime: 30_000,
-    enabled: !!user,
+    enabled: !!user && isDriveAccessible,
   });
 
   const driveFolders = driveFoldersData?.folders?.filter((f) =>
@@ -354,31 +354,33 @@ export default function HomePage() {
       </div>
 
       {/* Section: My Drive (4 Default Folders) */}
-      <div className="space-y-3.5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-white">My Drive</h2>
-          <Link
-            href="/my-drive"
-            className="text-[13px] font-medium text-[#A3A6AD] hover:text-white transition-colors"
-          >
-            Open My Drive
-          </Link>
-        </div>
+      {isDriveAccessible && (
+        <div className="space-y-3.5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-white">My Drive</h2>
+            <Link
+              href="/my-drive"
+              className="text-[13px] font-medium text-[#A3A6AD] hover:text-white transition-colors"
+            >
+              Open My Drive
+            </Link>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {driveFolders.map((folder) => (
-            <DriveFolderCard
-              key={folder.id}
-              id={folder.id}
-              name={folder.name}
-              category={folder.category}
-              fileCount={folder.file_count === 0 ? "Empty" : folder.file_count}
-              totalSize={folder.file_count === 0 ? "" : formatBytes(folder.total_bytes)}
-              onOpen={() => router.push(`/my-drive?folder=${folder.id}`)}
-            />
-          ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {driveFolders.map((folder) => (
+              <DriveFolderCard
+                key={folder.id}
+                id={folder.id}
+                name={folder.name}
+                category={folder.category}
+                fileCount={folder.file_count === 0 ? "Empty" : folder.file_count}
+                totalSize={folder.file_count === 0 ? "" : formatBytes(folder.total_bytes)}
+                onOpen={() => router.push(`/my-drive?folder=${folder.id}`)}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Section: Recent folders (P03: Folders only, deduplicated, newest first) */}
       {recentFolders.length > 0 && (

@@ -25,6 +25,9 @@ SELECT EXISTS (
     UNION
     SELECT 1 FROM grants g
     WHERE LOWER(g.email) = $1
+    UNION
+    SELECT 1 FROM users u
+    WHERE LOWER(u.email) = $1 AND u.temp_password_hash IS NOT NULL AND u.temp_password_expires_at > NOW()
 ) AS is_known
 `
 

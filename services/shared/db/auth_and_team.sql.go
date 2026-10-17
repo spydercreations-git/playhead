@@ -37,6 +37,77 @@ func (q *Queries) CheckUserBelongsToCompany(ctx context.Context, arg CheckUserBe
 	return belongs, err
 }
 
+const checkUsernameAvailable = `-- name: CheckUsernameAvailable :one
+SELECT NOT EXISTS (
+    SELECT 1 FROM users
+    WHERE LOWER(username) = LOWER($1)
+      AND ($2::uuid IS NULL OR id != $2)
+) AS available
+`
+
+type CheckUsernameAvailableParams struct {
+	Username      string      `json:"username"`
+	ExcludeUserID pgtype.UUID `json:"exclude_user_id"`
+}
+
+func (q *Queries) CheckUsernameAvailable(ctx context.Context, arg CheckUsernameAvailableParams) (bool, error) {
+	row := q.db.QueryRow(ctx, checkUsernameAvailable, arg.Username, arg.ExcludeUserID)
+	var available bool
+	err := row.Scan(&available)
+	return available, err
+}
+
+const completeUserOnboarding = `-- name: CompleteUserOnboarding :one
+UPDATE users
+SET name = $2,
+    username = $3,
+    avatar_url = COALESCE($4, avatar_url),
+    password_hash = COALESCE($5, password_hash),
+    is_onboarded = TRUE,
+    onboarded_at = NOW(),
+    temp_password_used = TRUE,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at
+`
+
+type CompleteUserOnboardingParams struct {
+	ID           pgtype.UUID `json:"id"`
+	Name         string      `json:"name"`
+	Username     pgtype.Text `json:"username"`
+	AvatarUrl    pgtype.Text `json:"avatar_url"`
+	PasswordHash pgtype.Text `json:"password_hash"`
+}
+
+func (q *Queries) CompleteUserOnboarding(ctx context.Context, arg CompleteUserOnboardingParams) (User, error) {
+	row := q.db.QueryRow(ctx, completeUserOnboarding,
+		arg.ID,
+		arg.Name,
+		arg.Username,
+		arg.AvatarUrl,
+		arg.PasswordHash,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.AvatarUrl,
+		&i.PasswordHash,
+		&i.GoogleID,
+		&i.EmailVerifiedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Username,
+		&i.TempPasswordHash,
+		&i.TempPasswordExpiresAt,
+		&i.TempPasswordUsed,
+		&i.IsOnboarded,
+		&i.OnboardedAt,
+	)
+	return i, err
+}
+
 const countCompanyMembers = `-- name: CountCompanyMembers :one
 SELECT COUNT(*) as count
 FROM memberships
@@ -571,6 +642,7 @@ SELECT
     u.name as user_name,
     u.email as user_email,
     u.avatar_url as user_avatar_url,
+    u.username as user_username,
     r.name as role_name,
     r.color as role_color,
     r.is_system as role_is_system,
@@ -592,6 +664,7 @@ type GetMembershipsForCompanyRow struct {
 	UserName        string             `json:"user_name"`
 	UserEmail       string             `json:"user_email"`
 	UserAvatarUrl   pgtype.Text        `json:"user_avatar_url"`
+	UserUsername    pgtype.Text        `json:"user_username"`
 	RoleName        pgtype.Text        `json:"role_name"`
 	RoleColor       pgtype.Text        `json:"role_color"`
 	RoleIsSystem    pgtype.Bool        `json:"role_is_system"`
@@ -617,6 +690,7 @@ func (q *Queries) GetMembershipsForCompany(ctx context.Context, companyID pgtype
 			&i.UserName,
 			&i.UserEmail,
 			&i.UserAvatarUrl,
+			&i.UserUsername,
 			&i.RoleName,
 			&i.RoleColor,
 			&i.RoleIsSystem,
@@ -764,6 +838,17 @@ func (q *Queries) MarkPasswordResetTokenUsed(ctx context.Context, tokenHash stri
 	return err
 }
 
+const markTempPasswordUsed = `-- name: MarkTempPasswordUsed :exec
+UPDATE users
+SET temp_password_used = TRUE, updated_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) MarkTempPasswordUsed(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, markTempPasswordUsed, id)
+	return err
+}
+
 const setUserGoogleID = `-- name: SetUserGoogleID :exec
 UPDATE users
 SET google_id = $2, email_verified_at = COALESCE(email_verified_at, NOW()), updated_at = NOW()
@@ -777,6 +862,43 @@ type SetUserGoogleIDParams struct {
 
 func (q *Queries) SetUserGoogleID(ctx context.Context, arg SetUserGoogleIDParams) error {
 	_, err := q.db.Exec(ctx, setUserGoogleID, arg.ID, arg.GoogleID)
+	return err
+}
+
+const setUserTempPassword = `-- name: SetUserTempPassword :exec
+UPDATE users
+SET temp_password_hash = $2,
+    temp_password_expires_at = $3,
+    temp_password_used = FALSE,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+type SetUserTempPasswordParams struct {
+	ID                    pgtype.UUID        `json:"id"`
+	TempPasswordHash      pgtype.Text        `json:"temp_password_hash"`
+	TempPasswordExpiresAt pgtype.Timestamptz `json:"temp_password_expires_at"`
+}
+
+func (q *Queries) SetUserTempPassword(ctx context.Context, arg SetUserTempPasswordParams) error {
+	_, err := q.db.Exec(ctx, setUserTempPassword, arg.ID, arg.TempPasswordHash, arg.TempPasswordExpiresAt)
+	return err
+}
+
+const updateClientLogoKey = `-- name: UpdateClientLogoKey :exec
+UPDATE clients
+SET logo_key = $2, updated_at = NOW()
+WHERE id = $1 AND company_id = $3
+`
+
+type UpdateClientLogoKeyParams struct {
+	ID        pgtype.UUID `json:"id"`
+	LogoKey   pgtype.Text `json:"logo_key"`
+	CompanyID pgtype.UUID `json:"company_id"`
+}
+
+func (q *Queries) UpdateClientLogoKey(ctx context.Context, arg UpdateClientLogoKeyParams) error {
+	_, err := q.db.Exec(ctx, updateClientLogoKey, arg.ID, arg.LogoKey, arg.CompanyID)
 	return err
 }
 
@@ -800,6 +922,22 @@ func (q *Queries) UpdateMembershipRole(ctx context.Context, arg UpdateMembership
 		arg.Role,
 		arg.RoleID,
 	)
+	return err
+}
+
+const updateUserAvatar = `-- name: UpdateUserAvatar :exec
+UPDATE users
+SET avatar_url = $2, updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateUserAvatarParams struct {
+	ID        pgtype.UUID `json:"id"`
+	AvatarUrl pgtype.Text `json:"avatar_url"`
+}
+
+func (q *Queries) UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error {
+	_, err := q.db.Exec(ctx, updateUserAvatar, arg.ID, arg.AvatarUrl)
 	return err
 }
 

@@ -1272,10 +1272,11 @@ func (h *ReviewHandler) ListMentionable(w http.ResponseWriter, r *http.Request) 
 	isCallerTeam := h.isTeamMember(ctx, companyID)
 
 	type mentionPerson struct {
-		ID    string `json:"id"`
-		Name  string `json:"name"`
-		Email string `json:"email"`
-		Role  string `json:"role"`
+		ID       string `json:"id"`
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Role     string `json:"role"`
+		Username string `json:"username,omitempty"`
 	}
 
 	var mentionable []mentionPerson
@@ -1306,11 +1307,16 @@ func (h *ReviewHandler) ListMentionable(w http.ResponseWriter, r *http.Request) 
 				uidStr := pgUUIDToString(m.UserID)
 				if !seen[uidStr] {
 					seen[uidStr] = true
+					username := ""
+					if m.UserUsername.Valid {
+						username = m.UserUsername.String
+					}
 					mentionable = append(mentionable, mentionPerson{
-						ID:    uidStr,
-						Name:  m.UserName,
-						Email: email,
-						Role:  m.Role,
+						ID:       uidStr,
+						Name:     m.UserName,
+						Email:    email,
+						Role:     m.Role,
+						Username: username,
 					})
 				}
 			}

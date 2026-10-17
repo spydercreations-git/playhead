@@ -37,6 +37,9 @@ SELECT EXISTS (
     UNION
     SELECT 1 FROM grants g
     WHERE LOWER(g.email) = @email
+    UNION
+    SELECT 1 FROM users u
+    WHERE LOWER(u.email) = @email AND u.temp_password_hash IS NOT NULL AND u.temp_password_expires_at > NOW()
 ) AS is_known;
 
 -- Get company ID for a known user by email (from memberships, client_contacts, or grants)

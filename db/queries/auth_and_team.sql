@@ -130,6 +130,7 @@ SELECT
     u.name as user_name,
     u.email as user_email,
     u.avatar_url as user_avatar_url,
+    u.username as user_username,
     r.name as role_name,
     r.color as role_color,
     r.is_system as role_is_system,
@@ -194,3 +195,47 @@ SELECT EXISTS (
     SELECT 1 FROM grants g
     WHERE g.company_id = @company_id AND (LOWER(g.email) = LOWER(@email) OR g.user_id = @user_id)
 ) AS belongs;
+
+-- name: CheckUsernameAvailable :one
+SELECT NOT EXISTS (
+    SELECT 1 FROM users
+    WHERE LOWER(username) = LOWER(@username)
+      AND (@exclude_user_id::uuid IS NULL OR id != @exclude_user_id)
+) AS available;
+
+-- name: UpdateUserAvatar :exec
+UPDATE users
+SET avatar_url = $2, updated_at = NOW()
+WHERE id = $1;
+
+-- name: CompleteUserOnboarding :one
+UPDATE users
+SET name = $2,
+    username = $3,
+    avatar_url = COALESCE($4, avatar_url),
+    password_hash = COALESCE($5, password_hash),
+    is_onboarded = TRUE,
+    onboarded_at = NOW(),
+    temp_password_used = TRUE,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: MarkTempPasswordUsed :exec
+UPDATE users
+SET temp_password_used = TRUE, updated_at = NOW()
+WHERE id = $1;
+
+-- name: SetUserTempPassword :exec
+UPDATE users
+SET temp_password_hash = $2,
+    temp_password_expires_at = $3,
+    temp_password_used = FALSE,
+    updated_at = NOW()
+WHERE id = $1;
+
+-- name: UpdateClientLogoKey :exec
+UPDATE clients
+SET logo_key = $2, updated_at = NOW()
+WHERE id = $1 AND company_id = $3;
+

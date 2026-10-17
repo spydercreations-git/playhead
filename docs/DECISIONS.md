@@ -283,6 +283,14 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
   - **Client Column Sanitization**: Column meta updates support `hidden_from_clients`. External client contacts receive sanitized spreadsheet views with hidden columns and cells stripped, and cell edits to hidden columns return 403 Forbidden.
   - **Dynamic Aggregate Counts**: Rather than recursive full-tree queries on every folder load, ancestor folder counts and sizes are maintained within item mutation transactions.
 
+## 44. Home as First Page, Image Crop Tool & Unskippable Onboarding Flow
+- **Decision**:
+  - **Home as First Page**: Visiting `/` while signed in always displays the Home dashboard, never redirecting to `/projects` or other sections by default. Deep links (`?redirect=...`) are preserved upon authentication. The Playhead logo in navigation routes directly to `/`. Client contacts land on Home with scoped visibility (My Drive is completely hidden, projects restricted to permitted access).
+  - **ImageCropDialog (C1, C2)**: One shared modal for all profile photos (`circle`) and client pictures (`square`). Centers a fixed crop viewport over a moving/zooming canvas with boundary lock (`restrictPosition={true}`). Includes thirds grid, 62% dimming overlay, white corner bracket guides for square crops, smooth 100%–400% zoom stepper/slider with percentage readouts, 90° rotation, reset button, and live preview rendering at 56px, 32px, and 20px. Strict validation rejects SVGs and files >20MB; outputs 512x512 WebP with backend variants at 256, 128, and 64 px.
+  - **Onboarding Flow (O1 to O4)**: First-time sign-ins show an unskippable two-step onboarding dialog. Step 1 (Profile) requires photo upload (with ImageCropDialog circle), full name, unique `@username` (3–30 chars regex `^[a-zA-Z0-9.]{3,30}$` checked live against DB), and a permanent password for temporary password invitees. Step 2 (Welcome) displays customized previews: Team members see agency name, role badge, and 3 mini UI cards (`Projects and folders`, `Frame accurate review`, `Fast uploads`); Client contacts see client badge/logo, personalized welcome, and 3 mini UI cards (`Watch and comment`, `Approve`, `Everything in one place`). Clicking 'Get started' marks `is_onboarded = true` and directs users to Home.
+  - **Mentions Prioritize @username**: Review comment mentions display and insert `@username` rather than full names, filtering suggestions by username, name, or email, with client contacts restricted to permitted project members and receiving zero email addresses.
+
+
 
 
 

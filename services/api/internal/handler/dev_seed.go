@@ -94,16 +94,24 @@ func EnsureDevAdmins(ctx context.Context, pool *pgxpool.Pool, q *db.Queries, adm
 			displayName = strings.ToUpper(parts[0][:1]) + parts[0][1:]
 		}
 
+		usernameVal := strings.ToLower(displayName)
+		if strings.Contains(email, "harsh") {
+			usernameVal = "harsh"
+		} else if strings.Contains(email, "rohit") {
+			usernameVal = "rohit"
+		}
+
 		// Ensure user exists and is verified
 		var userID string
 		err = pool.QueryRow(ctx, `
-			INSERT INTO users (email, name, email_verified_at)
-			VALUES ($1, $2, NOW())
+			INSERT INTO users (email, name, email_verified_at, username, is_onboarded)
+			VALUES ($1, $2, NOW(), $3, true)
 			ON CONFLICT (email) DO UPDATE SET
 				name = EXCLUDED.name,
-				email_verified_at = COALESCE(users.email_verified_at, NOW())
+				email_verified_at = COALESCE(users.email_verified_at, NOW()),
+				username = COALESCE(users.username, EXCLUDED.username)
 			RETURNING id::text
-		`, email, displayName).Scan(&userID)
+		`, email, displayName, usernameVal).Scan(&userID)
 		if err != nil {
 			slog.Warn("dev_seed: failed to ensure admin user", "email", email, "error", err)
 			continue

@@ -58,19 +58,6 @@ export function AuthShowcase() {
       <div className="my-auto w-full flex flex-col gap-6 py-2">
         {/* Viewfinder Container */}
         <div className="relative w-full aspect-[16/10] max-h-[460px] rounded-[12px] bg-[#111113] border border-[#2E2F34] overflow-hidden shadow-xl">
-          {/* Real video background */}
-          <video
-            src="/dbx1-hero-1920x1080-v2.mp4"
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover rounded-[12px] opacity-75"
-          />
-
-          {/* Subtle dark overlay for contrast */}
-          <div className="absolute inset-0 bg-black/20 pointer-events-none" />
-
           {/* Rule-of-Thirds Grid Lines */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-0 bottom-0 left-1/3 w-[1px] bg-[#2E2F34]/70" />

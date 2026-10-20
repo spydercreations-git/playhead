@@ -7,13 +7,13 @@
 
 export const DESIGN_TOKENS = {
   // Surface & Backgrounds
-  bg: "#0A0A0B",
-  panel: "#111113",
-  panelRaised: "#17171A",
-  input: "#1A1A1E",
-  hover: "#1E1E22",
-  border: "#232327",
-  borderStrong: "#34343A",
+  bg: "#0F0F10",
+  panel: "#161618",
+  panelRaised: "#1C1C1F",
+  input: "#1F1F23",
+  hover: "#242428",
+  border: "#2A2A2E",
+  borderStrong: "#3A3A40",
 
   // Text Hierarchy
   text: "#FFFFFF",
@@ -24,11 +24,15 @@ export const DESIGN_TOKENS = {
   accent: "#4876F3",
   button: "#3B67E0",
   buttonHover: "#3560D6",
+  buttonText: "#FFFFFF",
 
   // Feedback & Accents
   success: "#3FCF8E",
-  warning: "#FFBB56",
+  warning: "#FFD43B",
   danger: "#F0506E",
+  statusApproved: "#3FCF8E",
+  statusNeedsReview: "#FFD43B",
+  statusError: "#F0506E",
   purple: "#9787FF",
   pink: "#FA457B",
   black: "#000000",

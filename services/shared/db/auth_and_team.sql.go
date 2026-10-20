@@ -68,7 +68,7 @@ SET name = $2,
     temp_password_used = TRUE,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, theme, grid_size
+RETURNING id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, grid_size
 `
 
 type CompleteUserOnboardingParams struct {
@@ -104,7 +104,6 @@ func (q *Queries) CompleteUserOnboarding(ctx context.Context, arg CompleteUserOn
 		&i.TempPasswordUsed,
 		&i.IsOnboarded,
 		&i.OnboardedAt,
-		&i.Theme,
 		&i.GridSize,
 	)
 	return i, err
@@ -1023,43 +1022,6 @@ type UpdateUserPasswordParams struct {
 func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {
 	_, err := q.db.Exec(ctx, updateUserPassword, arg.ID, arg.PasswordHash)
 	return err
-}
-
-const updateUserTheme = `-- name: UpdateUserTheme :one
-UPDATE users
-SET theme = $2, updated_at = NOW()
-WHERE id = $1
-RETURNING id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, theme, grid_size
-`
-
-type UpdateUserThemeParams struct {
-	ID    pgtype.UUID `json:"id"`
-	Theme string      `json:"theme"`
-}
-
-func (q *Queries) UpdateUserTheme(ctx context.Context, arg UpdateUserThemeParams) (User, error) {
-	row := q.db.QueryRow(ctx, updateUserTheme, arg.ID, arg.Theme)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.Name,
-		&i.AvatarUrl,
-		&i.PasswordHash,
-		&i.GoogleID,
-		&i.EmailVerifiedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Username,
-		&i.TempPasswordHash,
-		&i.TempPasswordExpiresAt,
-		&i.TempPasswordUsed,
-		&i.IsOnboarded,
-		&i.OnboardedAt,
-		&i.Theme,
-		&i.GridSize,
-	)
-	return i, err
 }
 
 const verifyUserEmail = `-- name: VerifyUserEmail :exec

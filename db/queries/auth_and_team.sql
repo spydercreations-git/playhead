@@ -250,10 +250,6 @@ UPDATE clients
 SET logo_key = $2, updated_at = NOW()
 WHERE id = $1 AND company_id = $3;
 
--- name: UpdateUserTheme :one
-UPDATE users
-SET theme = $2, updated_at = NOW()
-WHERE id = $1
-RETURNING *;
+
 
 

@@ -3,16 +3,10 @@
 import React from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/use-auth";
-import { useTheme } from "@/lib/theme";
-import { Settings as SettingsIcon, Bell, Database, Building2, User, Shield, Palette } from "@/components/ui/icon";
-import { ThemePickerDialog } from "@/components/settings/theme-picker-dialog";
-import { THEMES } from "@/components/settings/theme-preview";
+import { Settings as SettingsIcon, Bell, Database, Building2, User, Shield } from "@/components/ui/icon";
 
 export default function SettingsPage() {
   const { user, company, role, hasPermission, isClient } = useAuth();
-  const { theme, isAppearanceOpen, openAppearance, closeAppearance } = useTheme();
-
-  const currentTheme = THEMES.find((t) => t.id === theme) || THEMES[0];
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-8">
@@ -47,45 +41,6 @@ export default function SettingsPage() {
 
       {/* Settings Navigation Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Appearance Theme Picker Card */}
-        <button
-          type="button"
-          onClick={openAppearance}
-          className="flex items-start gap-4 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 hover:border-[var(--accent)] hover:bg-[var(--hover)] transition-all text-left cursor-pointer group"
-        >
-          <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-all"
-            style={{
-              backgroundColor: "color-mix(in srgb, var(--accent) 18%, transparent)",
-              borderColor: "color-mix(in srgb, var(--accent) 40%, transparent)",
-              color: "var(--accent)",
-            }}
-          >
-            <Palette className="w-5 h-5 text-[var(--accent)]" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <h3 className="text-sm font-semibold text-white group-hover:text-[var(--accent)] transition-colors">
-                Appearance
-              </h3>
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold border transition-all capitalize"
-                style={{
-                  backgroundColor: "color-mix(in srgb, var(--accent) 15%, transparent)",
-                  borderColor: "color-mix(in srgb, var(--accent) 30%, transparent)",
-                  color: "var(--accent)",
-                }}
-              >
-                <span className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: "var(--accent)" }} />
-                <span>{currentTheme.name}</span>
-              </span>
-            </div>
-            <p className="text-xs text-[var(--text-2)]">
-              Pick a colour for your Playhead. Only you see it. Clients always see Blue.
-            </p>
-          </div>
-        </button>
-
         <Link
           href="/settings/notifications"
           className="flex items-start gap-4 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 hover:border-[var(--accent)] hover:bg-[var(--hover)] transition-all group"
@@ -157,8 +112,6 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
-
-      <ThemePickerDialog isOpen={isAppearanceOpen} onClose={closeAppearance} />
     </div>
   );
 }

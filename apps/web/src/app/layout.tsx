@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { cookies, headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "./providers";
 import { ThemeProvider } from "@/lib/theme";
@@ -24,25 +23,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const headersList = await headers();
-  const pathname = headersList.get("x-pathname") || "";
-  const isShareOrReviewRoute =
-    pathname.startsWith("/s/") ||
-    pathname.startsWith("/review") ||
-    pathname.startsWith("/r/");
-
-  const cookieStore = await cookies();
-  const theme = isShareOrReviewRoute
-    ? "blue"
-    : cookieStore.get("playhead_theme")?.value || "blue";
-
   return (
-    <html lang="en" data-theme={theme} className={`dark ${inter.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`dark ${inter.variable}`} suppressHydrationWarning>
       <body className={`${inter.className} bg-background text-foreground antialiased`} suppressHydrationWarning>
         <Providers>
           <ThemeProvider>

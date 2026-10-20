@@ -15,42 +15,44 @@ const path = require('path');
 
 const SRC_DIR = path.resolve(__dirname, '../src');
 
-// Explicit Design System Token Palette (including all 6 dark themes)
+// Explicit Design System Token Palette (Single Dark Grey Theme + Neutral Review)
 const ALLOWED_TOKENS = new Set([
-  '#0a0a0b', // bg
-  '#111113', // panel (neutral)
-  '#17171a', // panel-raised (neutral)
-  '#1a1a1e', // input (neutral)
-  '#1e1e22', // hover (neutral)
-  '#232327', // border (neutral)
-  '#34343a', // border-strong (neutral)
-  '#ffffff', // text / white
+  // Single Dark Grey Theme tokens
+  '#0f0f10', // bg
+  '#161618', // panel
+  '#1c1c1f', // panel-raised
+  '#1f1f23', // input
+  '#242428', // hover
+  '#2a2a2e', // border
+  '#3a3a40', // border-strong
+
+  // Review page, video player, and fullscreen preview neutral tokens
+  '#0a0a0b', // neutral bg
+  '#111113', // neutral panel
+  '#17171a', // neutral panel-raised
+  '#1a1a1e', // neutral input
+  '#1e1e22', // neutral hover
+  '#232327', // neutral border
+  '#34343a', // neutral border-strong
+
+  // Text hierarchy
+  '#ffffff', // text / white / button-text
   '#a1a1aa', // text-2
   '#71717a', // text-3
+
+  // Action / buttons / accent
   '#4876f3', // accent blue
   '#3b67e0', // button blue
   '#3560d6', // button-hover blue
-  '#3fcf8e', // success
-  '#ffbb56', // warning
-  '#f0506e', // danger
+
+  // Status & feedback
+  '#3fcf8e', // success / status-approved
+  '#ffd43b', // status-needs-review / warning
+  '#f0506e', // danger / status-error
+  '#ffbb56', // warning alias
   '#9787ff', // purple
   '#fa457b', // pink
   '#000000', // black
-  '#3b5bdb', // glow blue
-  '#5b3fd6', // glow purple
-  '#ffd43b', // needs review default
-  // Blue theme tokens
-  '#0e1120', '#141829', '#161a2c', '#1a1f33', '#1c2135', '#2a3150',
-  // Green theme tokens
-  '#090b0a', '#0f1411', '#141a16', '#161d18', '#1a221d', '#1d2620', '#2c3a30', '#4ade80', '#16a34a', '#15803d', '#0d9488',
-  // Yellow theme tokens
-  '#0b0a07', '#14120b', '#1a1810', '#1d1a11', '#232015', '#262216', '#3a3420', '#facc15', '#eab308', '#ca9a06', '#14110a', '#ca6a06', '#ff9f43',
-  // Purple theme tokens
-  '#0b0a10', '#120f20', '#18142a', '#1b162e', '#201a36', '#221c3a', '#352b57', '#8b6cff', '#7655f0', '#6a49e3', '#6d4cf0', '#c04cf0',
-  // Orange theme tokens
-  '#0b0a09', '#15110e', '#1b1612', '#1e1814', '#241d18', '#27201a', '#3b3027', '#ff7a2e', '#e8590c', '#d9500a', '#b83a0a',
-  // Pink theme tokens
-  '#0b090a', '#150e13', '#1c1219', '#1f141c', '#261823', '#2a1a26', '#40283a', '#f472b6', '#db2777', '#be185d', '#9333ea',
 ]);
 
 // 1. Google Brand SVG logo colors ("Continue with Google" button)

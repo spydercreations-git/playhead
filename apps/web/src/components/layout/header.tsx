@@ -14,8 +14,6 @@ import {
 import { Avatar } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/use-auth";
 import { useUploadStore } from "@/lib/upload-store";
-import { useTheme } from "@/lib/theme";
-import { ThemePickerDialog } from "@/components/settings/theme-picker-dialog";
 
 interface HeaderProps {
   onOpenSidebar: () => void;
@@ -79,7 +77,6 @@ export function Header({ onOpenSidebar }: HeaderProps) {
     return "User";
   }, [user]);
 
-  const { isAppearanceOpen, openAppearance, closeAppearance } = useTheme();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -170,7 +167,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
               type="button"
               onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
               title={displayName}
-              aria-label="Profile and appearance menu"
+              aria-label="Profile menu"
               className="flex items-center rounded-full shrink-0 hover:scale-[1.015] active:scale-[0.98] transition-transform duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
             >
               <Avatar name={displayName} size="md" />
@@ -182,20 +179,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
                   <p className="text-sm font-semibold text-[var(--text)] truncate">{displayName}</p>
                   <p className="text-xs text-[var(--text-3)] truncate mt-0.5">{user?.email}</p>
                 </div>
-
                 <div className="p-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsProfileMenuOpen(false);
-                      openAppearance();
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-[var(--text)] hover:bg-[var(--hover)] transition-colors text-left cursor-pointer"
-                  >
-                    <Icon name="palette" size={16} />
-                    <span>Appearance</span>
-                  </button>
-
                   <Link
                     href="/settings"
                     onClick={() => setIsProfileMenuOpen(false)}
@@ -224,9 +208,6 @@ export function Header({ onOpenSidebar }: HeaderProps) {
           </div>
         </div>
       </header>
-
-      {/* Appearance Modal */}
-      <ThemePickerDialog isOpen={isAppearanceOpen} onClose={closeAppearance} />
     </>
   );
 }

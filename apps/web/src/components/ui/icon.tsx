@@ -38,7 +38,7 @@ function getIconColor(className: string = "", explicitColor?: string, styleColor
   if (styleColor) return styleColor;
 
   // Status icons & active/selected state keep their meaningful color
-  const statusRegex = /(text-(?:\[#(?:3FCF8E|3fcf8e|F0506E|f0506e|FFD43B|ffd43b|FF9F43|ff9f43|4876F3|4876f3|3B67E0|3b67e0|FACC15|facc15|4ADE80|4ade80|8B6CFF|8b6cff|FF7A2E|ff7a2e|F472B6|f472b6|FA457B|fa457b)\]|\[var\(--(?:status|accent|success|danger|warning|button-text)[^)]*\)\]|emerald|green|red|rose|amber|yellow))/i;
+  const statusRegex = /(text-(?:\[#(?:3FCF8E|3fcf8e|F0506E|f0506e|FFD43B|ffd43b|4876F3|4876f3|3B67E0|3b67e0|3560D6|3560d6)\]|\[var\(--(?:status|accent|success|danger|warning|button-text)[^)]*\)\]|emerald|green|red|rose|amber|yellow))/i;
   
   if (statusRegex.test(className)) {
     return undefined; // Let Tailwind text color class take effect
@@ -49,7 +49,7 @@ function getIconColor(className: string = "", explicitColor?: string, styleColor
     return "rgba(255, 255, 255, 0.4)";
   }
 
-  // Primary button text/icon: use var(--button-text) (dark in yellow theme)
+  // Primary button text/icon: use var(--button-text)
   if (className.includes("text-[var(--button-text)]") || className.includes("btn-primary-icon")) {
     return "var(--button-text)";
   }

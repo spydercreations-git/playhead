@@ -19,7 +19,7 @@ import (
 	"github.com/playhead/playhead/services/shared/mailer"
 )
 
-func TestThemeUpdateAndValidation(t *testing.T) {
+func TestSingleThemeNoThemeInMe(t *testing.T) {
 	_, queries, cleanup := setupTestPool(t)
 	defer cleanup()
 
@@ -28,21 +28,20 @@ func TestThemeUpdateAndValidation(t *testing.T) {
 	authH := NewAuthHandler(queries, mailClient, "", "http://localhost:3000", false)
 
 	r := chi.NewRouter()
-	r.Patch("/api/v1/users/theme", authH.UpdateTheme)
 	r.Get("/api/v1/auth/me", authH.Me)
 
 	// Create user & company
 	comp, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
-		Name: "Theme Test Co",
-		Slug: fmt.Sprintf("theme-co-%d", time.Now().UnixNano()),
+		Name: "Single Theme Co",
+		Slug: fmt.Sprintf("single-theme-co-%d", time.Now().UnixNano()),
 	})
 	if err != nil {
 		t.Fatalf("create company: %v", err)
 	}
 
 	user, err := queries.CreateUser(ctx, db.CreateUserParams{
-		Email: fmt.Sprintf("theme-user-%d@example.com", time.Now().UnixNano()),
-		Name:  "Theme User",
+		Email: fmt.Sprintf("single-theme-%d@example.com", time.Now().UnixNano()),
+		Name:  "Single Theme User",
 	})
 	if err != nil {
 		t.Fatalf("create user: %v", err)
@@ -65,7 +64,7 @@ func TestThemeUpdateAndValidation(t *testing.T) {
 		Permissions: []string{},
 	}
 
-	// 1. Verify default theme in Me is "blue"
+	// 1. Verify Me returns user profile without any theme field
 	reqMe := httptest.NewRequest("GET", "/api/v1/auth/me", nil)
 	reqMe = reqMe.WithContext(contextWithPerson(reqMe.Context(), user, comp.ID, person))
 	recMe := httptest.NewRecorder()
@@ -74,154 +73,25 @@ func TestThemeUpdateAndValidation(t *testing.T) {
 	if recMe.Code != http.StatusOK {
 		t.Fatalf("expected 200 from Me, got %d: %s", recMe.Code, recMe.Body.String())
 	}
-	var meResp struct {
-		User struct {
-			Theme string `json:"theme"`
-		} `json:"user"`
-	}
-	if err := json.Unmarshal(recMe.Body.Bytes(), &meResp); err != nil {
+
+	var rawMap map[string]interface{}
+	if err := json.Unmarshal(recMe.Body.Bytes(), &rawMap); err != nil {
 		t.Fatalf("unmarshal me response: %v", err)
 	}
-	if meResp.User.Theme != "blue" {
-		t.Errorf("expected default theme to be 'blue', got '%s'", meResp.User.Theme)
+	userMap, ok := rawMap["user"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("user object not found in Me response")
+	}
+	if _, hasTheme := userMap["theme"]; hasTheme {
+		t.Errorf("expected no 'theme' field in Me response user object, but found: %v", userMap["theme"])
 	}
 
-	// 2. Reject invalid theme
-	badBody, _ := json.Marshal(map[string]string{"theme": "neon-crimson"})
-	reqBad := httptest.NewRequest("PATCH", "/api/v1/users/theme", bytes.NewReader(badBody))
-	reqBad.Header.Set("Content-Type", "application/json")
-	reqBad = reqBad.WithContext(contextWithPerson(reqBad.Context(), user, comp.ID, person))
-	recBad := httptest.NewRecorder()
-	r.ServeHTTP(recBad, reqBad)
-
-	if recBad.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 for invalid theme, got %d: %s", recBad.Code, recBad.Body.String())
-	}
-
-	// 3. Update to valid theme: purple
-	for _, validTheme := range []string{"purple", "green", "yellow", "orange", "pink", "blue"} {
-		body, _ := json.Marshal(map[string]string{"theme": validTheme})
-		reqUpdate := httptest.NewRequest("PATCH", "/api/v1/users/theme", bytes.NewReader(body))
-		reqUpdate.Header.Set("Content-Type", "application/json")
-		reqUpdate = reqUpdate.WithContext(contextWithPerson(reqUpdate.Context(), user, comp.ID, person))
-		recUpdate := httptest.NewRecorder()
-		r.ServeHTTP(recUpdate, reqUpdate)
-
-		if recUpdate.Code != http.StatusOK {
-			t.Fatalf("expected 200 updating theme to %s, got %d: %s", validTheme, recUpdate.Code, recUpdate.Body.String())
-		}
-
-		// Check cookie
-		foundCookie := false
-		for _, c := range recUpdate.Result().Cookies() {
-			if c.Name == "playhead_theme" && c.Value == validTheme {
-				foundCookie = true
-				break
-			}
-		}
-		if !foundCookie {
-			t.Errorf("playhead_theme cookie not found or incorrect for %s", validTheme)
-		}
-
-		// Verify in Me endpoint
-		reqMeAfter := httptest.NewRequest("GET", "/api/v1/auth/me", nil)
-		reqMeAfter = reqMeAfter.WithContext(contextWithPerson(reqMeAfter.Context(), user, comp.ID, person))
-		recMeAfter := httptest.NewRecorder()
-		r.ServeHTTP(recMeAfter, reqMeAfter)
-
-		var meRespAfter struct {
-			User struct {
-				Theme string `json:"theme"`
-			} `json:"user"`
-		}
-		_ = json.Unmarshal(recMeAfter.Body.Bytes(), &meRespAfter)
-		if meRespAfter.User.Theme != validTheme {
-			t.Errorf("expected Me theme to be '%s', got '%s'", validTheme, meRespAfter.User.Theme)
-		}
-	}
-}
-
-func TestClientUserThemeAlwaysBlue(t *testing.T) {
-	_, queries, cleanup := setupTestPool(t)
-	defer cleanup()
-
-	ctx := context.Background()
-	mailClient := mailer.New(mailer.Config{})
-	authH := NewAuthHandler(queries, mailClient, "", "http://localhost:3000", false)
-
-	r := chi.NewRouter()
-	r.Get("/api/v1/auth/me", authH.Me)
-
-	comp, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
-		Name: "Client Theme Test Co",
-		Slug: fmt.Sprintf("client-theme-%d", time.Now().UnixNano()),
-	})
-	if err != nil {
-		t.Fatalf("create company: %v", err)
-	}
-
-	// Create user with purple theme in database
-	clientUser, err := queries.CreateUser(ctx, db.CreateUserParams{
-		Email: fmt.Sprintf("client-contact-%d@acme.com", time.Now().UnixNano()),
-		Name:  "Acme Client",
-	})
-	if err != nil {
-		t.Fatalf("create client user: %v", err)
-	}
-	_, _ = queries.UpdateUserTheme(ctx, db.UpdateUserThemeParams{
-		ID:    clientUser.ID,
-		Theme: "purple",
-	})
-
-	// Create client entity and client contact
-	clientEntity, err := queries.CreateClient(ctx, db.CreateClientParams{
-		CompanyID: comp.ID,
-		Name:      "Acme Corp",
-	})
-	if err != nil {
-		t.Fatalf("create client entity: %v", err)
-	}
-
-	_, err = queries.CreateClientContact(ctx, db.CreateClientContactParams{
-		CompanyID: comp.ID,
-		ClientID:  clientEntity.ID,
-		Name:      clientUser.Name,
-		Email:     clientUser.Email,
-	})
-	if err != nil {
-		t.Fatalf("create client contact: %v", err)
-	}
-
-	clientPerson := authz.Person{
-		UserID:      uuid.UUID(clientUser.ID.Bytes),
-		Email:       clientUser.Email,
-		Role:        "client",
-		CompanyID:   uuid.UUID(comp.ID.Bytes),
-		Permissions: []string{},
-	}
-
-	req := httptest.NewRequest("GET", "/api/v1/auth/me", nil)
-	req = req.WithContext(contextWithPerson(req.Context(), clientUser, comp.ID, clientPerson))
-	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("expected 200 from Me, got %d: %s", rec.Code, rec.Body.String())
-	}
-	var meResp struct {
-		IsClient bool `json:"is_client"`
-		User     struct {
-			Theme string `json:"theme"`
-		} `json:"user"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &meResp); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if !meResp.IsClient {
-		t.Fatalf("expected is_client to be true")
-	}
-	if meResp.User.Theme != "blue" {
-		t.Fatalf("expected client theme to be strictly 'blue', got '%s'", meResp.User.Theme)
+	// 2. Verify /api/v1/users/theme does not exist (returns 404 on router)
+	reqBadRoute := httptest.NewRequest("PATCH", "/api/v1/users/theme", bytes.NewReader([]byte(`{"theme":"purple"}`)))
+	recBadRoute := httptest.NewRecorder()
+	r.ServeHTTP(recBadRoute, reqBadRoute)
+	if recBadRoute.Code != http.StatusNotFound {
+		t.Errorf("expected 404 for removed theme route, got %d", recBadRoute.Code)
 	}
 }
 

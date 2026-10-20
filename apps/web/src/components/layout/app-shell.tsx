@@ -125,19 +125,9 @@ function ProtectedAppShell({
     );
   }
 
-  const isReviewPage = pathname?.startsWith("/reviews");
-  const noGlow = isReviewPage;
-
   return (
     <>
       <div className="relative flex h-screen overflow-hidden bg-[var(--bg)]">
-        {!noGlow && (
-          <div
-            className="fixed inset-0 pointer-events-none z-0"
-            style={{ background: "var(--bg-glow)" }}
-            aria-hidden="true"
-          />
-        )}
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="relative z-10 flex flex-1 flex-col overflow-hidden min-w-0 h-full">
           <Header onOpenSidebar={() => setSidebarOpen(true)} />
@@ -170,13 +160,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (isPublicRoute) {
     return (
       <main className="relative min-h-screen bg-[var(--bg)] overflow-hidden">
-        {!isShareViewer && (
-          <div
-            className="fixed inset-0 pointer-events-none z-0"
-            style={{ background: "var(--bg-glow)" }}
-            aria-hidden="true"
-          />
-        )}
         <div className="relative z-10">{children}</div>
       </main>
     );

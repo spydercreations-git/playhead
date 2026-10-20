@@ -432,9 +432,9 @@ export default function ClientDetailPage() {
             )}
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-[var(--border-strong)]">
+          <div className="overflow-hidden rounded-lg border border-[var(--border)]">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-[var(--border-strong)] bg-[var(--border)] text-[var(--text-2)]">
+              <thead className="border-b border-[var(--border)] bg-[var(--panel-raised)] text-[var(--text-2)]">
                 <tr>
                   <th className="py-2.5 px-3 font-medium">Name</th>
                   <th className="py-2.5 px-3 font-medium">Email</th>
@@ -443,7 +443,7 @@ export default function ClientDetailPage() {
                   <th className="py-2.5 px-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--border-strong)]/40">
+              <tbody className="divide-y divide-[var(--border)]">
                 {contacts.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-6 text-center text-[var(--text-2)]">
@@ -452,7 +452,7 @@ export default function ClientDetailPage() {
                   </tr>
                 ) : (
                   contacts.map((c: any) => (
-                    <tr key={c.id} className="hover:bg-[var(--border)]/30">
+                    <tr key={c.id} className="hover:bg-[var(--hover)]">
                       <td className="py-3 px-3 text-white font-medium">
                         {c.name}
                       </td>

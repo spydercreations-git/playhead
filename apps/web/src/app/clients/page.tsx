@@ -172,14 +172,13 @@ export default function ClientsPage() {
               className="mt-4 flex items-center gap-1.5 h-9 rounded-lg bg-[var(--button)] px-4 text-xs font-semibold text-[var(--button-text)] shadow hover:bg-[var(--button-hover)] transition-colors"
             >
               <Icon name="add" size={16} />
-              <span>New client</span>
             </button>
           )}
         </div>
       ) : view === "table" ? (
-        <div className="overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--panel)]">
+        <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel)]">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-[var(--border-strong)] bg-[var(--border)]/50 text-[var(--text-2)]">
+            <thead className="border-b border-[var(--border)] bg-[var(--panel-raised)] text-[var(--text-2)]">
               <tr>
                 <th className="py-3 px-4 font-medium">Client</th>
                 <th className="py-3 px-4 font-medium">Contacts</th>
@@ -189,11 +188,11 @@ export default function ClientsPage() {
                 <th className="py-3 px-4 text-right font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--border-strong)]/40">
+            <tbody className="divide-y divide-[var(--border)]">
               {filtered.map((client) => (
                 <tr
                   key={client.id}
-                  className="hover:bg-[var(--border)]/40 transition-colors group"
+                  className="hover:bg-[var(--hover)] transition-colors group"
                 >
                   <td className="py-3.5 px-4 font-medium text-white">
                     <Link

@@ -248,7 +248,7 @@ export function UploadPanel() {
       </div>
 
       {/* Upload Items List */}
-      <div className="max-h-[340px] overflow-y-auto divide-y divide-[var(--border)]/60 px-3 py-1">
+      <div className="max-h-[340px] overflow-y-auto divide-y divide-[var(--border)] px-3 py-1">
         {uploads.map((item) => {
           const isUploading = item.status === "uploading";
           const isPaused = item.status === "paused";

@@ -201,7 +201,7 @@ export function DownloadTray({
           )}
 
           {/* Files List */}
-          <div className="max-h-48 overflow-y-auto divide-y divide-[var(--border-strong)]/30 space-y-1.5 pr-1">
+          <div className="max-h-48 overflow-y-auto divide-y divide-[var(--border)] space-y-1.5 pr-1">
             {session.files.map((file) => {
               const filePercent =
                 file.sizeBytes > 0

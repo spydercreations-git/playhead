@@ -306,9 +306,9 @@ export default function ProjectsPage() {
           ))}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--panel)]">
+        <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel)]">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-[var(--border-strong)] bg-[var(--border)]/50 text-[var(--text-2)]">
+            <thead className="border-b border-[var(--border)] bg-[var(--panel-raised)] text-[var(--text-2)]">
               <tr>
                 <th className="py-3 px-4 font-medium">Project</th>
                 <th className="py-3 px-4 font-medium">Client</th>
@@ -319,11 +319,11 @@ export default function ProjectsPage() {
                 <th className="py-3 px-4 text-right font-medium">Open</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--border-strong)]/40">
+            <tbody className="divide-y divide-[var(--border)]">
               {filtered.map((project) => (
                 <tr
                   key={project.id}
-                  className="hover:bg-[var(--border)]/40 transition-colors"
+                  className="hover:bg-[var(--hover)] transition-colors"
                 >
                   <td className="py-3.5 px-4 font-semibold text-white">
                     <Link

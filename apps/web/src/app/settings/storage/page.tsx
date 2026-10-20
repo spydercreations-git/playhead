@@ -183,9 +183,9 @@ export default function StorageSettingsPage() {
                     <th className="px-5 py-3 font-medium text-right">Storage Used</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--border-strong)]/30 text-white">
+                <tbody className="divide-y divide-[var(--border)] text-white">
                   {data.breakdown.map((row) => (
-                    <tr key={row.project_id} className="hover:bg-[var(--border)]/40 transition-colors">
+                    <tr key={row.project_id} className="hover:bg-[var(--hover)] transition-colors">
                       <td className="px-5 py-3.5 font-medium text-[var(--text-2)]">
                         <Link href={`/clients/${row.client_id}`} className="hover:text-white transition-colors">
                           {row.client_name}

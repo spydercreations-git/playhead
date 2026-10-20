@@ -2511,7 +2511,7 @@ export default function ProjectWorkspacePage() {
                             <th className="py-2.5 px-3 w-10 text-right"></th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[var(--border)]/50">
+                        <tbody className="divide-y divide-[var(--border)]">
                           {documentsSectionList.map((doc: any) => {
                             const isSelected = selectedItemIds.includes(doc.id);
                             return (
@@ -2750,7 +2750,7 @@ export default function ProjectWorkspacePage() {
                             <th className="py-2.5 px-3 w-10 text-right"></th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[var(--border)]/50">
+                        <tbody className="divide-y divide-[var(--border)]">
                           {spreadsheetsSectionList.map((sheet: any) => {
                             const isSelected = selectedItemIds.includes(sheet.id);
                             return (

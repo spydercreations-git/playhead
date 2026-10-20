@@ -112,7 +112,7 @@ export function UploadTray({
 
       {/* Content List */}
       {!minimized && (
-        <div className="max-h-72 overflow-y-auto divide-y divide-[var(--border-strong)]/30 p-2 space-y-2">
+        <div className="max-h-72 overflow-y-auto divide-y divide-[var(--border)] p-2 space-y-2">
           {uploads.map((item) => {
             const bytesUploaded = (item.sizeBytes * item.progressPercent) / 100;
             const bytesLeft = item.sizeBytes - bytesUploaded;

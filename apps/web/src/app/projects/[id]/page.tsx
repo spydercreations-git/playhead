@@ -1854,6 +1854,7 @@ export default function ProjectWorkspacePage() {
                                     totalBytes={folder.total_bytes || 0}
                                     thumbnails={folder.thumbnails || []}
                                     isSelected={isSelected}
+                                    selectionActive={selectedItemIds.length > 0}
                                     isDropTarget={
                                       overDropTargetId === `canvas-folder-${folder.id}` ||
                                       computerHoverFolderId === folder.id
@@ -2081,19 +2082,69 @@ export default function ProjectWorkspacePage() {
                               touchTimerRef.current = null;
                             }
                           }}
-                          className={`group relative rounded-xl border transition-all cursor-pointer p-4 flex flex-col justify-between ${
+                          tabIndex={0}
+                          role="button"
+                          aria-label={`${file.name}, file`}
+                          aria-selected={isSelected}
+                          onKeyDown={(e: React.KeyboardEvent) => {
+                            if (isRenaming) return;
+                            if (e.target !== e.currentTarget && (e.target as HTMLElement).closest(".item-menu-btn")) {
+                              return;
+                            }
+                            if (e.key === " " || e.key === "Spacebar") {
+                              e.preventDefault();
+                              if (isSelected) {
+                                setSelectedItemIds(selectedItemIds.filter((id) => id !== file.id));
+                              } else {
+                                setSelectedItemIds([...selectedItemIds, file.id]);
+                              }
+                            } else if (e.key === "Enter") {
+                              e.preventDefault();
+                              setActiveViewerItem(file);
+                            }
+                          }}
+                          className={`group relative rounded-xl border transition-all cursor-pointer p-4 flex flex-col justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4876F3] ${
                             isSelected
                               ? "bg-[#4876F3]/15 border-[#4876F3] shadow-md"
                               : "bg-[var(--bg)] border-[var(--panel)] hover:border-[var(--border-strong)]"
                           }`}
                         >
                           {/* Checkbox */}
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {}}
-                            className="absolute top-4 left-4 rounded border-[var(--border-strong)] text-[#4876F3] focus:ring-0 z-10"
-                          />
+                          <button
+                            type="button"
+                            role="checkbox"
+                            aria-checked={isSelected}
+                            aria-label={`Select ${file.name}`}
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isSelected) {
+                                setSelectedItemIds(selectedItemIds.filter((id) => id !== file.id));
+                              } else {
+                                setSelectedItemIds([...selectedItemIds, file.id]);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === " " || e.key === "Spacebar") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (isSelected) {
+                                  setSelectedItemIds(selectedItemIds.filter((id) => id !== file.id));
+                                } else {
+                                  setSelectedItemIds([...selectedItemIds, file.id]);
+                                }
+                              }
+                            }}
+                            className={`item-checkbox absolute top-3 left-3 h-5 w-5 rounded-[6px] flex items-center justify-center transition-all z-20 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-[#4876F3] ${
+                              isSelected
+                                ? "bg-[#4876F3] border border-[#4876F3] text-white opacity-100"
+                                : selectedItemIds.length > 0
+                                ? "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-100"
+                                : "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-0 group-hover:opacity-100"
+                            }`}
+                          >
+                            <Check size={14} className={isSelected ? "text-white" : "opacity-0"} />
+                          </button>
 
                           {/* Preview Area */}
                           <div className="relative h-32 w-full rounded-xl bg-[var(--bg)] border border-[var(--panel)] flex items-center justify-center overflow-hidden mb-3">
@@ -2347,18 +2398,68 @@ export default function ProjectWorkspacePage() {
                                 }
                               }}
                               onContextMenu={(e: React.MouseEvent) => handleItemContextMenu(e, doc)}
-                              className={`group relative rounded-xl border transition-all cursor-pointer p-4 flex flex-col justify-between ${
+                              tabIndex={0}
+                              role="button"
+                              aria-label={`${doc.name}, document`}
+                              aria-selected={isSelected}
+                              onKeyDown={(e: React.KeyboardEvent) => {
+                                if (e.target !== e.currentTarget && (e.target as HTMLElement).closest(".item-menu-btn")) {
+                                  return;
+                                }
+                                if (e.key === " " || e.key === "Spacebar") {
+                                  e.preventDefault();
+                                  if (isSelected) {
+                                    setSelectedItemIds(selectedItemIds.filter((id) => id !== doc.id));
+                                  } else {
+                                    setSelectedItemIds([...selectedItemIds, doc.id]);
+                                  }
+                                } else if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  router.push(`/documents/${doc.id}`);
+                                }
+                              }}
+                              className={`group relative rounded-xl border transition-all cursor-pointer p-4 flex flex-col justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4876F3] ${
                                 isSelected
                                   ? "bg-[#4876F3]/15 border-[#4876F3] shadow-md"
                                   : "bg-[var(--bg)] border-[var(--panel)] hover:border-[var(--border-strong)]"
                               }`}
                             >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => {}}
-                                className="absolute top-4 left-4 rounded border-[var(--border-strong)] text-[#4876F3] focus:ring-0 z-10"
-                              />
+                              {/* Checkbox */}
+                              <button
+                                type="button"
+                                role="checkbox"
+                                aria-checked={isSelected}
+                                aria-label={`Select ${doc.name}`}
+                                tabIndex={0}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isSelected) {
+                                    setSelectedItemIds(selectedItemIds.filter((id) => id !== doc.id));
+                                  } else {
+                                    setSelectedItemIds([...selectedItemIds, doc.id]);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === " " || e.key === "Spacebar") {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (isSelected) {
+                                      setSelectedItemIds(selectedItemIds.filter((id) => id !== doc.id));
+                                    } else {
+                                      setSelectedItemIds([...selectedItemIds, doc.id]);
+                                    }
+                                  }
+                                }}
+                                className={`item-checkbox absolute top-3 left-3 h-5 w-5 rounded-[6px] flex items-center justify-center transition-all z-20 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-[#4876F3] ${
+                                  isSelected
+                                    ? "bg-[#4876F3] border border-[#4876F3] text-white opacity-100"
+                                    : selectedItemIds.length > 0
+                                    ? "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-100"
+                                    : "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-0 group-hover:opacity-100"
+                                }`}
+                              >
+                                <Check size={14} className={isSelected ? "text-white" : "opacity-0"} />
+                              </button>
                               <div className="relative h-32 w-full rounded-xl bg-[var(--panel)] border border-[var(--border)] flex flex-col justify-between p-3.5 mb-3">
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-bold text-blue-400 tracking-wider">Document</span>
@@ -2529,18 +2630,68 @@ export default function ProjectWorkspacePage() {
                                 }
                               }}
                               onContextMenu={(e: React.MouseEvent) => handleItemContextMenu(e, sheet)}
-                              className={`group relative rounded-xl border transition-all cursor-pointer p-4 flex flex-col justify-between ${
+                              tabIndex={0}
+                              role="button"
+                              aria-label={`${sheet.name}, spreadsheet`}
+                              aria-selected={isSelected}
+                              onKeyDown={(e: React.KeyboardEvent) => {
+                                if (e.target !== e.currentTarget && (e.target as HTMLElement).closest(".item-menu-btn")) {
+                                  return;
+                                }
+                                if (e.key === " " || e.key === "Spacebar") {
+                                  e.preventDefault();
+                                  if (isSelected) {
+                                    setSelectedItemIds(selectedItemIds.filter((id) => id !== sheet.id));
+                                  } else {
+                                    setSelectedItemIds([...selectedItemIds, sheet.id]);
+                                  }
+                                } else if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  router.push(`/spreadsheets/${sheet.id}`);
+                                }
+                              }}
+                              className={`group relative rounded-xl border transition-all cursor-pointer p-4 flex flex-col justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4876F3] ${
                                 isSelected
                                   ? "bg-[#4876F3]/15 border-[#4876F3] shadow-md"
                                   : "bg-[var(--bg)] border-[var(--panel)] hover:border-[var(--border-strong)]"
                               }`}
                             >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => {}}
-                                className="absolute top-4 left-4 rounded border-[var(--border-strong)] text-[#4876F3] focus:ring-0 z-10"
-                              />
+                              {/* Checkbox */}
+                              <button
+                                type="button"
+                                role="checkbox"
+                                aria-checked={isSelected}
+                                aria-label={`Select ${sheet.name}`}
+                                tabIndex={0}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isSelected) {
+                                    setSelectedItemIds(selectedItemIds.filter((id) => id !== sheet.id));
+                                  } else {
+                                    setSelectedItemIds([...selectedItemIds, sheet.id]);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === " " || e.key === "Spacebar") {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (isSelected) {
+                                      setSelectedItemIds(selectedItemIds.filter((id) => id !== sheet.id));
+                                    } else {
+                                      setSelectedItemIds([...selectedItemIds, sheet.id]);
+                                    }
+                                  }
+                                }}
+                                className={`item-checkbox absolute top-3 left-3 h-5 w-5 rounded-[6px] flex items-center justify-center transition-all z-20 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-[#4876F3] ${
+                                  isSelected
+                                    ? "bg-[#4876F3] border border-[#4876F3] text-white opacity-100"
+                                    : selectedItemIds.length > 0
+                                    ? "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-100"
+                                    : "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-0 group-hover:opacity-100"
+                                }`}
+                              >
+                                <Check size={14} className={isSelected ? "text-white" : "opacity-0"} />
+                              </button>
                               <div className="relative h-32 w-full rounded-xl bg-[var(--panel)] border border-[var(--border)] flex flex-col justify-between p-3.5 mb-3">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-1.5">

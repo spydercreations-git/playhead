@@ -10,6 +10,7 @@ interface FolderCardProps {
   totalBytes?: number;
   thumbnails?: string[];
   isSelected: boolean;
+  selectionActive?: boolean;
   onToggleSelect: () => void;
   onOpen: () => void;
   onContextMenu: (e: React.MouseEvent | HTMLElement) => void;
@@ -37,6 +38,7 @@ export function FolderCard({
   totalBytes = 0,
   thumbnails = [],
   isSelected,
+  selectionActive = false,
   onToggleSelect,
   onOpen,
   onContextMenu,
@@ -90,6 +92,10 @@ export function FolderCard({
   return (
     <div
       ref={containerRef}
+      tabIndex={0}
+      role="button"
+      aria-label={`${name}, folder, ${itemCount} ${itemCount === 1 ? "file" : "files"}`}
+      aria-selected={isSelected}
       onDoubleClick={onOpen}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest(".folder-menu-btn")) return;
@@ -97,8 +103,21 @@ export function FolderCard({
         if (isRenaming) return;
         onToggleSelect();
       }}
+      onKeyDown={(e) => {
+        if (isRenaming) return;
+        if (e.target !== e.currentTarget && (e.target as HTMLElement).closest(".folder-menu-btn")) {
+          return;
+        }
+        if (e.key === " " || e.key === "Spacebar") {
+          e.preventDefault();
+          onToggleSelect();
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
       onContextMenu={onContextMenu}
-      className={`group relative h-[290px] w-full select-none cursor-pointer transition-transform duration-150 hover:scale-[1.015] ${
+      className={`group relative h-[290px] w-full select-none cursor-pointer transition-transform duration-150 hover:scale-[1.015] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4876F3] ${
         isSelected ? "scale-[1.015]" : ""
       }`}
     >
@@ -177,17 +196,30 @@ export function FolderCard({
           {/* Selection Checkbox (Top-left of preview) */}
           <button
             type="button"
+            role="checkbox"
+            aria-checked={isSelected}
+            aria-label={`Select ${name}`}
+            tabIndex={0}
             onClick={(e) => {
               e.stopPropagation();
               onToggleSelect();
             }}
-            className={`folder-checkbox absolute top-2 left-2 h-5 w-5 rounded-[6px] flex items-center justify-center transition-all z-20 ${
+            onKeyDown={(e) => {
+              if (e.key === " " || e.key === "Spacebar") {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleSelect();
+              }
+            }}
+            className={`folder-checkbox absolute top-2 left-2 h-5 w-5 rounded-[6px] flex items-center justify-center transition-all z-20 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-[#4876F3] ${
               isSelected
                 ? "bg-[#4876F3] border border-[#4876F3] text-white opacity-100"
+                : selectionActive
+                ? "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-100"
                 : "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-0 group-hover:opacity-100"
             }`}
           >
-            <Check size={14} className="text-white" />
+            <Check size={14} className={isSelected ? "text-white" : "opacity-0"} />
           </button>
         </div>
 
@@ -240,6 +272,7 @@ export function FolderCard({
                 e.stopPropagation();
                 onContextMenu(e.currentTarget);
               }}
+              aria-label="Folder options"
               className="folder-menu-btn flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-2)] hover:bg-[var(--input)] hover:text-white transition-colors shrink-0"
             >
               <MoreHorizontal size={18} />

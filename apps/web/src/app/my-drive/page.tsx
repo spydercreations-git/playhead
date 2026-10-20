@@ -99,6 +99,7 @@ export default function MyDrivePage() {
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<DriveFolder | DriveItem | null>(null);
   const [renameInput, setRenameInput] = useState("");
+  const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [projectModalMode, setProjectModalMode] = useState<"move" | "copy">("move");
@@ -466,14 +467,21 @@ export default function MyDrivePage() {
             ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {filteredFolders.map((folder) => (
-                  <div key={folder.id} className="relative group">
+                  <div key={folder.id}>
                     <FolderCard
                       id={folder.id}
                       name={folder.name}
                       itemCount={folder.file_count || 0}
                       totalBytes={folder.total_bytes || 0}
-                      isSelected={false}
-                      onToggleSelect={() => {}}
+                      isSelected={selectedFolderIds.includes(folder.id)}
+                      selectionActive={selectedFolderIds.length > 0}
+                      onToggleSelect={() => {
+                        setSelectedFolderIds((prev) =>
+                          prev.includes(folder.id)
+                            ? prev.filter((id) => id !== folder.id)
+                            : [...prev, folder.id]
+                        );
+                      }}
                       onOpen={() => setCurrentFolder(folder)}
                       onContextMenu={(e) => {
                         if (e && "preventDefault" in e && typeof e.preventDefault === "function") {
@@ -482,16 +490,6 @@ export default function MyDrivePage() {
                         setActionMenuTarget(folder);
                       }}
                     />
-                    {/* Context 3-dots button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActionMenuTarget(actionMenuTarget?.id === folder.id ? null : folder);
-                      }}
-                      className="folder-menu-btn absolute top-6 right-3 p-1.5 rounded-md bg-[var(--input)]/80 hover:bg-[#3A3C44] text-[var(--text-2)] hover:text-white transition-opacity opacity-0 group-hover:opacity-100"
-                    >
-                      <MoreHorizontal size={15} />
-                    </button>
                   </div>
                 ))}
               </div>

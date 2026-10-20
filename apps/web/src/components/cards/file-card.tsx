@@ -22,6 +22,7 @@ export interface FileCardItem {
 export interface FileCardProps {
   file: FileCardItem;
   isSelected?: boolean;
+  selectionActive?: boolean;
   onToggleSelect?: () => void;
   onOpen?: () => void;
   onContextMenu?: (e: React.MouseEvent | HTMLElement) => void;
@@ -53,6 +54,7 @@ function formatDuration(sec?: number): string {
 export function FileCard({
   file,
   isSelected = false,
+  selectionActive = false,
   onToggleSelect,
   onOpen,
   onContextMenu,
@@ -69,14 +71,30 @@ export function FileCard({
 
   return (
     <div
+      tabIndex={0}
+      role="button"
+      aria-label={`${file.name}, file`}
+      aria-selected={isSelected}
       onDoubleClick={onOpen}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest(".file-menu-btn")) return;
         if ((e.target as HTMLElement).closest(".file-checkbox")) return;
         onToggleSelect?.();
       }}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget && (e.target as HTMLElement).closest(".file-menu-btn")) {
+          return;
+        }
+        if (e.key === " " || e.key === "Spacebar") {
+          e.preventDefault();
+          onToggleSelect?.();
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          onOpen?.();
+        }
+      }}
       onContextMenu={onContextMenu}
-      className={`group relative flex flex-col justify-between h-[224px] w-full rounded-[12px] bg-[var(--panel)] border p-2 select-none cursor-pointer transition-all duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] ${
+      className={`group relative flex flex-col justify-between h-[224px] w-full rounded-[12px] bg-[var(--panel)] border p-2 select-none cursor-pointer transition-all duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4876F3] ${
         isSelected
           ? "border-[#4876F3] ring-1 ring-[#4876F3]"
           : "border-[var(--border)] hover:border-[var(--border-strong)]"
@@ -102,7 +120,7 @@ export function FileCard({
         {/* Checkbox overlay top-left */}
         <div
           className={`file-checkbox absolute top-2 left-2 transition-opacity duration-150 ${
-            isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            isSelected || selectionActive ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
           }`}
         >
           <Checkbox

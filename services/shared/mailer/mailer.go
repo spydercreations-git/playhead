@@ -481,3 +481,11 @@ func (m *Mailer) SendClientPersonInviteEmail(toEmail, toName, clientName, compan
 	return m.send(toEmail, subject, htmlBody)
 }
 
+// SendNotificationEmail sends a generic notification email
+func (m *Mailer) SendNotificationEmail(toEmail, subject, textBody string) error {
+	htmlBody := fmt.Sprintf(`<div style="background-color: #0E0F12; color: #E0E0E0; font-family: Inter, sans-serif; padding: 24px; border-radius: 8px;">
+		<p style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">%s</p>
+	</div>`, strings.ReplaceAll(strings.ReplaceAll(textBody, "<", "&lt;"), ">", "&gt;"))
+	return m.send(toEmail, subject, htmlBody)
+}
+

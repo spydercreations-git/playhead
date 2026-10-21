@@ -133,6 +133,10 @@ func main() {
 		itemsHandler.SetPool(pgxPool)
 		storageUploadsHandler.SetPool(pgxPool)
 	}
+	tasksHandler := handler.NewTasksHandler(queries, storageClient, mailClient, cfg)
+	if pgxPool != nil {
+		tasksHandler.SetPool(pgxPool)
+	}
 	if storageClient != nil {
 		projectHandler.SetStorage(storageClient)
 	}
@@ -427,6 +431,29 @@ func main() {
 			protected.Post("/spreadsheets/{id}/clear", spreadsheetsHandler.ClearSpreadsheet)
 			protected.Get("/items/{id}/tracker-access", spreadsheetsHandler.GetTrackerAccess)
 			protected.Post("/items/{id}/tracker-access", spreadsheetsHandler.UpdateTrackerAccess)
+
+			// Tasks (Milestone P7 / Phase 3)
+			protected.Get("/tasks", tasksHandler.ListTasks)
+			protected.Post("/tasks", tasksHandler.CreateTask)
+			protected.Post("/tasks/reorder", tasksHandler.ReorderTasks)
+			protected.Get("/tasks/trash", tasksHandler.ListTrashTasks)
+			protected.Get("/tasks/{id}", tasksHandler.GetTask)
+			protected.Patch("/tasks/{id}", tasksHandler.UpdateTask)
+			protected.Patch("/tasks/{id}/status", tasksHandler.UpdateTaskStatus)
+			protected.Delete("/tasks/{id}", tasksHandler.DeleteTask)
+			protected.Post("/tasks/{id}/restore", tasksHandler.RestoreTask)
+			protected.Post("/tasks/{id}/assignees", tasksHandler.AddAssignee)
+			protected.Delete("/tasks/{id}/assignees/{userId}", tasksHandler.RemoveAssignee)
+			protected.Post("/tasks/{id}/links", tasksHandler.AddTaskLink)
+			protected.Delete("/tasks/{id}/links/{linkId}", tasksHandler.DeleteTaskLink)
+			protected.Get("/tasks/{id}/comments", tasksHandler.ListTaskComments)
+			protected.Post("/tasks/{id}/comments", tasksHandler.CreateTaskComment)
+			protected.Patch("/tasks/comments/{commentId}", tasksHandler.UpdateTaskComment)
+			protected.Delete("/tasks/comments/{commentId}", tasksHandler.DeleteTaskComment)
+			protected.Post("/tasks/{id}/comments/attachments/presign", tasksHandler.PresignCommentAttachment)
+			protected.Get("/tasks/comments/attachments/{attachmentId}/download", tasksHandler.DownloadCommentAttachment)
+			protected.Get("/tasks/{id}/comments/stream", tasksHandler.StreamTaskComments)
+			protected.Get("/tasks/{id}/mentionable", tasksHandler.ListMentionable)
 
 			// My Drive & Recent Items (P2 & P3)
 			protected.Get("/drive/folders", driveHandler.ListFolders)

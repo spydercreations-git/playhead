@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,7 +32,7 @@ func TestTrialMaxFiveSeatsEnforcement(t *testing.T) {
 	// 1. Create a company on trial
 	testCompany, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
 		Name:              "Five Seat Cap Agency",
-		Slug:              "five-seats-" + time.Now().Format("150405000000"),
+		Slug:              fmt.Sprintf("five-seats-%d", time.Now().UnixNano()),
 		Plan:              plans.PlanTrial,
 		Status:            "trialing",
 		TrialEndsAt:       pgtype.Timestamptz{Time: time.Now().Add(14 * 24 * time.Hour), Valid: true},

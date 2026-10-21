@@ -113,12 +113,17 @@ func TestAllRolesEndpoints(t *testing.T) {
 	})
 
 	r := chi.NewRouter()
+	tasksHandler := NewTasksHandler(queries, nil, nil, nil)
+	tasksHandler.SetPool(pool)
 	r.Get("/clients", clientHandler.List)
 	r.Post("/clients", clientHandler.Create)
 	r.Get("/projects", projectHandler.List)
 	r.Post("/items/{id}/duplicate", itemsHandler.CopyItem)
 	r.Post("/items/{id}/copy", itemsHandler.CopyItem)
 	r.Patch("/items/{id}/move", itemsHandler.MoveItem)
+	r.Get("/tasks", tasksHandler.ListTasks)
+	r.Post("/tasks", tasksHandler.CreateTask)
+	r.Get("/tasks/trash", tasksHandler.ListTrashTasks)
 
 	// Roles to test (including Phase 1: Staff, Editor, Client)
 	rolesToTest := []struct {
@@ -262,6 +267,28 @@ func TestAllRolesEndpoints(t *testing.T) {
 			} else {
 				if moveW.Code != http.StatusOK {
 					t.Errorf("%s: expected 200 on PATCH /items/{id}/move, got %d (%s)", rt.name, moveW.Code, moveW.Body.String())
+				}
+			}
+
+			// 6. GET /tasks (all roles can access task list)
+			taskListReq := httptest.NewRequest("GET", "/tasks", nil).WithContext(buildContext())
+			taskListW := httptest.NewRecorder()
+			r.ServeHTTP(taskListW, taskListReq)
+			if taskListW.Code != http.StatusOK {
+				t.Errorf("%s: expected 200 on GET /tasks, got %d (%s)", rt.name, taskListW.Code, taskListW.Body.String())
+			}
+
+			// 7. GET /tasks/trash (only staff/full access can view trash)
+			trashReq := httptest.NewRequest("GET", "/tasks/trash", nil).WithContext(buildContext())
+			trashW := httptest.NewRecorder()
+			r.ServeHTTP(trashW, trashReq)
+			if rt.isClient || rt.role == authz.RoleEditor {
+				if trashW.Code != http.StatusForbidden {
+					t.Errorf("%s: expected 403 on GET /tasks/trash, got %d", rt.name, trashW.Code)
+				}
+			} else {
+				if trashW.Code != http.StatusOK {
+					t.Errorf("%s: expected 200 on GET /tasks/trash, got %d (%s)", rt.name, trashW.Code, trashW.Body.String())
 				}
 			}
 		})

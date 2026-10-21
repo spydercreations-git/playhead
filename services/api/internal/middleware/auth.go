@@ -306,6 +306,16 @@ func (am *AuthMiddleware) OptionalAuthenticate(next http.Handler) http.Handler {
 					if membership.Title.Valid {
 						titleStr = membership.Title.String
 					}
+					var clientID uuid.UUID
+					if strings.EqualFold(roleName, authz.RoleClient) {
+						contacts, _ := am.queries.GetClientContactsByEmail(ctx, strings.ToLower(authUser.Email))
+						for _, cc := range contacts {
+							if cc.CompanyID == companyID {
+								clientID = uuid.UUID(cc.ClientID.Bytes)
+								break
+							}
+						}
+					}
 					person := authz.Person{
 						UserID:         uuid.UUID(authUser.ID.Bytes),
 						Email:          authUser.Email,
@@ -315,11 +325,20 @@ func (am *AuthMiddleware) OptionalAuthenticate(next http.Handler) http.Handler {
 						Status:         membership.Status,
 						PermissionsMap: permMap,
 						CompanyID:      uuid.UUID(companyID.Bytes),
+						ClientID:       clientID,
 					}
 					ctx = context.WithValue(ctx, PersonContextKey, person)
 				}
 			} else {
 				ctx = context.WithValue(ctx, RoleContextKey, "Client")
+				var clientID uuid.UUID
+				contacts, _ := am.queries.GetClientContactsByEmail(ctx, strings.ToLower(authUser.Email))
+				for _, cc := range contacts {
+					if cc.CompanyID == companyID {
+						clientID = uuid.UUID(cc.ClientID.Bytes)
+						break
+					}
+				}
 				person := authz.Person{
 					UserID:         uuid.UUID(authUser.ID.Bytes),
 					Email:          authUser.Email,
@@ -327,6 +346,7 @@ func (am *AuthMiddleware) OptionalAuthenticate(next http.Handler) http.Handler {
 					Status:         "active",
 					PermissionsMap: authz.DefaultPermissions(authz.RoleClient),
 					CompanyID:      uuid.UUID(companyID.Bytes),
+					ClientID:       clientID,
 				}
 				ctx = context.WithValue(ctx, PersonContextKey, person)
 			}

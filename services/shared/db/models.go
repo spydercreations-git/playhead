@@ -431,6 +431,66 @@ type Star struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type Task struct {
+	ID               pgtype.UUID        `json:"id"`
+	CompanyID        pgtype.UUID        `json:"company_id"`
+	ClientID         pgtype.UUID        `json:"client_id"`
+	ProjectID        pgtype.UUID        `json:"project_id"`
+	Name             string             `json:"name"`
+	Status           string             `json:"status"`
+	Deadline         pgtype.Timestamptz `json:"deadline"`
+	DescriptionTitle string             `json:"description_title"`
+	DescriptionJson  []byte             `json:"description_json"`
+	DescriptionHtml  string             `json:"description_html"`
+	Position         pgtype.Numeric     `json:"position"`
+	CreatedBy        pgtype.UUID        `json:"created_by"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy        pgtype.UUID        `json:"deleted_by"`
+}
+
+type TaskAssignee struct {
+	TaskID     pgtype.UUID        `json:"task_id"`
+	UserID     pgtype.UUID        `json:"user_id"`
+	AssignedBy pgtype.UUID        `json:"assigned_by"`
+	AssignedAt pgtype.Timestamptz `json:"assigned_at"`
+}
+
+type TaskComment struct {
+	ID               pgtype.UUID        `json:"id"`
+	CompanyID        pgtype.UUID        `json:"company_id"`
+	TaskID           pgtype.UUID        `json:"task_id"`
+	Tab              string             `json:"tab"`
+	UserID           pgtype.UUID        `json:"user_id"`
+	Body             string             `json:"body"`
+	ReplyToCommentID pgtype.UUID        `json:"reply_to_comment_id"`
+	IsHistory        bool               `json:"is_history"`
+	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+type TaskCommentAttachment struct {
+	ID         pgtype.UUID        `json:"id"`
+	CommentID  pgtype.UUID        `json:"comment_id"`
+	StorageKey string             `json:"storage_key"`
+	Filename   string             `json:"filename"`
+	Mime       string             `json:"mime"`
+	SizeBytes  int64              `json:"size_bytes"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+type TaskLink struct {
+	ID            pgtype.UUID        `json:"id"`
+	TaskID        pgtype.UUID        `json:"task_id"`
+	Title         string             `json:"title"`
+	Url           pgtype.Text        `json:"url"`
+	LibraryItemID pgtype.UUID        `json:"library_item_id"`
+	Position      int32              `json:"position"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
 type Upload struct {
 	ID             pgtype.UUID        `json:"id"`
 	CompanyID      pgtype.UUID        `json:"company_id"`

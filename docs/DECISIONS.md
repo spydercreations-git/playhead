@@ -309,6 +309,31 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
     - **L5 Copy Link Dialog**: Dialog with copy URL, radio choices for `People with access` vs `Anyone with the link (view only)`, count of people with access, and `Manage access` link.
     - **L6 Move To Dialog**: Modal with search, `This project` folders list, and `Other projects` greyed out with ⊘ and warning banner directing users to use Copy to instead.
 
+## 46. Phase 3 Tasks Architecture, Server-Side Channel Isolation & Design Layouts (T1 to T4)
+- **Decision**:
+  - **Server-Side Channel Isolation (Rule 2)**: Every task comment stores `channel` (`client` or `internal`). Strict isolation is enforced at query and handler levels: client contacts can NEVER read, create, receive real-time SSE events for, search, get notified about, or download attachments from internal comments. Staff and editors see both tabs.
+  - **Role-Based Task Visibility (Rule 3)**:
+    - Staff (Owner, Admin, Staff, CEO) see all tasks across all clients.
+    - Editors only see tasks to which they are assigned in `task_assignees`.
+    - Clients only see tasks for their own client company, and can never see assigned editor names, the internal comment tab, or the "Manage access" modal.
+  - **Computed Overdue Status (Rule 4)**: The database stores statuses `not_started`, `in_progress`, `completed`, and `not_needed`. `overdue` is dynamically calculated based on `deadline < now` when the task is not completed or not needed, never stored as a database enum or column.
+  - **Link Security & File Transits (Rules 5 & 7)**:
+    - Tasks support up to 15 links. URLs are strictly validated to require `http://` or `https://` schemas; `javascript:` and `data:` schemes are blocked.
+    - File attachments up to 30 MB (`<= 30 * 1024 * 1024` bytes) are uploaded and downloaded directly via presigned S3 URLs. File bytes never transit through the Go API server.
+  - **Direct Replies with Quoted Snippet & Blink Animation (Rule 8)**:
+    - Comments support direct parent-child replies with quoted snippet previews.
+    - Clicking a quoted snippet jumps smoothly to the referenced comment and triggers a 1.8-second focus blink animation (`blinkingCommentId`).
+    - Soft-deleted comments preserve reply tree hierarchy and render "Message deleted".
+  - **Real-Time Delivery (Rule 9)**: Implemented Server-Sent Events (SSE) `/api/v1/tasks/{id}/comments/stream` with heartbeats every 15 seconds, automatic browser reconnects, and message catch-up via query timestamp.
+  - **Drag-to-Reorder Priority (Rule 10)**: Task positions are saved on the server via `PUT /api/v1/tasks/reorder` enabling drag-and-drop row priority ordering.
+  - **Staff-Only Task Trash (Rule 11)**: Deleting a task sets `deleted_at` sending it to Trash; only staff can delete and restore tasks. Editors and clients are forbidden.
+  - **4 Design Reference Screens**:
+    - **T1 Tasks List**: Filters for month, search, status, and client; deadline badges (`Today`, `Tomorrow`, `Overdue`, date); drag handles; "+ Assign new task".
+    - **T2 Task Panel & Editor**: Status dropdown, assignees stack with staff "Manage access" dialog, deadline picker, linked project, renamable brief section title, TipTap editor with exact toolbar and slash commands, and max 15 links.
+    - **T3 Task Comments**: Client chat vs Internal tabs, direct replies, 30 MB attachments, and SSE real-time stream.
+    - **T4 Assign New Task**: Modal with client locking, optional project selector, editor assignment, and staff email notification.
+
+
 
 
 

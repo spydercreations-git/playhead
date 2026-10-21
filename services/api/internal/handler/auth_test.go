@@ -212,7 +212,7 @@ func TestInviteEmailMatchingRule(t *testing.T) {
 	ctx := context.Background()
 	testCompany, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
 		Name:              "Test Invite Studio",
-		Slug:              "invite-studio-" + time.Now().Format("150405000"),
+		Slug:              fmt.Sprintf("invite-studio-%d", time.Now().UnixNano()),
 		Plan:              plans.PlanTrial,
 		Status:            "trialing",
 		TrialEndsAt:       pgtype.Timestamptz{Time: time.Now().Add(14 * 24 * time.Hour), Valid: true},
@@ -275,7 +275,7 @@ func TestRequireVerifiedEmailAndNeutralSignup(t *testing.T) {
 	// 1. Create a company, project, and client contact
 	comp, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
 		Name: "Security Test Studio",
-		Slug: "sec-studio-" + time.Now().Format("150405000000"),
+		Slug: fmt.Sprintf("sec-studio-%d", time.Now().UnixNano()),
 	})
 	if err != nil {
 		t.Fatalf("failed to create test company: %v", err)

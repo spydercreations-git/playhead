@@ -317,5 +317,52 @@ export const ImageFileIcon = createIcon("image");
 export const PdfFileIcon = createIcon("description");
 export const AudioFileIcon = createIcon("music_note");
 
+export const Paperclip = createIcon("attach_file");
+export const Undo = RotateCcw;
+export const Redo = RotateCw;
+export const ArrowUp = createIcon("ArrowUp");
+export const UserPlus = createIcon("PersonAdd");
+export const ShieldCheck = createIcon("ShieldCheck");
+export const Globe = createIcon("Globe");
+export const FolderGit2 = createIcon("Folder");
+
+export const GripVertical = React.forwardRef<SVGSVGElement, any>((props, ref) => (
+  <svg ref={ref} width={props.size || 16} height={props.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}>
+    <circle cx="9" cy="12" r="1" />
+    <circle cx="9" cy="5" r="1" />
+    <circle cx="9" cy="19" r="1" />
+    <circle cx="15" cy="12" r="1" />
+    <circle cx="15" cy="5" r="1" />
+    <circle cx="15" cy="19" r="1" />
+  </svg>
+));
+GripVertical.displayName = "GripVertical";
+
+export const Quote = React.forwardRef<SVGSVGElement, any>((props, ref) => (
+  <svg ref={ref} width={props.size || 16} height={props.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}>
+    <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.75-2-2-2H4c-1.25 0-2 .75-2 2v6c0 1.25.75 2 2 2h4c0 2.5-1 4-3 5.5" />
+    <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.75-2-2-2h-4c-1.25 0-2 .75-2 2v6c0 1.25.75 2 2 2h4c0 2.5-1 4-3 5.5" />
+  </svg>
+));
+Quote.displayName = "Quote";
+
+export const Smile = React.forwardRef<SVGSVGElement, any>((props, ref) => (
+  <svg ref={ref} width={props.size || 16} height={props.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+    <line x1="9" y1="9" x2="9.01" y2="9" />
+    <line x1="15" y1="9" x2="15.01" y2="9" />
+  </svg>
+));
+Smile.displayName = "Smile";
+
+export const Code = React.forwardRef<SVGSVGElement, any>((props, ref) => (
+  <svg ref={ref} width={props.size || 16} height={props.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}>
+    <polyline points="16 18 22 12 16 6" />
+    <polyline points="8 6 2 12 8 18" />
+  </svg>
+));
+Code.displayName = "Code";
+
 export default Icon;
 

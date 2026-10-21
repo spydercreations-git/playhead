@@ -244,6 +244,7 @@ type Person struct {
 	PermissionsMap map[string]bool
 	Permissions    []string // Legacy permissions slice for backward compatibility
 	CompanyID      uuid.UUID
+	ClientID       uuid.UUID
 }
 
 // IsLegacyAdmin checks if role string indicates legacy admin.
@@ -747,3 +748,92 @@ func VerifyPassword(password, encodedHash string) bool {
 
 	return subtle.ConstantTimeCompare(expectedHash, actualHash) == 1
 }
+
+// TaskTarget holds task attributes needed for authorization
+type TaskTarget struct {
+	ID        uuid.UUID
+	CompanyID uuid.UUID
+	ClientID  uuid.UUID
+}
+
+// CanViewTask determines if a person can view a task:
+// - Staff: sees all tasks of company
+// - Editor: only tasks they are added to in task_assignees
+// - Client: only tasks of their own client
+func CanViewTask(person Person, target TaskTarget, isAssignee bool) bool {
+	if person.CompanyID != target.CompanyID {
+		return false
+	}
+	if person.IsStaff() {
+		return true
+	}
+	if person.IsEditor() {
+		return isAssignee
+	}
+	if person.IsClient() {
+		return person.ClientID != uuid.Nil && person.ClientID == target.ClientID
+	}
+	return false
+}
+
+// CanAccessTaskTab determines if a person can view or participate in a comment tab:
+// - tab "internal":
+//     - Client: NEVER allowed (returns false always!)
+//     - Editor: only if added to task (isAssignee)
+//     - Staff: allowed
+// - tab "client":
+//     - Staff: allowed
+//     - Editor: allowed if added to task (isAssignee)
+//     - Client: allowed if task belongs to their client
+func CanAccessTaskTab(person Person, target TaskTarget, tab string, isAssignee bool) bool {
+	if !CanViewTask(person, target, isAssignee) {
+		return false
+	}
+	normalizedTab := strings.ToLower(strings.TrimSpace(tab))
+	if normalizedTab == "internal" {
+		if person.IsClient() {
+			return false // Strictly blocked on server!
+		}
+		if person.IsEditor() {
+			return isAssignee
+		}
+		return person.IsStaff()
+	}
+	if normalizedTab == "client" {
+		return true
+	}
+	return false
+}
+
+// CanChangeTaskStatus determines if a person can update task status:
+// - Staff: allowed if HasPermission(person, PermChangeTaskStatus)
+// - Editor: allowed only if isAssignee AND HasPermission(person, PermChangeTaskStatus)
+// - Client: NEVER allowed
+func CanChangeTaskStatus(person Person, isAssignee bool) bool {
+	if person.IsClient() {
+		return false
+	}
+	if person.IsEditor() {
+		return isAssignee && person.HasPermission(PermChangeTaskStatus)
+	}
+	return person.IsStaff() && person.HasPermission(PermChangeTaskStatus)
+}
+
+// CanManageTaskAccess: staff only with manage_access permission
+func CanManageTaskAccess(person Person) bool {
+	return person.IsStaff() && person.HasPermission(PermManageAccess)
+}
+
+// CanDeleteTask: staff only with delete_task permission
+func CanDeleteTask(person Person) bool {
+	return person.IsStaff() && person.HasPermission(PermDeleteTask)
+}
+
+// CanCreateTask determines if a person can create a task
+func CanCreateTask(person Person) bool {
+	if person.IsClient() {
+		return true
+	}
+	return person.HasPermission(PermCreateTask)
+}
+

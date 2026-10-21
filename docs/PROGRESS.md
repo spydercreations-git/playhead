@@ -869,6 +869,78 @@ Google Login is built into the backend and UI, but hidden until configured. When
 - `npm --prefix apps/web run typecheck`: Passed with 0 TypeScript errors.
 - `node apps/web/scripts/check-design-tokens.js --strict`: Passed with 0 design token violations.
 
+---
+
+## Phase 3: Tasks (Completed ✅)
+
+### What was built:
+1. **Database Schema & Migrations**:
+   - Migration `00023_phase3_tasks.sql` created:
+     - `tasks`: Core task attributes (company, client, project, name, description, description_title, status, deadline, position, creator, timestamps, soft-delete `deleted_at`).
+     - `task_assignees`: Editor assignment mapping (`task_id`, `user_id`).
+     - `task_links`: Links attached to tasks (`title`, `url`, `type`, `item_id`, `created_at`).
+     - `task_comments`: Messages supporting channels (`channel` in `'client'`, `'internal'`), parent direct reply (`parent_id`), soft deletion (`deleted_at`), and author attribution.
+     - `task_comment_attachments`: Direct file attachments (`storage_key`, `filename`, `mime`, `size_bytes`).
+   - Sqlc queries compiled in `services/shared/db/p7_tasks.sql.go`.
+2. **Backend Domain Rules & Security**:
+   - **Pre-migration Database Backup**: Saved database snapshot outside the repository before applying schema modifications.
+   - **Strict Server-Side Channel Isolation (Rule 2)**: Every comment persists `channel` (`client` vs `internal`). Client users are blocked at the handler and query levels from reading, creating, receiving SSE events for, searching, or downloading attachments from internal comments. The SSE stream filters real-time events based on authorization.
+   - **Role Scoped Visibility (Rule 3)**:
+     - Staff (owner, admin, staff) see all company tasks.
+     - Editors only see tasks to which they are assigned in `task_assignees`.
+     - Clients only see tasks for their own client company, and can never see assigned editor names, the internal comment tab, or Manage access.
+   - **Computed Deadlines & Statuses (Rule 4)**: Statuses: `not_started`, `in_progress`, `completed`, `not_needed`. `overdue` is computed dynamically (`deadline < now` and status not `completed` or `not_needed`), never stored in the database. Relative badges (`Today`, `Tomorrow`, `Overdue`, formatted dates).
+   - **Links Security (Rule 5)**: Enforced maximum 15 links per task. URL validation strictly permits `http://` and `https://` schemas while rejecting `javascript:`, `data:`, and malformed URIs.
+   - **Content Sanitization & Renamable Brief (Rule 6)**: Task descriptions sanitized server-side against script tags. Brief title custom-renamable per task (defaulting to "Brief").
+   - **Attachment Storage & Zero API Transit (Rule 7)**: Attachments capped at 30 MB (`<= 30 * 1024 * 1024` bytes) verified on the server. Uploads and downloads utilize presigned S3 URLs directly to/from object storage; zero file bytes transit the API server.
+   - **Direct Replies & Soft Deletion (Rule 8)**: Parent comment tracking with quoted preview snippet. Soft-deleted messages display "Message deleted" while preserving reply thread structures.
+   - **Real-Time SSE Engine (Rule 9)**: Server-Sent Events endpoint `/api/v1/tasks/{id}/comments/stream` with automatic heartbeat, reconnect, and catch-up for missed comments.
+   - **Drag-to-Reorder Priority (Rule 10)**: Fractional/lexicographic position updates persisted via `PUT /api/v1/tasks/reorder`.
+   - **Staff-Only Task Trash & Restore (Rule 11)**: Deleting a task sends it to Trash (`deleted_at`); restorable via `POST /api/v1/tasks/{id}/restore`. Editors and clients cannot delete tasks.
+   - **Notifications (Rule 12)**: Dispatches notification emails to staff and assignees on task creation, assignment, status change, and comments.
+3. **Frontend Implementation (Pixel-matched to 4 Design References)**:
+   - **T1 Tasks List (`/tasks`)**:
+     - Month filter dropdown (dynamic based on current/past months, All months default).
+     - Search input with keyboard shortcuts.
+     - Status filter dropdown (`All status`, `Not started`, `In progress`, `Completed`, `Not needed`).
+     - Client filter dropdown with colored initial badges and task counts (staff/editors only; clients locked to own tasks).
+     - Task row cards with drag-to-reorder handle, client name badge, project tag, task name, deadline pill badge (`Today`, `Tomorrow`, `Overdue`, date), and comment count badge.
+     - "+ Assign new task" button launching T4 modal.
+   - **T2 Task Panel & Brief Editor**:
+     - Slide-out details panel with status dropdown, assigned editors avatar stack with "Manage access" modal for staff, deadline picker, and linked project indicator.
+     - Editable task name with in-place click-to-edit.
+     - Renamable "Brief" section header.
+     - TipTap rich text brief editor with slash commands (`/h1`, `/h2`, `/h3`, `/bullet`, `/ordered`, `/quote`, `/code`) and floating formatting toolbar (Turn into dropdown, Bold, Italic, Strikethrough, Underline, Highlight `#ffd43b`, Link, Clear formatting, Undo, Redo).
+     - Links section: up to 15 links, "+ Add link" URL dialog, and "+ Link file from Playhead" library picker dialog.
+   - **T3 Task Comments**:
+     - Dual-tab interface: "Client chat" vs "Internal 🔒" (internal tab completely hidden from clients).
+     - Quoted direct replies with connecting quote indicator.
+     - Click quote snippet to jump: smooth scrolls to referenced message and triggers 1.8s highlight blink animation.
+     - Real-time comment delivery via SSE.
+     - File attachments up to 30 MB with presigned S3 direct uploads and download links.
+     - Soft deletion displaying "Message deleted".
+   - **T4 Assign New Task Modal**:
+     - Modal with task title, client selector (locked for clients; selectable for staff), optional project selector filtered by client, optional assigned editors (staff only), deadline date picker, and initial brief description.
+     - Automatic staff notification upon task creation.
+
+### Automated Tests:
+- `services/api/internal/handler/phase3_tasks_test.go`: 10 comprehensive subtests covering all Phase 3 requirements:
+  - `TestPhase3Tasks_ChannelSeparation_ClientCannotSeeInternal`: PASS
+  - `TestPhase3Tasks_RoleVisibility_EditorOnlyAssigned`: PASS
+  - `TestPhase3Tasks_RoleVisibility_ClientOnlyOwnClient`: PASS
+  - `TestPhase3Tasks_StatusUpdate_And_OverdueCalculation`: PASS
+  - `TestPhase3Tasks_Max15Links_And_JavascriptUrlBlocked`: PASS
+  - `TestPhase3Tasks_Attachment_30MBLimit`: PASS
+  - `TestPhase3Tasks_DirectReply_And_SoftDelete`: PASS
+  - `TestPhase3Tasks_ReorderPositions`: PASS
+  - `TestPhase3Tasks_StaffOnlyDelete_And_TrashRestore`: PASS
+- `services/api/internal/handler/all_roles_endpoints_test.go`: All tasks endpoints verified across all roles (PASS).
+- `services/api/internal/handler/...`: 100% Go test suite passing.
+- `services/shared/authz/...`: 100% Go test suite passing.
+- `npm --prefix apps/web run typecheck`: 0 TypeScript errors.
+- `node apps/web/scripts/check-design-tokens.js --strict`: 0 design token violations.
+
+
 
 
 

@@ -49,18 +49,19 @@ func TestStep5NewClientModalAndPeople(t *testing.T) {
 	_, err = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: comp.ID,
 		UserID:    adminUser.ID,
-		Role:      authz.RoleCEO,
+		Role:      authz.RoleStaff,
 	})
 	if err != nil {
 		t.Fatalf("create admin membership: %v", err)
 	}
 
 	adminPerson := authz.Person{
-		UserID:      uuid.UUID(adminUser.ID.Bytes),
-		Email:       adminUser.Email,
-		Role:        authz.RoleCEO,
-		CompanyID:   uuid.UUID(comp.ID.Bytes),
-		Permissions: []string{authz.PermClientsCreate, authz.PermClientsViewAll},
+		UserID:         uuid.UUID(adminUser.ID.Bytes),
+		Email:          adminUser.Email,
+		Role:           authz.RoleStaff,
+		CompanyID:      uuid.UUID(comp.ID.Bytes),
+		Permissions:    []string{authz.PermClientsCreate, authz.PermClientsViewAll},
+		PermissionsMap: map[string]bool{"admin": true, "manage_access": true},
 	}
 
 	// Setup Editor user (no clients.create permission)

@@ -117,7 +117,12 @@ func (h *InviteHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	role := roleObj.Name
+	canonicalRole := "Staff"
+	if strings.EqualFold(roleObj.Name, "editor") {
+		canonicalRole = "Editor"
+	} else if strings.EqualFold(roleObj.Name, "client") {
+		canonicalRole = "Client"
+	}
 
 	company, err := h.queries.GetCompanyByID(r.Context(), companyID)
 	if err != nil {
@@ -182,7 +187,7 @@ func (h *InviteHandler) Create(w http.ResponseWriter, r *http.Request) {
 	invite, err := h.queries.CreateInvite(r.Context(), db.CreateInviteParams{
 		CompanyID: companyID,
 		Email:     email,
-		Role:      role,
+		Role:      canonicalRole,
 		TokenHash: tokenHash,
 		ExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
 	})

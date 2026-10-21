@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -634,7 +635,7 @@ type DevLoginRequest struct {
 // 1. Only enabled when ENV=development explicitly set.
 // 2. Only accepts requests originating from localhost (127.0.0.1, ::1, or localhost).
 func (h *AuthHandler) DevLogin(w http.ResponseWriter, r *http.Request) {
-	if h.environment != "development" {
+	if h.environment != "development" || (os.Getenv("ENV") != "" && os.Getenv("ENV") != "development") {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}

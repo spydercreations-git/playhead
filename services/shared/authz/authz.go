@@ -334,9 +334,6 @@ func (p Person) HasPermission(permission string) bool {
 		if permission == PermManageAccess && (perm == PermProjectsManagePeople || perm == PermSharingCreatePublicLinks || perm == PermClientsEdit) {
 			return true
 		}
-		if permission == PermDeleteItems && (perm == PermFilesDeleteForever || perm == PermFilesEmptyTrash) {
-			return true
-		}
 	}
 
 	// 4. Backward-compatible mapping from legacy permission names to new switches
@@ -359,7 +356,7 @@ func (p Person) HasPermission(permission string) bool {
 	case PermProjectsManagePeople:
 		return p.HasPermission(PermManageAccess)
 	case PermFilesDeleteForever, PermFilesEmptyTrash:
-		return p.HasPermission(PermDeleteItems)
+		return p.IsAdmin()
 	case PermFilesDownloadAll:
 		return p.IsStaff() || p.IsEditor()
 	case PermSharingCreatePublicLinks:
@@ -486,6 +483,17 @@ func Access(ctx context.Context, q *db.Queries, person Person, project ProjectTa
 			CanDownload:    true,
 			IsProjectLevel: true,
 		}, nil
+	}
+
+	// 2. Staff have access to all projects in their company
+	if person.IsStaff() {
+		if person.CompanyID == uuid.Nil || project.CompanyID == uuid.Nil || person.CompanyID == project.CompanyID {
+			return AccessResult{
+				Level:          LevelEditor,
+				CanDownload:    true,
+				IsProjectLevel: true,
+			}, nil
+		}
 	}
 
 	// 2. Check project grant

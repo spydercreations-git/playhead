@@ -55,7 +55,7 @@ func TestTrialMaxFiveSeatsEnforcement(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: testCompany.ID,
 		UserID:    ownerUser.ID,
-		Role:      authz.RoleCEO,
+		Role:      authz.RoleStaff,
 	})
 
 	authOwner := &middleware.AuthenticatedUser{

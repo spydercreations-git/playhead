@@ -64,8 +64,13 @@ func (q *Queries) CommitShareLinkUpload(ctx context.Context, arg CommitShareLink
 const countCompanyAdmins = `-- name: CountCompanyAdmins :one
 SELECT COUNT(*)::int
 FROM memberships m
-JOIN roles r ON r.id = m.role_id
-WHERE m.company_id = $1 AND (r.access_type = 'full' OR r.can_change_roles = true)
+LEFT JOIN roles r ON r.id = m.role_id
+WHERE m.company_id = $1 AND (
+    COALESCE((m.permissions->>'admin')::boolean, false) = true
+    OR r.access_type = 'full'
+    OR r.can_change_roles = true
+    OR LOWER(m.role) IN ('admin', 'owner', 'ceo', 'coo')
+)
 `
 
 func (q *Queries) CountCompanyAdmins(ctx context.Context, companyID pgtype.UUID) (int32, error) {

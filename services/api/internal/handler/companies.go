@@ -275,12 +275,18 @@ func (h *CompanyHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	isTargetAdmin := strings.EqualFold(targetMembership.Role, "admin") ||
+	var targetPerms map[string]bool
+	if len(targetMembership.Permissions) > 0 {
+		_ = json.Unmarshal(targetMembership.Permissions, &targetPerms)
+	}
+	isTargetAdmin := targetPerms["admin"] ||
+		strings.EqualFold(targetMembership.Role, "admin") ||
 		(targetMembership.RoleName.Valid && strings.EqualFold(targetMembership.RoleName.String, "admin")) ||
 		authz.IsFullAccess(targetMembership.Role) ||
+		(targetMembership.Title.Valid && authz.IsFullAccess(targetMembership.Title.String)) ||
 		(targetMembership.RoleName.Valid && authz.IsFullAccess(targetMembership.RoleName.String))
 	isNewAdmin := strings.EqualFold(newRoleName, "admin") || authz.IsFullAccess(newRoleName)
-	isCallerAdmin := strings.EqualFold(person.Role, "admin") || authz.CanChangeRoles(person.Role)
+	isCallerAdmin := person.IsAdmin() || strings.EqualFold(person.Role, "admin") || authz.CanChangeRoles(person.Role)
 
 	// Role escalation: only Admins / CEO / COO can give or remove executive roles
 	if !isCallerAdmin {
@@ -312,15 +318,34 @@ func (h *CompanyHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	canonicalRole := "Staff"
+	if strings.EqualFold(newRoleName, "editor") {
+		canonicalRole = "Editor"
+	} else if strings.EqualFold(newRoleName, "client") {
+		canonicalRole = "Client"
+	}
+
 	err = h.queries.UpdateMembershipRole(r.Context(), db.UpdateMembershipRoleParams{
 		CompanyID: companyID,
 		UserID:    targetUserID,
-		Role:      strings.ToLower(newRoleName),
+		Role:      canonicalRole,
 		RoleID:    newRoleID,
 	})
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
 		return
+	}
+
+	if isNewAdmin {
+		_ = h.queries.UpdateMembershipDetails(r.Context(), db.UpdateMembershipDetailsParams{
+			CompanyID:   companyID,
+			UserID:      targetUserID,
+			Role:        canonicalRole,
+			RoleID:      newRoleID,
+			Title:       targetMembership.Title,
+			Permissions: []byte(`{"admin": true}`),
+			Status:      targetMembership.Status,
+		})
 	}
 
 	PublishCollabRevocation(r.Context(), h.rdb, "", pgUUIDToString(targetUserID))
@@ -381,13 +406,19 @@ func (h *CompanyHandler) RemoveMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Last Admin guard and Admin-only removal: only Admins can remove an Admin
-	isTargetAdmin := strings.EqualFold(targetMembership.Role, "admin") ||
+	var targetPermsRemove map[string]bool
+	if len(targetMembership.Permissions) > 0 {
+		_ = json.Unmarshal(targetMembership.Permissions, &targetPermsRemove)
+	}
+	isTargetAdmin := targetPermsRemove["admin"] ||
+		strings.EqualFold(targetMembership.Role, "admin") ||
 		(targetMembership.RoleName.Valid && strings.EqualFold(targetMembership.RoleName.String, "admin")) ||
 		authz.IsFullAccess(targetMembership.Role) ||
+		(targetMembership.Title.Valid && authz.IsFullAccess(targetMembership.Title.String)) ||
 		(targetMembership.RoleName.Valid && authz.IsFullAccess(targetMembership.RoleName.String))
 
 	if isTargetAdmin {
-		isCallerAdmin := strings.EqualFold(person.Role, "admin") || authz.CanChangeRoles(person.Role) || person.IsFullAccess()
+		isCallerAdmin := person.IsAdmin() || strings.EqualFold(person.Role, "admin") || authz.CanChangeRoles(person.Role) || person.IsFullAccess()
 		if !isCallerAdmin {
 			respondJSON(w, http.StatusForbidden, map[string]string{
 				"error":   "forbidden",

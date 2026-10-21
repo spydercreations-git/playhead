@@ -65,16 +65,17 @@ func TestP4VideoReviewAndPermissions(t *testing.T) {
 	_, err = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: company.ID,
 		UserID:    compOwner.ID,
-		Role:      authz.RoleCEO,
+		Role:      authz.RoleStaff,
 	})
 	if err != nil {
 		t.Fatalf("failed to create owner membership: %v", err)
 	}
 	ownerPerson := authz.Person{
-		UserID:    uuid.UUID(compOwner.ID.Bytes),
-		Email:     compOwner.Email,
-		Role:      authz.RoleCEO,
-		CompanyID: uuid.UUID(company.ID.Bytes),
+		UserID:         uuid.UUID(compOwner.ID.Bytes),
+		Email:          compOwner.Email,
+		Role:           authz.RoleStaff,
+		CompanyID:      uuid.UUID(company.ID.Bytes),
+		PermissionsMap: map[string]bool{"admin": true},
 	}
 
 	clientRec, err := queries.CreateClient(ctx, db.CreateClientParams{
@@ -709,13 +710,14 @@ func TestP4_AdvisorReviewFixes(t *testing.T) {
 	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: company.ID,
 		UserID:    compOwner.ID,
-		Role:      authz.RoleCEO,
+		Role:      authz.RoleStaff,
 	})
 	ownerPerson := authz.Person{
-		UserID:    uuid.UUID(compOwner.ID.Bytes),
-		Email:     compOwner.Email,
-		Role:      authz.RoleCEO,
-		CompanyID: uuid.UUID(company.ID.Bytes),
+		UserID:         uuid.UUID(compOwner.ID.Bytes),
+		Email:          compOwner.Email,
+		Role:           authz.RoleStaff,
+		CompanyID:      uuid.UUID(company.ID.Bytes),
+		PermissionsMap: map[string]bool{"admin": true},
 	}
 
 	// Clients A and B

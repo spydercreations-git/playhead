@@ -82,7 +82,7 @@ func main() {
 	if dbPool != nil {
 		queries = db.New(dbPool)
 		checkMigrations(ctx, dbPool.Pool)
-		if cfg.Environment != "production" {
+		if cfg.Environment == "development" && os.Getenv("ENV") == "development" {
 			_ = handler.EnsureDevAdmins(ctx, dbPool.Pool, queries, cfg.DevAdminEmails)
 		}
 	}
@@ -192,7 +192,7 @@ func main() {
 			auth.Post("/google/callback", authHandler.GoogleOAuthCallback)
 			auth.Post("/logout", authHandler.Logout)
 
-			if cfg.Environment == "development" {
+			if cfg.Environment == "development" && os.Getenv("ENV") == "development" {
 				auth.Post("/dev-login", authHandler.DevLogin)
 			}
 		})
@@ -342,6 +342,7 @@ func main() {
 			protected.Get("/trash", itemsHandler.ListTrash)
 			protected.Post("/trash/{id}/restore", itemsHandler.RestoreTrashItem)
 			protected.Delete("/trash/{id}", itemsHandler.PermanentDeleteTrashItem)
+			protected.Delete("/trash", itemsHandler.EmptyTrash)
 
 			// Uploads & Downloads (P2)
 			protected.Post("/uploads/initiate", storageUploadsHandler.InitiateUpload)

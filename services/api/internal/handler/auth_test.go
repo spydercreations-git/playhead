@@ -108,7 +108,7 @@ func TestSignupAndLoginFlow(t *testing.T) {
 	_, err = queries.CreateInvite(context.Background(), db.CreateInviteParams{
 		CompanyID: comp.ID,
 		Email:     testEmail,
-		Role:      "editor",
+		Role:      "Editor",
 		TokenHash: authz.HashToken("test-invite-token-" + testEmail),
 		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(24 * time.Hour), Valid: true},
 	})
@@ -552,14 +552,7 @@ func TestMe_PermissionsAndRoleGranularity(t *testing.T) {
 		t.Fatalf("failed to create company: %v", err)
 	}
 
-	adminRole, err := SeedDefaultCompanyRoles(ctx, queries, comp.ID)
-	if err != nil {
-		t.Fatalf("failed to seed roles: %v", err)
-	}
-	editorRole, err := queries.GetRoleByName(ctx, db.GetRoleByNameParams{CompanyID: comp.ID, Name: "Editor"})
-	if err != nil {
-		t.Fatalf("failed to get editor role: %v", err)
-	}
+	_, _ = SeedDefaultCompanyRoles(ctx, queries, comp.ID)
 
 	// 1. Admin user
 	adminEmail := fmt.Sprintf("admin-%d@roletest.com", ts)
@@ -573,16 +566,13 @@ func TestMe_PermissionsAndRoleGranularity(t *testing.T) {
 		t.Fatalf("failed to create admin: %v", err)
 	}
 	_ = queries.VerifyUserEmail(ctx, adminUser.ID)
-	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
-		CompanyID: comp.ID,
-		UserID:    adminUser.ID,
-		Role:      "admin",
-	})
-	_ = queries.UpdateMembershipRole(ctx, db.UpdateMembershipRoleParams{
-		CompanyID: comp.ID,
-		UserID:    adminUser.ID,
-		Role:      "admin",
-		RoleID:    adminRole.ID,
+	_, _ = queries.CreateMembershipWithDetails(ctx, db.CreateMembershipWithDetailsParams{
+		CompanyID:   comp.ID,
+		UserID:      adminUser.ID,
+		Role:        "Staff",
+		Title:       pgtype.Text{String: "CEO", Valid: true},
+		Permissions: []byte(`{"admin": true, "create_project": true}`),
+		Status:      "active",
 	})
 
 	// 2. Editor user
@@ -596,16 +586,12 @@ func TestMe_PermissionsAndRoleGranularity(t *testing.T) {
 		t.Fatalf("failed to create editor: %v", err)
 	}
 	_ = queries.VerifyUserEmail(ctx, editorUser.ID)
-	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
-		CompanyID: comp.ID,
-		UserID:    editorUser.ID,
-		Role:      "editor",
-	})
-	_ = queries.UpdateMembershipRole(ctx, db.UpdateMembershipRoleParams{
-		CompanyID: comp.ID,
-		UserID:    editorUser.ID,
-		Role:      "editor",
-		RoleID:    editorRole.ID,
+	_, _ = queries.CreateMembershipWithDetails(ctx, db.CreateMembershipWithDetailsParams{
+		CompanyID:   comp.ID,
+		UserID:      editorUser.ID,
+		Role:        "Editor",
+		Permissions: []byte(`{"admin": false}`),
+		Status:      "active",
 	})
 
 	// 3. Client user (registered client contact)
@@ -676,19 +662,19 @@ func TestMe_PermissionsAndRoleGranularity(t *testing.T) {
 	if adminMe["is_client"] != false {
 		t.Fatalf("expected admin is_client == false")
 	}
-	if adminMe["role_name"] != authz.RoleCEO {
-		t.Fatalf("expected admin role_name == %s, got %v", authz.RoleCEO, adminMe["role_name"])
+	if adminMe["role_name"] != "Staff" {
+		t.Fatalf("expected admin role_name == Staff, got %v", adminMe["role_name"])
 	}
 	adminPerms := adminMe["permissions"].([]interface{})
 	hasProjectsCreate := false
 	for _, p := range adminPerms {
-		if p.(string) == "projects.create" {
+		if p.(string) == "projects.create" || p.(string) == "create_project" {
 			hasProjectsCreate = true
 			break
 		}
 	}
 	if !hasProjectsCreate {
-		t.Fatalf("expected Admin to possess projects.create permission")
+		t.Fatalf("expected Admin to possess create_project permission")
 	}
 
 	// Verify Editor

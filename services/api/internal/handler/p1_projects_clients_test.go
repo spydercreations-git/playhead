@@ -50,7 +50,7 @@ func TestP1ProjectsAndClients(t *testing.T) {
 	_, err = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: comp.ID,
 		UserID:    adminUser.ID,
-		Role:      authz.RoleCEO,
+		Role:      authz.RoleStaff,
 	})
 	if err != nil {
 		t.Fatalf("failed to create admin membership: %v", err)
@@ -382,10 +382,11 @@ func contextWithAuth(parent context.Context, u db.User, companyID pgtype.UUID, r
 		Name:  u.Name,
 	}
 	person := authz.Person{
-		UserID:    uuid.UUID(u.ID.Bytes),
-		Email:     u.Email,
-		Role:      role,
-		CompanyID: uuid.UUID(companyID.Bytes),
+		UserID:         uuid.UUID(u.ID.Bytes),
+		Email:          u.Email,
+		Role:           role,
+		CompanyID:      uuid.UUID(companyID.Bytes),
+		PermissionsMap: map[string]bool{"admin": role == authz.RoleCEO || role == authz.RoleStaff},
 	}
 	ctx := context.WithValue(parent, middleware.UserContextKey, authUser)
 	ctx = context.WithValue(ctx, middleware.CompanyContextKey, companyID)

@@ -368,12 +368,17 @@ func (h *DocumentsHandler) InternalCollabVerify(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// 5. Evaluate permissions on item
+	var permsMap map[string]bool
+	if len(membership.Permissions) > 0 {
+		_ = json.Unmarshal(membership.Permissions, &permsMap)
+	}
 	person := authz.Person{
-		UserID:    userUUID,
-		Email:     user.Email,
-		Role:      membership.Role,
-		CompanyID: companyUUID,
+		UserID:         userUUID,
+		Email:          user.Email,
+		Role:           membership.Role,
+		Title:          membership.Title.String,
+		PermissionsMap: permsMap,
+		CompanyID:      companyUUID,
 	}
 
 	projTarget := authz.ProjectTarget{

@@ -55,10 +55,28 @@ func TestAccessMatrix(t *testing.T) {
 			t.Fatalf("failed to create user %s: %v", name, err)
 		}
 		if role != "" {
-			_, err = queries.CreateMembership(ctx, db.CreateMembershipParams{
-				CompanyID: comp.ID,
-				UserID:    u.ID,
-				Role:      role,
+			membershipRole := role
+			title := ""
+			isAdmin := false
+			if role == authz.RoleCEO {
+				membershipRole = authz.RoleStaff
+				title = "CEO"
+				isAdmin = true
+			} else if role == authz.RoleProjectManager {
+				membershipRole = authz.RoleStaff
+				title = "Project Manager"
+			}
+			perms := []byte("{}")
+			if isAdmin {
+				perms = []byte(`{"admin": true}`)
+			}
+			_, err = queries.CreateMembershipWithDetails(ctx, db.CreateMembershipWithDetailsParams{
+				CompanyID:   comp.ID,
+				UserID:      u.ID,
+				Role:        membershipRole,
+				Title:       pgtype.Text{String: title, Valid: title != ""},
+				Permissions: perms,
+				Status:      "active",
 			})
 			if err != nil {
 				t.Fatalf("failed to create membership for %s: %v", name, err)

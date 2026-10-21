@@ -230,10 +230,13 @@ func TestP5DocumentsIntegration(t *testing.T) {
 		t.Fatalf("failed to create owner: %v", err)
 	}
 
-	_, err = queries.CreateMembership(ctx, db.CreateMembershipParams{
-		CompanyID: company.ID,
-		UserID:    owner.ID,
-		Role:      authz.RoleCEO,
+	_, err = queries.CreateMembershipWithDetails(ctx, db.CreateMembershipWithDetailsParams{
+		CompanyID:   company.ID,
+		UserID:      owner.ID,
+		Role:        authz.RoleStaff,
+		Title:       pgtype.Text{String: "CEO", Valid: true},
+		Permissions: []byte(`{"admin": true}`),
+		Status:      "active",
 	})
 	if err != nil {
 		t.Fatalf("failed to add owner membership: %v", err)
@@ -621,7 +624,7 @@ func TestPdfExportClientNeverGetsTeamNotesAndCustomOptions(t *testing.T) {
 	_, err = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: company.ID,
 		UserID:    owner.ID,
-		Role:      authz.RoleCEO,
+		Role:      authz.RoleStaff,
 	})
 	if err != nil {
 		t.Fatalf("failed to create membership: %v", err)

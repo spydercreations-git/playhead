@@ -50,7 +50,7 @@ func TestSingleThemeNoThemeInMe(t *testing.T) {
 	_, err = queries.CreateMembership(ctx, db.CreateMembershipParams{
 		CompanyID: comp.ID,
 		UserID:    user.ID,
-		Role:      "editor",
+		Role:      "Editor",
 	})
 	if err != nil {
 		t.Fatalf("create membership: %v", err)

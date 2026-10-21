@@ -1371,7 +1371,6 @@ func (h *ItemsHandler) RestoreTrashItem(w http.ResponseWriter, r *http.Request) 
 // PermanentDeleteTrashItem permanently removes an item and deletes all versions from S3 (Requirement 9)
 func (h *ItemsHandler) PermanentDeleteTrashItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	user, _ := middleware.GetAuthenticatedUser(ctx)
 	companyID, ok := middleware.GetActiveCompanyID(ctx)
 	if !ok || !companyID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
@@ -1384,7 +1383,7 @@ func (h *ItemsHandler) PermanentDeleteTrashItem(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+	_, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
 		ID:        itemID,
 		CompanyID: companyID,
 	})
@@ -1393,12 +1392,10 @@ func (h *ItemsHandler) PermanentDeleteTrashItem(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Permanent delete is allowed for Admins or the item's original creator
+	// Permanent delete is strictly restricted to Admins (admin switch required)
 	person := middleware.GetPerson(ctx)
-	canDeleteForever := person.IsFullAccess() || person.HasPermission(authz.PermFilesDeleteForever)
-	isOwner := item.CreatedBy.Valid && item.CreatedBy == user.ID
-	if !canDeleteForever && !isOwner {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only Admins and the original uploader can permanently delete items"})
+	if !person.IsAdmin() && !person.HasPermission(authz.PermFilesDeleteForever) {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only administrators can permanently delete items"})
 		return
 	}
 
@@ -1434,6 +1431,56 @@ func (h *ItemsHandler) PermanentDeleteTrashItem(w http.ResponseWriter, r *http.R
 	}
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{"deleted": true})
+}
+
+// EmptyTrash permanently purges all items currently in Trash for the company (Admin only)
+func (h *ItemsHandler) EmptyTrash(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	person := middleware.GetPerson(ctx)
+	if !person.IsAdmin() && !person.HasPermission(authz.PermFilesEmptyTrash) {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Only administrators can empty the trash",
+		})
+		return
+	}
+
+	// List all trash items in the company to delete their versions from storage
+	items, err := h.queries.ListTrashItems(ctx, companyID)
+	if err == nil && len(items) > 0 {
+		for _, it := range items {
+			versions, err := h.queries.ListFileVersions(ctx, it.ID)
+			if err == nil && len(versions) > 0 {
+				var keysToDelete []string
+				var bytesToFree int64
+				for _, v := range versions {
+					if v.StorageKey != "" {
+						keysToDelete = append(keysToDelete, v.StorageKey)
+					}
+					bytesToFree += v.SizeBytes
+				}
+				if h.storage != nil && len(keysToDelete) > 0 {
+					_ = h.storage.DeleteObjects(ctx, keysToDelete)
+				}
+				_ = h.queries.DecrementCompanyStorage(ctx, db.DecrementCompanyStorageParams{
+					ID:    companyID,
+					Bytes: bytesToFree,
+				})
+			}
+			_ = h.queries.PermanentDeleteItem(ctx, db.PermanentDeleteItemParams{
+				ID:        it.ID,
+				CompanyID: companyID,
+			})
+		}
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{"emptied": true})
 }
 
 type checkConflictReq struct {

@@ -81,21 +81,26 @@ func TestP3PermissionsRolesAndSharing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create admin user: %v", err)
 	}
-	_, err = queries.CreateMembership(ctx, db.CreateMembershipParams{
-		CompanyID: comp.ID,
-		UserID:    adminUser.ID,
-		Role:      authz.RoleCEO,
+	_, err = queries.CreateMembershipWithDetails(ctx, db.CreateMembershipWithDetailsParams{
+		CompanyID:   comp.ID,
+		UserID:      adminUser.ID,
+		Role:        authz.RoleStaff,
+		Title:       pgtype.Text{String: "CEO", Valid: true},
+		Permissions: []byte(`{"admin": true}`),
+		Status:      "active",
 	})
 	if err != nil {
 		t.Fatalf("failed to create admin membership: %v", err)
 	}
 
 	adminPerson := authz.Person{
-		UserID:      uuid.UUID(adminUser.ID.Bytes),
-		CompanyID:   uuid.UUID(comp.ID.Bytes),
-		Email:       adminEmail,
-		Role:        authz.RoleCEO,
-		Permissions: authz.AllPermissions,
+		UserID:         uuid.UUID(adminUser.ID.Bytes),
+		CompanyID:      uuid.UUID(comp.ID.Bytes),
+		Email:          adminEmail,
+		Role:           authz.RoleStaff,
+		Title:          "CEO",
+		PermissionsMap: map[string]bool{"admin": true},
+		Permissions:    authz.AllPermissions,
 	}
 
 	// Create Client & Project
@@ -606,12 +611,15 @@ func TestP3PermissionsRolesAndSharing(t *testing.T) {
 			Email: fmt.Sprintf("admin2-%d@studio.com", time.Now().UnixNano()),
 			Name:  "Admin Two",
 		})
-		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
-			CompanyID: comp.ID,
-			UserID:    admin2.ID,
-			Role:      authz.RoleCEO,
+		_, _ = queries.CreateMembershipWithDetails(ctx, db.CreateMembershipWithDetailsParams{
+			CompanyID:   comp.ID,
+			UserID:      admin2.ID,
+			Role:        authz.RoleStaff,
+			Title:       pgtype.Text{String: "Admin", Valid: true},
+			Permissions: []byte(`{"admin": true}`),
+			Status:      "active",
 		})
-		admin2Person := authz.Person{UserID: uuid.UUID(admin2.ID.Bytes), Email: admin2.Email, Role: "admin", Permissions: []string{authz.PermTeamChangeRoles}, CompanyID: uuid.UUID(comp.ID.Bytes)}
+		admin2Person := authz.Person{UserID: uuid.UUID(admin2.ID.Bytes), Email: admin2.Email, Role: authz.RoleStaff, PermissionsMap: map[string]bool{"admin": true}, Permissions: []string{authz.PermTeamChangeRoles}, CompanyID: uuid.UUID(comp.ID.Bytes)}
 
 		// Demote admin2 so only 1 admin remains
 		_ = queries.DeleteMembership(ctx, db.DeleteMembershipParams{
@@ -664,12 +672,12 @@ func TestP3PermissionsRolesAndSharing(t *testing.T) {
 		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 			CompanyID: comp.ID,
 			UserID:    roleUser.ID,
-			Role:      "Producer",
+			Role:      "Staff",
 		})
 		_ = queries.UpdateMembershipRole(ctx, db.UpdateMembershipRoleParams{
 			CompanyID: comp.ID,
 			UserID:    roleUser.ID,
-			Role:      "Producer",
+			Role:      "Staff",
 			RoleID:    pgtype.UUID{Bytes: roleUUID, Valid: true},
 		})
 
@@ -728,24 +736,30 @@ func TestP3_AdvisorSecurityRequirements(t *testing.T) {
 		Email: fmt.Sprintf("admin-a-%d@alpha.com", time.Now().UnixNano()),
 		Name:  "Alice Alpha",
 	})
-	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
-		CompanyID: compA.ID,
-		UserID:    userA.ID,
-		Role:      authz.RoleCEO,
+	_, _ = queries.CreateMembershipWithDetails(ctx, db.CreateMembershipWithDetailsParams{
+		CompanyID:   compA.ID,
+		UserID:      userA.ID,
+		Role:        authz.RoleStaff,
+		Title:       pgtype.Text{String: "CEO", Valid: true},
+		Permissions: []byte(`{"admin": true}`),
+		Status:      "active",
 	})
-	personA := authz.Person{UserID: uuid.UUID(userA.ID.Bytes), Email: userA.Email, Role: "admin", CompanyID: uuid.UUID(compA.ID.Bytes), Permissions: []string{authz.PermTeamChangeRoles, authz.PermSharingCreatePublicLinks}}
+	personA := authz.Person{UserID: uuid.UUID(userA.ID.Bytes), Email: userA.Email, Role: authz.RoleStaff, PermissionsMap: map[string]bool{"admin": true}, CompanyID: uuid.UUID(compA.ID.Bytes), Permissions: []string{authz.PermTeamChangeRoles, authz.PermSharingCreatePublicLinks}}
 
 	// User B is an Admin in Company B
 	userB, _ := queries.CreateUser(ctx, db.CreateUserParams{
 		Email: fmt.Sprintf("admin-b-%d@beta.com", time.Now().UnixNano()),
 		Name:  "Bob Beta",
 	})
-	_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
-		CompanyID: compB.ID,
-		UserID:    userB.ID,
-		Role:      authz.RoleCEO,
+	_, _ = queries.CreateMembershipWithDetails(ctx, db.CreateMembershipWithDetailsParams{
+		CompanyID:   compB.ID,
+		UserID:      userB.ID,
+		Role:        authz.RoleStaff,
+		Title:       pgtype.Text{String: "CEO", Valid: true},
+		Permissions: []byte(`{"admin": true}`),
+		Status:      "active",
 	})
-	personB := authz.Person{UserID: uuid.UUID(userB.ID.Bytes), Email: userB.Email, Role: "admin", CompanyID: uuid.UUID(compB.ID.Bytes), Permissions: []string{authz.PermTeamChangeRoles, authz.PermSharingCreatePublicLinks}}
+	personB := authz.Person{UserID: uuid.UUID(userB.ID.Bytes), Email: userB.Email, Role: authz.RoleStaff, PermissionsMap: map[string]bool{"admin": true}, CompanyID: uuid.UUID(compB.ID.Bytes), Permissions: []string{authz.PermTeamChangeRoles, authz.PermSharingCreatePublicLinks}}
 	_ = personB
 
 	// Member B in Company B
@@ -1011,7 +1025,7 @@ func TestP3_AdvisorSecurityRequirements(t *testing.T) {
 		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 			CompanyID: compA.ID,
 			UserID:    editorUser.ID,
-			Role:      "editor",
+			Role:      "Editor",
 		})
 
 		compAStr := pgUUIDToString(compA.ID)
@@ -2053,13 +2067,13 @@ func TestP3_AdvisorSecondReviewSecurityFixes(t *testing.T) {
 		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 			CompanyID: comp.ID,
 			UserID:    editorUser.ID,
-			Role:      "editor",
+			Role:      "Editor",
 		})
 		editorPerson := authz.Person{
 			UserID:      uuid.UUID(editorUser.ID.Bytes),
 			CompanyID:   uuid.UUID(comp.ID.Bytes),
 			Email:       editorUser.Email,
-			Role:        "editor",
+			Role:        "Editor",
 			Permissions: []string{authz.PermFilesDownloadAll}, // No team.invite
 		}
 
@@ -2090,7 +2104,7 @@ func TestP3_AdvisorSecondReviewSecurityFixes(t *testing.T) {
 		_, _ = queries.CreateMembership(ctx, db.CreateMembershipParams{
 			CompanyID: comp.ID,
 			UserID:    targetUser.ID,
-			Role:      "editor",
+			Role:      "Editor",
 		})
 		targetIDStr := pgUUIDToString(targetUser.ID)
 

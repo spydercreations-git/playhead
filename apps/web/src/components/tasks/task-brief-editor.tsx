@@ -21,6 +21,7 @@ import {
   Plus,
   ChevronDown,
 } from "@/components/ui/icon";
+import { sanitizeClientHTML } from "@/lib/sanitize";
 
 interface TaskBriefEditorProps {
   initialContent?: string;
@@ -56,7 +57,7 @@ export function TaskBriefEditor({
         },
       }),
     ],
-    content: initialContent || "",
+    content: sanitizeClientHTML(initialContent || ""),
     editable: !readOnly,
     editorProps: {
       attributes: {
@@ -81,9 +82,10 @@ export function TaskBriefEditor({
   });
 
   useEffect(() => {
-    if (editor && initialContent !== undefined && editor.getHTML() !== initialContent) {
-      if (!editor.isFocused) {
-        editor.commands.setContent(initialContent || "");
+    if (editor && initialContent !== undefined) {
+      const safe = sanitizeClientHTML(initialContent || "");
+      if (editor.getHTML() !== safe && !editor.isFocused) {
+        editor.commands.setContent(safe);
       }
     }
   }, [initialContent, editor]);

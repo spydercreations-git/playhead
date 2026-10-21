@@ -266,6 +266,17 @@ type PasswordResetToken struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type PendingTaskAttachment struct {
+	ID                pgtype.UUID        `json:"id"`
+	CompanyID         pgtype.UUID        `json:"company_id"`
+	TaskID            pgtype.UUID        `json:"task_id"`
+	StorageKey        string             `json:"storage_key"`
+	Filename          string             `json:"filename"`
+	Mime              string             `json:"mime"`
+	DeclaredSizeBytes int64              `json:"declared_size_bytes"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+}
+
 type Project struct {
 	ID            pgtype.UUID        `json:"id"`
 	CompanyID     pgtype.UUID        `json:"company_id"`

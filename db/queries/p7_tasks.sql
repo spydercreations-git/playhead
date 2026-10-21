@@ -245,3 +245,26 @@ SELECT a.id, a.comment_id, a.storage_key, a.filename, a.mime, a.size_bytes, a.cr
 FROM task_comment_attachments a
 JOIN task_comments tc ON tc.id = a.comment_id
 WHERE a.id = $1;
+
+-- Pending Task Attachments (Rule 7 unconfirmed cleanup)
+-- name: CreatePendingTaskAttachment :one
+INSERT INTO pending_task_attachments (
+    company_id, task_id, storage_key, filename, mime, declared_size_bytes
+) VALUES (
+    $1, $2, $3, $4, $5, $6
+) RETURNING *;
+
+-- name: DeletePendingTaskAttachmentByStorageKey :exec
+DELETE FROM pending_task_attachments
+WHERE storage_key = $1;
+
+-- name: ListStalePendingTaskAttachments :many
+SELECT id, company_id, task_id, storage_key, filename, created_at
+FROM pending_task_attachments
+WHERE created_at < $1
+LIMIT 100;
+
+-- name: DeletePendingTaskAttachmentByID :exec
+DELETE FROM pending_task_attachments
+WHERE id = $1;
+

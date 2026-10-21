@@ -20,6 +20,7 @@ import (
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
 	"github.com/playhead/playhead/services/shared/mailer"
+	"github.com/playhead/playhead/services/shared/sanitize"
 	"github.com/playhead/playhead/services/shared/storage"
 	"github.com/redis/go-redis/v9"
 )
@@ -70,14 +71,7 @@ func toPgUUID(u uuid.UUID) pgtype.UUID {
 }
 
 func sanitizeHTML(input string) string {
-	// Escape dangerous script tags while keeping clean structure
-	cleaned := strings.ReplaceAll(input, "<script", "&lt;script")
-	cleaned = strings.ReplaceAll(cleaned, "</script>", "&lt;/script&gt;")
-	cleaned = strings.ReplaceAll(cleaned, "javascript:", "blocked:")
-	cleaned = strings.ReplaceAll(cleaned, "onerror=", "blocked_event=")
-	cleaned = strings.ReplaceAll(cleaned, "onload=", "blocked_event=")
-	cleaned = strings.ReplaceAll(cleaned, "onclick=", "blocked_event=")
-	return cleaned
+	return sanitize.RichText(input)
 }
 
 func isValidWebURL(u string) bool {
@@ -1479,6 +1473,103 @@ func (h *TasksHandler) CreateTaskComment(w http.ResponseWriter, r *http.Request)
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "comment_body_or_attachment_required"})
 		return
 	}
+	bodyText = sanitize.RichText(bodyText)
+
+	// Rule 7 & FIX 2: Strictly verify attachments against real storage before linking
+	const maxAttachmentBytes = 30 * 1024 * 1024 // 30 MB = 31,457,280 bytes
+	expectedPrefix := fmt.Sprintf("companies/%s/tasks/%s/attachments/",
+		uuid.UUID(companyID.Bytes).String(),
+		uuid.UUID(task.ID.Bytes).String(),
+	)
+
+	type validatedAtt struct {
+		StorageKey string
+		Filename   string
+		Mime       string
+		SizeBytes  int64
+	}
+	validatedAttachments := make([]validatedAtt, 0, len(req.Attachments))
+
+	for _, att := range req.Attachments {
+		if !strings.HasPrefix(att.StorageKey, expectedPrefix) {
+			respondJSON(w, http.StatusBadRequest, map[string]string{
+				"error":   "invalid_attachment_key",
+				"message": "Storage key does not belong to this task",
+			})
+			return
+		}
+
+		realSize := att.SizeBytes
+		realMime := att.Mime
+
+		if h.storage != nil {
+			statSize, statMime, statErr := h.storage.HeadObject(ctx, att.StorageKey)
+			if statErr != nil {
+				respondJSON(w, http.StatusBadRequest, map[string]string{
+					"error":   "attachment_not_found",
+					"message": "Uploaded attachment file was not found in storage",
+				})
+				return
+			}
+
+			// Reject if real file exceeds 30 MB limit (31,457,280 bytes)
+			if statSize > maxAttachmentBytes {
+				_ = h.storage.DeleteObject(ctx, att.StorageKey)
+				_ = h.queries.DeletePendingTaskAttachmentByStorageKey(ctx, att.StorageKey)
+				respondJSON(w, http.StatusBadRequest, map[string]string{
+					"error":   "attachment_too_large",
+					"message": fmt.Sprintf("File exceeds 30 MB limit (real size: %d bytes)", statSize),
+				})
+				return
+			}
+
+			// Reject if declared size lies
+			if att.SizeBytes > 0 && att.SizeBytes != statSize {
+				_ = h.storage.DeleteObject(ctx, att.StorageKey)
+				_ = h.queries.DeletePendingTaskAttachmentByStorageKey(ctx, att.StorageKey)
+				respondJSON(w, http.StatusBadRequest, map[string]string{
+					"error":   "attachment_size_mismatch",
+					"message": fmt.Sprintf("Declared size %d does not match real size %d", att.SizeBytes, statSize),
+				})
+				return
+			}
+
+			// Reject if content type lies
+			if att.Mime != "" && statMime != "" && !strings.EqualFold(att.Mime, statMime) && statMime != "application/octet-stream" {
+				_ = h.storage.DeleteObject(ctx, att.StorageKey)
+				_ = h.queries.DeletePendingTaskAttachmentByStorageKey(ctx, att.StorageKey)
+				respondJSON(w, http.StatusBadRequest, map[string]string{
+					"error":   "attachment_content_type_mismatch",
+					"message": "Declared content type does not match real file content type",
+				})
+				return
+			}
+
+			realSize = statSize
+			if statMime != "" {
+				realMime = statMime
+			}
+		}
+
+		if realSize > maxAttachmentBytes {
+			if h.storage != nil {
+				_ = h.storage.DeleteObject(ctx, att.StorageKey)
+			}
+			_ = h.queries.DeletePendingTaskAttachmentByStorageKey(ctx, att.StorageKey)
+			respondJSON(w, http.StatusBadRequest, map[string]string{
+				"error":   "attachment_too_large",
+				"message": "Files must be 30 MB or smaller",
+			})
+			return
+		}
+
+		validatedAttachments = append(validatedAttachments, validatedAtt{
+			StorageKey: att.StorageKey,
+			Filename:   att.Filename,
+			Mime:       realMime,
+			SizeBytes:  realSize,
+		})
+	}
 
 	var replyID pgtype.UUID
 	if req.ReplyToCommentID != nil && strings.TrimSpace(*req.ReplyToCommentID) != "" {
@@ -1486,25 +1577,22 @@ func (h *TasksHandler) CreateTaskComment(w http.ResponseWriter, r *http.Request)
 	}
 
 	comment, err := h.queries.CreateTaskComment(ctx, db.CreateTaskCommentParams{
-		CompanyID:           companyID,
-		TaskID:              task.ID,
-		Tab:                 tab,
-		UserID:              user.ID,
-		Body:                bodyText,
-		ReplyToCommentID:    replyID,
-		IsHistory:           false,
+		CompanyID:        companyID,
+		TaskID:           task.ID,
+		Tab:              tab,
+		UserID:           user.ID,
+		Body:             bodyText,
+		ReplyToCommentID: replyID,
+		IsHistory:        false,
 	})
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_comment"})
 		return
 	}
 
-	// Insert attachments if provided (Rule 7: checked on server, max 30 MB)
-	createdAttachments := make([]map[string]interface{}, 0, len(req.Attachments))
-	for _, att := range req.Attachments {
-		if att.SizeBytes > 30*1024*1024 {
-			continue // skip or reject oversized
-		}
+	// Insert verified attachments into task_comment_attachments and clear pending record
+	createdAttachments := make([]map[string]interface{}, 0, len(validatedAttachments))
+	for _, att := range validatedAttachments {
 		cAtt, attErr := h.queries.CreateTaskCommentAttachment(ctx, db.CreateTaskCommentAttachmentParams{
 			CommentID:  comment.ID,
 			StorageKey: att.StorageKey,
@@ -1513,6 +1601,7 @@ func (h *TasksHandler) CreateTaskComment(w http.ResponseWriter, r *http.Request)
 			SizeBytes:  att.SizeBytes,
 		})
 		if attErr == nil {
+			_ = h.queries.DeletePendingTaskAttachmentByStorageKey(ctx, att.StorageKey)
 			downloadURL := fmt.Sprintf("/api/v1/tasks/comments/attachments/%s/download", uuid.UUID(cAtt.ID.Bytes).String())
 			createdAttachments = append(createdAttachments, map[string]interface{}{
 				"id":           cAtt.ID,
@@ -1560,11 +1649,12 @@ func (h *TasksHandler) UpdateTaskComment(w http.ResponseWriter, r *http.Request)
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "comment_body_required"})
 		return
 	}
+	bodyText := sanitize.RichText(strings.TrimSpace(req.Body))
 
 	updated, err := h.queries.UpdateTaskComment(ctx, db.UpdateTaskCommentParams{
 		ID:     commentID,
 		UserID: user.ID,
-		Body:   strings.TrimSpace(req.Body),
+		Body:   bodyText,
 	})
 	if err != nil {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "cannot_edit_comment"})
@@ -1663,10 +1753,46 @@ func (h *TasksHandler) PresignCommentAttachment(w http.ResponseWriter, r *http.R
 		uploadURL = fmt.Sprintf("http://localhost:9000/playhead-dev/%s", storageKey)
 	}
 
+	// Track unconfirmed upload for automatic cleanup if older than 1 hour (Rule 7 & FIX 2)
+	_, _ = h.queries.CreatePendingTaskAttachment(ctx, db.CreatePendingTaskAttachmentParams{
+		CompanyID:         companyID,
+		TaskID:            taskID,
+		StorageKey:        storageKey,
+		Filename:          sanitizedName,
+		Mime:              mime,
+		DeclaredSizeBytes: req.SizeBytes,
+	})
+
+	go h.cleanupStalePendingAttachments()
+
 	respondJSON(w, http.StatusOK, map[string]string{
 		"upload_url":  uploadURL,
 		"storage_key": storageKey,
 	})
+}
+
+// cleanupStalePendingAttachments removes unconfirmed attachments older than 1 hour (Fix 2)
+func (h *TasksHandler) cleanupStalePendingAttachments() {
+	if h.storage == nil || h.queries == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	oneHourAgo := pgtype.Timestamptz{
+		Time:  time.Now().Add(-1 * time.Hour),
+		Valid: true,
+	}
+
+	stale, err := h.queries.ListStalePendingTaskAttachments(ctx, oneHourAgo)
+	if err != nil {
+		return
+	}
+
+	for _, att := range stale {
+		_ = h.storage.DeleteObject(ctx, att.StorageKey)
+		_ = h.queries.DeletePendingTaskAttachmentByID(ctx, att.ID)
+	}
 }
 
 // DownloadCommentAttachment returns a presigned GET URL only if caller has access to that comment's tab (Rule 7)

@@ -923,20 +923,27 @@ Google Login is built into the backend and UI, but hidden until configured. When
      - Modal with task title, client selector (locked for clients; selectable for staff), optional project selector filtered by client, optional assigned editors (staff only), deadline date picker, and initial brief description.
      - Automatic staff notification upon task creation.
 
+### Phase 3 Security Fixes (Completed ✅):
+1. **Fix 1: Allowlist HTML Sanitizer (`github.com/microcosm-cc/bluemonday` & `DOMPurify`)**:
+   - Replaced blacklist sanitizer with strict allowlist sanitizer in `services/shared/sanitize`.
+   - Permits only approved editor tags (`p`, `h1`, `h2`, `h3`, `strong`, `em`, `u`, `s`, `code`, `pre`, `blockquote`, `hr`, `ul`, `ol`, `li`, `br`, `mark`, `span`) and `a` with `href`.
+   - Links restricted strictly to `http` and `https`, enforcing `rel="noopener noreferrer"` and `target="_blank"`.
+   - Data attributes permitted for link pills and custom editor components (`data-*`).
+   - Wired sanitizer to task descriptions, comment bodies, and edit endpoints.
+   - Added second-layer client-side sanitization using `DOMPurify` (`apps/web/src/lib/sanitize.ts`).
+   - 12 distinct XSS payloads verified harmless in `sanitize_test.go` and `phase3_tasks_test.go`.
+2. **Fix 2: Real Storage Size Enforcement (HeadObject) & Unconfirmed Uploads Cleanup**:
+   - Server performs `HeadObject` on storage before linking any attachment to a comment.
+   - If real file exceeds 30 MB (31,457,280 bytes), declared size does not match real size, or MIME type is forged: deletes the file from storage and returns HTTP 400.
+   - Added migration `00024_pending_task_attachments.sql` to track unconfirmed uploads.
+   - Background cleanup automatically purges unconfirmed uploads older than 1 hour from both object storage and PostgreSQL.
+   - Added integration tests verifying oversized real files are deleted and rejected, size-mismatches are rejected, and stale records are cleaned up.
+
 ### Automated Tests:
-- `services/api/internal/handler/phase3_tasks_test.go`: 10 comprehensive subtests covering all Phase 3 requirements:
-  - `TestPhase3Tasks_ChannelSeparation_ClientCannotSeeInternal`: PASS
-  - `TestPhase3Tasks_RoleVisibility_EditorOnlyAssigned`: PASS
-  - `TestPhase3Tasks_RoleVisibility_ClientOnlyOwnClient`: PASS
-  - `TestPhase3Tasks_StatusUpdate_And_OverdueCalculation`: PASS
-  - `TestPhase3Tasks_Max15Links_And_JavascriptUrlBlocked`: PASS
-  - `TestPhase3Tasks_Attachment_30MBLimit`: PASS
-  - `TestPhase3Tasks_DirectReply_And_SoftDelete`: PASS
-  - `TestPhase3Tasks_ReorderPositions`: PASS
-  - `TestPhase3Tasks_StaffOnlyDelete_And_TrashRestore`: PASS
-- `services/api/internal/handler/all_roles_endpoints_test.go`: All tasks endpoints verified across all roles (PASS).
+- `services/shared/sanitize/...`: 100% PASS (Allowed tags, link attributes, 12 XSS attack vectors).
+- `services/api/internal/handler/phase3_tasks_test.go`: All subtests PASS including Fix 1 & Fix 2.
 - `services/api/internal/handler/...`: 100% Go test suite passing.
-- `services/shared/authz/...`: 100% Go test suite passing.
+- `services/shared/...`: 100% Go test suite passing.
 - `npm --prefix apps/web run typecheck`: 0 TypeScript errors.
 - `node apps/web/scripts/check-design-tokens.js --strict`: 0 design token violations.
 

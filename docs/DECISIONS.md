@@ -333,6 +333,22 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
     - **T3 Task Comments**: Client chat vs Internal tabs, direct replies, 30 MB attachments, and SSE real-time stream.
     - **T4 Assign New Task**: Modal with client locking, optional project selector, editor assignment, and staff email notification.
 
+## 47. Phase 3 Security Fixes: Strict Allowlist HTML Sanitizer & Real Storage File Size Enforcement
+- **Decision**:
+  - **Strict Allowlist HTML Sanitizer (`services/shared/sanitize`)**:
+    - Replaced string blacklist with `github.com/microcosm-cc/bluemonday` configured with a strict allowlist.
+    - Permits only approved editor formatting elements: `p`, `h1`, `h2`, `h3`, `strong`, `b`, `em`, `i`, `u`, `s`, `strike`, `del`, `code`, `pre`, `blockquote`, `hr`, `ul`, `ol`, `li`, `br`, `mark`, `span`, and `a` with `href`.
+    - Enforces `http` and `https` URL schemes only; enforces `target="_blank"` and `rel="noopener noreferrer"` on all links.
+    - Permits safe data attributes (`data-*`) for TipTap link pills and custom nodes.
+    - Used universally across task descriptions, comment bodies, and edit handlers.
+    - Added second-layer client-side sanitization using `DOMPurify` (`apps/web/src/lib/sanitize.ts`).
+  - **Real Storage File Size Enforcement (HeadObject) & Cleanup**:
+    - Rather than trusting client-reported `size_bytes`, the server executes `HeadObject` directly on Cloudflare R2 / MinIO storage prior to linking any attachment to a comment.
+    - If the actual object exceeds 30 MB (31,457,280 bytes), the declared size does not match reality, or the MIME type is forged, the server immediately deletes the object from storage, clears pending records, and returns HTTP 400.
+    - Added table `pending_task_attachments` (migration `00024_pending_task_attachments.sql`) to track unconfirmed presigned uploads.
+    - Background cleanup purges unconfirmed uploads older than 1 hour from both object storage and PostgreSQL.
+
+
 
 
 

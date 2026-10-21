@@ -18,6 +18,7 @@ import (
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
+	"github.com/playhead/playhead/services/shared/storage"
 )
 
 func TestPhase3TasksFullRules(t *testing.T) {
@@ -93,11 +94,19 @@ func TestPhase3TasksFullRules(t *testing.T) {
 	_, _ = pool.Exec(ctx, `INSERT INTO client_contacts (client_id, user_id) VALUES ($1, $2)`, cl2.ID, clientUser2.ID)
 
 	// Handlers and Router setup
-	cfg := &config.Config{
-		Environment: "testing",
-		AppURL:      "http://localhost:3000",
+	cfg := config.Load()
+	stClient, err := storage.NewClient(ctx, storage.Config{
+		Endpoint:        cfg.R2Endpoint,
+		AccessKeyID:     cfg.R2AccessKeyID,
+		SecretAccessKey: cfg.R2SecretAccessKey,
+		Bucket:          cfg.R2Bucket,
+		UsePathStyle:    true,
+	})
+	if err == nil && stClient != nil {
+		_ = stClient.EnsureBucket(ctx)
 	}
-	tasksHandler := NewTasksHandler(queries, nil, nil, cfg)
+
+	tasksHandler := NewTasksHandler(queries, stClient, nil, cfg)
 	tasksHandler.SetPool(pool)
 
 	r := chi.NewRouter()
@@ -611,6 +620,200 @@ func TestPhase3TasksFullRules(t *testing.T) {
 		r.ServeHTTP(w, req)
 		if w.Code != http.StatusOK {
 			t.Errorf("task should be visible after restore, got %d", w.Code)
+		}
+	})
+
+	// -------------------------------------------------------------------------
+	// FIX 1: HTML ALLOWLIST SANITIZATION (Task descriptions & Comment bodies)
+	// -------------------------------------------------------------------------
+	t.Run("Rule 6 & Fix 1: Allowlist HTML sanitization for task description and comments", func(t *testing.T) {
+		// Create task with XSS payload in description
+		xssDesc := `<p>Valid description</p><script>alert('XSS-desc')</script><img src=x onerror="alert('img-xss')"><a href="javascript:alert('link-xss')">Dangerous link</a>`
+		taskReq := fmt.Sprintf(`{
+			"client_id": "%s",
+			"name": "XSS Sanitization Test Task",
+			"description_html": %q
+		}`, uuid.UUID(cl1.ID.Bytes).String(), xssDesc)
+
+		req := httptest.NewRequest("POST", "/tasks", bytes.NewBufferString(taskReq)).WithContext(staffCtx)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("failed to create task with html desc, got %d: %s", w.Code, w.Body.String())
+		}
+
+		var createdTaskResp map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &createdTaskResp)
+		xssTaskID := createdTaskResp["id"].(string)
+
+		// Get the task and verify dangerous tags/attributes are purged
+		req = httptest.NewRequest("GET", "/tasks/"+xssTaskID, nil).WithContext(staffCtx)
+		w = httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("failed to get task, got %d", w.Code)
+		}
+
+		var getTaskResp map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &getTaskResp)
+		descOut := getTaskResp["task"].(map[string]interface{})["description_html"].(string)
+		lowerDesc := strings.ToLower(descOut)
+
+		if strings.Contains(lowerDesc, "<script") || strings.Contains(lowerDesc, "onerror") || strings.Contains(lowerDesc, "javascript:") {
+			t.Errorf("sanitizer failed: description still contains unsafe tags: %s", descOut)
+		}
+		if !strings.Contains(descOut, "<p>Valid description</p>") {
+			t.Errorf("sanitizer removed safe content: %s", descOut)
+		}
+
+		// Comment body with XSS payload
+		xssComment := `<p>Safe comment</p><iframe src="javascript:alert(1)"></iframe><svg onload=alert(2)></svg>`
+		comReq := fmt.Sprintf(`{
+			"tab": "client",
+			"body": %q
+		}`, xssComment)
+		req = httptest.NewRequest("POST", "/tasks/"+xssTaskID+"/comments", bytes.NewBufferString(comReq)).WithContext(staffCtx)
+		w = httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("failed to post comment with html body, got %d: %s", w.Code, w.Body.String())
+		}
+
+		var comResp map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &comResp)
+		comBodyOut := comResp["comment"].(map[string]interface{})["body"].(string)
+		lowerCom := strings.ToLower(comBodyOut)
+
+		if strings.Contains(lowerCom, "<iframe") || strings.Contains(lowerCom, "<svg") || strings.Contains(lowerCom, "onload") {
+			t.Errorf("sanitizer failed: comment body contains unsafe tags: %s", comBodyOut)
+		}
+		if !strings.Contains(comBodyOut, "<p>Safe comment</p>") {
+			t.Errorf("sanitizer removed safe comment content: %s", comBodyOut)
+		}
+	})
+
+	// -------------------------------------------------------------------------
+	// FIX 2: REAL FILE SIZE ENFORCEMENT & UNCONFIRMED ATTACHMENT CLEANUP
+	// -------------------------------------------------------------------------
+	t.Run("Rule 7 & Fix 2: Real storage HeadObject enforcement and unconfirmed cleanup", func(t *testing.T) {
+		if stClient == nil {
+			t.Skip("skipping real storage test, stClient not available")
+		}
+
+		// 1. Presign attachment upload
+		presignReq := `{"filename":"test-file.mov","size_bytes":1000,"mime":"video/quicktime"}`
+		req := httptest.NewRequest("POST", "/tasks/"+createdTaskID+"/comments/attachments/presign", bytes.NewBufferString(presignReq)).WithContext(staffCtx)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("presign failed: %d: %s", w.Code, w.Body.String())
+		}
+		var pResp map[string]string
+		_ = json.Unmarshal(w.Body.Bytes(), &pResp)
+		storageKey := pResp["storage_key"]
+
+		// Test A: Upload real file exceeding 30 MB (e.g. 31MB + 1KB) directly to storage
+		oversizedBytes := int64(31*1024*1024 + 1024) // 32,506,880 bytes > 31,457,280 bytes
+		oversizedData := bytes.NewReader(make([]byte, oversizedBytes))
+		err = stClient.PutObject(ctx, storageKey, oversizedData, oversizedBytes, "video/quicktime")
+		if err != nil {
+			t.Fatalf("failed to put test object in storage: %v", err)
+		}
+
+		// Now client attempts to link this oversized attachment to a comment
+		comBody := fmt.Sprintf(`{
+			"tab": "client",
+			"body": "Here is an oversized file",
+			"attachments": [{
+				"storage_key": "%s",
+				"filename": "test-file.mov",
+				"mime": "video/quicktime",
+				"size_bytes": 1000
+			}]
+		}`, storageKey)
+		req = httptest.NewRequest("POST", "/tasks/"+createdTaskID+"/comments", bytes.NewBufferString(comBody)).WithContext(staffCtx)
+		w = httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		// Must be rejected with 400 Bad Request!
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected 400 for real file exceeding 30MB, got %d: %s", w.Code, w.Body.String())
+		}
+
+		// Verify the object was deleted from storage!
+		_, _, headErr := stClient.HeadObject(ctx, storageKey)
+		if headErr == nil {
+			t.Errorf("expected oversized object to be deleted from storage, but it still exists")
+		}
+
+		// Test B: Size mismatch (declared size does not match real file size)
+		mismatchKey := fmt.Sprintf("companies/%s/tasks/%s/attachments/%s/mismatch.txt",
+			uuid.UUID(comp.ID.Bytes).String(),
+			createdTaskID,
+			uuid.New().String(),
+		)
+		mData := []byte("real file content")
+		err = stClient.PutObject(ctx, mismatchKey, bytes.NewReader(mData), int64(len(mData)), "text/plain")
+		if err != nil {
+			t.Fatalf("failed to put mismatch object: %v", err)
+		}
+
+		mismatchBody := fmt.Sprintf(`{
+			"tab": "client",
+			"body": "Lying about size",
+			"attachments": [{
+				"storage_key": "%s",
+				"filename": "mismatch.txt",
+				"mime": "text/plain",
+				"size_bytes": 100
+			}]
+		}`, mismatchKey)
+		req = httptest.NewRequest("POST", "/tasks/"+createdTaskID+"/comments", bytes.NewBufferString(mismatchBody)).WithContext(staffCtx)
+		w = httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected 400 for declared vs real size mismatch, got %d: %s", w.Code, w.Body.String())
+		}
+		// Verify mismatch object was deleted from storage
+		_, _, headErr = stClient.HeadObject(ctx, mismatchKey)
+		if headErr == nil {
+			t.Errorf("expected size-mismatched object to be deleted from storage")
+		}
+
+		// Test C: Unconfirmed attachment cleanup older than 1 hour
+		staleKey := fmt.Sprintf("companies/%s/tasks/%s/attachments/%s/stale.bin",
+			uuid.UUID(comp.ID.Bytes).String(),
+			createdTaskID,
+			uuid.New().String(),
+		)
+		_ = stClient.PutObject(ctx, staleKey, bytes.NewReader([]byte("stale data")), 10, "application/octet-stream")
+
+		// Insert stale pending record older than 2 hours
+		staleTime := time.Now().Add(-2 * time.Hour)
+		var pendingID pgtype.UUID
+		err = pool.QueryRow(ctx, `
+			INSERT INTO pending_task_attachments (company_id, task_id, storage_key, filename, mime, declared_size_bytes, created_at)
+			VALUES ($1, $2, $3, 'stale.bin', 'application/octet-stream', 10, $4)
+			RETURNING id
+		`, comp.ID, uuid.MustParse(createdTaskID), staleKey, staleTime).Scan(&pendingID)
+		if err != nil {
+			t.Fatalf("failed to insert stale pending attachment: %v", err)
+		}
+
+		// Run stale cleanup
+		tasksHandler.cleanupStalePendingAttachments()
+
+		// Verify stale object was deleted from storage
+		_, _, headErr = stClient.HeadObject(ctx, staleKey)
+		if headErr == nil {
+			t.Errorf("expected stale unconfirmed object to be deleted by cleanupStalePendingAttachments")
+		}
+
+		// Verify row was deleted from pending_task_attachments
+		var count int
+		_ = pool.QueryRow(ctx, `SELECT count(*) FROM pending_task_attachments WHERE id = $1`, pendingID).Scan(&count)
+		if count != 0 {
+			t.Errorf("expected pending row to be removed from pending_task_attachments after cleanup")
 		}
 	})
 }

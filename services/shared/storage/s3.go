@@ -363,3 +363,29 @@ func (c *Client) PutObject(ctx context.Context, key string, body io.Reader, size
 	}
 	return nil
 }
+
+// HeadObject retrieves metadata for an object including ContentLength and ContentType
+func (c *Client) HeadObject(ctx context.Context, key string) (int64, string, error) {
+	out, err := c.S3.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(c.Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return 0, "", fmt.Errorf("head object %q: %w", key, err)
+	}
+	size := aws.ToInt64(out.ContentLength)
+	contentType := aws.ToString(out.ContentType)
+	return size, contentType, nil
+}
+
+// DeleteObject deletes an individual object key from storage
+func (c *Client) DeleteObject(ctx context.Context, key string) error {
+	_, err := c.S3.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(c.Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return fmt.Errorf("delete object %q: %w", key, err)
+	}
+	return nil
+}

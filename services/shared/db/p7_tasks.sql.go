@@ -39,6 +39,47 @@ func (q *Queries) CountTaskLinks(ctx context.Context, taskID pgtype.UUID) (int64
 	return count, err
 }
 
+const createPendingTaskAttachment = `-- name: CreatePendingTaskAttachment :one
+INSERT INTO pending_task_attachments (
+    company_id, task_id, storage_key, filename, mime, declared_size_bytes
+) VALUES (
+    $1, $2, $3, $4, $5, $6
+) RETURNING id, company_id, task_id, storage_key, filename, mime, declared_size_bytes, created_at
+`
+
+type CreatePendingTaskAttachmentParams struct {
+	CompanyID         pgtype.UUID `json:"company_id"`
+	TaskID            pgtype.UUID `json:"task_id"`
+	StorageKey        string      `json:"storage_key"`
+	Filename          string      `json:"filename"`
+	Mime              string      `json:"mime"`
+	DeclaredSizeBytes int64       `json:"declared_size_bytes"`
+}
+
+// Pending Task Attachments (Rule 7 unconfirmed cleanup)
+func (q *Queries) CreatePendingTaskAttachment(ctx context.Context, arg CreatePendingTaskAttachmentParams) (PendingTaskAttachment, error) {
+	row := q.db.QueryRow(ctx, createPendingTaskAttachment,
+		arg.CompanyID,
+		arg.TaskID,
+		arg.StorageKey,
+		arg.Filename,
+		arg.Mime,
+		arg.DeclaredSizeBytes,
+	)
+	var i PendingTaskAttachment
+	err := row.Scan(
+		&i.ID,
+		&i.CompanyID,
+		&i.TaskID,
+		&i.StorageKey,
+		&i.Filename,
+		&i.Mime,
+		&i.DeclaredSizeBytes,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createTask = `-- name: CreateTask :one
 INSERT INTO tasks (
     company_id, client_id, project_id, name, status, deadline,
@@ -215,6 +256,26 @@ func (q *Queries) CreateTaskLink(ctx context.Context, arg CreateTaskLinkParams) 
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const deletePendingTaskAttachmentByID = `-- name: DeletePendingTaskAttachmentByID :exec
+DELETE FROM pending_task_attachments
+WHERE id = $1
+`
+
+func (q *Queries) DeletePendingTaskAttachmentByID(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deletePendingTaskAttachmentByID, id)
+	return err
+}
+
+const deletePendingTaskAttachmentByStorageKey = `-- name: DeletePendingTaskAttachmentByStorageKey :exec
+DELETE FROM pending_task_attachments
+WHERE storage_key = $1
+`
+
+func (q *Queries) DeletePendingTaskAttachmentByStorageKey(ctx context.Context, storageKey string) error {
+	_, err := q.db.Exec(ctx, deletePendingTaskAttachmentByStorageKey, storageKey)
+	return err
 }
 
 const deleteTaskLink = `-- name: DeleteTaskLink :exec
@@ -433,6 +494,49 @@ func (q *Queries) ListAttachmentsForTaskComments(ctx context.Context, arg ListAt
 			&i.Filename,
 			&i.Mime,
 			&i.SizeBytes,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStalePendingTaskAttachments = `-- name: ListStalePendingTaskAttachments :many
+SELECT id, company_id, task_id, storage_key, filename, created_at
+FROM pending_task_attachments
+WHERE created_at < $1
+LIMIT 100
+`
+
+type ListStalePendingTaskAttachmentsRow struct {
+	ID         pgtype.UUID        `json:"id"`
+	CompanyID  pgtype.UUID        `json:"company_id"`
+	TaskID     pgtype.UUID        `json:"task_id"`
+	StorageKey string             `json:"storage_key"`
+	Filename   string             `json:"filename"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListStalePendingTaskAttachments(ctx context.Context, createdAt pgtype.Timestamptz) ([]ListStalePendingTaskAttachmentsRow, error) {
+	rows, err := q.db.Query(ctx, listStalePendingTaskAttachments, createdAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListStalePendingTaskAttachmentsRow{}
+	for rows.Next() {
+		var i ListStalePendingTaskAttachmentsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CompanyID,
+			&i.TaskID,
+			&i.StorageKey,
+			&i.Filename,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err

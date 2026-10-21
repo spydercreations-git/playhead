@@ -31,11 +31,6 @@ func TestUnprojectedDocumentsAndSpreadsheets(t *testing.T) {
 		dbPool: pool,
 	}
 
-	sheetH := &SpreadsheetsHandler{
-		q:   queries,
-		cfg: cfg,
-	}
-
 	// 1. Create company, creator (User A) and another member (User B)
 	comp, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
 		Name:              "Unprojected Studio",
@@ -143,76 +138,27 @@ func TestUnprojectedDocumentsAndSpreadsheets(t *testing.T) {
 		t.Fatalf("User B (non-admin editor) should NOT be able to view User A's private doc without grant, got %d", recGetDocB.Code)
 	}
 
-	// 5. User A creates an unprojected spreadsheet
-	sheetPayload, _ := json.Marshal(map[string]interface{}{
-		"title":    "Personal Expense Tracker",
-		"template": "blank",
-	})
-	reqSheet := httptest.NewRequest("POST", "/api/v1/spreadsheets", bytes.NewReader(sheetPayload))
-	reqSheet = reqSheet.WithContext(contextWithAuth(reqSheet.Context(), userA, comp.ID, authz.RoleEditor))
-	recSheet := httptest.NewRecorder()
-
-	sheetH.CreateSpreadsheet(recSheet, reqSheet)
-	if recSheet.Code != http.StatusCreated {
-		t.Fatalf("expected 201 Created for unprojected spreadsheet, got %d: %s", recSheet.Code, recSheet.Body.String())
-	}
-
-	var createdSheet struct {
-		ID        string `json:"id"`
-		Title     string `json:"title"`
-		ProjectID string `json:"project_id"`
-	}
-	if err := json.Unmarshal(recSheet.Body.Bytes(), &createdSheet); err != nil {
-		t.Fatalf("failed to parse created spreadsheet response: %v", err)
-	}
-	if createdSheet.ProjectID != "" {
-		t.Errorf("expected empty project_id for unprojected sheet, got %s", createdSheet.ProjectID)
-	}
-
-	// 6. User A can view spreadsheet, User B cannot view it
-	reqGetSheetA := httptest.NewRequest("GET", "/api/v1/spreadsheets/"+createdSheet.ID, nil)
-	reqGetSheetA = withChiURLParams(reqGetSheetA, map[string]string{"id": createdSheet.ID})
-	reqGetSheetA = reqGetSheetA.WithContext(contextWithAuth(reqGetSheetA.Context(), userA, comp.ID, authz.RoleEditor))
-	recGetSheetA := httptest.NewRecorder()
-
-	sheetH.GetSpreadsheet(recGetSheetA, reqGetSheetA)
-	if recGetSheetA.Code != http.StatusOK {
-		t.Fatalf("User A should be able to get own spreadsheet, got %d: %s", recGetSheetA.Code, recGetSheetA.Body.String())
-	}
-
-	reqGetSheetB := httptest.NewRequest("GET", "/api/v1/spreadsheets/"+createdSheet.ID, nil)
-	reqGetSheetB = withChiURLParams(reqGetSheetB, map[string]string{"id": createdSheet.ID})
-	reqGetSheetB = reqGetSheetB.WithContext(contextWithAuth(reqGetSheetB.Context(), userB, comp.ID, authz.RoleEditor))
-	recGetSheetB := httptest.NewRecorder()
-
-	sheetH.GetSpreadsheet(recGetSheetB, reqGetSheetB)
-	if recGetSheetB.Code != http.StatusForbidden {
-		t.Fatalf("User B should NOT be able to view User A's private spreadsheet, got %d", recGetSheetB.Code)
-	}
-
-	// 7. Explicit grant: Grant User B access to the spreadsheet
-	sheetUUID, _ := uuid.Parse(createdSheet.ID)
-	_, err = queries.CreateGrant(ctx, db.CreateGrantParams{
-		CompanyID:   comp.ID,
-		TargetType:  "item",
-		TargetID:    pgtype.UUID{Bytes: sheetUUID, Valid: true},
-		Email:       authz.NormalizeEmail(userB.Email),
-		Level:       authz.LevelViewer,
-		CanDownload: true,
-		GrantedBy:   userA.ID,
+	// 5. User A shares document with User B
+	docUUID, _ = uuid.Parse(createdDoc.ID)
+	_, err = queries.UpsertDocumentShare(ctx, db.UpsertDocumentShareParams{
+		ID:         pgtype.UUID{Bytes: uuid.New(), Valid: true},
+		CompanyID:  comp.ID,
+		DocumentID: pgtype.UUID{Bytes: docUUID, Valid: true},
+		UserID:     userB.ID,
+		Role:       "view",
 	})
 	if err != nil {
-		t.Fatalf("failed to grant User B access: %v", err)
+		t.Fatalf("failed to share document with User B: %v", err)
 	}
 
-	// Now User B CAN view the spreadsheet!
-	reqGetSheetBGranted := httptest.NewRequest("GET", "/api/v1/spreadsheets/"+createdSheet.ID, nil)
-	reqGetSheetBGranted = withChiURLParams(reqGetSheetBGranted, map[string]string{"id": createdSheet.ID})
-	reqGetSheetBGranted = reqGetSheetBGranted.WithContext(contextWithAuth(reqGetSheetBGranted.Context(), userB, comp.ID, authz.RoleCEO))
-	recGetSheetBGranted := httptest.NewRecorder()
+	// 6. User B CAN view the document after share
+	reqGetDocBGranted := httptest.NewRequest("GET", "/api/v1/documents/"+createdDoc.ID, nil)
+	reqGetDocBGranted = withChiURLParams(reqGetDocBGranted, map[string]string{"id": createdDoc.ID})
+	reqGetDocBGranted = reqGetDocBGranted.WithContext(contextWithAuth(reqGetDocBGranted.Context(), userB, comp.ID, authz.RoleEditor))
+	recGetDocBGranted := httptest.NewRecorder()
 
-	sheetH.GetSpreadsheet(recGetSheetBGranted, reqGetSheetBGranted)
-	if recGetSheetBGranted.Code != http.StatusOK {
-		t.Fatalf("User B should be able to view spreadsheet after explicit grant, got %d: %s", recGetSheetBGranted.Code, recGetSheetBGranted.Body.String())
+	docH.Get(recGetDocBGranted, reqGetDocBGranted)
+	if recGetDocBGranted.Code != http.StatusOK {
+		t.Fatalf("User B should be able to view document after share, got %d: %s", recGetDocBGranted.Code, recGetDocBGranted.Body.String())
 	}
 }

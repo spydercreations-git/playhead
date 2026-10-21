@@ -428,8 +428,19 @@ func TestP5DocumentsIntegration(t *testing.T) {
 	}
 
 	// -------------------------------------------------------------------------
-	// Change 5 & 8: Documents list for client shows only their client's documents
+	// Change 5 & 8: Documents list for client shows shared documents
 	// -------------------------------------------------------------------------
+	_, err = queries.UpsertDocumentShare(ctx, db.UpsertDocumentShareParams{
+		ID:         pgtype.UUID{Bytes: uuid.New(), Valid: true},
+		CompanyID:  company.ID,
+		DocumentID: doc.ID,
+		UserID:     clientUser.ID,
+		Role:       "view",
+	})
+	if err != nil {
+		t.Fatalf("failed to share document with client: %v", err)
+	}
+
 	req = httptest.NewRequest("GET", "/api/v1/documents", nil)
 	req = req.WithContext(contextWithPerson(req.Context(), clientUser, company.ID, clientPerson))
 	w = httptest.NewRecorder()

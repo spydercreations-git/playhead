@@ -837,3 +837,61 @@ func CanCreateTask(person Person) bool {
 	return person.HasPermission(PermCreateTask)
 }
 
+// DocumentTarget holds attributes needed for document authorization
+type DocumentTarget struct {
+	ID        uuid.UUID
+	CompanyID uuid.UUID
+	CreatedBy uuid.UUID
+}
+
+// CanViewDocument checks if person can view a standalone document
+func CanViewDocument(person Person, target DocumentTarget, shareRole string) bool {
+	if person.CompanyID != target.CompanyID {
+		return false
+	}
+	if person.IsStaff() {
+		return true
+	}
+	if person.UserID == target.CreatedBy {
+		return true
+	}
+	return shareRole == "view" || shareRole == "edit"
+}
+
+// CanEditDocument checks if person can edit a standalone document
+func CanEditDocument(person Person, target DocumentTarget, shareRole string) bool {
+	if person.CompanyID != target.CompanyID {
+		return false
+	}
+	if person.IsStaff() {
+		return true
+	}
+	if person.UserID == target.CreatedBy {
+		return true
+	}
+	return shareRole == "edit"
+}
+
+// CanManageDocumentAccess checks if person can share or manage permissions for a document
+func CanManageDocumentAccess(person Person, target DocumentTarget) bool {
+	if person.CompanyID != target.CompanyID {
+		return false
+	}
+	if person.UserID == target.CreatedBy {
+		return true
+	}
+	return person.IsStaff() && person.HasPermission(PermManageAccess)
+}
+
+// CanDeleteDocument checks if person can delete a document
+func CanDeleteDocument(person Person, target DocumentTarget) bool {
+	if person.CompanyID != target.CompanyID {
+		return false
+	}
+	if person.UserID == target.CreatedBy {
+		return true
+	}
+	return person.IsStaff() && person.HasPermission(PermDeleteItems)
+}
+
+

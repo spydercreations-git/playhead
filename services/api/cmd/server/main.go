@@ -123,8 +123,10 @@ func main() {
 		pgxPool = dbPool.Pool
 	}
 	documentsHandler := handler.NewDocumentsHandler(pgxPool, queries, rdb, storageClient, cfg)
-	spreadsheetsHandler := handler.NewSpreadsheetsHandler(pgxPool, queries, rdb, storageClient, cfg)
-	driveHandler := handler.NewDriveHandler(queries, pgxPool, storageClient, cfg)
+	homeHandler := handler.NewHomeHandler(pgxPool, queries)
+	quickLinksHandler := handler.NewQuickLinksHandler(queries)
+	storageHandler := handler.NewStorageHandler(queries)
+	searchHandler := handler.NewSearchHandler(pgxPool, queries)
 	onboardingHandler := handler.NewOnboardingHandler(queries, storageClient)
 	if pgxPool != nil {
 		projectHandler.SetPool(pgxPool)
@@ -378,7 +380,6 @@ func main() {
 			protected.Post("/items/{id}/reopen", reviewHandler.ReopenReview)
 			protected.Get("/items/{id}/reviews", reviewHandler.ListReviews)
 			protected.Get("/items/{id}/mentionable", reviewHandler.ListMentionable)
-			protected.Get("/reviews", reviewHandler.ListReviewsFeed)
 
 			// Admin Storage Dashboard (P2 Requirement 1)
 			protected.With(middleware.RequirePermission(authz.PermAdminStorage)).Get("/admin/storage", storageUploadsHandler.GetStorageAdminStats)
@@ -405,32 +406,11 @@ func main() {
 			protected.Post("/documents/{id}/preview-pdf-html", documentsHandler.PreviewPdfHtml)
 			protected.Post("/documents/{id}/import/docx", documentsHandler.ImportDocx)
 			protected.Post("/documents/{id}/import-docx", documentsHandler.ImportDocx)
+			protected.Post("/documents/{id}/duplicate", documentsHandler.Duplicate)
+			protected.Get("/documents/{id}/shares", documentsHandler.ListShares)
+			protected.Post("/documents/{id}/shares", documentsHandler.UpsertShare)
+			protected.Delete("/documents/{id}/shares/{userId}", documentsHandler.DeleteShare)
 			protected.Delete("/documents/{id}", itemsHandler.DeleteItem)
-
-			// Spreadsheets (Milestone P6)
-			protected.Get("/spreadsheets", spreadsheetsHandler.ListSpreadsheets)
-			protected.Post("/spreadsheets", spreadsheetsHandler.CreateSpreadsheet)
-			protected.Post("/projects/{projectId}/spreadsheets", spreadsheetsHandler.CreateSpreadsheet)
-			protected.Get("/projects/{projectId}/spreadsheets", spreadsheetsHandler.ListSpreadsheets)
-			protected.Get("/spreadsheets/{id}", spreadsheetsHandler.GetSpreadsheet)
-			protected.Delete("/spreadsheets/{id}", itemsHandler.DeleteItem)
-			protected.Get("/spreadsheets/{id}/view", spreadsheetsHandler.GetSpreadsheetView)
-			protected.Post("/spreadsheets/{id}/export/pdf", spreadsheetsHandler.ExportPdf)
-			protected.Get("/spreadsheets/{id}/export/pdf", spreadsheetsHandler.ExportPdf)
-			protected.Post("/spreadsheets/{id}/preview-pdf-html", spreadsheetsHandler.PreviewPdfHtml)
-			protected.Post("/spreadsheets/{id}/cells", spreadsheetsHandler.SetCellValue)
-			protected.Post("/spreadsheets/{id}/rows", spreadsheetsHandler.InsertRow)
-			protected.Patch("/spreadsheets/{id}/columns", spreadsheetsHandler.UpdateColumnMeta)
-			protected.Post("/spreadsheets/{id}/collab-ticket", spreadsheetsHandler.CreateCollabTicket)
-			protected.Post("/spreadsheets/{id}/import", spreadsheetsHandler.ImportSpreadsheet)
-			protected.Get("/spreadsheets/{id}/versions", spreadsheetsHandler.ListVersions)
-			protected.Post("/spreadsheets/{id}/versions/{versionId}/restore", spreadsheetsHandler.RestoreVersion)
-			protected.Get("/spreadsheets/{id}/comments", spreadsheetsHandler.ListComments)
-			protected.Post("/spreadsheets/{id}/comments", spreadsheetsHandler.CreateComment)
-			protected.Patch("/spreadsheets/{id}/comments/{commentId}/resolve", spreadsheetsHandler.ResolveComment)
-			protected.Post("/spreadsheets/{id}/clear", spreadsheetsHandler.ClearSpreadsheet)
-			protected.Get("/items/{id}/tracker-access", spreadsheetsHandler.GetTrackerAccess)
-			protected.Post("/items/{id}/tracker-access", spreadsheetsHandler.UpdateTrackerAccess)
 
 			// Tasks (Milestone P7 / Phase 3)
 			protected.Get("/tasks", tasksHandler.ListTasks)
@@ -455,18 +435,21 @@ func main() {
 			protected.Get("/tasks/{id}/comments/stream", tasksHandler.StreamTaskComments)
 			protected.Get("/tasks/{id}/mentionable", tasksHandler.ListMentionable)
 
-			// My Drive & Recent Items (P2 & P3)
-			protected.Get("/drive/folders", driveHandler.ListFolders)
-			protected.Get("/drive/items", driveHandler.ListItems)
-			protected.Post("/drive/folders", driveHandler.CreateFolder)
-			protected.Patch("/drive/items/{id}", driveHandler.RenameItem)
-			protected.Delete("/drive/items/{id}", driveHandler.DeleteItem)
-			protected.Post("/drive/items/{id}/restore", driveHandler.RestoreItem)
-			protected.Post("/drive/items/{id}/move", driveHandler.MoveToProject)
-			protected.Post("/drive/items/{id}/copy", driveHandler.CopyToProject)
-			protected.Get("/drive/recent", driveHandler.ListRecentItems)
-			protected.Post("/drive/recent", driveHandler.RecordRecentItem)
-			protected.Get("/drive/trash", driveHandler.ListTrash)
+			// Phase 4: Home Dashboard & Activity
+			protected.Get("/home", homeHandler.GetHomeDashboard)
+			protected.Get("/home/activity", homeHandler.ListActivity)
+			protected.Put("/users/me/upload-destination", homeHandler.UpdateUploadDestination)
+
+			// Phase 4: Quick Links
+			protected.Get("/quick-links", quickLinksHandler.List)
+			protected.Post("/quick-links", quickLinksHandler.Create)
+			protected.Delete("/quick-links/{id}", quickLinksHandler.Delete)
+
+			// Phase 4: Storage Dashboard
+			protected.Get("/storage", storageHandler.GetStorage)
+
+			// Phase 4: Universal Search
+			protected.Get("/search", searchHandler.UniversalSearch)
 		})
 	})
 

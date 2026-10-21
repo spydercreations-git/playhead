@@ -68,7 +68,7 @@ SET name = $2,
     temp_password_used = TRUE,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, grid_size
+RETURNING id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, grid_size, last_upload_project_id, last_upload_folder_id
 `
 
 type CompleteUserOnboardingParams struct {
@@ -105,6 +105,8 @@ func (q *Queries) CompleteUserOnboarding(ctx context.Context, arg CompleteUserOn
 		&i.IsOnboarded,
 		&i.OnboardedAt,
 		&i.GridSize,
+		&i.LastUploadProjectID,
+		&i.LastUploadFolderID,
 	)
 	return i, err
 }

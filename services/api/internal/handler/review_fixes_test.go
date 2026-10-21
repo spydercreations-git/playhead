@@ -205,7 +205,7 @@ func TestFix2NoLockOutAndOnboardingAtomicity(t *testing.T) {
 	permanentPass := "PermanentPassword987!"
 	onboardingBody, _ := json.Marshal(map[string]string{
 		"name":         "Updated User Name",
-		"username":     fmt.Sprintf("user%d", time.Now().UnixNano()%1000000),
+		"username":     fmt.Sprintf("usr%d", time.Now().UnixNano()),
 		"new_password": permanentPass,
 	})
 	req = httptest.NewRequest("POST", "/api/v1/users/onboarding", bytes.NewReader(onboardingBody)).WithContext(authCtx)

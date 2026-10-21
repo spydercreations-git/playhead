@@ -30,6 +30,91 @@ const nextConfig: NextConfig = {
         destination: "/library/:id",
         permanent: true,
       },
+      {
+        source: "/my-drive/:path*",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/my-drive",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/drive/:path*",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/drive",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/spreadsheets/:path*",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/spreadsheets",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/sheet/:path*",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/sheet",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/reviews/:path*",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/reviews",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/shared-with-me/:path*",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/shared-with-me",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/starred/:path*",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/starred",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/d/:id",
+        destination: "/documents/:id",
+        permanent: true,
+      },
+      {
+        source: "/library/projects/:projectId/documents/:id",
+        destination: "/documents/:id",
+        permanent: true,
+      },
+      {
+        source: "/projects/:projectId/documents/:id",
+        destination: "/documents/:id",
+        permanent: true,
+      },
     ];
   },
 };

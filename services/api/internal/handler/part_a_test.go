@@ -31,7 +31,6 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 	itemsH := NewItemsHandler(queries, nil)
 	storageH := NewStorageUploadsHandler(queries, nil, mailClient, cfg)
 	docsH := NewDocumentsHandler(pool, queries, nil, nil, cfg)
-	sheetsH := NewSpreadsheetsHandler(pool, queries, nil, nil, cfg)
 
 	// 1. Create Company "Idyll Productions" with internal plan and storage_limit_bytes = 0
 	comp, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
@@ -302,41 +301,40 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 	// -------------------------------------------------------------------------
 	// Test 3: DELETE /api/v1/spreadsheets/{id} sends to Trash and Restore brings it back
 	// -------------------------------------------------------------------------
-	t.Run("DELETE /spreadsheets/{id} sends to trash and restores", func(t *testing.T) {
-		// 1. Create a spreadsheet
+	t.Run("DELETE /documents/{id} sends to trash and restores", func(t *testing.T) {
+		// 1. Create a document
 		createPayload := map[string]interface{}{
-			"project_id": uuid.UUID(proj.ID.Bytes).String(),
-			"title":      "Budget Sheet",
+			"title": "Budget Document",
 		}
 		createBody, _ := json.Marshal(createPayload)
-		req := httptest.NewRequest("POST", "/api/v1/spreadsheets", bytes.NewReader(createBody))
+		req := httptest.NewRequest("POST", "/api/v1/documents", bytes.NewReader(createBody))
 		req = req.WithContext(contextWithAuth(req.Context(), adminUser, comp.ID, authz.RoleCEO))
 		rr := httptest.NewRecorder()
-		sheetsH.CreateSpreadsheet(rr, req)
+		docsH.Create(rr, req)
 		if rr.Code != http.StatusCreated && rr.Code != http.StatusOK {
-			t.Fatalf("failed to create spreadsheet: code %d: %s", rr.Code, rr.Body.String())
+			t.Fatalf("failed to create document: code %d: %s", rr.Code, rr.Body.String())
 		}
-		var createdSheet map[string]interface{}
-		_ = json.Unmarshal(rr.Body.Bytes(), &createdSheet)
-		sheetIDStr := createdSheet["id"].(string)
+		var createdDoc map[string]interface{}
+		_ = json.Unmarshal(rr.Body.Bytes(), &createdDoc)
+		docIDStr := createdDoc["id"].(string)
 
-		// 2. Setup chi router for DELETE /spreadsheets/{id} and trash
+		// 2. Setup chi router for DELETE /documents/{id} and trash
 		r := chi.NewRouter()
-		r.Delete("/spreadsheets/{id}", itemsH.DeleteItem)
+		r.Delete("/documents/{id}", itemsH.DeleteItem)
 		r.Get("/trash", itemsH.ListTrash)
 		r.Post("/trash/{id}/restore", itemsH.RestoreTrashItem)
 
-		// 3. Perform DELETE /spreadsheets/{id}
-		delReq := httptest.NewRequest("DELETE", fmt.Sprintf("/spreadsheets/%s", sheetIDStr), nil)
+		// 3. Perform DELETE /documents/{id}
+		delReq := httptest.NewRequest("DELETE", fmt.Sprintf("/documents/%s", docIDStr), nil)
 		delReq = delReq.WithContext(contextWithAuth(delReq.Context(), adminUser, comp.ID, authz.RoleCEO))
 		delRR := httptest.NewRecorder()
 		r.ServeHTTP(delRR, delReq)
 
 		if delRR.Code != http.StatusOK && delRR.Code != http.StatusNoContent {
-			t.Fatalf("expected 200/204 on DELETE /spreadsheets/{id}, got %d: %s", delRR.Code, delRR.Body.String())
+			t.Fatalf("expected 200/204 on DELETE /documents/{id}, got %d: %s", delRR.Code, delRR.Body.String())
 		}
 
-		// 4. Verify spreadsheet is in Trash
+		// 4. Verify document is in Trash
 		trashReq := httptest.NewRequest("GET", "/trash", nil)
 		trashReq = trashReq.WithContext(contextWithAuth(trashReq.Context(), adminUser, comp.ID, authz.RoleCEO))
 		trashRR := httptest.NewRecorder()
@@ -351,17 +349,17 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 		found := false
 		for _, item := range itemsList {
 			m := item.(map[string]interface{})
-			if m["id"] == sheetIDStr {
+			if m["id"] == docIDStr {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Fatalf("expected spreadsheet %s to appear in Trash, items: %v", sheetIDStr, itemsList)
+			t.Fatalf("expected document %s to appear in Trash, items: %v", docIDStr, itemsList)
 		}
 
-		// 5. Restore spreadsheet from Trash
-		restoreReq := httptest.NewRequest("POST", fmt.Sprintf("/trash/%s/restore", sheetIDStr), nil)
+		// 5. Restore document from Trash
+		restoreReq := httptest.NewRequest("POST", fmt.Sprintf("/trash/%s/restore", docIDStr), nil)
 		restoreReq = restoreReq.WithContext(contextWithAuth(restoreReq.Context(), adminUser, comp.ID, authz.RoleCEO))
 		restoreRR := httptest.NewRecorder()
 		r.ServeHTTP(restoreRR, restoreReq)
@@ -379,8 +377,8 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 		itemsList2 := trashResp["items"].([]interface{})
 		for _, item := range itemsList2 {
 			m := item.(map[string]interface{})
-			if m["id"] == sheetIDStr {
-				t.Fatalf("spreadsheet %s should no longer be in trash after restore", sheetIDStr)
+			if m["id"] == docIDStr {
+				t.Fatalf("document %s should no longer be in trash after restore", docIDStr)
 			}
 		}
 	})

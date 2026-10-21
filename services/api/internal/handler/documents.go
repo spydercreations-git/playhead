@@ -458,19 +458,8 @@ func (h *DocumentsHandler) IssueCollabTicket(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	projTarget := authz.ProjectTarget{
-		ID:        itemRow.ProjectID.Bytes,
-		CompanyID: caller.CompanyID,
-	}
-	itemTarget := authz.ItemTarget{
-		ID:        docUUID,
-		ProjectID: itemRow.ProjectID.Bytes,
-		CompanyID: caller.CompanyID,
-		CreatedBy: itemRow.CreatedBy.Bytes,
-	}
-
-	access, err := authz.AccessItem(ctx, h.q, *caller, projTarget, itemTarget)
-	if err != nil || !access.CanView() {
+	canView, _, _ := h.checkDocAccess(ctx, *caller, docUUID, itemRow.CreatedBy.Bytes)
+	if !canView {
 		http.Error(w, "Forbidden: Insufficient permissions", http.StatusForbidden)
 		return
 	}
@@ -537,9 +526,9 @@ func (h *DocumentsHandler) Create(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		// Creating in "My documents" must only require being a logged-in team member, not edit access to a project
-		if !caller.IsTeamMember() {
-			http.Error(w, "Forbidden: Only team members can create documents in My documents", http.StatusForbidden)
+		// Standalone document creation: allowed for staff and editors (clients cannot create company documents)
+		if caller.CompanyID == uuid.Nil || caller.IsClient() {
+			http.Error(w, "Forbidden: Clients cannot create workspace documents", http.StatusForbidden)
 			return
 		}
 	}
@@ -640,6 +629,30 @@ func (h *DocumentsHandler) Create(w http.ResponseWriter, r *http.Request) {
 // List Documents (Scoped to caller permissions & client contact)
 // ---------------------------------------------------------
 
+func (h *DocumentsHandler) checkDocAccess(ctx context.Context, caller authz.Person, docID uuid.UUID, createdBy uuid.UUID) (canView bool, canEdit bool, canManage bool) {
+	if caller.CompanyID == uuid.Nil {
+		return false, false, false
+	}
+	if caller.IsStaff() {
+		return true, true, caller.HasPermission(authz.PermManageAccess)
+	}
+	if caller.UserID == createdBy {
+		return true, true, true
+	}
+	// Check document_shares
+	var shareRole string
+	err := h.dbPool.QueryRow(ctx, `SELECT role FROM document_shares WHERE document_id = $1 AND user_id = $2`, docID, caller.UserID).Scan(&shareRole)
+	if err == nil {
+		if shareRole == "edit" {
+			return true, true, false
+		}
+		if shareRole == "view" {
+			return true, false, false
+		}
+	}
+	return false, false, false
+}
+
 func (h *DocumentsHandler) List(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	caller := getCaller(ctx)
@@ -648,165 +661,43 @@ func (h *DocumentsHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clientIDFilter := r.URL.Query().Get("client_id")
-	projectIDFilter := r.URL.Query().Get("project_id")
-	searchQuery := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("search")))
+	searchQuery := strings.TrimSpace(r.URL.Query().Get("search"))
+	ownerFilter := r.URL.Query().Get("owner_id")
+	sortBy := r.URL.Query().Get("sort_by") // title, created, modified
+	if sortBy == "" {
+		sortBy = "modified"
+	}
 
-	var clientPgUUID pgtype.UUID
-	if clientIDFilter != "" {
-		if cUUID, err := uuid.Parse(clientIDFilter); err == nil {
-			clientPgUUID = pgtype.UUID{Bytes: cUUID, Valid: true}
+	var searchPgText pgtype.Text
+	if searchQuery != "" {
+		searchPgText = pgtype.Text{String: searchQuery, Valid: true}
+	}
+
+	var ownerPgUUID pgtype.UUID
+	if ownerFilter != "" && ownerFilter != "anyone" {
+		if oID, err := uuid.Parse(ownerFilter); err == nil {
+			ownerPgUUID = pgtype.UUID{Bytes: oID, Valid: true}
 		}
 	}
 
-	var projectPgUUID pgtype.UUID
-	if projectIDFilter != "" {
-		if pUUID, err := uuid.Parse(projectIDFilter); err == nil {
-			projectPgUUID = pgtype.UUID{Bytes: pUUID, Valid: true}
-		}
-	}
-
-	// Client contact scoping: client contacts strictly only see their client's documents
-	var clientContactClientID uuid.UUID
-	contacts, cErr := h.q.GetClientContactsByEmail(ctx, authz.NormalizeEmail(caller.Email))
-	if cErr == nil && len(contacts) > 0 && contacts[0].ClientID.Valid {
-		clientContactClientID = contacts[0].ClientID.Bytes
-		clientPgUUID = contacts[0].ClientID
-	}
-
-	docs, err := h.q.ListDocumentsForCompany(ctx, db.ListDocumentsForCompanyParams{
+	docs, err := h.q.ListDocuments(ctx, db.ListDocumentsParams{
 		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
 		UserID:    pgtype.UUID{Bytes: caller.UserID, Valid: true},
-		ClientID:  clientPgUUID,
-		ProjectID: projectPgUUID,
+		IsStaff:   caller.IsStaff(),
+		OwnerID:   ownerPgUUID,
+		Search:    searchPgText,
+		SortBy:    sortBy,
 	})
 	if err != nil {
-		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		renderJSON(w, http.StatusOK, map[string]interface{}{"documents": []interface{}{}, "total_count": 0})
 		return
 	}
 
-	membership, _ := h.q.GetMembership(ctx, db.GetMembershipParams{
-		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
-		UserID:    pgtype.UUID{Bytes: caller.UserID, Valid: true},
-	})
-	isTeamMember := (membership.Role != "")
-
-	type ClientChip struct {
-		ID    string `json:"id"`
-		Name  string `json:"name"`
-		Count int    `json:"count"`
-	}
-
-	type DocItem struct {
-		ID                 string    `json:"id"`
-		Title              string    `json:"title"`
-		ProjectID          string    `json:"project_id"`
-		ProjectName        string    `json:"project_name"`
-		ClientID           string    `json:"client_id"`
-		ClientName         string    `json:"client_name"`
-		LastEditor         string    `json:"last_editor"`
-		UpdatedAt          time.Time `json:"updated_at"`
-		CreatedAt          time.Time `json:"created_at"`
-		WordCount          int32     `json:"word_count"`
-		CharacterCount     int32     `json:"character_count"`
-		ReadingTimeSeconds int32     `json:"reading_time_seconds"`
-		IsStarred          bool      `json:"is_starred"`
-		CanEdit            bool      `json:"can_edit"`
-	}
-
-	var filteredDocs []DocItem
-	clientCounts := make(map[string]*ClientChip)
-
-	for _, d := range docs {
-		projTarget := authz.ProjectTarget{
-			ID:        d.ProjectID.Bytes,
-			CompanyID: caller.CompanyID,
-			ClientID:  d.ClientID.Bytes,
-		}
-		itemTarget := authz.ItemTarget{
-			ID:        d.ID.Bytes,
-			ProjectID: d.ProjectID.Bytes,
-			CompanyID: caller.CompanyID,
-			CreatedBy: d.CreatedBy.Bytes,
-		}
-
-		if clientContactClientID != uuid.Nil && d.ClientID.Bytes != clientContactClientID {
-			continue
-		}
-
-		access, err := authz.AccessItem(ctx, h.q, *caller, projTarget, itemTarget)
-		if err != nil || !access.CanView() {
-			continue
-		}
-
-		if searchQuery != "" {
-			searchText := strings.ToLower(d.Title)
-			if isTeamMember {
-				searchText += " " + strings.ToLower(d.PlainText)
-			} else {
-				searchText += " " + strings.ToLower(d.PublicPlainText)
-			}
-			if !strings.Contains(searchText, searchQuery) {
-				continue
-			}
-		}
-
-		cIDStr := uuid.UUID(d.ClientID.Bytes).String()
-		if _, exists := clientCounts[cIDStr]; !exists {
-			clientCounts[cIDStr] = &ClientChip{
-				ID:    cIDStr,
-				Name:  d.ClientName,
-				Count: 0,
-			}
-		}
-		clientCounts[cIDStr].Count++
-
-		lastEditor := "Team member"
-		if d.CreatedByName.Valid && d.CreatedByName.String != "" {
-			lastEditor = d.CreatedByName.String
-		}
-
-		var pIDStr, clientIDStr string
-		if d.ProjectID.Valid && d.ProjectID.Bytes != uuid.Nil {
-			pIDStr = uuid.UUID(d.ProjectID.Bytes).String()
-		}
-		if d.ClientID.Valid && d.ClientID.Bytes != uuid.Nil {
-			clientIDStr = uuid.UUID(d.ClientID.Bytes).String()
-		}
-
-		filteredDocs = append(filteredDocs, DocItem{
-			ID:                 uuid.UUID(d.ID.Bytes).String(),
-			Title:              d.Title,
-			ProjectID:          pIDStr,
-			ProjectName:        d.ProjectName,
-			ClientID:           clientIDStr,
-			ClientName:         d.ClientName,
-			LastEditor:         lastEditor,
-			UpdatedAt:          d.UpdatedAt.Time,
-			CreatedAt:          d.CreatedAt.Time,
-			WordCount:          d.WordCount,
-			CharacterCount:     d.CharacterCount,
-			ReadingTimeSeconds: d.ReadingTimeSeconds,
-			IsStarred:          d.IsStarred,
-			CanEdit:            access.Level == authz.LevelFull && isTeamMember,
-		})
-	}
-
-	chips := make([]ClientChip, 0, len(clientCounts))
-	for _, c := range clientCounts {
-		chips = append(chips, *c)
-	}
-
 	renderJSON(w, http.StatusOK, map[string]interface{}{
-		"documents":    filteredDocs,
-		"total_count":  len(filteredDocs),
-		"client_chips": chips,
+		"documents":   docs,
+		"total_count": len(docs),
 	})
 }
-
-// ---------------------------------------------------------
-// Get Document Details
-// ---------------------------------------------------------
 
 func (h *DocumentsHandler) Get(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -831,29 +722,11 @@ func (h *DocumentsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projTarget := authz.ProjectTarget{
-		ID:        doc.ProjectID.Bytes,
-		CompanyID: caller.CompanyID,
-		ClientID:  doc.ClientID.Bytes,
-	}
-	itemTarget := authz.ItemTarget{
-		ID:        docUUID,
-		ProjectID: doc.ProjectID.Bytes,
-		CompanyID: caller.CompanyID,
-		CreatedBy: doc.CreatedBy.Bytes,
-	}
-
-	access, err := authz.AccessItem(ctx, h.q, *caller, projTarget, itemTarget)
-	if err != nil || !access.CanView() {
+	canView, canEdit, canManage := h.checkDocAccess(ctx, *caller, docUUID, doc.CreatedBy.Bytes)
+	if !canView {
 		http.Error(w, "Forbidden: Access denied", http.StatusForbidden)
 		return
 	}
-
-	membership, _ := h.q.GetMembership(ctx, db.GetMembershipParams{
-		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
-		UserID:    pgtype.UUID{Bytes: caller.UserID, Valid: true},
-	})
-	isTeamMember := (membership.Role != "")
 
 	var pIDStr, clientIDStr string
 	if doc.ProjectID.Valid && doc.ProjectID.Bytes != uuid.Nil {
@@ -874,9 +747,237 @@ func (h *DocumentsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		"character_count":      doc.CharacterCount,
 		"reading_time_seconds": doc.ReadingTimeSeconds,
 		"updated_at":           doc.UpdatedAt.Time,
-		"can_edit":             access.Level == authz.LevelFull && isTeamMember,
-		"can_download":         access.CanDownload,
-		"is_team_member":       isTeamMember,
+		"created_at":           doc.ItemCreatedAt.Time,
+		"created_by":           uuid.UUID(doc.CreatedBy.Bytes).String(),
+		"created_by_name":      doc.CreatedByName,
+		"can_edit":             canEdit,
+		"can_manage":           canManage,
+		"can_download":         true,
+		"is_team_member":       caller.IsStaff(),
+	})
+}
+
+func (h *DocumentsHandler) ListShares(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	caller := getCaller(ctx)
+	if caller == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	docUUID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Invalid document ID", http.StatusBadRequest)
+		return
+	}
+	item, err := h.q.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:        pgtype.UUID{Bytes: docUUID, Valid: true},
+		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+	})
+	if err != nil {
+		http.Error(w, "Document not found", http.StatusNotFound)
+		return
+	}
+	canView, _, _ := h.checkDocAccess(ctx, *caller, docUUID, item.CreatedBy.Bytes)
+	if !canView {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	shares, err := h.q.ListDocumentShares(ctx, db.ListDocumentSharesParams{
+		DocumentID: pgtype.UUID{Bytes: docUUID, Valid: true},
+		CompanyID:  pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+	})
+	if err != nil {
+		shares = []db.ListDocumentSharesRow{}
+	}
+	renderJSON(w, http.StatusOK, map[string]interface{}{"shares": shares})
+}
+
+func (h *DocumentsHandler) UpsertShare(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	caller := getCaller(ctx)
+	if caller == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	docUUID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Invalid document ID", http.StatusBadRequest)
+		return
+	}
+	item, err := h.q.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:        pgtype.UUID{Bytes: docUUID, Valid: true},
+		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+	})
+	if err != nil {
+		http.Error(w, "Document not found", http.StatusNotFound)
+		return
+	}
+	_, _, canManage := h.checkDocAccess(ctx, *caller, docUUID, item.CreatedBy.Bytes)
+	if !canManage {
+		http.Error(w, "Forbidden: Only document owner or staff can share documents", http.StatusForbidden)
+		return
+	}
+
+	var req struct {
+		UserID string `json:"user_id"`
+		Email  string `json:"email"`
+		Role   string `json:"role"` // 'view' or 'edit'
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid json", http.StatusBadRequest)
+		return
+	}
+
+	targetUserID := uuid.Nil
+	if req.UserID != "" {
+		targetUserID, _ = uuid.Parse(req.UserID)
+	}
+	if targetUserID == uuid.Nil && req.Email != "" {
+		u, uErr := h.q.GetUserByEmail(ctx, authz.NormalizeEmail(req.Email))
+		if uErr == nil {
+			targetUserID = u.ID.Bytes
+		}
+	}
+	if targetUserID == uuid.Nil {
+		http.Error(w, "User not found", http.StatusBadRequest)
+		return
+	}
+
+	role := strings.ToLower(strings.TrimSpace(req.Role))
+	if role != "view" && role != "edit" {
+		role = "view"
+	}
+
+	share, err := h.q.UpsertDocumentShare(ctx, db.UpsertDocumentShareParams{
+		ID:         pgtype.UUID{Bytes: uuid.New(), Valid: true},
+		CompanyID:  pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+		DocumentID: pgtype.UUID{Bytes: docUUID, Valid: true},
+		UserID:     pgtype.UUID{Bytes: targetUserID, Valid: true},
+		Role:       role,
+	})
+	if err != nil {
+		http.Error(w, "Failed to share document", http.StatusInternalServerError)
+		return
+	}
+
+	renderJSON(w, http.StatusOK, map[string]interface{}{"ok": true, "share": share})
+}
+
+func (h *DocumentsHandler) DeleteShare(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	caller := getCaller(ctx)
+	if caller == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	docUUID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Invalid document ID", http.StatusBadRequest)
+		return
+	}
+	userUUID, err := uuid.Parse(chi.URLParam(r, "userId"))
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+	item, err := h.q.GetItemByID(ctx, db.GetItemByIDParams{
+		ID:        pgtype.UUID{Bytes: docUUID, Valid: true},
+		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+	})
+	if err != nil {
+		http.Error(w, "Document not found", http.StatusNotFound)
+		return
+	}
+	_, _, canManage := h.checkDocAccess(ctx, *caller, docUUID, item.CreatedBy.Bytes)
+	if !canManage {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	_ = h.q.DeleteDocumentShare(ctx, db.DeleteDocumentShareParams{
+		DocumentID: pgtype.UUID{Bytes: docUUID, Valid: true},
+		UserID:     pgtype.UUID{Bytes: userUUID, Valid: true},
+		CompanyID:  pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+	})
+	renderJSON(w, http.StatusOK, map[string]interface{}{"ok": true})
+}
+
+func (h *DocumentsHandler) Duplicate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	caller := getCaller(ctx)
+	if caller == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	docUUID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Invalid document ID", http.StatusBadRequest)
+		return
+	}
+	doc, err := h.q.GetDocument(ctx, db.GetDocumentParams{
+		ID:        pgtype.UUID{Bytes: docUUID, Valid: true},
+		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+	})
+	if err != nil {
+		http.Error(w, "Document not found", http.StatusNotFound)
+		return
+	}
+	canView, _, _ := h.checkDocAccess(ctx, *caller, docUUID, doc.CreatedBy.Bytes)
+	if !canView {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	newID := uuid.New()
+	newTitle := "Copy of " + doc.Title
+
+	tx, err := h.dbPool.Begin(ctx)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := h.q.WithTx(tx)
+	var pos pgtype.Numeric
+	_ = pos.Scan("1000")
+	newItem, err := qtx.CreateItem(ctx, db.CreateItemParams{
+		CompanyID: pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+		ProjectID: pgtype.UUID{Valid: false},
+		ParentID:  pgtype.UUID{Valid: false},
+		Kind:      "document",
+		Name:      newTitle,
+		Position:  pos,
+		CreatedBy: pgtype.UUID{Bytes: caller.UserID, Valid: true},
+	})
+	if err != nil {
+		http.Error(w, "Failed to duplicate item: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_, err = qtx.CreateDocument(ctx, db.CreateDocumentParams{
+		ID:                 newItem.ID,
+		CompanyID:          pgtype.UUID{Bytes: caller.CompanyID, Valid: true},
+		ContentState:       doc.ContentState,
+		ContentJson:        doc.ContentJson,
+		PlainText:          doc.PlainText,
+		PublicPlainText:    doc.PublicPlainText,
+		WordCount:          doc.WordCount,
+		CharacterCount:     doc.CharacterCount,
+		ReadingTimeSeconds: doc.ReadingTimeSeconds,
+	})
+	if err != nil {
+		http.Error(w, "Failed to duplicate document: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		http.Error(w, "Failed to commit duplicate", http.StatusInternalServerError)
+		return
+	}
+
+	renderJSON(w, http.StatusCreated, map[string]interface{}{
+		"id":    newID.String(),
+		"title": newTitle,
 	})
 }
 
@@ -1000,19 +1101,8 @@ func (h *DocumentsHandler) Rename(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projTarget := authz.ProjectTarget{
-		ID:        item.ProjectID.Bytes,
-		CompanyID: caller.CompanyID,
-	}
-	itemTarget := authz.ItemTarget{
-		ID:        docUUID,
-		ProjectID: item.ProjectID.Bytes,
-		CompanyID: caller.CompanyID,
-		CreatedBy: item.CreatedBy.Bytes,
-	}
-
-	access, err := authz.AccessItem(ctx, h.q, *caller, projTarget, itemTarget)
-	if err != nil || (!access.CanModifyItem(*caller, item.CreatedBy.Bytes) && access.Level != authz.LevelFull) {
+	_, canEdit, _ := h.checkDocAccess(ctx, *caller, docUUID, item.CreatedBy.Bytes)
+	if !canEdit {
 		http.Error(w, "Forbidden: Cannot rename this document", http.StatusForbidden)
 		return
 	}

@@ -14,6 +14,7 @@ import {
 import { Avatar } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/use-auth";
 import { useUploadStore } from "@/lib/upload-store";
+import { SearchDialog } from "./search-dialog";
 
 interface HeaderProps {
   onOpenSidebar: () => void;
@@ -32,6 +33,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
   const router = useRouter();
   const { user } = useAuth();
   const { uploads, isOpen, toggleOpen } = useUploadStore();
+  const [searchOpen, setSearchOpen] = useState(false);
   const activeCount = useMemo(
     () => uploads.filter((u) => u.status === "uploading" || u.status === "pending").length,
     [uploads]
@@ -130,7 +132,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
         <div className="flex items-center gap-3.5 shrink-0">
           {/* Search Input matching P03 Top Bar (x=976, w=320, h=36, rx=8, bg=var(--input)) */}
           <div
-            onClick={() => router.push("/search")}
+            onClick={() => setSearchOpen(true)}
             className="hidden sm:flex h-9 w-[320px] items-center justify-between rounded-[8px] bg-[var(--input)] px-3 text-[var(--text-3)] cursor-pointer hover:border-[var(--border-strong)] border border-transparent transition-all"
           >
             <div className="flex items-center gap-2.5 min-w-0">
@@ -224,6 +226,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
           </div>
         </div>
       </header>
+      <SearchDialog isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
 }

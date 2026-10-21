@@ -28,7 +28,7 @@ INSERT INTO users (
 ) VALUES (
     $1, $2, $3, $4
 )
-RETURNING id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, grid_size
+RETURNING id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, grid_size, last_upload_project_id, last_upload_folder_id
 `
 
 type CreateUserParams struct {
@@ -63,6 +63,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.IsOnboarded,
 		&i.OnboardedAt,
 		&i.GridSize,
+		&i.LastUploadProjectID,
+		&i.LastUploadFolderID,
 	)
 	return i, err
 }
@@ -100,7 +102,7 @@ func (q *Queries) GetCompanyByID(ctx context.Context, id pgtype.UUID) (Company, 
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, grid_size FROM users
+SELECT id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, grid_size, last_upload_project_id, last_upload_folder_id FROM users
 WHERE email = $1 LIMIT 1
 `
 
@@ -124,12 +126,14 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.IsOnboarded,
 		&i.OnboardedAt,
 		&i.GridSize,
+		&i.LastUploadProjectID,
+		&i.LastUploadFolderID,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, grid_size FROM users
+SELECT id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, grid_size, last_upload_project_id, last_upload_folder_id FROM users
 WHERE id = $1 LIMIT 1
 `
 
@@ -153,6 +157,8 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.IsOnboarded,
 		&i.OnboardedAt,
 		&i.GridSize,
+		&i.LastUploadProjectID,
+		&i.LastUploadFolderID,
 	)
 	return i, err
 }

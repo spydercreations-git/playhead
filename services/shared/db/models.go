@@ -19,6 +19,19 @@ type Activity struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type ActivityEvent struct {
+	ID         pgtype.UUID        `json:"id"`
+	CompanyID  pgtype.UUID        `json:"company_id"`
+	ActorID    pgtype.UUID        `json:"actor_id"`
+	EventType  string             `json:"event_type"`
+	TargetType string             `json:"target_type"`
+	TargetID   pgtype.UUID        `json:"target_id"`
+	ProjectID  pgtype.UUID        `json:"project_id"`
+	ClientID   pgtype.UUID        `json:"client_id"`
+	Metadata   []byte             `json:"metadata"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
 type AdminAuditLog struct {
 	ID           pgtype.UUID        `json:"id"`
 	CompanyID    pgtype.UUID        `json:"company_id"`
@@ -137,6 +150,16 @@ type DocumentAsset struct {
 	UploadedBy  pgtype.UUID        `json:"uploaded_by"`
 	InTeamNotes bool               `json:"in_team_notes"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+type DocumentShare struct {
+	ID         pgtype.UUID        `json:"id"`
+	CompanyID  pgtype.UUID        `json:"company_id"`
+	DocumentID pgtype.UUID        `json:"document_id"`
+	UserID     pgtype.UUID        `json:"user_id"`
+	Role       string             `json:"role"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
 }
 
 type DocumentVersion struct {
@@ -304,6 +327,17 @@ type ProjectNotificationPref struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type QuickLink struct {
+	ID        pgtype.UUID        `json:"id"`
+	CompanyID pgtype.UUID        `json:"company_id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	Title     string             `json:"title"`
+	Url       string             `json:"url"`
+	Position  pgtype.Numeric     `json:"position"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type RecentItem struct {
 	ID        pgtype.UUID        `json:"id"`
 	CompanyID pgtype.UUID        `json:"company_id"`
@@ -389,50 +423,6 @@ type ShareVisitor struct {
 	Email       string             `json:"email"`
 	FirstSeenAt pgtype.Timestamptz `json:"first_seen_at"`
 	LastSeenAt  pgtype.Timestamptz `json:"last_seen_at"`
-}
-
-type Spreadsheet struct {
-	ID              pgtype.UUID        `json:"id"`
-	CompanyID       pgtype.UUID        `json:"company_id"`
-	ContentState    []byte             `json:"content_state"`
-	ContentJson     []byte             `json:"content_json"`
-	PlainText       string             `json:"plain_text"`
-	PublicPlainText string             `json:"public_plain_text"`
-	RowCount        int32              `json:"row_count"`
-	ColCount        int32              `json:"col_count"`
-	CellCount       int32              `json:"cell_count"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
-}
-
-type SpreadsheetComment struct {
-	ID              pgtype.UUID        `json:"id"`
-	SpreadsheetID   pgtype.UUID        `json:"spreadsheet_id"`
-	CompanyID       pgtype.UUID        `json:"company_id"`
-	SheetID         string             `json:"sheet_id"`
-	RowID           string             `json:"row_id"`
-	ColID           string             `json:"col_id"`
-	AuthorID        pgtype.UUID        `json:"author_id"`
-	ParentCommentID pgtype.UUID        `json:"parent_comment_id"`
-	Content         string             `json:"content"`
-	Resolved        bool               `json:"resolved"`
-	ResolvedBy      pgtype.UUID        `json:"resolved_by"`
-	ResolvedAt      pgtype.Timestamptz `json:"resolved_at"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
-}
-
-type SpreadsheetVersion struct {
-	ID            pgtype.UUID        `json:"id"`
-	SpreadsheetID pgtype.UUID        `json:"spreadsheet_id"`
-	CompanyID     pgtype.UUID        `json:"company_id"`
-	Name          pgtype.Text        `json:"name"`
-	IsNamed       bool               `json:"is_named"`
-	ContentState  []byte             `json:"content_state"`
-	ContentJson   []byte             `json:"content_json"`
-	PlainText     string             `json:"plain_text"`
-	CreatedBy     pgtype.UUID        `json:"created_by"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 type Star struct {
@@ -542,6 +532,8 @@ type User struct {
 	IsOnboarded           bool               `json:"is_onboarded"`
 	OnboardedAt           pgtype.Timestamptz `json:"onboarded_at"`
 	GridSize              string             `json:"grid_size"`
+	LastUploadProjectID   pgtype.UUID        `json:"last_upload_project_id"`
+	LastUploadFolderID    pgtype.UUID        `json:"last_upload_folder_id"`
 }
 
 type UserSetting struct {

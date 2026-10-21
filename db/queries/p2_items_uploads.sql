@@ -326,11 +326,11 @@ SELECT i.*,
        u.name AS deleted_by_name,
        COALESCE(fv.size_bytes, 0) AS latest_size_bytes,
        COALESCE(fv.mime, '') AS latest_mime,
-       p.name AS project_name,
+       COALESCE(p.name, '') AS project_name,
        p.id AS project_id
 FROM items i
 LEFT JOIN users u ON u.id = i.deleted_by
-JOIN projects p ON p.id = i.project_id
+LEFT JOIN projects p ON p.id = i.project_id
 LEFT JOIN file_versions fv ON fv.item_id = i.id AND fv.number = (
     SELECT MAX(number) FROM file_versions WHERE item_id = i.id
 )

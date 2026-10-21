@@ -348,6 +348,16 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
     - Added table `pending_task_attachments` (migration `00024_pending_task_attachments.sql`) to track unconfirmed presigned uploads.
     - Background cleanup purges unconfirmed uploads older than 1 hour from both object storage and PostgreSQL.
 
+## 48. Phase 4: Master Plan V2 Workspace Overhaul
+- **Decision**:
+  - **My Drive Move (No File Left Behind)**: In migration `00025_phase4_workspace_overhaul.sql`, moved all My Drive items into project "From My Drive" under client "Idyll Productions". All folder hierarchies and item links were preserved. Items at top level moved to "My Drive files" folder. Verified exact before/after item and byte counts.
+  - **Standalone Documents**: Decoupled documents from projects (`project_id = NULL`). Access is managed by creator ownership and explicit grants in `document_shares` (`role = 'editor' | 'viewer'`). Old project-linked document URLs permanently redirect to `/documents/:id`.
+  - **Synchronous Activity Audit Log (`activity_events`)**: Activity events are inserted synchronously inside write handlers for item uploads, deletions, reviews, and comments. The home activity feed queries newest events scoped by `company_id` and filters results based on user access levels.
+  - **Universal Search**: PostgreSQL Full Text Search (`to_tsvector` and `to_tsquery`) indexes clients, projects, folders, files, tasks, and documents. Result filtering guarantees clients never see internal comments, editors only see assigned work, and deleted items are completely excluded.
+  - **Storage Overview**: Accessible only by staff (`is_staff = true` or staff role). Displays total storage used, segmented progress bar by file type (Videos `#4876f3`, Images `#9787ff`, Documents & PDFs `#3fcf8e`, Other `#71717a`), and client breakdown without quota limits or payment buttons.
+  - **Quick Links**: Stored per-user (`user_id`), validated to `http`/`https` only, supporting instant clipboard copy and private bookmarking.
+  - **Native Feature Removals**: Completely removed Spreadsheets (FortuneSheet, spreadsheet tables, formula parser), My Drive, Reviews feed, Shared with me, and Starred features. Permanent 308 redirects guide legacy URLs to Home.
+
 
 
 

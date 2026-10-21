@@ -1161,44 +1161,58 @@ func (h *ItemsHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
-		ID:        item.ProjectID,
-		CompanyID: companyID,
-	})
-	if err != nil {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
-		return
-	}
-
 	person := middleware.GetPerson(ctx)
-	access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
-		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
-	}, authz.ItemTarget{
-		ID:        uuid.UUID(item.ID.Bytes),
-		ProjectID: uuid.UUID(item.ProjectID.Bytes),
-		CompanyID: uuid.UUID(item.CompanyID.Bytes),
-		CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
-	})
-	if err != nil || !access.CanView() {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
-		return
-	}
 
-	if item.IsTracker {
-		respondJSON(w, http.StatusBadRequest, map[string]string{
-			"error":   "cannot_delete_tracker",
-			"message": "Project tracker cannot be deleted",
+	if !item.ProjectID.Valid {
+		// Standalone document
+		docTarget := authz.DocumentTarget{
+			ID:        uuid.UUID(item.ID.Bytes),
+			CompanyID: uuid.UUID(item.CompanyID.Bytes),
+			CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
+		}
+		if !authz.CanDeleteDocument(person, docTarget) {
+			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to delete this document"})
+			return
+		}
+	} else {
+		proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+			ID:        item.ProjectID,
+			CompanyID: companyID,
 		})
-		return
-	}
+		if err != nil {
+			respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+			return
+		}
 
-	var createdByUUID uuid.UUID
-	if item.CreatedBy.Valid {
-		createdByUUID = uuid.UUID(item.CreatedBy.Bytes)
-	}
-	if !access.CanModifyItem(person, createdByUUID) {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to delete this item"})
-		return
+		access, err := authz.AccessItem(ctx, h.queries, person, authz.ProjectTarget{
+			ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+		}, authz.ItemTarget{
+			ID:        uuid.UUID(item.ID.Bytes),
+			ProjectID: uuid.UUID(item.ProjectID.Bytes),
+			CompanyID: uuid.UUID(item.CompanyID.Bytes),
+			CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
+		})
+		if err != nil || !access.CanView() {
+			respondJSON(w, http.StatusNotFound, map[string]string{"error": "item_not_found"})
+			return
+		}
+
+		if item.IsTracker {
+			respondJSON(w, http.StatusBadRequest, map[string]string{
+				"error":   "cannot_delete_tracker",
+				"message": "Project tracker cannot be deleted",
+			})
+			return
+		}
+
+		var createdByUUID uuid.UUID
+		if item.CreatedBy.Valid {
+			createdByUUID = uuid.UUID(item.CreatedBy.Bytes)
+		}
+		if !access.CanModifyItem(person, createdByUUID) {
+			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to delete this item"})
+			return
+		}
 	}
 
 	batchID := uuid.New()
@@ -1233,7 +1247,9 @@ func (h *ItemsHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Recalculate counts without Trash
-	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, item.ProjectID)
+	if item.ProjectID.Valid {
+		_ = h.queries.RecalculateProjectAndFolderCounts(ctx, item.ProjectID)
+	}
 	if item.ParentID.Valid {
 		h.updateAncestorsFolderCounts(ctx, item.ParentID, companyID)
 	}
@@ -1716,47 +1732,54 @@ func (h *ItemsHandler) RestoreTrashItem(w http.ResponseWriter, r *http.Request) 
 	isUploader := item.CreatedBy.Valid && item.CreatedBy == user.ID
 	isDeleter := item.DeletedBy.Valid && item.DeletedBy == user.ID
 
-	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
-		ID:        item.ProjectID,
-		CompanyID: companyID,
-	})
-	if err != nil {
-		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
-		return
-	}
-
-	projTarget := authz.ProjectTarget{
-		ID:        uuid.UUID(proj.ID.Bytes),
-		CompanyID: uuid.UUID(proj.CompanyID.Bytes),
-		ClientID:  uuid.UUID(proj.ClientID.Bytes),
-	}
-
-	var parentFolderUUID uuid.UUID
-	if item.OriginalParentID.Valid {
-		parentFolderUUID = uuid.UUID(item.OriginalParentID.Bytes)
-	}
-
-	folderAccess, err := authz.AccessFolder(ctx, h.queries, person, projTarget, parentFolderUUID)
-	if err != nil {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
-		return
-	}
-
-	canRestore := false
-	if folderAccess.Level == authz.LevelFull {
-		canRestore = true
-	} else if isUploader || isDeleter {
-		if folderAccess.Level == authz.LevelUploader || folderAccess.Level == authz.LevelFull {
-			canRestore = true
+	if !item.ProjectID.Valid {
+		if !person.IsStaff() && !isUploader && !isDeleter {
+			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Cannot restore item"})
+			return
 		}
-	}
-
-	if !canRestore {
-		respondJSON(w, http.StatusForbidden, map[string]string{
-			"error":   "forbidden",
-			"message": "The uploader or deleter can restore only if they still have at least Uploader access to the project or folder",
+	} else {
+		proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+			ID:        item.ProjectID,
+			CompanyID: companyID,
 		})
-		return
+		if err != nil {
+			respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+			return
+		}
+
+		projTarget := authz.ProjectTarget{
+			ID:        uuid.UUID(proj.ID.Bytes),
+			CompanyID: uuid.UUID(proj.CompanyID.Bytes),
+			ClientID:  uuid.UUID(proj.ClientID.Bytes),
+		}
+
+		var parentFolderUUID uuid.UUID
+		if item.OriginalParentID.Valid {
+			parentFolderUUID = uuid.UUID(item.OriginalParentID.Bytes)
+		}
+
+		folderAccess, err := authz.AccessFolder(ctx, h.queries, person, projTarget, parentFolderUUID)
+		if err != nil {
+			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+			return
+		}
+
+		canRestore := false
+		if folderAccess.Level == authz.LevelFull {
+			canRestore = true
+		} else if isUploader || isDeleter {
+			if folderAccess.Level == authz.LevelUploader || folderAccess.Level == authz.LevelFull {
+				canRestore = true
+			}
+		}
+
+		if !canRestore {
+			respondJSON(w, http.StatusForbidden, map[string]string{
+				"error":   "forbidden",
+				"message": "The uploader or deleter can restore only if they still have at least Uploader access to the project or folder",
+			})
+			return
+		}
 	}
 
 	// Addition 4: restoring anything restores only items with the same delete_batch_id
@@ -1776,7 +1799,9 @@ func (h *ItemsHandler) RestoreTrashItem(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, item.ProjectID)
+	if item.ProjectID.Valid {
+		_ = h.queries.RecalculateProjectAndFolderCounts(ctx, item.ProjectID)
+	}
 	if item.ParentID.Valid {
 		h.updateAncestorsFolderCounts(ctx, item.ParentID, companyID)
 	}

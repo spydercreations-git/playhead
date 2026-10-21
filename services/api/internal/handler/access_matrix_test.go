@@ -28,7 +28,6 @@ func TestAccessMatrix(t *testing.T) {
 	ctx := context.Background()
 	projectH := NewProjectHandler(queries)
 	itemsH := NewItemsHandler(queries, nil)
-	driveH := NewDriveHandler(queries, nil, nil, nil)
 
 	// 1. Create company and seed roles
 	comp, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
@@ -221,7 +220,6 @@ func TestAccessMatrix(t *testing.T) {
 	r.Post("/api/v1/projects/{id}/folders", itemsH.CreateFolder)
 	r.Delete("/api/v1/items/{id}", itemsH.DeleteItem)
 	r.Post("/api/v1/projects/{id}/people", projectH.AddPerson)
-	r.Get("/api/v1/drive/folders", driveH.ListFolders)
 
 	t.Run("1. List projects", func(t *testing.T) {
 		// Admin sees project
@@ -498,35 +496,6 @@ func TestAccessMatrix(t *testing.T) {
 		r.ServeHTTP(recPM, reqPM)
 		if recPM.Code != http.StatusOK && recPM.Code != http.StatusCreated {
 			t.Fatalf("PM with Editor level expected 200/201, got %d: %s", recPM.Code, recPM.Body.String())
-		}
-	})
-
-	t.Run("10. My Drive access (Admins only; others 403)", func(t *testing.T) {
-		// Admin gets 200 OK
-		reqAdmin := httptest.NewRequest("GET", "/api/v1/drive/folders", nil)
-		reqAdmin = reqAdmin.WithContext(contextWithAuth(reqAdmin.Context(), adminUser, comp.ID, authz.RoleCEO))
-		recAdmin := httptest.NewRecorder()
-		r.ServeHTTP(recAdmin, reqAdmin)
-		if recAdmin.Code != http.StatusOK {
-			t.Fatalf("Admin My Drive expected 200, got %d: %s", recAdmin.Code, recAdmin.Body.String())
-		}
-
-		// Editor gets 403 Forbidden
-		reqEditor := httptest.NewRequest("GET", "/api/v1/drive/folders", nil)
-		reqEditor = reqEditor.WithContext(contextWithAuth(reqEditor.Context(), editorUser, comp.ID, authz.RoleEditor))
-		recEditor := httptest.NewRecorder()
-		r.ServeHTTP(recEditor, reqEditor)
-		if recEditor.Code != http.StatusForbidden {
-			t.Fatalf("Editor My Drive expected 403, got %d", recEditor.Code)
-		}
-
-		// Client gets 403 Forbidden
-		reqClient := httptest.NewRequest("GET", "/api/v1/drive/folders", nil)
-		reqClient = reqClient.WithContext(contextWithAuth(reqClient.Context(), clientUser, comp.ID, ""))
-		recClient := httptest.NewRecorder()
-		r.ServeHTTP(recClient, reqClient)
-		if recClient.Code != http.StatusForbidden {
-			t.Fatalf("Client My Drive expected 403, got %d", recClient.Code)
 		}
 	})
 }

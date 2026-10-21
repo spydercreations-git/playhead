@@ -172,33 +172,7 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 	project.FolderCount = int32(len(defaultFolders))
 
-	// Auto-create Project tracker spreadsheet with is_tracker = true (Addition 3)
-	trackerItem, tErr := h.queries.CreateTrackerItem(r.Context(), db.CreateTrackerItemParams{
-		CompanyID: companyID,
-		ProjectID: project.ID,
-		CreatedBy: user.ID,
-	})
-	if tErr == nil {
-		trackerData := GetSpreadsheetTemplate("tracker", nil)
-		tJSON, _ := json.Marshal(trackerData)
-		_, _ = h.queries.CreateSpreadsheet(r.Context(), db.CreateSpreadsheetParams{
-			ID:              trackerItem.ID,
-			CompanyID:       companyID,
-			ContentState:    nil,
-			ContentJson:     tJSON,
-			PlainText:       "Project tracker Video File Editor Status Due date Revisions Notes",
-			PublicPlainText: "Project tracker Video File Editor Status Due date Revisions Notes",
-			RowCount:        30,
-			ColCount:        7,
-			CellCount:       7,
-		})
-		_ = h.queries.SetProjectTrackerItemID(r.Context(), db.SetProjectTrackerItemIDParams{
-			ID:            project.ID,
-			TrackerItemID: trackerItem.ID,
-			CompanyID:     companyID,
-		})
-		project.TrackerItemID = trackerItem.ID
-	}
+
 
 	// Assign initial people
 	for _, p := range req.People {

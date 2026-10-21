@@ -19,14 +19,12 @@ import {
 import { FileViewer, ViewerItem } from "@/components/files/file-viewer";
 import { ShareModal } from "@/components/sharing/share-modal";
 import { NewDocumentDialog } from "@/components/documents/new-document-dialog";
-import { NewSpreadsheetDialog } from "@/components/spreadsheets/new-spreadsheet-dialog";
 import { FolderCard } from "@/components/cards/folder-card";
 import { SectionHeader } from "@/components/layout/section-header";
 import { SelectionBar } from "@/components/layout/selection-bar";
 import { DeleteDialog } from "@/components/dialogs/delete-dialog";
 import { MoveCopyPanel } from "@/components/panels/move-copy-panel";
 import { ManageAccessDialog } from "@/components/access/manage-access-dialog";
-import { TrackerAccessDialog } from "@/components/access/tracker-access-dialog";
 import { buildUnifiedItemMenuGroups } from "@/components/items/unified-item-menu";
 import {
   DndContext,
@@ -125,7 +123,6 @@ export default function ProjectWorkspacePage() {
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const [shareLinksSort, setShareLinksSort] = useState<"newest" | "name">("newest");
   const [showNewDocModal, setShowNewDocModal] = useState(false);
-  const [showNewSheetModal, setShowNewSheetModal] = useState(false);
 
   // Inline folder creation state (per spec: "New folder: appears instantly as 'untitled folder' with the name selected inside a #4876F3 outlined input")
   const [isCreatingInlineFolder, setIsCreatingInlineFolder] = useState(false);
@@ -136,7 +133,6 @@ export default function ProjectWorkspacePage() {
   const [isFoldersCollapsed, setIsFoldersCollapsed] = useState(false);
   const [isFilesCollapsed, setIsFilesCollapsed] = useState(false);
   const [isDocumentsCollapsed, setIsDocumentsCollapsed] = useState(false);
-  const [isSpreadsheetsCollapsed, setIsSpreadsheetsCollapsed] = useState(false);
 
   // Inline rename state
   const [renamingItemId, setRenamingItemId] = useState<string | null>(null);
@@ -178,12 +174,7 @@ export default function ProjectWorkspacePage() {
     itemId?: string;
   } | null>(null);
 
-  // Tracker Access dialog state
-  const [trackerAccessDialogState, setTrackerAccessDialogState] = useState<{
-    isOpen: boolean;
-    itemId: string;
-    targetName?: string;
-  } | null>(null);
+
 
   // File Viewer modal state
   const [activeViewerItem, setActiveViewerItem] = useState<ViewerItem | null>(null);
@@ -257,11 +248,7 @@ export default function ProjectWorkspacePage() {
     queryFn: () => apiRequest(`/projects/${projectId}/grants`),
   });
 
-  // 6. Fetch Spreadsheets (Tracker first)
-  const { data: spreadsheetsData } = useQuery({
-    queryKey: ["project-spreadsheets", projectId],
-    queryFn: () => apiRequest(`/projects/${projectId}/spreadsheets`),
-  });
+
 
   // 7. Fetch Documents for this project
   const { data: documentsData } = useQuery({
@@ -367,20 +354,7 @@ export default function ProjectWorkspacePage() {
     },
   });
 
-  const clearSpreadsheetMutation = useMutation({
-    mutationFn: (id: string) =>
-      apiRequest(`/spreadsheets/${id}/clear`, {
-        method: "POST",
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project-items", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["project-spreadsheets", projectId] });
-      toast.success("Project tracker cleared");
-    },
-    onError: (err: any) => {
-      toast.error(err?.message || "Failed to clear tracker");
-    },
-  });
+
 
   const batchActionMutation = useMutation({
     mutationFn: ({ action, ids, targetParentId }: { action: string; ids: string[]; targetParentId?: string | null }) =>
@@ -598,11 +572,6 @@ export default function ProjectWorkspacePage() {
             icon: <FileText className="w-4 h-4 text-blue-400" />,
             onClick: () => router.push("/documents"),
           },
-          {
-            label: "New spreadsheet",
-            icon: <FileSpreadsheet className="w-4 h-4 text-emerald-400" />,
-            onClick: () => router.push("/spreadsheets"),
-          },
         ],
       },
     ];
@@ -637,11 +606,6 @@ export default function ProjectWorkspacePage() {
           icon: <FileText className="w-4 h-4 text-blue-400" />,
           onClick: () => setShowNewDocModal(true),
         },
-        {
-          label: "New spreadsheet",
-          icon: <FileSpreadsheet className="w-4 h-4 text-emerald-400" />,
-          onClick: () => setShowNewSheetModal(true),
-        },
       ],
     },
   ];
@@ -655,45 +619,7 @@ export default function ProjectWorkspacePage() {
       e.stopPropagation();
     }
 
-    if (item.is_tracker) {
-      // Tracker cannot be deleted, moved, or renamed, only cleared, and has dedicated Manage Access
-      const trackerGroups: MenuGroup[] = [
-        {
-          items: [
-            {
-              label: "Manage Access",
-              icon: <Shield className="w-4 h-4 text-emerald-400" />,
-              onClick: () => {
-                setTrackerAccessDialogState({
-                  isOpen: true,
-                  itemId: item.id,
-                  targetName: item.name || "Project tracker",
-                });
-              },
-            },
-            {
-              label: "Clear tracker",
-              icon: <Trash2 className="w-4 h-4" />,
-              danger: true,
-              onClick: () => {
-                setDeleteDialogState({
-                  isOpen: true,
-                  itemName: item.name || "Project tracker",
-                  itemCount: 1,
-                  isPermanent: true,
-                  onConfirm: () => {
-                    setDeleteDialogState(null);
-                    clearSpreadsheetMutation.mutate(item.id);
-                  },
-                });
-              },
-            },
-          ],
-        },
-      ];
-      openContextMenu(e, trackerGroups);
-      return;
-    }
+
 
     const groups = buildUnifiedItemMenuGroups({
       kind: item.kind === "folder" ? "folder" : "file",
@@ -847,33 +773,7 @@ export default function ProjectWorkspacePage() {
 
   // Derived collections for Phase 2 project panel & switcher
   const membersList = Array.isArray(grantsData) ? grantsData : [];
-  const spreadsheetsList = Array.isArray(spreadsheetsData?.spreadsheets)
-    ? spreadsheetsData.spreadsheets
-    : Array.isArray(spreadsheetsData)
-    ? spreadsheetsData
-    : [];
-  const documentsList = Array.isArray(documentsData?.documents)
-    ? documentsData.documents
-    : Array.isArray(documentsData)
-    ? documentsData
-    : [];
-  const shareLinksList = Array.isArray(shareLinksData?.links)
-    ? shareLinksData.links
-    : Array.isArray(shareLinksData)
-    ? shareLinksData
-    : [];
 
-  const sortedShareLinks = [...shareLinksList].sort((a, b) => {
-    if (shareLinksSort === "name") {
-      return (a.name || "").localeCompare(b.name || "");
-    }
-    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-  });
-
-  const trackerSheet =
-    spreadsheetsList.find((s: any) => s.is_tracker || s.title?.toLowerCase() === "tracker") ||
-    spreadsheetsList[0];
-  const otherSpreadsheets = spreadsheetsList.filter((s: any) => s.id !== trackerSheet?.id);
 
   const clientProjects = (clientProjectsData?.projects || []).filter((p: any) => {
     if (!projectSwitcherQuery.trim()) return true;
@@ -889,11 +789,10 @@ export default function ProjectWorkspacePage() {
     });
   const foldersList = items.filter((i: any) => i.kind === "folder");
   const regularFilesList = items.filter(
-    (i: any) => i.kind === "file" || (!["folder", "document", "spreadsheet"].includes(i.kind))
+    (i: any) => i.kind === "file" || (!["folder", "document"].includes(i.kind))
   );
   const documentsSectionList = items.filter((i: any) => i.kind === "document");
-  const spreadsheetsSectionList = items.filter((i: any) => i.kind === "spreadsheet");
-  const filesList = [...regularFilesList, ...documentsSectionList, ...spreadsheetsSectionList];
+  const filesList = [...regularFilesList, ...documentsSectionList];
 
   // Selection calculations
   const selectedItems = items.filter((i: any) => selectedItemIds.includes(i.id));
@@ -905,7 +804,6 @@ export default function ProjectWorkspacePage() {
   const selectedFileCount = filesList.filter((f: any) => selectedItemIds.includes(f.id)).length;
   const selectedRegularFileCount = regularFilesList.filter((f: any) => selectedItemIds.includes(f.id)).length;
   const selectedDocCount = documentsSectionList.filter((d: any) => selectedItemIds.includes(d.id)).length;
-  const selectedSheetCount = spreadsheetsSectionList.filter((s: any) => selectedItemIds.includes(s.id)).length;
 
   const totalFolderBytes = foldersList.reduce((acc: number, f: any) => acc + (f.total_bytes || 0), 0);
   const totalFileBytes = filesList.reduce((acc: number, f: any) => acc + (f.size_bytes || f.latest_size_bytes || 0), 0);
@@ -941,15 +839,23 @@ export default function ProjectWorkspacePage() {
     }
   };
 
-  const toggleSelectAllSheets = () => {
-    const sheetIds = spreadsheetsSectionList.map((s: any) => s.id);
-    const allSelected = sheetIds.length > 0 && sheetIds.every((id: string) => selectedItemIds.includes(id));
-    if (allSelected) {
-      setSelectedItemIds(selectedItemIds.filter((id) => !sheetIds.includes(id)));
-    } else {
-      setSelectedItemIds(Array.from(new Set([...selectedItemIds, ...sheetIds])));
+  const documentsList = Array.isArray(documentsData?.documents)
+    ? documentsData.documents
+    : Array.isArray(documentsData)
+    ? documentsData
+    : [];
+  const shareLinksList = Array.isArray(shareLinksData?.links)
+    ? shareLinksData.links
+    : Array.isArray(shareLinksData)
+    ? shareLinksData
+    : [];
+
+  const sortedShareLinks = [...shareLinksList].sort((a, b) => {
+    if (shareLinksSort === "name") {
+      return (a.name || "").localeCompare(b.name || "");
     }
-  };
+    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+  });
 
   // Active uploads in this folder
   const activeUploadsHere = uploads.filter(
@@ -1399,65 +1305,18 @@ export default function ProjectWorkspacePage() {
                 })}
               </div>
 
-              {/* Sheets and Docs (Tracker first) */}
+              {/* Documents in Project */}
               <div className="p-3 pt-2 space-y-1 border-t border-[var(--border)]">
-                <div className="flex items-center justify-between px-2 py-1 text-xs font-bold  text-[var(--text-2)]">
-                  <span>Sheets and docs</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setShowNewSheetModal(true)}
-                      title="New spreadsheet"
-                      className="text-[var(--text-3)] hover:text-emerald-400 transition-colors"
-                    >
-                      <FileSpreadsheet className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setShowNewDocModal(true)}
-                      title="New document"
-                      className="text-[var(--text-3)] hover:text-blue-400 transition-colors"
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                <div className="flex items-center justify-between px-2 py-1 text-xs font-bold text-[var(--text-2)]">
+                  <span>Documents</span>
+                  <button
+                    onClick={() => setShowNewDocModal(true)}
+                    title="New document"
+                    className="text-[var(--text-3)] hover:text-blue-400 transition-colors"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-
-                {/* Tracker first */}
-                {trackerSheet ? (
-                  <button
-                    onClick={() => router.push(`/spreadsheets/${trackerSheet.id}`)}
-                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs text-[var(--text-2)] hover:bg-[var(--input)]/60 hover:text-white transition-colors"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span className="truncate font-medium">{trackerSheet.title || "Project tracker"}</span>
-                    </div>
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-[#3FCF8E]/10 text-[#3FCF8E] font-semibold ">
-                      Tracker
-                    </span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setShowNewSheetModal(true)}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[10px] text-xs text-[var(--text-3)] hover:bg-[var(--input)]/60 hover:text-white transition-colors"
-                  >
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span className="truncate">+ Create Project Tracker</span>
-                  </button>
-                )}
-
-                {/* Other Spreadsheets */}
-                {otherSpreadsheets.map((s: any) => (
-                  <button
-                    key={s.id}
-                    onClick={() => router.push(`/spreadsheets/${s.id}`)}
-                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-[10px] text-xs text-[var(--text-2)] hover:bg-[var(--input)]/60 hover:text-white transition-colors"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <FileSpreadsheet className="w-4 h-4 text-emerald-400/80 shrink-0" />
-                      <span className="truncate">{s.title || "Untitled sheet"}</span>
-                    </div>
-                  </button>
-                ))}
 
                 {/* Project Documents */}
                 {documentsList.map((d: any) => (
@@ -2587,249 +2446,7 @@ export default function ProjectWorkspacePage() {
             </>
           )}
 
-          {/* Spreadsheets Section (Addition 2) */}
-          {spreadsheetsSectionList.length > 0 && (
-            <>
-              {(foldersList.length > 0 || regularFilesList.length > 0 || documentsSectionList.length > 0 || activeUploadsHere.length > 0) && (
-                <div className="h-px bg-[var(--border)] my-6" />
-              )}
-              <div className="space-y-3">
-                <SectionHeader
-                  count={spreadsheetsSectionList.length}
-                  unitSingular="spreadsheet"
-                  unitPlural="spreadsheets"
-                  selectedCount={selectedSheetCount}
-                  isCollapsed={isSpreadsheetsCollapsed}
-                  onToggleCollapse={() => setIsSpreadsheetsCollapsed(!isSpreadsheetsCollapsed)}
-                  onToggleSelectAll={toggleSelectAllSheets}
-                />
 
-                {!isSpreadsheetsCollapsed && (
-                  viewMode === "grid" ? (
-                    <motion.div
-                      layout
-                      className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                    >
-                      <AnimatePresence mode="popLayout">
-                        {spreadsheetsSectionList.map((sheet: any) => {
-                          const isSelected = selectedItemIds.includes(sheet.id);
-                          return (
-                            <motion.div
-                              layout
-                              key={sheet.id}
-                              initial={{ opacity: 0, scale: 0.98, y: 6 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.95, y: -6 }}
-                              transition={{ duration: 0.2 }}
-                              onDoubleClick={() => router.push(`/spreadsheets/${sheet.id}`)}
-                              onClick={() => {
-                                if (isSelected) {
-                                  setSelectedItemIds(selectedItemIds.filter((id) => id !== sheet.id));
-                                } else {
-                                  setSelectedItemIds([...selectedItemIds, sheet.id]);
-                                }
-                              }}
-                              onContextMenu={(e: React.MouseEvent) => handleItemContextMenu(e, sheet)}
-                              tabIndex={0}
-                              role="button"
-                              aria-label={`${sheet.name}, spreadsheet`}
-                              aria-selected={isSelected}
-                              onKeyDown={(e: React.KeyboardEvent) => {
-                                if (e.target !== e.currentTarget && (e.target as HTMLElement).closest(".item-menu-btn")) {
-                                  return;
-                                }
-                                if (e.key === " " || e.key === "Spacebar") {
-                                  e.preventDefault();
-                                  if (isSelected) {
-                                    setSelectedItemIds(selectedItemIds.filter((id) => id !== sheet.id));
-                                  } else {
-                                    setSelectedItemIds([...selectedItemIds, sheet.id]);
-                                  }
-                                } else if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  router.push(`/spreadsheets/${sheet.id}`);
-                                }
-                              }}
-                              className={`group relative rounded-xl border transition-all cursor-pointer p-4 flex flex-col justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4876F3] ${
-                                isSelected
-                                  ? "bg-[#4876F3]/15 border-[#4876F3] shadow-md"
-                                  : "bg-[var(--bg)] border-[var(--panel)] hover:border-[var(--border-strong)]"
-                              }`}
-                            >
-                              {/* Checkbox */}
-                              <button
-                                type="button"
-                                role="checkbox"
-                                aria-checked={isSelected}
-                                aria-label={`Select ${sheet.name}`}
-                                tabIndex={0}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (isSelected) {
-                                    setSelectedItemIds(selectedItemIds.filter((id) => id !== sheet.id));
-                                  } else {
-                                    setSelectedItemIds([...selectedItemIds, sheet.id]);
-                                  }
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === " " || e.key === "Spacebar") {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    if (isSelected) {
-                                      setSelectedItemIds(selectedItemIds.filter((id) => id !== sheet.id));
-                                    } else {
-                                      setSelectedItemIds([...selectedItemIds, sheet.id]);
-                                    }
-                                  }
-                                }}
-                                className={`item-checkbox absolute top-3 left-3 h-5 w-5 rounded-[6px] flex items-center justify-center transition-all z-20 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-[#4876F3] ${
-                                  isSelected
-                                    ? "bg-[#4876F3] border border-[#4876F3] text-white opacity-100"
-                                    : selectedItemIds.length > 0
-                                    ? "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-100"
-                                    : "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-0 group-hover:opacity-100"
-                                }`}
-                              >
-                                <Check size={14} className={isSelected ? "text-white" : "opacity-0"} />
-                              </button>
-                              <div className="relative h-32 w-full rounded-xl bg-[var(--panel)] border border-[var(--border)] flex flex-col justify-between p-3.5 mb-3">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-bold text-emerald-400 tracking-wider">Spreadsheet</span>
-                                    {sheet.is_tracker && (
-                                      <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30">
-                                        Tracker
-                                      </span>
-                                    )}
-                                  </div>
-                                  <FileSpreadsheet className="w-5 h-5 text-emerald-400/80" />
-                                </div>
-                                <div className="space-y-1.5">
-                                  <div className="h-1.5 w-full bg-emerald-500/20 rounded" />
-                                  <div className="h-1.5 w-2/3 bg-emerald-500/15 rounded" />
-                                  <div className="h-1.5 w-4/5 bg-emerald-500/10 rounded" />
-                                </div>
-                                <span className="text-xs text-emerald-400">
-                                  {sheet.cell_count ? `${sheet.cell_count} cells` : sheet.is_tracker ? "Project tracker" : "Live sheet"}
-                                </span>
-                              </div>
-                              <div>
-                                <h4 className="text-xs font-medium text-white truncate" title={sheet.name}>
-                                  {sheet.name}
-                                </h4>
-                                <div className="flex items-center justify-between mt-1 text-xs text-[var(--text-3)]">
-                                  <span>{sheet.updated_at ? new Date(sheet.updated_at).toLocaleDateString() : "—"}</span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleItemContextMenu(e, sheet);
-                                    }}
-                                    className="item-menu-btn p-1 rounded hover:bg-[var(--input)] text-[var(--text-3)] hover:text-white transition-colors"
-                                  >
-                                    <MoreHorizontal className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              </div>
-                            </motion.div>
-                          );
-                        })}
-                      </AnimatePresence>
-                    </motion.div>
-                  ) : (
-                    <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] overflow-hidden">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="border-b border-[var(--border)] bg-[var(--bg)]/60 text-xs text-[var(--text-3)]">
-                            <th className="py-2.5 px-3 w-8"></th>
-                            <th className="py-2.5 px-3 font-medium">Name</th>
-                            <th className="py-2.5 px-3 font-medium">Kind</th>
-                            <th className="py-2.5 px-3 font-medium">Size</th>
-                            <th className="py-2.5 px-3 font-medium">Modified</th>
-                            <th className="py-2.5 px-3 font-medium">Status</th>
-                            <th className="py-2.5 px-3 w-10 text-right"></th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[var(--border)]">
-                          {spreadsheetsSectionList.map((sheet: any) => {
-                            const isSelected = selectedItemIds.includes(sheet.id);
-                            return (
-                              <tr
-                                key={sheet.id}
-                                data-item-id={sheet.id}
-                                onClick={() => {
-                                  if (isSelected) {
-                                    setSelectedItemIds(selectedItemIds.filter((id) => id !== sheet.id));
-                                  } else {
-                                    setSelectedItemIds([...selectedItemIds, sheet.id]);
-                                  }
-                                }}
-                                onDoubleClick={() => router.push(`/spreadsheets/${sheet.id}`)}
-                                onContextMenu={(e) => handleItemContextMenu(e, sheet)}
-                                className={`group hover:bg-[var(--input)]/50 cursor-pointer transition-colors ${
-                                  isSelected ? "bg-[#4876F3]/10" : ""
-                                }`}
-                              >
-                                <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
-                                  <input
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    onChange={() => {
-                                      if (isSelected) {
-                                        setSelectedItemIds(selectedItemIds.filter((id) => id !== sheet.id));
-                                      } else {
-                                        setSelectedItemIds([...selectedItemIds, sheet.id]);
-                                      }
-                                    }}
-                                    className="rounded border-[var(--border-strong)] text-[#4876F3] focus:ring-0"
-                                  />
-                                </td>
-                                <td className="py-2.5 px-3 flex items-center gap-2.5 min-w-0">
-                                  <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
-                                  <span className="font-medium text-white truncate text-xs">{sheet.name}</span>
-                                  {sheet.is_tracker && (
-                                    <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30 shrink-0">
-                                      Tracker
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="py-2.5 px-3 text-xs text-[var(--text-2)]">Spreadsheet</td>
-                                <td className="py-2.5 px-3 text-xs text-[var(--text-2)] tabular-nums">
-                                  {sheet.cell_count ? `${sheet.cell_count} cells` : "—"}
-                                </td>
-                                <td className="py-2.5 px-3 text-xs text-[var(--text-3)] tabular-nums">
-                                  {sheet.updated_at ? new Date(sheet.updated_at).toLocaleDateString() : "—"}
-                                </td>
-                                <td className="py-2.5 px-3">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                    <span>Spreadsheet</span>
-                                  </span>
-                                </td>
-                                <td className="py-2.5 px-3 text-right">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleItemContextMenu(e, sheet);
-                                    }}
-                                    className="item-menu-btn p-1.5 rounded-md hover:bg-[var(--input)] text-[var(--text-2)] hover:text-white transition-colors"
-                                    aria-label="Item options"
-                                  >
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )
-                )}
-              </div>
-            </>
-          )}
 
           {/* Empty Project Root with 0 Folders (Addition 6) */}
           {!currentFolderId && foldersList.length === 0 && !isCreatingInlineFolder && (
@@ -2854,7 +2471,7 @@ export default function ProjectWorkspacePage() {
           )}
 
           {/* Empty Subfolder State */}
-          {currentFolderId && foldersList.length === 0 && regularFilesList.length === 0 && documentsSectionList.length === 0 && spreadsheetsSectionList.length === 0 && !isCreatingInlineFolder && (
+          {currentFolderId && foldersList.length === 0 && regularFilesList.length === 0 && documentsSectionList.length === 0 && !isCreatingInlineFolder && (
             <div className="py-20 text-center border border-dashed border-[var(--panel)] rounded-xl flex flex-col items-center justify-center p-8">
               <Folder className="w-10 h-10 text-[var(--text-3)] mb-2" />
               <h3 className="text-sm font-semibold text-white">This folder is empty</h3>
@@ -2980,12 +2597,7 @@ export default function ProjectWorkspacePage() {
         }}
       />
 
-      {/* New Spreadsheet Dialog inside this project */}
-      <NewSpreadsheetDialog
-        isOpen={showNewSheetModal}
-        onClose={() => setShowNewSheetModal(false)}
-        defaultProjectId={projectId}
-      />
+
 
       {/* Delete Confirmation Dialog */}
       <DeleteDialog
@@ -3036,15 +2648,7 @@ export default function ProjectWorkspacePage() {
         }}
       />
 
-      {/* Tracker Access Dialog */}
-      {trackerAccessDialogState && (
-        <TrackerAccessDialog
-          isOpen={trackerAccessDialogState.isOpen}
-          onClose={() => setTrackerAccessDialogState(null)}
-          itemId={trackerAccessDialogState.itemId}
-          targetName={trackerAccessDialogState.targetName}
-        />
-      )}
+
 
       {/* Floating Drag Overlay Ghost (Folder tab / thumbnail / stack badge) */}
       <DragOverlay dropAnimation={null}>

@@ -35,7 +35,7 @@ import { apiRequest } from "@/lib/api";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { NewDocumentDialog } from "@/components/documents/new-document-dialog";
-import { NewSpreadsheetDialog } from "@/components/spreadsheets/new-spreadsheet-dialog";
+import { UploadDestinationDialog } from "@/components/uploads/upload-destination-dialog";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -48,19 +48,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const queryClient = useQueryClient();
   const { user, role, isClient, hasPermission, isExecutive, isAdmin } = useAuth();
 
-  const { data: reviewsData } = useQuery({
-    queryKey: ["reviews-count"],
-    queryFn: () => apiRequest<{ items: any[] }>("/reviews").catch(() => ({ items: [] })),
-    staleTime: 30_000,
-    enabled: !!user,
-  });
-  const reviewCount = reviewsData?.items?.length || 0;
-
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const [showNewClient, setShowNewClient] = useState(false);
   const [showNewProject, setShowNewProject] = useState(false);
   const [showNewDoc, setShowNewDoc] = useState(false);
-  const [showNewSheet, setShowNewSheet] = useState(false);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   async function handleLogout() {
@@ -133,7 +125,7 @@ function QuickLinksNavIcon({ size = 20, filled = false, className = "" }: { size
   // Exact bottom navigation items from L1 Library design: Admin, Storage, Settings
   const bottomNavItems = [
     { name: "Admin", href: "/admin", icon: Shield, show: isAdmin },
-    { name: "Storage", href: "/storage", icon: Database, show: true },
+    { name: "Storage", href: "/storage", icon: Database, show: !isClient && (role === "Staff" || isAdmin || isExecutive) },
     { name: "Settings", href: "/settings", icon: Settings, show: true },
   ];
 
@@ -203,21 +195,6 @@ function QuickLinksNavIcon({ size = 20, filled = false, className = "" }: { size
                   onClick={() => setNewMenuOpen(false)}
                 />
                 <div className="absolute left-4 right-4 top-[70px] z-40 rounded-[10px] border border-[var(--border)] bg-[var(--panel-raised)] py-2 shadow-[0_8px_24px_rgba(0,0,0,0.5)] animate-in fade-in-0 zoom-in-[0.98] duration-160 ease-out">
-                  <div className="px-3.5 pb-1 text-xs font-medium text-[var(--text-3)]">
-                    Create in My Drive
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setNewMenuOpen(false);
-                      router.push("/my-drive");
-                    }}
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
-                  >
-                    <CreateNewFolder size={18} className="text-[var(--text-2)]" />
-                    <span>New folder</span>
-                  </button>
-
                   <button
                     onClick={() => {
                       setNewMenuOpen(false);
@@ -232,54 +209,15 @@ function QuickLinksNavIcon({ size = 20, filled = false, className = "" }: { size
                   <button
                     onClick={() => {
                       setNewMenuOpen(false);
-                      setShowNewSheet(true);
+                      setShowNewProject(true);
                     }}
                     className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
                   >
-                    <TableChart size={18} className="text-[var(--text-2)]" />
-                    <span>New spreadsheet</span>
+                    <CreateNewFolder size={18} className="text-[var(--text-2)]" />
+                    <span>New project</span>
                   </button>
 
-                  <div className="my-1.5 border-t border-[var(--border)]" />
-
-                  <button
-                    onClick={() => {
-                      setNewMenuOpen(false);
-                      router.push("/my-drive");
-                    }}
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
-                  >
-                    <UploadFile size={18} className="text-[var(--text-2)]" />
-                    <span>Upload files</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setNewMenuOpen(false);
-                      router.push("/my-drive");
-                    }}
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
-                  >
-                    <DriveFolderUpload size={18} className="text-[var(--text-2)]" />
-                    <span>Upload folder</span>
-                  </button>
-
-                  <div className="my-1.5 border-t border-[var(--border)]" />
-
-                  {hasPermission("projects.create") && (
-                    <button
-                      onClick={() => {
-                        setNewMenuOpen(false);
-                        setShowNewProject(true);
-                      }}
-                      className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
-                    >
-                      <FolderOpen size={18} className="text-[var(--text-2)]" />
-                      <span>New project</span>
-                    </button>
-                  )}
-
-                  {hasPermission("clients.create") && (
+                  {(isAdmin || hasPermission("clients.create")) && (
                     <button
                       onClick={() => {
                         setNewMenuOpen(false);
@@ -291,6 +229,19 @@ function QuickLinksNavIcon({ size = 20, filled = false, className = "" }: { size
                       <span>New client</span>
                     </button>
                   )}
+
+                  <div className="my-1.5 border-t border-[var(--border)]" />
+
+                  <button
+                    onClick={() => {
+                      setNewMenuOpen(false);
+                      setShowUploadDialog(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
+                  >
+                    <UploadFile size={18} className="text-[var(--text-2)]" />
+                    <span>Upload files</span>
+                  </button>
                 </div>
               </>
             )}
@@ -443,9 +394,9 @@ function QuickLinksNavIcon({ size = 20, filled = false, className = "" }: { size
         isOpen={showNewDoc}
         onClose={() => setShowNewDoc(false)}
       />
-      <NewSpreadsheetDialog
-        isOpen={showNewSheet}
-        onClose={() => setShowNewSheet(false)}
+      <UploadDestinationDialog
+        isOpen={showUploadDialog}
+        onClose={() => setShowUploadDialog(false)}
       />
     </>
   );

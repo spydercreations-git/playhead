@@ -248,39 +248,21 @@ func (h *StorageUploadsHandler) InitiateUpload(w http.ResponseWriter, r *http.Re
 	// Expires in 24 hours (Requirement 2)
 	expiresAt := time.Now().Add(24 * time.Hour)
 
-	var uploadRecord db.Upload
-	if isDrive {
-		uploadRecord, err = h.queries.CreateDriveUpload(ctx, db.CreateDriveUploadParams{
-			CompanyID:     companyID,
-			UserID:        user.ID,
-			ParentID:      parentUUID,
-			TargetItemID:  targetItemUUID,
-			Filename:      req.Filename,
-			SizeBytes:     req.SizeBytes,
-			Mime:          req.Mime,
-			StorageKey:    storageKey,
-			UploadID:      s3UploadID,
-			PartSizeBytes: partSize,
-			TotalParts:    int32(totalParts),
-			ExpiresAt:     pgtype.Timestamptz{Time: expiresAt, Valid: true},
-		})
-	} else {
-		uploadRecord, err = h.queries.CreateUpload(ctx, db.CreateUploadParams{
-			CompanyID:     companyID,
-			UserID:        user.ID,
-			ProjectID:     projID,
-			ParentID:      parentUUID,
-			TargetItemID:  targetItemUUID,
-			Filename:      req.Filename,
-			SizeBytes:     req.SizeBytes,
-			Mime:          req.Mime,
-			StorageKey:    storageKey,
-			UploadID:      s3UploadID,
-			PartSizeBytes: partSize,
-			TotalParts:    int32(totalParts),
-			ExpiresAt:     pgtype.Timestamptz{Time: expiresAt, Valid: true},
-		})
-	}
+	uploadRecord, err := h.queries.CreateUpload(ctx, db.CreateUploadParams{
+		CompanyID:     companyID,
+		UserID:        user.ID,
+		ProjectID:     proj.ID,
+		ParentID:      parentUUID,
+		TargetItemID:  targetItemUUID,
+		Filename:      req.Filename,
+		SizeBytes:     req.SizeBytes,
+		Mime:          req.Mime,
+		StorageKey:    storageKey,
+		UploadID:      s3UploadID,
+		PartSizeBytes: partSize,
+		TotalParts:    int32(totalParts),
+		ExpiresAt:     pgtype.Timestamptz{Time: expiresAt, Valid: true},
+	})
 	if err != nil {
 		_ = h.queries.ReleaseCompanyReservedStorage(ctx, db.ReleaseCompanyReservedStorageParams{
 			ID:    companyID,
@@ -472,47 +454,21 @@ func (h *StorageUploadsHandler) CompleteUpload(w http.ResponseWriter, r *http.Re
 		}
 	}
 	if !item.ID.Valid {
-		if !upload.ProjectID.Valid {
-			cat := detectCategory(upload.Filename, upload.Mime)
-			created, err := h.queries.CreateDriveFileItem(ctx, db.CreateDriveFileItemParams{
-				CompanyID:  companyID,
-				ParentID:   upload.ParentID,
-				Name:       upload.Filename,
-				Position:   pgtype.Numeric{Int: big.NewInt(0), Valid: true},
-				CreatedBy:  upload.UserID,
-				TotalBytes: upload.SizeBytes,
-				Category:   pgtype.Text{String: cat, Valid: true},
-			})
-			if err != nil {
-				respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_item"})
-				return
-			}
-			item = created
-
-			_ = h.queries.RecordRecentItem(ctx, db.RecordRecentItemParams{
-				CompanyID: companyID,
-				UserID:    upload.UserID,
-				ItemID:    item.ID,
-				ItemType:  "file",
-				ProjectID: pgtype.UUID{Valid: false},
-			})
-		} else {
-			// Create new file item in project
-			created, err := h.queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
-				CompanyID: companyID,
-				ProjectID: upload.ProjectID,
-				ParentID:  upload.ParentID,
-				Kind:      "file",
-				Name:      upload.Filename,
-				Position:  pgtype.Numeric{Int: big.NewInt(0), Valid: true},
-				CreatedBy: upload.UserID,
-			})
-			if err != nil {
-				respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_item"})
-				return
-			}
-			item = created
+		// Create new file item in project
+		created, err := h.queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+			CompanyID: companyID,
+			ProjectID: upload.ProjectID,
+			ParentID:  upload.ParentID,
+			Kind:      "file",
+			Name:      upload.Filename,
+			Position:  pgtype.Numeric{Int: big.NewInt(0), Valid: true},
+			CreatedBy: upload.UserID,
+		})
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_item"})
+			return
 		}
+		item = created
 	}
 
 	previewStatus := "none"

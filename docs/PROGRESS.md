@@ -947,6 +947,58 @@ Google Login is built into the backend and UI, but hidden until configured. When
 - `npm --prefix apps/web run typecheck`: 0 TypeScript errors.
 - `node apps/web/scripts/check-design-tokens.js --strict`: 0 design token violations.
 
+---
+
+## Milestone 4: Workspace Overhaul (Phase 4)
+
+### Status: Completed ✅ (Verified end-to-end in browser and tests)
+
+### What was built:
+1. **Backups**:
+   - Stored outside the repository in `~/playhead-backups/`:
+     - Database dumps: `~/playhead-backups/backup_pre_phase4_playhead_dev.sql`, `~/playhead-backups/backup_pre_phase4_playhead_test.sql`
+     - Spreadsheet data dumps: `~/playhead-backups/spreadsheets_export.json`, `~/playhead-backups/spreadsheet_versions_export.json`, `~/playhead-backups/spreadsheets_tables_backup.sql`
+2. **My Drive Move (No File Left Behind)**:
+   - Migration `00025_phase4_workspace_overhaul.sql` moved every My Drive item (owned or shared, any depth, including trash and documents) into project "From My Drive" under client "Idyll Productions".
+   - Top-level files preserved in folder "My Drive files".
+   - Verified before/after counts: exact match (4 folders, 2 files, 2 versions, 275,376 bytes in dev; 699 folders, 116 files, 116 versions, 589,824 bytes in test).
+   - Permanent HTTP 308 redirects from `/my-drive` and `/drive` to `/home`.
+3. **Standalone Documents Architecture**:
+   - Documents decoupled from projects; created with `project_id = NULL`.
+   - Access controlled via `document_shares` table with `role` (`editor` vs `viewer`).
+   - Old links redirect permanently to `/documents/:id`.
+   - Screen D1 (`/documents`): Filter by owner (All / Owned by anyone / Owned by me / Shared with me), sort by modified date, search, grid/list view toggle, card previews with simulated lines, 3-dots menu (Share modal, Rename, Make a copy, Delete).
+4. **Recent Activity Timeline**:
+   - Synchronous audit log written to `activity_events` on item upload, deletion, comment, review status change, etc.
+   - Home activity feed reads newest first, filtered strictly by user permissions.
+   - "See all activity" modal with complete audit trail.
+5. **Home Dashboard (Screen H1)**:
+   - "N files are waiting for your review" cards with comment counts, version badge, duration, and status pills.
+   - "Your projects" mosaic grid with thumbnail previews and review count badges.
+   - Upload button prompts project & folder selection first, saving user preferences (`last_upload_project_id`, `last_upload_folder_id`).
+   - Staff/editor private workspace notice: *"Playhead is Idyll Productions' private workspace for client work. Please don't use it for personal files."*
+6. **Universal Search (⌘K)**:
+   - PostgreSQL Full Text Search across clients, projects, folders, files, tasks, and documents.
+   - Strict permission filtering: never exposes internal comments to clients, excludes deleted items, respects editor project/task assignments.
+7. **Storage Screen (Screen S1)**:
+   - Available to staff only (`/storage`).
+   - Total workspace usage in TB/GB across clients, projects, and files.
+   - Segmented color progress bar (Videos blue `#4876f3`, Images purple `#9787ff`, Documents & PDFs green `#3fcf8e`, Other gray `#71717a`).
+   - "By client" breakdown table with project counts, formatted storage bytes, and share-of-total progress bars.
+8. **Quick Links (Screen Q1)**:
+   - Private per user (`/quick-links`).
+   - Validated strictly to `http` and `https`.
+   - Single-click copy with feedback, open in new tab, search, and delete.
+9. **Removals**:
+   - Completely removed My Drive, Spreadsheets, Reviews feed, Shared with me, Starred pages/APIs, FortuneSheet, and tracker access code.
+   - Permanent 308 redirects from old URLs to `/home`.
+
+### Automated Tests:
+- `services/api/internal/handler/...`: 100% PASS (including `TestAllRolesEndpoints` across all 10 roles, `TestSearchPermissionsForClientsAndEditors`, home, quick links, storage, documents).
+- `services/shared/...`: 100% PASS.
+- `npm --prefix apps/web run typecheck`: 0 TypeScript errors (`tsc --noEmit`).
+- `node apps/web/scripts/check-design-tokens.js --strict`: 0 violations (0 off-scale text, 0 invalid hex, 0 gradients, 0 sample data).
+
 
 
 

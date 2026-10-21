@@ -1042,6 +1042,72 @@ func (q *Queries) ListFileVersions(ctx context.Context, itemID pgtype.UUID) ([]L
 	return items, nil
 }
 
+const listFolderChildrenDirect = `-- name: ListFolderChildrenDirect :many
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position,
+       COALESCE(fv.storage_key, '') AS latest_storage_key,
+       COALESCE(fv.size_bytes, 0)::bigint AS latest_size_bytes,
+       COALESCE(fv.mime, '') AS latest_mime
+FROM items i
+LEFT JOIN LATERAL (
+    SELECT storage_key, size_bytes, mime
+    FROM file_versions
+    WHERE item_id = i.id
+    ORDER BY number DESC
+    LIMIT 1
+) fv ON true
+WHERE i.company_id = $1 AND i.parent_id = $2 AND i.deleted_at IS NULL
+ORDER BY CASE WHEN i.kind = 'folder' THEN 0 ELSE 1 END ASC, i.name ASC
+`
+
+type ListFolderChildrenDirectParams struct {
+	CompanyID pgtype.UUID `json:"company_id"`
+	ParentID  pgtype.UUID `json:"parent_id"`
+}
+
+type ListFolderChildrenDirectRow struct {
+	ID               pgtype.UUID    `json:"id"`
+	CompanyID        pgtype.UUID    `json:"company_id"`
+	ProjectID        pgtype.UUID    `json:"project_id"`
+	ParentID         pgtype.UUID    `json:"parent_id"`
+	Kind             string         `json:"kind"`
+	Name             string         `json:"name"`
+	Position         pgtype.Numeric `json:"position"`
+	LatestStorageKey string         `json:"latest_storage_key"`
+	LatestSizeBytes  int64          `json:"latest_size_bytes"`
+	LatestMime       string         `json:"latest_mime"`
+}
+
+func (q *Queries) ListFolderChildrenDirect(ctx context.Context, arg ListFolderChildrenDirectParams) ([]ListFolderChildrenDirectRow, error) {
+	rows, err := q.db.Query(ctx, listFolderChildrenDirect, arg.CompanyID, arg.ParentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListFolderChildrenDirectRow{}
+	for rows.Next() {
+		var i ListFolderChildrenDirectRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CompanyID,
+			&i.ProjectID,
+			&i.ParentID,
+			&i.Kind,
+			&i.Name,
+			&i.Position,
+			&i.LatestStorageKey,
+			&i.LatestSizeBytes,
+			&i.LatestMime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listItemsWithVersions = `-- name: ListItemsWithVersions :many
 SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category, i.delete_batch_id, i.is_tracker,
        COALESCE(fv.storage_key, '') AS latest_storage_key,
@@ -1155,6 +1221,107 @@ func (q *Queries) ListItemsWithVersions(ctx context.Context, arg ListItemsWithVe
 			&i.PreviewStatus,
 			&i.CreatedByName,
 			&i.IsStarred,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProjectItems = `-- name: ListProjectItems :many
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position, i.created_by, i.file_count, i.folder_count, i.total_bytes, i.review_status, i.locked, i.deleted_at, i.deleted_by, i.original_parent_id, i.created_at, i.updated_at, i.video_count, i.drive_owner_id, i.is_default_folder, i.category, i.delete_batch_id, i.is_tracker,
+       COALESCE(fv.storage_key, '') AS latest_storage_key,
+       COALESCE(fv.size_bytes, 0) AS latest_size_bytes,
+       COALESCE(fv.mime, '') AS latest_mime,
+       COALESCE(fv.number, 1) AS latest_version_number
+FROM items i
+LEFT JOIN file_versions fv ON fv.item_id = i.id AND fv.number = (
+    SELECT MAX(number) FROM file_versions WHERE item_id = i.id
+)
+WHERE i.company_id = $1
+  AND i.project_id = $2
+  AND i.deleted_at IS NULL
+ORDER BY i.name ASC
+`
+
+type ListProjectItemsParams struct {
+	CompanyID pgtype.UUID `json:"company_id"`
+	ProjectID pgtype.UUID `json:"project_id"`
+}
+
+type ListProjectItemsRow struct {
+	ID                  pgtype.UUID        `json:"id"`
+	CompanyID           pgtype.UUID        `json:"company_id"`
+	ProjectID           pgtype.UUID        `json:"project_id"`
+	ParentID            pgtype.UUID        `json:"parent_id"`
+	Kind                string             `json:"kind"`
+	Name                string             `json:"name"`
+	Position            pgtype.Numeric     `json:"position"`
+	CreatedBy           pgtype.UUID        `json:"created_by"`
+	FileCount           int32              `json:"file_count"`
+	FolderCount         int32              `json:"folder_count"`
+	TotalBytes          int64              `json:"total_bytes"`
+	ReviewStatus        string             `json:"review_status"`
+	Locked              bool               `json:"locked"`
+	DeletedAt           pgtype.Timestamptz `json:"deleted_at"`
+	DeletedBy           pgtype.UUID        `json:"deleted_by"`
+	OriginalParentID    pgtype.UUID        `json:"original_parent_id"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	VideoCount          int32              `json:"video_count"`
+	DriveOwnerID        pgtype.UUID        `json:"drive_owner_id"`
+	IsDefaultFolder     bool               `json:"is_default_folder"`
+	Category            pgtype.Text        `json:"category"`
+	DeleteBatchID       pgtype.UUID        `json:"delete_batch_id"`
+	IsTracker           bool               `json:"is_tracker"`
+	LatestStorageKey    string             `json:"latest_storage_key"`
+	LatestSizeBytes     int64              `json:"latest_size_bytes"`
+	LatestMime          string             `json:"latest_mime"`
+	LatestVersionNumber int32              `json:"latest_version_number"`
+}
+
+func (q *Queries) ListProjectItems(ctx context.Context, arg ListProjectItemsParams) ([]ListProjectItemsRow, error) {
+	rows, err := q.db.Query(ctx, listProjectItems, arg.CompanyID, arg.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListProjectItemsRow{}
+	for rows.Next() {
+		var i ListProjectItemsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CompanyID,
+			&i.ProjectID,
+			&i.ParentID,
+			&i.Kind,
+			&i.Name,
+			&i.Position,
+			&i.CreatedBy,
+			&i.FileCount,
+			&i.FolderCount,
+			&i.TotalBytes,
+			&i.ReviewStatus,
+			&i.Locked,
+			&i.DeletedAt,
+			&i.DeletedBy,
+			&i.OriginalParentID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.VideoCount,
+			&i.DriveOwnerID,
+			&i.IsDefaultFolder,
+			&i.Category,
+			&i.DeleteBatchID,
+			&i.IsTracker,
+			&i.LatestStorageKey,
+			&i.LatestSizeBytes,
+			&i.LatestMime,
+			&i.LatestVersionNumber,
 		); err != nil {
 			return nil, err
 		}

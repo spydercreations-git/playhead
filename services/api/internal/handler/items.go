@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
@@ -23,6 +24,7 @@ import (
 // ItemsHandler handles item (folder & file) operations
 type ItemsHandler struct {
 	queries *db.Queries
+	pool    *pgxpool.Pool
 	storage *storage.Client
 }
 
@@ -31,6 +33,10 @@ func NewItemsHandler(queries *db.Queries, storage *storage.Client) *ItemsHandler
 		queries: queries,
 		storage: storage,
 	}
+}
+
+func (h *ItemsHandler) SetPool(p *pgxpool.Pool) {
+	h.pool = p
 }
 
 // ListItems returns non-deleted items in a folder or root of a project
@@ -468,7 +474,8 @@ func (h *ItemsHandler) RenameItem(w http.ResponseWriter, r *http.Request) {
 }
 
 type moveItemReq struct {
-	TargetParentID *string `json:"target_parent_id"`
+	TargetParentID  *string `json:"target_parent_id"`
+	TargetProjectID *string `json:"target_project_id"`
 }
 
 // MoveItem moves an item to another folder, checking circular references
@@ -541,6 +548,18 @@ func (h *ItemsHandler) MoveItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Rule 6: Check target_project_id if supplied - moving across projects is forbidden!
+	if req.TargetProjectID != nil && strings.TrimSpace(*req.TargetProjectID) != "" {
+		var tProjID pgtype.UUID
+		if err := tProjID.Scan(*req.TargetProjectID); err == nil && tProjID.Valid && tProjID != item.ProjectID {
+			respondJSON(w, http.StatusForbidden, map[string]string{
+				"error":   "forbidden",
+				"message": "Files can't move to another project",
+			})
+			return
+		}
+	}
+
 	var targetParentUUID pgtype.UUID
 	var targetFolderUUID uuid.UUID
 	if req.TargetParentID != nil && *req.TargetParentID != "" && *req.TargetParentID != "null" {
@@ -549,6 +568,27 @@ func (h *ItemsHandler) MoveItem(w http.ResponseWriter, r *http.Request) {
 			targetFolderUUID = pid
 		} else {
 			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_target_parent_id"})
+			return
+		}
+
+		targetParent, tErr := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+			ID:        targetParentUUID,
+			CompanyID: companyID,
+		})
+		if tErr != nil || targetParent.Kind != "folder" || targetParent.DeletedAt.Valid {
+			respondJSON(w, http.StatusBadRequest, map[string]string{
+				"error":   "invalid_target_parent",
+				"message": "Target must be an active folder",
+			})
+			return
+		}
+
+		// Rule 6: Target folder must belong to the SAME project! Another project = 403 Forbidden!
+		if targetParent.ProjectID != item.ProjectID {
+			respondJSON(w, http.StatusForbidden, map[string]string{
+				"error":   "forbidden",
+				"message": "Files can't move to another project",
+			})
 			return
 		}
 
@@ -583,17 +623,43 @@ func (h *ItemsHandler) MoveItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	oldParentUUID := item.ParentID
 
-	moved, err := h.queries.MoveItem(ctx, db.MoveItemParams{
-		ID:          itemID,
-		CompanyID:   companyID,
-		NewParentID: targetParentUUID,
-	})
-	if err != nil {
-		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_move_item"})
-		return
+	var moved db.Item
+	if h.pool != nil {
+		tx, txErr := h.pool.Begin(ctx)
+		if txErr != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "tx_begin_failed"})
+			return
+		}
+		defer tx.Rollback(ctx)
+
+		qtx := h.queries.WithTx(tx)
+		var mErr error
+		moved, mErr = qtx.MoveItem(ctx, db.MoveItemParams{
+			ID:          itemID,
+			CompanyID:   companyID,
+			NewParentID: targetParentUUID,
+		})
+		if mErr != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_move_item"})
+			return
+		}
+		if err := tx.Commit(ctx); err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "tx_commit_failed"})
+			return
+		}
+	} else {
+		var mErr error
+		moved, mErr = h.queries.MoveItem(ctx, db.MoveItemParams{
+			ID:          itemID,
+			CompanyID:   companyID,
+			NewParentID: targetParentUUID,
+		})
+		if mErr != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_move_item"})
+			return
+		}
 	}
 
 	// Update counts for old parent and new parent and their ancestors
@@ -606,6 +672,11 @@ func (h *ItemsHandler) MoveItem(w http.ResponseWriter, r *http.Request) {
 	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, item.ProjectID)
 
 	respondJSON(w, http.StatusOK, moved)
+}
+
+type copyItemReq struct {
+	TargetProjectID *string `json:"target_project_id"`
+	TargetParentID  *string `json:"target_parent_id"`
 }
 
 // CopyItem makes a server-side copy of an item (Requirement 9: zero bytes through API)
@@ -656,13 +727,67 @@ func (h *ItemsHandler) CopyItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var req copyItemReq
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	destProjectID := item.ProjectID
+	destProj := proj
+	destParentID := item.ParentID
+
+	if req.TargetProjectID != nil && strings.TrimSpace(*req.TargetProjectID) != "" {
+		var tProjID pgtype.UUID
+		if err := tProjID.Scan(*req.TargetProjectID); err == nil && tProjID.Valid {
+			tProj, pErr := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+				ID:        tProjID,
+				CompanyID: companyID,
+			})
+			if pErr != nil {
+				respondJSON(w, http.StatusNotFound, map[string]string{"error": "target_project_not_found"})
+				return
+			}
+
+			// Rule 7: only into projects of the SAME client!
+			if tProj.ClientID != proj.ClientID {
+				respondJSON(w, http.StatusForbidden, map[string]string{
+					"error":   "forbidden",
+					"message": "Items can only be copied into projects of the same client",
+				})
+				return
+			}
+
+			destProjectID = tProj.ID
+			destProj = tProj
+			destParentID = pgtype.UUID{Valid: false}
+		}
+	}
+
+	if req.TargetParentID != nil && strings.TrimSpace(*req.TargetParentID) != "" && *req.TargetParentID != "null" {
+		var tParID pgtype.UUID
+		if err := tParID.Scan(*req.TargetParentID); err == nil && tParID.Valid {
+			tPar, parErr := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+				ID:        tParID,
+				CompanyID: companyID,
+			})
+			if parErr != nil || tPar.Kind != "folder" || tPar.DeletedAt.Valid || tPar.ProjectID != destProjectID {
+				respondJSON(w, http.StatusBadRequest, map[string]string{
+					"error":   "invalid_target_parent_id",
+					"message": "Target must be an active folder in the target project",
+				})
+				return
+			}
+			destParentID = tPar.ID
+		}
+	}
+
 	var parentFolderUUID uuid.UUID
-	if item.ParentID.Valid {
-		parentFolderUUID = uuid.UUID(item.ParentID.Bytes)
+	if destParentID.Valid {
+		parentFolderUUID = uuid.UUID(destParentID.Bytes)
 	}
 
 	destAccess, err := authz.AccessFolder(ctx, h.queries, person, authz.ProjectTarget{
-		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+		ID: uuid.UUID(destProj.ID.Bytes), CompanyID: uuid.UUID(destProj.CompanyID.Bytes), ClientID: uuid.UUID(destProj.ClientID.Bytes),
 	}, parentFolderUUID)
 	if err != nil || !destAccess.CanUpload() {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to copy items here"})
@@ -670,10 +795,14 @@ func (h *ItemsHandler) CopyItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	copyName := fmt.Sprintf("%s (Copy)", item.Name)
+	if destProjectID != item.ProjectID {
+		copyName = item.Name
+	}
+
 	newItem, err := h.queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
 		CompanyID: companyID,
-		ProjectID: item.ProjectID,
-		ParentID:  item.ParentID,
+		ProjectID: destProjectID,
+		ParentID:  destParentID,
 		Kind:      item.Kind,
 		Name:      copyName,
 		Position:  pgtype.Numeric{Int: big.NewInt(0), Valid: true},
@@ -707,14 +836,71 @@ func (h *ItemsHandler) CopyItem(w http.ResponseWriter, r *http.Request) {
 			ID:    companyID,
 			Bytes: item.LatestSizeBytes,
 		})
+	} else if item.Kind == "folder" {
+		h.copyFolderChildren(ctx, item.ID, newItem.ID, destProjectID, user.ID, companyID)
 	}
 
-	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, item.ProjectID)
-	if item.ParentID.Valid {
+	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, destProjectID)
+	if destProjectID != item.ProjectID {
+		_ = h.queries.RecalculateProjectAndFolderCounts(ctx, item.ProjectID)
+	}
+	if destParentID.Valid {
+		_ = h.queries.RecalculateFolderCounts(ctx, destParentID)
+	}
+	if item.ParentID.Valid && item.ParentID != destParentID {
 		_ = h.queries.RecalculateFolderCounts(ctx, item.ParentID)
 	}
 
 	respondJSON(w, http.StatusCreated, newItem)
+}
+
+func (h *ItemsHandler) copyFolderChildren(ctx context.Context, srcFolderID, destFolderID, destProjectID pgtype.UUID, userID, companyID pgtype.UUID) {
+	children, err := h.queries.ListFolderChildrenDirect(ctx, db.ListFolderChildrenDirectParams{
+		CompanyID: companyID,
+		ParentID:  srcFolderID,
+	})
+	if err != nil {
+		return
+	}
+
+	for _, ch := range children {
+		newChild, cErr := h.queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+			CompanyID: companyID,
+			ProjectID: destProjectID,
+			ParentID:  destFolderID,
+			Kind:      ch.Kind,
+			Name:      ch.Name,
+			Position:  ch.Position,
+			CreatedBy: userID,
+		})
+		if cErr != nil {
+			continue
+		}
+
+		if ch.Kind == "file" && ch.LatestStorageKey != "" {
+			newKey := fmt.Sprintf("companies/%s/items/%s/v1", uuid.UUID(companyID.Bytes).String(), uuid.UUID(newChild.ID.Bytes).String())
+			if h.storage != nil {
+				_ = h.storage.CopyObject(ctx, ch.LatestStorageKey, newKey)
+			}
+			_, _ = h.queries.CreateFileVersion(ctx, db.CreateFileVersionParams{
+				CompanyID:     companyID,
+				ItemID:        newChild.ID,
+				Number:        1,
+				StorageKey:    newKey,
+				SizeBytes:     ch.LatestSizeBytes,
+				Mime:          ch.LatestMime,
+				PreviewStatus: "none",
+				PreviewKeys:   []byte("{}"),
+				UploadedBy:    userID,
+			})
+			_ = h.queries.CommitCompanyStorage(ctx, db.CommitCompanyStorageParams{
+				ID:    companyID,
+				Bytes: ch.LatestSizeBytes,
+			})
+		} else if ch.Kind == "folder" {
+			h.copyFolderChildren(ctx, ch.ID, newChild.ID, destProjectID, userID, companyID)
+		}
+	}
 }
 
 // DeleteItem soft deletes an item into Trash (recalculating active counts)

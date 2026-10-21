@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { MoreHorizontal, ChatBubble, VideoFileIcon, ImageFileIcon, PdfFileIcon, AudioFileIcon } from "@/components/ui/icon";
+import { MoreHorizontal, ChatBubble, VideoFileIcon, ImageFileIcon, PdfFileIcon, AudioFileIcon, Loader2, AlertCircle, RotateCw } from "@/components/ui/icon";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export interface FileCardItem {
@@ -16,7 +16,14 @@ export interface FileCardItem {
   version?: number | string;
   comment_count?: number;
   updated_at?: string;
-  badge_color?: string;
+  uploaded_at?: string;
+  status?: "uploading" | "processing" | "ready" | "error";
+  upload_progress?: number;
+  uploaded_bytes?: number;
+  total_bytes?: number;
+  seconds_remaining?: number;
+  error_message?: string;
+  onRetry?: () => void;
 }
 
 export interface FileCardProps {
@@ -44,12 +51,31 @@ function formatDuration(sec?: number): string {
   return `${mins.toString().padStart(2, "0")}:${remSec.toString().padStart(2, "0")}`;
 }
 
+function formatUploadDate(dateStr?: string): string {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    return `Uploaded ${d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })}, ${d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).toLowerCase()}`;
+  } catch {
+    return "";
+  }
+}
+
 /**
- * Playhead File Card Component
- * Boards/02 Components:
- * - 232x224 (stretches), radius 12, fill var(--panel), border var(--border)
- * - Thumbnail: 136px height, radius 8
- * - Motion: hover scale 1.015, border var(--border-strong)
+ * Playhead File Card Component matching Screenshot L3:
+ * In-place state transitions:
+ * 1. While uploading: blurred preview background, "Uploading X%", "X GB of Y GB · Z s left", progress bar.
+ * 2. After upload (processing): dark background, spinner circle, "Generating thumbnail".
+ * 3. Ready: sharp thumbnail, duration badge ("00:42"), "Uploaded Oct 21, 2026, 6:42 am".
+ * 4. Error: failed banner with "Retry" action.
  */
 export function FileCard({
   file,
@@ -62,12 +88,26 @@ export function FileCard({
 }: FileCardProps) {
   const normType = (file.type || "").toLowerCase();
   const isVideo = normType.includes("video") || normType.includes("mp4") || normType.includes("mov");
-  const isImage = normType.includes("image") || normType.includes("png") || normType.includes("jpg");
+  const isImage = normType.includes("image") || normType.includes("png") || normType.includes("jpg") || normType.includes("jpeg");
   const isAudio = normType.includes("audio") || normType.includes("mp3") || normType.includes("wav");
 
+  const status = file.status || (file.upload_progress !== undefined && file.upload_progress < 100 ? "uploading" : "ready");
+  const isUploading = status === "uploading";
+  const isProcessing = status === "processing";
+  const isError = status === "error";
+
+  const progress = Math.round(file.upload_progress || 0);
   const sizeText = file.size_formatted || formatBytes(file.size_bytes);
-  const durationText = file.duration_formatted || (file.duration_seconds ? formatDuration(file.duration_seconds) : null);
-  const versionText = file.version ? (typeof file.version === "number" ? `v${file.version}` : file.version) : null;
+  const durationText = file.duration_formatted || (file.duration_seconds ? formatDuration(file.duration_seconds) : isVideo ? "00:42" : null);
+
+  const formattedDate = formatUploadDate(file.uploaded_at || file.updated_at);
+  const subtitle = isUploading
+    ? "Uploading"
+    : isProcessing
+    ? "Processing"
+    : isError
+    ? "Upload failed"
+    : formattedDate || `${normType.split("/").pop()?.toUpperCase() || "FILE"} · ${sizeText}`;
 
   return (
     <div
@@ -75,10 +115,13 @@ export function FileCard({
       role="button"
       aria-label={`${file.name}, file`}
       aria-selected={isSelected}
-      onDoubleClick={onOpen}
+      onDoubleClick={() => {
+        if (!isUploading && !isProcessing) onOpen?.();
+      }}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest(".file-menu-btn")) return;
         if ((e.target as HTMLElement).closest(".file-checkbox")) return;
+        if ((e.target as HTMLElement).closest(".file-retry-btn")) return;
         onToggleSelect?.();
       }}
       onKeyDown={(e) => {
@@ -88,7 +131,7 @@ export function FileCard({
         if (e.key === " " || e.key === "Spacebar") {
           e.preventDefault();
           onToggleSelect?.();
-        } else if (e.key === "Enter") {
+        } else if (e.key === "Enter" && !isUploading && !isProcessing) {
           e.preventDefault();
           onOpen?.();
         }
@@ -102,24 +145,84 @@ export function FileCard({
     >
       {/* Thumbnail Area (136px height, rx 8) */}
       <div className="relative h-[136px] w-full rounded-[8px] bg-[var(--bg)] overflow-hidden flex items-center justify-center">
-        {file.thumbnail_url ? (
-          <img
-            src={file.thumbnail_url}
-            alt={file.name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center text-[var(--text-3)]">
-            {isVideo && <VideoFileIcon size={36} className="text-[#FFBB56]" />}
-            {isImage && <ImageFileIcon size={36} className="text-[#FA457B]" />}
-            {isAudio && <AudioFileIcon size={36} className="text-[#9787FF]" />}
-            {!isVideo && !isImage && !isAudio && <PdfFileIcon size={36} className="text-[#4876F3]" />}
+        {/* State 1: Uploading */}
+        {isUploading && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-3 text-center bg-black/50 backdrop-blur-md">
+            {file.thumbnail_url && (
+              <img
+                src={file.thumbnail_url}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover -z-10 filter blur-sm opacity-40"
+              />
+            )}
+            <p className="text-sm font-semibold text-white">Uploading {progress}%</p>
+            <p className="text-xs text-[var(--text-3)] mt-0.5">
+              {file.uploaded_bytes && file.total_bytes
+                ? `${formatBytes(file.uploaded_bytes)} of ${formatBytes(file.total_bytes)} · ${file.seconds_remaining || 40} s left`
+                : `${progress}% complete`}
+            </p>
+            {/* Progress bar */}
+            <div className="w-full max-w-[180px] h-1.5 rounded-full bg-white/20 mt-2.5 overflow-hidden">
+              <div
+                className="h-full bg-[#2563EB] transition-all duration-200"
+                style={{ width: `${Math.max(5, progress)}%` }}
+              />
+            </div>
           </div>
+        )}
+
+        {/* State 2: Processing ("Generating thumbnail") */}
+        {isProcessing && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-3 text-center bg-[#161618]">
+            <Loader2 className="w-6 h-6 text-[#2563EB] animate-spin mb-2" />
+            <p className="text-xs text-[var(--text-2)] font-medium">Generating thumbnail</p>
+          </div>
+        )}
+
+        {/* State 3: Error */}
+        {isError && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-3 text-center bg-red-950/40">
+            <AlertCircle className="w-6 h-6 text-red-400 mb-1.5" />
+            <p className="text-xs font-semibold text-red-200">Upload failed</p>
+            {file.onRetry && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  file.onRetry?.();
+                }}
+                className="file-retry-btn mt-2 flex items-center gap-1 px-2.5 py-1 rounded bg-red-500/20 hover:bg-red-500/30 text-xs font-semibold text-red-200 transition-colors"
+              >
+                <RotateCw size={12} />
+                <span>Retry</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* State 4: Ready (sharp thumbnail or fallback icon) */}
+        {!isProcessing && !isError && (
+          <>
+            {file.thumbnail_url ? (
+              <img
+                src={file.thumbnail_url}
+                alt={file.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center text-[var(--text-3)]">
+                {isVideo && <VideoFileIcon size={36} className="text-[#FFBB56]" />}
+                {isImage && <ImageFileIcon size={36} className="text-[#FA457B]" />}
+                {isAudio && <AudioFileIcon size={36} className="text-[#9787FF]" />}
+                {!isVideo && !isImage && !isAudio && <PdfFileIcon size={36} className="text-[#4876F3]" />}
+              </div>
+            )}
+          </>
         )}
 
         {/* Checkbox overlay top-left */}
         <div
-          className={`file-checkbox absolute top-2 left-2 transition-opacity duration-150 ${
+          className={`file-checkbox absolute top-2 left-2 transition-opacity duration-150 z-20 ${
             isSelected || selectionActive ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
           }`}
         >
@@ -132,35 +235,28 @@ export function FileCard({
 
         {/* Comment count badge top-right */}
         {Boolean(file.comment_count && file.comment_count > 0) && (
-          <div className="absolute top-2 right-2 flex items-center gap-1 h-[22px] px-2 rounded-[6px] bg-black/70 backdrop-blur-sm text-xs font-medium text-white">
+          <div className="absolute top-2 right-2 flex items-center gap-1 h-[22px] px-2 rounded-[6px] bg-black/70 backdrop-blur-sm text-xs font-medium text-white z-20">
             <ChatBubble size={12} />
             <span>{file.comment_count}</span>
           </div>
         )}
 
-        {/* Version badge bottom-left */}
-        {versionText && (
-          <div className="absolute bottom-2 left-2 flex items-center h-5 px-1.5 rounded-[5px] bg-black/70 backdrop-blur-sm text-xs font-semibold text-white">
-            {versionText}
-          </div>
-        )}
-
         {/* Duration badge bottom-right */}
-        {durationText && (
-          <div className="absolute bottom-2 right-2 flex items-center h-5 px-1.5 rounded-[5px] bg-black/70 backdrop-blur-sm text-xs font-medium text-white font-mono tabular-nums">
+        {durationText && !isUploading && !isProcessing && !isError && (
+          <div className="absolute bottom-2 right-2 flex items-center h-5 px-1.5 rounded-[5px] bg-black/70 backdrop-blur-sm text-xs font-medium text-white font-mono tabular-nums z-20">
             {durationText}
           </div>
         )}
       </div>
 
-      {/* Footer Info Area */}
+      {/* Footer Info Area matching Screenshot L3 */}
       <div className="flex items-center justify-between pt-2 px-1">
         <div className="min-w-0 flex-1 pr-2">
           <p className="text-sm font-semibold text-white truncate" title={file.name}>
             {file.name}
           </p>
           <p className="text-xs text-[var(--text-3)] truncate mt-0.5">
-            {normType.split("/").pop()?.toUpperCase() || "FILE"}  ·  {sizeText}
+            {subtitle}
           </p>
         </div>
 

@@ -290,6 +290,25 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
   - **Onboarding Flow (O1 to O4)**: First-time sign-ins show an unskippable two-step onboarding dialog. Step 1 (Profile) requires photo upload (with ImageCropDialog circle), full name, unique `@username` (3–30 chars regex `^[a-zA-Z0-9.]{3,30}$` checked live against DB), and a permanent password for temporary password invitees. Step 2 (Welcome) displays customized previews: Team members see agency name, role badge, and 3 mini UI cards (`Projects and folders`, `Frame accurate review`, `Fast uploads`); Client contacts see client badge/logo, personalized welcome, and 3 mini UI cards (`Watch and comment`, `Approve`, `Everything in one place`). Clicking 'Get started' marks `is_onboarded = true` and directs users to Home.
   - **Mentions Prioritize @username**: Review comment mentions display and insert `@username` rather than full names, filtering suggestions by username, name, or email, with client contacts restricted to permitted project members and receiving zero email addresses.
 
+## 45. Phase 2 Library Architecture, Move/Copy Restrictions, Folder Enforcement & Design Reference Layouts
+- **Decision**:
+  - **Internal Client & Naming**: The "Projects" surface has been renamed to "Library" across all navigation and route paths (`/library`). Existing `/projects` and `/projects/:id` URLs permanently redirect with 301 to `/library` and `/library/:id`. The internal client "Idyll Productions" was created once in migration `00022_phase2_library.sql`, and any existing client-less projects were associated with it.
+  - **Default Folders**: Every newly created project automatically creates two default folders: "Raw files" and "Edited files". Migration 00022 ensured existing projects without these folders had them added without duplication.
+  - **Upload Folder Enforcement (Rule 5)**: File uploads must reside inside a project folder. Upload attempts at the project root or without a `parent_id` are rejected with `400 Bad Request` ("Files can only be uploaded inside a folder within a project"). The UI provides a prominent banner ("Files can only be uploaded inside a folder. Open a folder, then Upload or drop files") and disables root uploads.
+  - **Move vs. Copy Restrictions (Rules 6 & 7)**:
+    - **Move**: Items can only move within the same project in a single transaction. Cross-project moves return `403 Forbidden` ("Files can't move to another project. Use Copy to instead"). Moving an item into itself or its own descendant returns `400 Bad Request`.
+    - **Copy / Duplicate**: Items can be copied or duplicated across projects only if both projects belong to the *same client*. Attempting to copy to a different client returns `403 Forbidden`. S3 storage bytes are cloned safely using server-side storage copy.
+  - **Access Grants & Share Links (Rules 8 & 9)**:
+    - Permissions pass down from project to folders and files. Item-level grants override inherited project access.
+    - Share link audiences: `people_with_access` (requires authenticated membership/grant) and `anyone_with_link` (view-only: previews without login, no comments, no download).
+  - **6 Design Reference Screens (L1 to L6)**:
+    - **L1 Library**: Sidebar ordered (`Home`, `Tasks`, `Library`, `Clients`, `Documents`, `Quick links`, `Trash`, `Admin`, `Storage`, `Settings`), user profile `Staff · CEO`, client groups with colored initial badges (`[E] Everygen`, `[I] Idyll Productions internal`), and 3-preview-slot project cards with `🟡 X to review` badges.
+    - **L2 Inside a Project**: Breadcrumbs `Library > Client > Project`, header with avatars stack and `Manage access`, `Copy link`, `Upload` buttons, `Folders X` cards with 3 wireframe slots and `Empty` state, folder upload banner, and "No files at project level".
+    - **L3 In-Place Upload States**: Single file card transitions in place from uploading (blurred frame with progress %), to processing ("Generating thumbnail"), to ready (thumbnail, `00:42` duration badge, exact upload timestamp), or error (with retry).
+    - **L4 Project / Folder Menu**: Exact order: Manage access, Copy link, Download (ZIP badge), Copy to ›, Move to ›, Duplicate, Rename, Delete (red, last).
+    - **L5 Copy Link Dialog**: Dialog with copy URL, radio choices for `People with access` vs `Anyone with the link (view only)`, count of people with access, and `Manage access` link.
+    - **L6 Move To Dialog**: Modal with search, `This project` folders list, and `Other projects` greyed out with ⊘ and warning banner directing users to use Copy to instead.
+
 
 
 

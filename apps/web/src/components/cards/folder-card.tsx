@@ -140,58 +140,52 @@ export function FolderCard({
       <div className="relative z-10 h-full w-full pt-[28px] px-3 pb-3 flex flex-col justify-between">
         {/* Preview Container: 1 big + 2 small slots, 6px gap, radius 8, height 150px */}
         <div className="relative h-[150px] w-full">
-          {thumbnails.length === 0 ? (
-            <div className="h-[150px] w-full rounded-[8px] bg-[var(--hover)] flex items-center justify-center text-[var(--text-3)]">
-              <Folder size={36} className="text-[var(--text-3)]" />
+          <div className="h-[150px] w-full flex gap-1.5">
+            {/* Big Slot */}
+            <div className="flex-1 h-[150px] rounded-[8px] bg-[#161618] border border-[var(--border)]/40 overflow-hidden relative flex items-center justify-center">
+              {thumbnails[0] ? (
+                <img
+                  src={thumbnails[0]}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[var(--text-3)]/50">
+                  <Folder size={26} className="text-[var(--text-3)]/50" />
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="h-[150px] w-full flex gap-1.5">
-              {/* Big Slot */}
-              <div className="flex-1 h-[150px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
-                {thumbnails[0] ? (
+
+            {/* Small Slots */}
+            <div className="w-[36%] h-[150px] flex flex-col gap-1.5">
+              <div className="h-[72px] rounded-[8px] bg-[#161618] border border-[var(--border)]/40 overflow-hidden relative flex items-center justify-center">
+                {thumbnails[1] ? (
                   <img
-                    src={thumbnails[0]}
+                    src={thumbnails[1]}
                     alt=""
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-[var(--hover)] flex items-center justify-center text-[var(--text-3)]">
-                    <Folder size={24} className="text-[var(--text-3)]" />
+                  <div className="w-full h-full flex items-center justify-center text-[var(--text-3)]/50">
+                    <Folder size={18} className="text-[var(--text-3)]/50" />
                   </div>
                 )}
               </div>
-
-              {/* Small Slots */}
-              <div className="w-[36%] h-[150px] flex flex-col gap-1.5">
-                <div className="h-[72px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
-                  {thumbnails[1] ? (
-                    <img
-                      src={thumbnails[1]}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-[var(--hover)] flex items-center justify-center text-[var(--text-3)]">
-                      <Folder size={18} className="text-[var(--text-3)]" />
-                    </div>
-                  )}
-                </div>
-                <div className="h-[72px] rounded-[8px] bg-[#000000] overflow-hidden relative flex items-center justify-center">
-                  {thumbnails[2] ? (
-                    <img
-                      src={thumbnails[2]}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-[var(--hover)] flex items-center justify-center text-[var(--text-3)]">
-                      <Folder size={18} className="text-[var(--text-3)]" />
-                    </div>
-                  )}
-                </div>
+              <div className="h-[72px] rounded-[8px] bg-[#161618] border border-[var(--border)]/40 overflow-hidden relative flex items-center justify-center">
+                {thumbnails[2] ? (
+                  <img
+                    src={thumbnails[2]}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[var(--text-3)]/50">
+                    <Folder size={18} className="text-[var(--text-3)]/50" />
+                  </div>
+                )}
               </div>
             </div>
-          )}
+          </div>
 
           {/* Selection Checkbox (Top-left of preview) */}
           <button
@@ -257,8 +251,14 @@ export function FolderCard({
                   </p>
                 ) : (
                   <p className="text-[13px] text-[var(--text-3)] truncate mt-0.5">
-                    {itemCount} {itemCount === 1 ? "file" : "files"}
-                    {totalBytes > 0 && `  ·  ${formatBytes(totalBytes)}`}
+                    {itemCount === 0 ? (
+                      "Empty"
+                    ) : (
+                      <>
+                        {itemCount} {itemCount === 1 ? "item" : "items"}
+                        {totalBytes > 0 && `  ·  ${formatBytes(totalBytes)}`}
+                      </>
+                    )}
                   </p>
                 )}
               </>

@@ -136,6 +136,20 @@ func TestP2FilesFoldersAndStorage(t *testing.T) {
 		GrantedBy:   adminUser.ID,
 	})
 
+	fld, err := queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+		CompanyID: comp.ID,
+		ProjectID: proj.ID,
+		ParentID:  pgtype.UUID{Valid: false},
+		Kind:      "folder",
+		Name:      "Raw files",
+		Position:  pgtype.Numeric{Int: big.NewInt(1000), Valid: true},
+		CreatedBy: adminUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create test folder: %v", err)
+	}
+	folderIDStr := uuid.UUID(fld.ID.Bytes).String()
+
 	// Helper to attach auth context
 	withAuth := func(r *http.Request, user db.User, role string, companyID pgtype.UUID) *http.Request {
 		return r.WithContext(contextWithAuth(r.Context(), user, companyID, role))
@@ -145,8 +159,25 @@ func TestP2FilesFoldersAndStorage(t *testing.T) {
 	// Extra Test 1: Viewer and Commenter cannot upload
 	// -------------------------------------------------------------------------
 	t.Run("Viewer and Commenter cannot upload", func(t *testing.T) {
+		// Root upload without folder -> 400
+		noFolderPayload := map[string]interface{}{
+			"project_id": uuid.UUID(proj.ID.Bytes).String(),
+			"filename":   "test_video.mp4",
+			"size_bytes": 100 * 1024 * 1024,
+			"mime":       "video/mp4",
+		}
+		bodyNF, _ := json.Marshal(noFolderPayload)
+		reqNF := httptest.NewRequest("POST", "/api/v1/uploads/initiate", bytes.NewReader(bodyNF))
+		reqNF = withAuth(reqNF, aliceUser, authz.RoleEditor, comp.ID)
+		rrNF := httptest.NewRecorder()
+		storageH.InitiateUpload(rrNF, reqNF)
+		if rrNF.Code != http.StatusBadRequest {
+			t.Errorf("expected 400 Bad Request for root upload, got %d", rrNF.Code)
+		}
+
 		uploadPayload := map[string]interface{}{
 			"project_id": uuid.UUID(proj.ID.Bytes).String(),
+			"parent_id":  folderIDStr,
 			"filename":   "test_video.mp4",
 			"size_bytes": 100 * 1024 * 1024,
 			"mime":       "video/mp4",
@@ -237,6 +268,7 @@ func TestP2FilesFoldersAndStorage(t *testing.T) {
 		// 1. Initiate upload -> reserved increases by 50 MB
 		initPayload := map[string]interface{}{
 			"project_id": uuid.UUID(proj.ID.Bytes).String(),
+			"parent_id":  folderIDStr,
 			"filename":   "commercial_50mb.mp4",
 			"size_bytes": fileSize,
 			"mime":       "video/mp4",
@@ -332,6 +364,7 @@ func TestP2FilesFoldersAndStorage(t *testing.T) {
 		// Reserve bytes via initiate
 		initPayload := map[string]interface{}{
 			"project_id": uuid.UUID(proj.ID.Bytes).String(),
+			"parent_id":  folderIDStr,
 			"filename":   "abandoned.mp4",
 			"size_bytes": abandonedSize,
 			"mime":       "video/mp4",

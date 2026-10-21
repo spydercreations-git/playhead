@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/playhead/playhead/services/api/internal/config"
 	"github.com/playhead/playhead/services/shared/authz"
@@ -75,6 +77,18 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create project: %v", err)
 	}
+	fld, err := queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+		CompanyID: comp.ID,
+		ProjectID: proj.ID,
+		ParentID:  pgtype.UUID{Valid: false},
+		Kind:      "folder",
+		Name:      "Raw files",
+		Position:  pgtype.Numeric{Int: big.NewInt(1000), Valid: true},
+		CreatedBy: adminUser.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create folder: %v", err)
+	}
 
 	// -------------------------------------------------------------------------
 	// Test 1: Test a 2 GB upload on Idyll Productions (storage_limit_bytes = 0)
@@ -84,6 +98,7 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 
 		uploadPayload := map[string]interface{}{
 			"project_id": uuid.UUID(proj.ID.Bytes).String(),
+			"parent_id":  uuid.UUID(fld.ID.Bytes).String(),
 			"filename":   "raw_footage_4k.mov",
 			"size_bytes": twoGB,
 			"mime":       "video/quicktime",
@@ -155,8 +170,22 @@ func TestPartAStorageLimitAndItemDeletions(t *testing.T) {
 			t.Fatalf("failed to create project: %v", err)
 		}
 
+		fldZero, err := queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+			CompanyID: nonInternalComp.ID,
+			ProjectID: projZero.ID,
+			ParentID:  pgtype.UUID{Valid: false},
+			Kind:      "folder",
+			Name:      "Raw files",
+			Position:  pgtype.Numeric{Int: big.NewInt(1000), Valid: true},
+			CreatedBy: userZero.ID,
+		})
+		if err != nil {
+			t.Fatalf("failed to create folder zero: %v", err)
+		}
+
 		uploadPayload := map[string]interface{}{
 			"project_id": uuid.UUID(projZero.ID.Bytes).String(),
+			"parent_id":  uuid.UUID(fldZero.ID.Bytes).String(),
 			"filename":   "clip.mp4",
 			"size_bytes": 1024 * 1024, // 1 MB
 			"mime":       "video/mp4",

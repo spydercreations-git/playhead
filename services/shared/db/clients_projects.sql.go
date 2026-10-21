@@ -469,6 +469,38 @@ func (q *Queries) GetClientByIDAnyStatus(ctx context.Context, arg GetClientByIDA
 	return i, err
 }
 
+const getClientByName = `-- name: GetClientByName :one
+SELECT id, company_id, name, website, notes, notes_item_id, logo_key, created_by, created_at, updated_at, deleted_at, delete_batch_id, status FROM clients
+WHERE company_id = $1 AND LOWER(name) = LOWER($2) AND deleted_at IS NULL
+LIMIT 1
+`
+
+type GetClientByNameParams struct {
+	CompanyID pgtype.UUID `json:"company_id"`
+	Name      string      `json:"name"`
+}
+
+func (q *Queries) GetClientByName(ctx context.Context, arg GetClientByNameParams) (Client, error) {
+	row := q.db.QueryRow(ctx, getClientByName, arg.CompanyID, arg.Name)
+	var i Client
+	err := row.Scan(
+		&i.ID,
+		&i.CompanyID,
+		&i.Name,
+		&i.Website,
+		&i.Notes,
+		&i.NotesItemID,
+		&i.LogoKey,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.DeleteBatchID,
+		&i.Status,
+	)
+	return i, err
+}
+
 const getClientContactByClientAndEmail = `-- name: GetClientContactByClientAndEmail :one
 SELECT id, company_id, client_id, name, email, default_level, can_download, user_id, last_signed_in_at, created_at, updated_at FROM client_contacts
 WHERE client_id = $1 AND LOWER(email) = $2

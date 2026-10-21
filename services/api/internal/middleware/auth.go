@@ -223,6 +223,119 @@ func (am *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 	})
 }
 
+// OptionalAuthenticate tries to authenticate session if cookie or bearer token is present, but never rejects if missing or invalid.
+func (am *AuthMiddleware) OptionalAuthenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var rawToken string
+		if cookie, err := r.Cookie("playhead_session"); err == nil && cookie.Value != "" {
+			rawToken = cookie.Value
+		}
+		if rawToken == "" {
+			authHeader := r.Header.Get("Authorization")
+			if strings.HasPrefix(authHeader, "Bearer ") {
+				rawToken = strings.TrimPrefix(authHeader, "Bearer ")
+			}
+		}
+		if rawToken == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		tokenHash := authz.HashToken(rawToken)
+		session, err := am.queries.GetSessionByTokenHash(r.Context(), tokenHash)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		authUser := &AuthenticatedUser{
+			ID:              session.UID,
+			Email:           session.UEmail,
+			Name:            session.UName,
+			AvatarURL:       session.UAvatarUrl,
+			EmailVerifiedAt: session.UEmailVerifiedAt,
+		}
+		ctx := context.WithValue(r.Context(), UserContextKey, authUser)
+
+		var companyID pgtype.UUID
+		requestedCompany := r.Header.Get("X-Company-ID")
+		if requestedCompany == "" {
+			requestedCompany = r.URL.Query().Get("company_id")
+		}
+		if requestedCompany != "" {
+			_ = companyID.Scan(requestedCompany)
+		}
+		if !companyID.Valid {
+			companies, err := am.queries.GetCompaniesForUser(ctx, authUser.ID)
+			if err == nil && len(companies) > 0 {
+				companyID = companies[0].ID
+			}
+			if !companyID.Valid {
+				compID, err := am.queries.GetCompanyContextForEmail(ctx, authUser.Email)
+				if err == nil && compID.Valid {
+					companyID = compID
+				}
+			}
+		}
+
+		if companyID.Valid {
+			ctx = context.WithValue(ctx, CompanyContextKey, companyID)
+			membership, err := am.queries.GetMembership(ctx, db.GetMembershipParams{
+				CompanyID: companyID,
+				UserID:    authUser.ID,
+			})
+			if err == nil {
+				if membership.Status != "deactivated" {
+					ctx = context.WithValue(ctx, RoleContextKey, membership.Role)
+					permMap := make(map[string]bool)
+					if len(membership.Permissions) > 0 {
+						_ = json.Unmarshal(membership.Permissions, &permMap)
+					}
+					if len(permMap) == 0 {
+						permMap = authz.DefaultPermissions(membership.Role)
+					}
+					roleName := membership.Role
+					if membership.RoleName.Valid && membership.RoleName.String != "" {
+						roleName = membership.RoleName.String
+					}
+					var roleID uuid.UUID
+					if membership.RoleID.Valid {
+						roleID = uuid.UUID(membership.RoleID.Bytes)
+					}
+					titleStr := ""
+					if membership.Title.Valid {
+						titleStr = membership.Title.String
+					}
+					person := authz.Person{
+						UserID:         uuid.UUID(authUser.ID.Bytes),
+						Email:          authUser.Email,
+						Role:           roleName,
+						RoleID:         roleID,
+						Title:          titleStr,
+						Status:         membership.Status,
+						PermissionsMap: permMap,
+						CompanyID:      uuid.UUID(companyID.Bytes),
+					}
+					ctx = context.WithValue(ctx, PersonContextKey, person)
+				}
+			} else {
+				ctx = context.WithValue(ctx, RoleContextKey, "Client")
+				person := authz.Person{
+					UserID:         uuid.UUID(authUser.ID.Bytes),
+					Email:          authUser.Email,
+					Role:           authz.RoleClient,
+					Status:         "active",
+					PermissionsMap: authz.DefaultPermissions(authz.RoleClient),
+					CompanyID:      uuid.UUID(companyID.Bytes),
+				}
+				ctx = context.WithValue(ctx, PersonContextKey, person)
+			}
+		}
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 // RequirePermission ensures the person has the specified granular permission.
 func RequirePermission(permission string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

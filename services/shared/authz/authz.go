@@ -427,7 +427,7 @@ func (a AccessResult) CanRenameProject(person Person) bool {
 
 // CanModifyItem returns true if the person can rename, move, or delete an item.
 func (a AccessResult) CanModifyItem(person Person, itemCreatedBy uuid.UUID) bool {
-	if person.HasPermission(PermMoveItems) || person.HasPermission(PermDeleteItems) || person.IsFullAccess() || a.Level == LevelFull || a.Level == LevelEditor {
+	if person.IsFullAccess() || a.Level == LevelFull || a.Level == LevelEditor {
 		return true
 	}
 	if a.Level == LevelUploader && person.UserID != uuid.Nil && itemCreatedBy != uuid.Nil && person.UserID == itemCreatedBy {

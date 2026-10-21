@@ -381,12 +381,16 @@ func contextWithAuth(parent context.Context, u db.User, companyID pgtype.UUID, r
 		Email: u.Email,
 		Name:  u.Name,
 	}
+	perms := authz.DefaultPermissions(role)
+	if role == authz.RoleCEO || role == "admin" {
+		perms["admin"] = true
+	}
 	person := authz.Person{
 		UserID:         uuid.UUID(u.ID.Bytes),
 		Email:          u.Email,
 		Role:           role,
 		CompanyID:      uuid.UUID(companyID.Bytes),
-		PermissionsMap: map[string]bool{"admin": role == authz.RoleCEO || role == authz.RoleStaff},
+		PermissionsMap: perms,
 	}
 	ctx := context.WithValue(parent, middleware.UserContextKey, authUser)
 	ctx = context.WithValue(ctx, middleware.CompanyContextKey, companyID)

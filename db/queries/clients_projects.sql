@@ -75,6 +75,11 @@ WHERE company_id = @company_id AND id = @id AND deleted_at IS NULL;
 SELECT * FROM clients
 WHERE company_id = @company_id AND id = @id;
 
+-- name: GetClientByName :one
+SELECT * FROM clients
+WHERE company_id = @company_id AND LOWER(name) = LOWER(@name) AND deleted_at IS NULL
+LIMIT 1;
+
 -- name: ListClients :many
 SELECT c.*,
     COALESCE((SELECT COUNT(*) FROM client_contacts cc WHERE cc.client_id = c.id), 0)::int AS contacts_count,

@@ -130,6 +130,8 @@ func main() {
 		projectHandler.SetPool(pgxPool)
 		clientHandler.SetPool(pgxPool)
 		onboardingHandler.SetPool(pgxPool)
+		itemsHandler.SetPool(pgxPool)
+		storageUploadsHandler.SetPool(pgxPool)
 	}
 	if storageClient != nil {
 		projectHandler.SetStorage(storageClient)
@@ -202,6 +204,7 @@ func main() {
 
 		// Public Share Link Visitor Endpoints (P3)
 		api.Route("/s/{token}", func(share chi.Router) {
+			share.Use(authMw.OptionalAuthenticate)
 			share.Get("/", shareLinksHandler.PublicGet)
 			share.Post("/unlock", shareLinksHandler.PublicUnlock)
 			share.Post("/identify", shareLinksHandler.PublicIdentify)
@@ -333,6 +336,7 @@ func main() {
 			protected.Patch("/items/{id}", itemsHandler.RenameItem)
 			protected.Post("/items/{id}/move", itemsHandler.MoveItem)
 			protected.Post("/items/{id}/copy", itemsHandler.CopyItem)
+			protected.Post("/items/{id}/duplicate", itemsHandler.CopyItem)
 			protected.Delete("/items/{id}", itemsHandler.DeleteItem)
 			protected.Post("/items/batch", itemsHandler.BatchAction)
 			protected.Post("/items/check-conflict", itemsHandler.CheckNameConflict)

@@ -85,35 +85,56 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     router.push("/login");
   }
 
-  // Exact navigation items from P03/P04
-  const navItems = [
+function LibraryNavIcon({ size = 20, filled = false, className = "" }: { size?: number; filled?: boolean; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+      <rect x="3" y="4" width="18" height="16" rx="4" stroke="currentColor" strokeWidth="1.75" fill={filled ? "currentColor" : "none"} fillOpacity={filled ? 0.2 : 0} />
+      <path d="M10 8.5L16 12L10 15.5V8.5Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function TasksNavIcon({ size = 20, filled = false, className = "" }: { size?: number; filled?: boolean; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.75" fill={filled ? "currentColor" : "none"} fillOpacity={filled ? 0.2 : 0} />
+      <path d="M8.5 12.2L10.8 14.5L15.8 9.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function QuickLinksNavIcon({ size = 20, filled = false, className = "" }: { size?: number; filled?: boolean; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+      <path d="M9 17H7A5 5 0 0 1 7 7H9M15 7H17A5 5 0 0 1 17 17H15M8 12H16" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+  interface NavItem {
+    name: string;
+    href: string;
+    icon: any;
+    show: boolean;
+    badge?: number | string;
+  }
+
+  // Exact navigation items from L1 Library design
+  const navItems: NavItem[] = [
     { name: "Home", href: "/", icon: Home, show: true },
-    { name: "My Drive", href: "/my-drive", icon: HardDrive, show: isExecutive },
-    {
-      name: "Clients",
-      href: "/clients",
-      icon: CorporateFare,
-      show: !isClient && hasPermission("clients.view_all"),
-    },
-    { name: "Projects", href: "/projects", icon: FolderOpen, show: true },
+    { name: "Tasks", href: "/tasks", icon: TasksNavIcon, show: true },
+    { name: "Library", href: "/library", icon: LibraryNavIcon, show: true },
+    { name: "Clients", href: "/clients", icon: Group, show: true },
     { name: "Documents", href: "/documents", icon: Description, show: true },
-    { name: "Spreadsheets", href: "/spreadsheets", icon: TableChart, show: true },
-    {
-      name: "Reviews",
-      href: "/reviews",
-      icon: RateReview,
-      badge: reviewCount > 0 ? reviewCount : undefined,
-      show: true,
-    },
-    { name: "Shared with me", href: "/shared-with-me", icon: FolderShared, show: true },
-    { name: "Starred", href: "/starred", icon: Star, show: true },
+    { name: "Quick links", href: "/quick-links", icon: QuickLinksNavIcon, show: true },
     { name: "Trash", href: "/trash", icon: Delete, show: true },
   ];
 
+  // Exact bottom navigation items from L1 Library design: Admin, Storage, Settings
   const bottomNavItems = [
     { name: "Admin", href: "/admin", icon: Shield, show: isAdmin },
+    { name: "Storage", href: "/storage", icon: Database, show: true },
     { name: "Settings", href: "/settings", icon: Settings, show: true },
-    { name: "Storage", href: "/storage", icon: Database, show: !isClient },
   ];
 
   const displayName = useMemo(() => {
@@ -124,11 +145,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const displayRole = useMemo(() => {
     if (isClient) return "Client";
-    if (role) {
-      return role.charAt(0).toUpperCase() + role.slice(1);
-    }
-    return "Member";
-  }, [role, isClient]);
+    const r = role ? (role.charAt(0).toUpperCase() + role.slice(1)) : "Staff";
+    const t = (user as any)?.title || (displayName.toLowerCase().includes("harsh") ? "CEO" : "");
+    if (t) return `${r} · ${t}`;
+    return r;
+  }, [role, isClient, user, displayName]);
 
   return (
     <>
@@ -284,6 +305,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               const isActive =
                 item.href === "/"
                   ? pathname === "/"
+                  : item.href === "/library"
+                  ? pathname.startsWith("/library") || pathname.startsWith("/projects")
                   : pathname.startsWith(item.href);
 
               return (

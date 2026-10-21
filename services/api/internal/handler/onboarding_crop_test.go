@@ -150,7 +150,7 @@ func TestTemporaryPasswordSingleUse(t *testing.T) {
 	})
 	onboardBody, _ := json.Marshal(map[string]string{
 		"name":         "New Name",
-		"username":     fmt.Sprintf("user.%d", time.Now().UnixNano()%100000),
+		"username":     fmt.Sprintf("user.%d", time.Now().UnixNano()%100000000),
 		"new_password": "NewPermanentPassword123!",
 	})
 	onboardReq := httptest.NewRequest(http.MethodPost, "/users/onboarding", bytes.NewReader(onboardBody)).WithContext(authCtx)

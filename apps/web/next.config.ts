@@ -18,6 +18,20 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/projects",
+        destination: "/library",
+        permanent: true,
+      },
+      {
+        source: "/projects/:id",
+        destination: "/library/:id",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

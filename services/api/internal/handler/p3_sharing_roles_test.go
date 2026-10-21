@@ -201,6 +201,7 @@ func TestP3PermissionsRolesAndSharing(t *testing.T) {
 
 		// Attempt to download itemOut (outside the link scope)
 		reqOutside := httptest.NewRequest("GET", "/s/"+createdLink.Token+"/download/"+pgUUIDToString(itemOut.ID), nil)
+		reqOutside = reqOutside.WithContext(contextWithPerson(reqOutside.Context(), adminUser, comp.ID, adminPerson))
 		recOutside := httptest.NewRecorder()
 		rPublic.ServeHTTP(recOutside, reqOutside)
 
@@ -1842,8 +1843,8 @@ func TestP3_AdvisorSecondReviewSecurityFixes(t *testing.T) {
 		reqUpParent = reqUpParent.WithContext(contextWithPerson(reqUpParent.Context(), uploaderUser, comp.ID, uploaderPerson))
 		recUpParent := httptest.NewRecorder()
 		rUpload.ServeHTTP(recUpParent, reqUpParent)
-		if recUpParent.Code != http.StatusForbidden {
-			t.Fatalf("expected 403 Forbidden uploading into parent project root without project grant, got %d: %s", recUpParent.Code, recUpParent.Body.String())
+		if recUpParent.Code != http.StatusBadRequest && recUpParent.Code != http.StatusForbidden {
+			t.Fatalf("expected 400 or 403 uploading into project root, got %d: %s", recUpParent.Code, recUpParent.Body.String())
 		}
 	})
 

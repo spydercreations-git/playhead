@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
@@ -72,11 +74,51 @@ func TestAllRolesEndpoints(t *testing.T) {
 	clientHandler := NewClientHandler(queries, nil)
 	clientHandler.SetPool(pool)
 	projectHandler := NewProjectHandler(queries)
+	itemsHandler := NewItemsHandler(queries, nil)
+	itemsHandler.SetPool(pool)
+
+	// Create test client and project with folder and file item
+	cl, _ := queries.CreateClient(ctx, db.CreateClientParams{
+		CompanyID: comp.ID,
+		Name:      "Role Matrix Client",
+	})
+	pr, _ := queries.CreateProject(ctx, db.CreateProjectParams{
+		CompanyID: comp.ID,
+		ClientID:  cl.ID,
+		Name:      "Role Matrix Project",
+	})
+	fld, _ := queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+		CompanyID: comp.ID,
+		ProjectID: pr.ID,
+		ParentID:  pgtype.UUID{Valid: false},
+		Kind:      "folder",
+		Name:      "Raw files",
+		Position:  pgtype.Numeric{Int: big.NewInt(1000), Valid: true},
+	})
+	fldTarget, _ := queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+		CompanyID: comp.ID,
+		ProjectID: pr.ID,
+		ParentID:  pgtype.UUID{Valid: false},
+		Kind:      "folder",
+		Name:      "Edited files",
+		Position:  pgtype.Numeric{Int: big.NewInt(2000), Valid: true},
+	})
+	testItem, _ := queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+		CompanyID: comp.ID,
+		ProjectID: pr.ID,
+		ParentID:  fld.ID,
+		Kind:      "file",
+		Name:      "sample.mp4",
+		Position:  pgtype.Numeric{Int: big.NewInt(100), Valid: true},
+	})
 
 	r := chi.NewRouter()
 	r.Get("/clients", clientHandler.List)
 	r.Post("/clients", clientHandler.Create)
 	r.Get("/projects", projectHandler.List)
+	r.Post("/items/{id}/duplicate", itemsHandler.CopyItem)
+	r.Post("/items/{id}/copy", itemsHandler.CopyItem)
+	r.Patch("/items/{id}/move", itemsHandler.MoveItem)
 
 	// Roles to test (including Phase 1: Staff, Editor, Client)
 	rolesToTest := []struct {
@@ -187,6 +229,39 @@ func TestAllRolesEndpoints(t *testing.T) {
 			} else {
 				if projW.Code != http.StatusOK {
 					t.Errorf("%s: expected 200 on GET /projects, got %d", rt.name, projW.Code)
+				}
+			}
+
+			// 4. POST /items/{id}/duplicate
+			itemPath := fmt.Sprintf("/items/%s/duplicate", uuid.UUID(testItem.ID.Bytes))
+			dupReq := httptest.NewRequest("POST", itemPath, nil).WithContext(buildContext())
+			dupW := httptest.NewRecorder()
+			r.ServeHTTP(dupW, dupReq)
+
+			if rt.isClient || (!rt.isFull && !rt.canViewAll && rt.role == authz.RoleEditor) {
+				if dupW.Code != http.StatusNotFound && dupW.Code != http.StatusForbidden {
+					t.Errorf("%s: expected 403 or 404 on POST /items/{id}/duplicate, got %d", rt.name, dupW.Code)
+				}
+			} else {
+				if dupW.Code != http.StatusOK && dupW.Code != http.StatusCreated {
+					t.Errorf("%s: expected 200 or 201 on POST /items/{id}/duplicate, got %d (%s)", rt.name, dupW.Code, dupW.Body.String())
+				}
+			}
+
+			// 5. PATCH /items/{id}/move
+			movePath := fmt.Sprintf("/items/%s/move", uuid.UUID(testItem.ID.Bytes))
+			moveBody := fmt.Sprintf(`{"target_parent_id":"%s"}`, uuid.UUID(fldTarget.ID.Bytes))
+			moveReq := httptest.NewRequest("PATCH", movePath, bytes.NewBufferString(moveBody)).WithContext(buildContext())
+			moveW := httptest.NewRecorder()
+			r.ServeHTTP(moveW, moveReq)
+
+			if rt.isClient || (!rt.isFull && !rt.canViewAll && rt.role == authz.RoleEditor) {
+				if moveW.Code != http.StatusNotFound && moveW.Code != http.StatusForbidden {
+					t.Errorf("%s: expected 403 or 404 on PATCH /items/{id}/move, got %d", rt.name, moveW.Code)
+				}
+			} else {
+				if moveW.Code != http.StatusOK {
+					t.Errorf("%s: expected 200 on PATCH /items/{id}/move, got %d (%s)", rt.name, moveW.Code, moveW.Body.String())
 				}
 			}
 		})

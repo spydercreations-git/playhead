@@ -811,6 +811,64 @@ Google Login is built into the backend and UI, but hidden until configured. When
 - All Go handler tests pass (`go test ./internal/handler/...`).
 - TypeScript compilation (`npm run typecheck`) and design token audit (`node scripts/check-design-tokens.js --strict`) pass with 0 errors.
 
+---
+
+## Phase 2: Library (Completed ✅)
+
+### What was built:
+1. **Database & Infrastructure**:
+   - Migration `00022_phase2_library.sql` created internal client "Idyll Productions" once and moved all client-less projects to it.
+   - Test accounts permanently purged from database.
+   - Automatically added default folders "Raw files" and "Edited files" to all existing projects without duplicates.
+2. **Backend Domain Rules & Endpoints**:
+   - **Rule 4 (Default Folders)**: All newly created projects automatically provision "Raw files" and "Edited files" folders.
+   - **Rule 5 (Upload Folder Enforcement)**: Direct root project uploads and non-folder uploads strictly rejected with `400 Bad Request` ("Files can only be uploaded inside a folder within a project").
+   - **Rule 6 (Move Restrictions)**: Cross-project moves return `403 Forbidden` ("Files can't move to another project. Use Copy to instead"). Same-project moves execute in a single atomic transaction; moving into self or subfolder returns `400 Bad Request`.
+   - **Rule 7 (Copy / Duplicate Restrictions)**: Copies and duplicates allowed only into projects belonging to the same client; different client returns `403 Forbidden`. Storage duplicated safely in S3/MinIO.
+   - **Rule 8 (Inherited & Item Grants)**: Grants pass down from project to folders and files; specific folder/item grants override with expanded or restricted permissions.
+   - **Rule 9 (Share Links)**: Supported audience modes: `people_with_access` and `anyone_with_link`. View-only links prohibit downloads and comments.
+   - **Rule 10 (Folder Streaming ZIP)**: Multi-file streaming zip downloads enforce download permissions per item.
+   - **Rule 13 (Role Capabilities)**: Client contacts create projects only within their own client; video editors cannot create projects.
+   - **Rule 14 (All Roles Testing)**: Added `/items/{id}/duplicate`, `/items/{id}/copy`, `/items/{id}/move` to `TestAllRolesEndpoints`.
+3. **Frontend Implementation (Pixel-matched to 6 Design References)**:
+   - **L1 Library View (`/library`)**:
+     - Sidebar navigation re-ordered: `Home`, `Tasks`, `Library`, `Clients`, `Documents`, `Quick links`, `Trash`. Bottom: `Admin`, `Storage`, `Settings`. User profile formatted as `Staff · CEO`.
+     - Header with title, subtitle, and `+ New project` button.
+     - Controls: Search projects, Client dropdown, Date modified dropdown, Grid/List switcher.
+     - Projects grouped by client with client initial badge (e.g. `[E] Everygen`, `[I] Idyll Productions internal`).
+     - Project folder cards with 3 preview slots, selection checkbox, member avatar stack, `🟡 X to review` badge, and dots menu.
+     - Next.js permanent redirects from `/projects` to `/library`.
+   - **L2 Inside a Project (`/library/[id]`)**:
+     - Breadcrumbs: `Library > Client > Project`.
+     - Header: Project title + client badge, member avatars stack, `Manage access`, `Copy link`, and blue `Upload` button.
+     - Search in project, Type filter dropdown, Date modified dropdown.
+     - `Folders X` section with folder cards (`Raw files`, `Edited files`, `Hook tests`, `Thumbnails` with wireframe slots and `Empty` state).
+     - Informational banner: `ℹ Files can only be uploaded inside a folder. Open a folder, then Upload or drop files.` and `No files at project level`.
+   - **L3 In-Place Upload States**:
+     - Single card changes state in place:
+       - Uploading: Blurred frame, `Uploading X%`, `X GB of Y GB · Z s left`, progress bar.
+       - Processing: Dark background, circular spinner ring, `Generating thumbnail`.
+       - Ready: Thumbnail, duration badge (`00:42`), `Uploaded Oct 21, 2026, 6:42 am`.
+       - Error: `Upload failed` with `Retry` button.
+   - **L4 Project / Folder Menu**:
+     - Ordered menu: Manage access, Copy link, Download (ZIP badge for folders/projects), Copy to ›, Move to ›, Duplicate, Rename, Delete (danger red, last).
+   - **L5 Copy Link Dialog**:
+     - Modal with full link, Copy button, radio choices for `People with access` vs `Anyone with the link (view only)`, people count, Manage access shortcut, and Done button.
+   - **L6 Move To Dialog**:
+     - Modal with item count and source location subtitle.
+     - Search folders input.
+     - `This project` folders list with item counts.
+     - `Other projects` disabled with ⊘ symbol and explanatory note: `ℹ Files can't move to another project. Use Copy to instead.`
+     - Cancel and `Move here` buttons.
+
+### Automated Tests:
+- `services/api/internal/handler/library_phase2_test.go`: 100% passing (Tests rules 4, 5, 6, 7, 8, 9, 13).
+- `services/api/internal/handler/all_roles_endpoints_test.go`: 100% passing.
+- `services/api/internal/handler/...`: All Go test suites passing (exit code 0).
+- `services/shared/authz/...`: All authz test suites passing (exit code 0).
+- `npm --prefix apps/web run typecheck`: Passed with 0 TypeScript errors.
+- `node apps/web/scripts/check-design-tokens.js --strict`: Passed with 0 design token violations.
+
 
 
 

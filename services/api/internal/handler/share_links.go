@@ -68,6 +68,8 @@ type ShareLinkResponse struct {
 	ID               string                  `json:"id"`
 	CompanyID        string                  `json:"company_id"`
 	ProjectID        string                  `json:"project_id"`
+	ItemID           string                  `json:"item_id,omitempty"`
+	Audience         string                  `json:"audience"` // people_with_access or anyone_with_link
 	Name             string                  `json:"name"`
 	Token            string                  `json:"token,omitempty"` // only returned on creation
 	Access           string                  `json:"access"`
@@ -130,10 +132,17 @@ func (h *ShareLinksHandler) ListProjectLinks(w http.ResponseWriter, r *http.Requ
 			upLimit = &val
 		}
 
+		aud := l.Audience
+		if aud == "" {
+			aud = "people_with_access"
+		}
+
 		res = append(res, ShareLinkResponse{
 			ID:               pgUUIDToString(l.ID),
 			CompanyID:        pgUUIDToString(l.CompanyID),
 			ProjectID:        pgUUIDToString(l.ProjectID),
+			ItemID:           pgUUIDToString(l.ItemID),
+			Audience:         aud,
 			Name:             l.Name,
 			Access:           l.Access,
 			AllowDownload:    l.AllowDownload,
@@ -159,7 +168,9 @@ func (h *ShareLinksHandler) ListProjectLinks(w http.ResponseWriter, r *http.Requ
 
 type CreateShareLinkRequest struct {
 	Name             string   `json:"name"`
+	ItemID           string   `json:"item_id,omitempty"`
 	ItemIDs          []string `json:"item_ids"`
+	Audience         string   `json:"audience,omitempty"` // people_with_access (default) or anyone_with_link
 	Access           string   `json:"access"` // view, comment, upload, comment_upload
 	AllowDownload    *bool    `json:"allow_download"`
 	LatestOnly       *bool    `json:"latest_only"`
@@ -208,6 +219,10 @@ func (h *ShareLinksHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(req.ItemIDs) == 0 && req.ItemID != "" {
+		req.ItemIDs = []string{req.ItemID}
+	}
+
 	if len(req.ItemIDs) == 0 {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "items_required", "message": "At least one item must be attached to the share link"})
 		return
@@ -245,10 +260,10 @@ func (h *ShareLinksHandler) Create(w http.ResponseWriter, r *http.Request) {
 			ClientID:  uuid.UUID(project.ClientID.Bytes),
 		}
 		access, aErr := authz.AccessItem(r.Context(), h.queries, person, projTarget, itemTarget)
-		if aErr != nil || access.Level != authz.LevelFull {
+		if aErr != nil || !access.CanView() || (!person.HasPermission(authz.PermSharingCreatePublicLinks) && !person.HasPermission(authz.PermManageAccess) && access.Level != authz.LevelFull) {
 			respondJSON(w, http.StatusForbidden, map[string]string{
 				"error":   "forbidden",
-				"message": "Full access on all attached items is required to create a share link",
+				"message": "Full access or share permissions on all attached items is required to create a share link",
 			})
 			return
 		}
@@ -265,6 +280,11 @@ func (h *ShareLinksHandler) Create(w http.ResponseWriter, r *http.Request) {
 		name = fmt.Sprintf("Share Link - %s", time.Now().Format("Jan 02"))
 	}
 
+	audience := strings.ToLower(strings.TrimSpace(req.Audience))
+	if audience != "anyone_with_link" {
+		audience = "people_with_access"
+	}
+
 	accessMode := strings.TrimSpace(req.Access)
 	if accessMode == "" {
 		accessMode = "view"
@@ -273,6 +293,12 @@ func (h *ShareLinksHandler) Create(w http.ResponseWriter, r *http.Request) {
 	allowDownload := true
 	if req.AllowDownload != nil {
 		allowDownload = *req.AllowDownload
+	}
+
+	// Anyone with link is view-only (no download, no comments)
+	if audience == "anyone_with_link" {
+		accessMode = "view"
+		allowDownload = false
 	}
 
 	latestOnly := true
@@ -307,9 +333,18 @@ func (h *ShareLinksHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	user, _ := middleware.GetAuthenticatedUser(r.Context())
 
+	var itemUUID pgtype.UUID
+	if strings.TrimSpace(req.ItemID) != "" {
+		_ = itemUUID.Scan(req.ItemID)
+	} else if len(req.ItemIDs) == 1 {
+		_ = itemUUID.Scan(req.ItemIDs[0])
+	}
+
 	link, err := h.queries.CreateShareLink(r.Context(), db.CreateShareLinkParams{
 		CompanyID:        companyID,
 		ProjectID:        pgtype.UUID{Bytes: projectUUID, Valid: true},
+		ItemID:           itemUUID,
+		Audience:         audience,
 		Name:             name,
 		TokenHash:        tokenHash,
 		Access:           accessMode,
@@ -328,10 +363,10 @@ func (h *ShareLinksHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	// Attach items
 	for _, idStr := range req.ItemIDs {
-		itemUUID, _ := uuid.Parse(idStr)
+		itUUID, _ := uuid.Parse(idStr)
 		_ = h.queries.AttachShareLinkItem(r.Context(), db.AttachShareLinkItemParams{
 			ShareLinkID: link.ID,
-			ItemID:      pgtype.UUID{Bytes: itemUUID, Valid: true},
+			ItemID:      pgtype.UUID{Bytes: itUUID, Valid: true},
 		})
 	}
 
@@ -339,6 +374,8 @@ func (h *ShareLinksHandler) Create(w http.ResponseWriter, r *http.Request) {
 		ID:               pgUUIDToString(link.ID),
 		CompanyID:        pgUUIDToString(link.CompanyID),
 		ProjectID:        pgUUIDToString(link.ProjectID),
+		ItemID:           pgUUIDToString(link.ItemID),
+		Audience:         link.Audience,
 		Name:             link.Name,
 		Token:            rawToken,
 		Access:           link.Access,
@@ -355,15 +392,16 @@ func (h *ShareLinksHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 type UpdateShareLinkRequest struct {
-	Name             string `json:"name"`
-	Access           string `json:"access"`
-	AllowDownload    *bool  `json:"allow_download"`
-	LatestOnly       *bool  `json:"latest_only"`
+	Name             string  `json:"name"`
+	Audience         *string `json:"audience"`
+	Access           string  `json:"access"`
+	AllowDownload    *bool   `json:"allow_download"`
+	LatestOnly       *bool   `json:"latest_only"`
 	Password         *string `json:"password"`
 	ExpiresAt        *string `json:"expires_at"`
-	AskIdentity      *bool  `json:"ask_identity"`
-	UploadLimitBytes *int64 `json:"upload_limit_bytes"`
-	Disabled         *bool  `json:"disabled"`
+	AskIdentity      *bool   `json:"ask_identity"`
+	UploadLimitBytes *int64  `json:"upload_limit_bytes"`
+	Disabled         *bool   `json:"disabled"`
 }
 
 func (h *ShareLinksHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -400,6 +438,14 @@ func (h *ShareLinksHandler) Update(w http.ResponseWriter, r *http.Request) {
 		name = req.Name
 	}
 
+	audience := existing.Audience
+	if req.Audience != nil && strings.TrimSpace(*req.Audience) != "" {
+		audience = strings.ToLower(strings.TrimSpace(*req.Audience))
+		if audience != "anyone_with_link" {
+			audience = "people_with_access"
+		}
+	}
+
 	access := existing.Access
 	if strings.TrimSpace(req.Access) != "" {
 		access = req.Access
@@ -408,6 +454,12 @@ func (h *ShareLinksHandler) Update(w http.ResponseWriter, r *http.Request) {
 	allowDownload := existing.AllowDownload
 	if req.AllowDownload != nil {
 		allowDownload = *req.AllowDownload
+	}
+
+	// Anyone with link is view-only (no download, no comments)
+	if audience == "anyone_with_link" {
+		access = "view"
+		allowDownload = false
 	}
 
 	latestOnly := existing.LatestOnly
@@ -471,6 +523,7 @@ func (h *ShareLinksHandler) Update(w http.ResponseWriter, r *http.Request) {
 		ID:               pgtype.UUID{Bytes: linkUUID, Valid: true},
 		CompanyID:        companyID,
 		Name:             name,
+		Audience:         audience,
 		Access:           access,
 		AllowDownload:    allowDownload,
 		LatestOnly:       latestOnly,
@@ -488,6 +541,7 @@ func (h *ShareLinksHandler) Update(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"id":             pgUUIDToString(updated.ID),
 		"name":           updated.Name,
+		"audience":       updated.Audience,
 		"access":         updated.Access,
 		"allow_download": updated.AllowDownload,
 		"disabled_at":    updated.DisabledAt,
@@ -545,6 +599,31 @@ func (h *ShareLinksHandler) resolvePublicLink(w http.ResponseWriter, r *http.Req
 	if link.ExpiresAt.Valid && link.ExpiresAt.Time.Before(time.Now()) {
 		respondJSON(w, http.StatusGone, map[string]string{"error": "link_expired", "message": "This share link has expired"})
 		return nil, false
+	}
+
+	// Rule 9: People with access check
+	if link.Audience == "people_with_access" {
+		user, hasUser := middleware.GetAuthenticatedUser(r.Context())
+		if !hasUser || user == nil {
+			respondJSON(w, http.StatusUnauthorized, map[string]string{
+				"error":   "unauthorized",
+				"message": "Sign in with an account that has access to view this item",
+			})
+			return nil, false
+		}
+		person := middleware.GetPerson(r.Context())
+		projTarget := authz.ProjectTarget{
+			ID:        uuid.UUID(link.ProjectID.Bytes),
+			CompanyID: uuid.UUID(link.CompanyID.Bytes),
+		}
+		access, aErr := authz.Access(r.Context(), h.queries, person, projTarget)
+		if aErr != nil || !access.CanView() {
+			respondJSON(w, http.StatusForbidden, map[string]string{
+				"error":   "no_access",
+				"message": "You do not have access to this item. Ask a team member to grant you access.",
+			})
+			return nil, false
+		}
 	}
 
 	return &link, true
@@ -636,16 +715,24 @@ func (h *ShareLinksHandler) PublicGet(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	accessMode := link.Access
+	allowDownload := link.AllowDownload
+	if link.Audience == "anyone_with_link" {
+		accessMode = "view"
+		allowDownload = false
+	}
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"id":                pgUUIDToString(link.ID),
-		"name":              link.Name,
-		"access":            link.Access,
-		"allow_download":    link.AllowDownload,
-		"latest_only":       link.LatestOnly,
-		"ask_identity":      link.AskIdentity,
+		"id":                 pgUUIDToString(link.ID),
+		"name":               link.Name,
+		"audience":           link.Audience,
+		"access":             accessMode,
+		"allow_download":     allowDownload,
+		"latest_only":        link.LatestOnly,
+		"ask_identity":       link.AskIdentity,
 		"upload_limit_bytes": link.UploadLimitBytes,
-		"uploaded_bytes":    link.UploadedBytes,
-		"items":             itemRes,
+		"uploaded_bytes":     link.UploadedBytes,
+		"items":              itemRes,
 	})
 }
 
@@ -766,7 +853,7 @@ func (h *ShareLinksHandler) PublicDownload(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if !link.AllowDownload {
+	if link.Audience == "anyone_with_link" || !link.AllowDownload {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "downloads_forbidden", "message": "Downloads are disabled for this link"})
 		return
 	}
@@ -839,7 +926,7 @@ func (h *ShareLinksHandler) PublicUpload(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if link.Access != "upload" && link.Access != "comment_upload" {
+	if link.Audience == "anyone_with_link" || (link.Access != "upload" && link.Access != "comment_upload") {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "upload_forbidden", "message": "Uploads are not permitted on this share link"})
 		return
 	}

@@ -143,10 +143,10 @@ func (h *GrantsHandler) AddProjectGrant(w http.ResponseWriter, r *http.Request) 
 		ClientID:  uuid.UUID(project.ClientID.Bytes),
 	}
 	access, err := authz.Access(r.Context(), h.queries, person, projTarget)
-	if err != nil || access.Level != authz.LevelFull {
+	if err != nil || (!person.HasPermission(authz.PermManageAccess) && access.Level != authz.LevelFull) {
 		respondJSON(w, http.StatusForbidden, map[string]string{
 			"error":   "forbidden",
-			"message": "Full access on this project is required to share or manage access",
+			"message": "Full access or manage_access permission is required to share or manage access",
 		})
 		return
 	}
@@ -382,10 +382,10 @@ func (h *GrantsHandler) AddItemGrant(w http.ResponseWriter, r *http.Request) {
 		ClientID:  uuid.UUID(project.ClientID.Bytes),
 	}
 	access, err := authz.AccessItem(r.Context(), h.queries, person, projTarget, itemTarget)
-	if err != nil || access.Level != authz.LevelFull {
+	if err != nil || (!person.HasPermission(authz.PermManageAccess) && access.Level != authz.LevelFull) {
 		respondJSON(w, http.StatusForbidden, map[string]string{
 			"error":   "forbidden",
-			"message": "Full access on this item is required to share or manage access",
+			"message": "Full access or manage_access permission is required to share or manage access",
 		})
 		return
 	}

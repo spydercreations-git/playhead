@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"archive/zip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"math/big"
 	"net/http"
@@ -14,6 +16,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/playhead/playhead/services/api/internal/config"
 	"github.com/playhead/playhead/services/api/internal/middleware"
@@ -29,10 +32,15 @@ import (
 // StorageUploadsHandler manages fast direct-to-S3 uploads, downloads, and storage quotas
 type StorageUploadsHandler struct {
 	queries     *db.Queries
+	pool        *pgxpool.Pool
 	storage     *storage.Client
 	mailer      *mailer.Mailer
 	cfg         *config.Config
 	asynqClient *asynq.Client
+}
+
+func (h *StorageUploadsHandler) SetPool(p *pgxpool.Pool) {
+	h.pool = p
 }
 
 func (h *StorageUploadsHandler) SetAsynqClient(c *asynq.Client) {
@@ -91,127 +99,67 @@ func (h *StorageUploadsHandler) InitiateUpload(w http.ResponseWriter, r *http.Re
 	}
 
 	isDrive := req.ProjectID == "" || req.ProjectID == "drive"
+	if isDrive || req.ProjectID == "" {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "folder_required",
+			"message": "Files can only be uploaded inside a folder within a project",
+		})
+		return
+	}
+
+	if req.ParentID == nil || *req.ParentID == "" || *req.ParentID == "null" {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "folder_required",
+			"message": "Files can only be uploaded inside a folder within a project",
+		})
+		return
+	}
+
 	var projID pgtype.UUID
+	if err := projID.Scan(req.ProjectID); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_project_id"})
+		return
+	}
 
-	if !isDrive {
-		if err := projID.Scan(req.ProjectID); err != nil {
-			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_project_id"})
-			return
-		}
+	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+		ID:        projID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
 
-		proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
-			ID:        projID,
-			CompanyID: companyID,
+	person := middleware.GetPerson(ctx)
+	projTarget := authz.ProjectTarget{
+		ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
+	}
+
+	targetFolderUUID, err := uuid.Parse(*req.ParentID)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "folder_required",
+			"message": "Files can only be uploaded inside a folder within a project",
 		})
-		if err != nil {
-			respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
-			return
-		}
+		return
+	}
 
-		person := middleware.GetPerson(ctx)
-		projTarget := authz.ProjectTarget{
-			ID: uuid.UUID(proj.ID.Bytes), CompanyID: uuid.UUID(proj.CompanyID.Bytes), ClientID: uuid.UUID(proj.ClientID.Bytes),
-		}
-
-		// If ParentID is not specified, check project upload permission and auto-route to "Raw files" folder
-		if req.ParentID == nil || *req.ParentID == "" || *req.ParentID == "null" {
-			projAccess, pErr := authz.Access(ctx, h.queries, person, projTarget)
-			if pErr != nil || (!projAccess.CanUpload() && projAccess.Level != authz.LevelFull) {
-				respondJSON(w, http.StatusForbidden, map[string]string{
-					"error":   "forbidden",
-					"message": "You do not have permission to upload files to this project",
-				})
-				return
-			}
-
-			rawFolder, rErr := h.queries.FindItemInParentByName(ctx, db.FindItemInParentByNameParams{
-				CompanyID: companyID,
-				ProjectID: proj.ID,
-				ParentID:  pgtype.UUID{Valid: false},
-				Name:      "Raw files",
-			})
-			if rErr == nil && rawFolder.Kind == "folder" {
-				fIDStr := uuid.UUID(rawFolder.ID.Bytes).String()
-				req.ParentID = &fIDStr
-			} else {
-				var pos pgtype.Numeric
-				_ = pos.Scan("1")
-				createdFolder, cErr := h.queries.CreateItem(ctx, db.CreateItemParams{
-					CompanyID: companyID,
-					ProjectID: proj.ID,
-					ParentID:  pgtype.UUID{Valid: false},
-					Kind:      "folder",
-					Name:      "Raw files",
-					Position:  pos,
-					CreatedBy: user.ID,
-				})
-				if cErr == nil {
-					fIDStr := uuid.UUID(createdFolder.ID.Bytes).String()
-					req.ParentID = &fIDStr
-					_ = h.queries.UpdateProjectFolderCount(ctx, db.UpdateProjectFolderCountParams{
-						ID:          proj.ID,
-						FolderCount: 1,
-					})
-				} else {
-					respondJSON(w, http.StatusBadRequest, map[string]string{
-						"error":   "folder_required",
-						"message": "Files must be uploaded inside a folder. Direct uploads to project root are not allowed.",
-					})
-					return
-				}
-			}
-		}
-
-		targetFolderUUID, err := uuid.Parse(*req.ParentID)
-		if err != nil {
-			respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_folder_id"})
-			return
-		}
-
-		targetFolder, fErr := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
-			CompanyID: companyID,
-			ID:        pgtype.UUID{Bytes: targetFolderUUID, Valid: true},
+	targetFolder, fErr := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+		CompanyID: companyID,
+		ID:        pgtype.UUID{Bytes: targetFolderUUID, Valid: true},
+	})
+	if fErr != nil || targetFolder.Kind != "folder" || targetFolder.DeletedAt.Valid || targetFolder.ProjectID != proj.ID {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "folder_required",
+			"message": "Files can only be uploaded inside a folder within a project",
 		})
-		if fErr != nil || targetFolder.Kind != "folder" || targetFolder.DeletedAt.Valid {
-			respondJSON(w, http.StatusBadRequest, map[string]string{
-				"error":   "invalid_folder",
-				"message": "Target must be an active folder within the project.",
-			})
-			return
-		}
+		return
+	}
 
-		access, err := authz.AccessFolder(ctx, h.queries, person, projTarget, targetFolderUUID)
-		if err != nil || !access.CanUpload() {
-			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to upload files to this folder"})
-			return
-		}
-	} else {
-		// Drive upload: Ensure default folders exist and route if parent_id is missing
-		cat := detectCategory(req.Filename, req.Mime)
-		if req.ParentID == nil || *req.ParentID == "" || *req.ParentID == "null" {
-			folder, err := h.queries.GetDefaultDriveFolderByCategory(ctx, db.GetDefaultDriveFolderByCategoryParams{
-				CompanyID: companyID,
-				Lower:     cat,
-			})
-			if err != nil {
-				createdFolder, cErr := h.queries.CreateDriveFolder(ctx, db.CreateDriveFolderParams{
-					CompanyID:       companyID,
-					ParentID:        pgtype.UUID{Valid: false},
-					Name:            strings.Title(cat),
-					Position:        pgtype.Numeric{Int: big.NewInt(0), Valid: true},
-					CreatedBy:       user.ID,
-					IsDefaultFolder: true,
-					Category:        pgtype.Text{String: cat, Valid: true},
-				})
-				if cErr == nil {
-					fIDStr := uuid.UUID(createdFolder.ID.Bytes).String()
-					req.ParentID = &fIDStr
-				}
-			} else {
-				fIDStr := uuid.UUID(folder.ID.Bytes).String()
-				req.ParentID = &fIDStr
-			}
-		}
+	access, err := authz.AccessFolder(ctx, h.queries, person, projTarget, targetFolderUUID)
+	if err != nil || !access.CanUpload() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "You do not have permission to upload files to this folder"})
+		return
 	}
 
 
@@ -1033,9 +981,214 @@ func (h *StorageUploadsHandler) PrepareDownload(w http.ResponseWriter, r *http.R
 	})
 }
 
-// ZipDownload aliases PrepareDownload for backward compatibility
+// ZipDownload serves either a streaming zip archive or a prepared manifest depending on Accept header or query params
 func (h *StorageUploadsHandler) ZipDownload(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Accept") == "application/zip" || r.URL.Query().Get("stream") == "true" {
+		h.StreamZipDownload(w, r)
+		return
+	}
 	h.PrepareDownload(w, r)
+}
+
+// StreamZipDownload streams a zip archive directly keeping folder structure,
+// streaming chunk-by-chunk from S3 (zero huge memory consumption), and only including files the user is permitted to download (Rule 10).
+func (h *StorageUploadsHandler) StreamZipDownload(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	companyID, ok := middleware.GetActiveCompanyID(ctx)
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var req zipDownloadReq
+	if r.Method == http.MethodPost && r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+	if req.ProjectID == "" {
+		req.ProjectID = chi.URLParam(r, "id")
+	}
+
+	var projID pgtype.UUID
+	if err := projID.Scan(req.ProjectID); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_project_id"})
+		return
+	}
+
+	proj, err := h.queries.GetProjectByID(ctx, db.GetProjectByIDParams{
+		ID:        projID,
+		CompanyID: companyID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	person := middleware.GetPerson(ctx)
+	projTarget := authz.ProjectTarget{
+		ID:        uuid.UUID(proj.ID.Bytes),
+		CompanyID: uuid.UUID(proj.CompanyID.Bytes),
+		ClientID:  uuid.UUID(proj.ClientID.Bytes),
+	}
+
+	projAccess, err := authz.Access(ctx, h.queries, person, projTarget)
+	if err != nil || !projAccess.CanView() {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	type streamFile struct {
+		Name         string
+		RelativePath string
+		StorageKey   string
+	}
+	var filesToZip []streamFile
+
+	if len(req.ItemIDs) > 0 {
+		for _, idStr := range req.ItemIDs {
+			var itID pgtype.UUID
+			if err := itID.Scan(idStr); err != nil {
+				continue
+			}
+			item, err := h.queries.GetItemByID(ctx, db.GetItemByIDParams{
+				ID:        itID,
+				CompanyID: companyID,
+			})
+			if err != nil || item.DeletedAt.Valid {
+				continue
+			}
+
+			if item.Kind == "file" && item.LatestStorageKey != "" {
+				itemAcc, err := authz.AccessItem(ctx, h.queries, person, projTarget, authz.ItemTarget{
+					ID:        uuid.UUID(item.ID.Bytes),
+					ProjectID: uuid.UUID(item.ProjectID.Bytes),
+					CompanyID: uuid.UUID(item.CompanyID.Bytes),
+					CreatedBy: uuid.UUID(item.CreatedBy.Bytes),
+				})
+				if err == nil && itemAcc.CanDownload {
+					filesToZip = append(filesToZip, streamFile{
+						Name:         item.Name,
+						RelativePath: item.Name,
+						StorageKey:   item.LatestStorageKey,
+					})
+				}
+			} else if item.Kind == "folder" {
+				folderAcc, err := authz.AccessFolder(ctx, h.queries, person, projTarget, uuid.UUID(item.ID.Bytes))
+				if err == nil && folderAcc.CanDownload {
+					folderFiles, _ := h.queries.GetFolderFilesRecursive(ctx, item.ID)
+					for _, ff := range folderFiles {
+						if ff.StorageKey == "" {
+							continue
+						}
+						fAcc, fErr := authz.AccessItem(ctx, h.queries, person, projTarget, authz.ItemTarget{
+							ID:        uuid.UUID(ff.ID.Bytes),
+							ProjectID: uuid.UUID(proj.ID.Bytes),
+							CompanyID: uuid.UUID(companyID.Bytes),
+						})
+						if fErr == nil && fAcc.CanDownload {
+							relPath := item.Name + "/" + ff.RelativePath
+							filesToZip = append(filesToZip, streamFile{
+								Name:         ff.Name,
+								RelativePath: relPath,
+								StorageKey:   ff.StorageKey,
+							})
+						}
+					}
+				}
+			}
+		}
+	} else {
+		// Entire project
+		if !projAccess.CanDownload {
+			respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Download permission denied for this project"})
+			return
+		}
+		allItems, err := h.queries.ListProjectItems(ctx, db.ListProjectItemsParams{
+			CompanyID: companyID,
+			ProjectID: proj.ID,
+		})
+		if err == nil {
+			parentMap := make(map[string]string)
+			nameMap := make(map[string]string)
+			for _, it := range allItems {
+				idStr := uuid.UUID(it.ID.Bytes).String()
+				nameMap[idStr] = it.Name
+				if it.ParentID.Valid {
+					parentMap[idStr] = uuid.UUID(it.ParentID.Bytes).String()
+				}
+			}
+			getPath := func(idStr string) string {
+				curr := idStr
+				var parts []string
+				for curr != "" {
+					if n, ok := nameMap[curr]; ok {
+						parts = append([]string{n}, parts...)
+					}
+					curr = parentMap[curr]
+				}
+				return strings.Join(parts, "/")
+			}
+
+			for _, it := range allItems {
+				if it.Kind == "file" && it.LatestStorageKey != "" {
+					fAcc, fErr := authz.AccessItem(ctx, h.queries, person, projTarget, authz.ItemTarget{
+						ID:        uuid.UUID(it.ID.Bytes),
+						ProjectID: uuid.UUID(it.ProjectID.Bytes),
+						CompanyID: uuid.UUID(it.CompanyID.Bytes),
+						CreatedBy: uuid.UUID(it.CreatedBy.Bytes),
+					})
+					if fErr == nil && fAcc.CanDownload {
+						idStr := uuid.UUID(it.ID.Bytes).String()
+						filesToZip = append(filesToZip, streamFile{
+							Name:         it.Name,
+							RelativePath: getPath(idStr),
+							StorageKey:   it.LatestStorageKey,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	if len(filesToZip) == 0 {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_downloadable_files", "message": "No files available for download with your permissions"})
+		return
+	}
+
+	zipName := fmt.Sprintf("%s.zip", strings.ReplaceAll(proj.Name, "/", "_"))
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", zipName))
+
+	zipWriter := zip.NewWriter(w)
+	defer zipWriter.Close()
+
+	for _, f := range filesToZip {
+		if h.storage == nil {
+			continue
+		}
+		rc, _, err := h.storage.GetObject(ctx, f.StorageKey)
+		if err != nil {
+			continue
+		}
+
+		entryPath := f.RelativePath
+		if entryPath == "" {
+			entryPath = f.Name
+		}
+		header := &zip.FileHeader{
+			Name:     entryPath,
+			Method:   zip.Deflate,
+			Modified: time.Now(),
+		}
+		header.SetMode(0644)
+		writer, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			_ = rc.Close()
+			continue
+		}
+
+		_, _ = io.Copy(writer, rc)
+		_ = rc.Close()
+	}
 }
 
 // GetStorageAdminStats returns breakdown and cost estimate (Requirement 1)

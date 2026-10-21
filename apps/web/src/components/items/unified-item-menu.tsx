@@ -45,71 +45,64 @@ export function buildUnifiedItemMenuGroups(options: UnifiedItemMenuOptions): Men
     onDelete,
   } = options;
 
-  const isFile = kind === "file";
+  const isFolderOrProject = kind === "folder" || kind === "project";
 
   return [
-    // Group 1: Access and Sharing
+    // Group 1: Manage access, Copy link, Download (ZIP)
     {
       items: [
         {
           label: "Manage access",
-          icon: <Users className="w-3.5 h-3.5 text-[var(--text-2)]" />,
+          icon: <Users className="w-4 h-4 text-[var(--text-2)]" />,
           onClick: onManageAccess,
         },
         {
-          label: "Create share link",
-          icon: <Share2 className="w-3.5 h-3.5 text-[var(--text-2)]" />,
+          label: "Copy link",
+          icon: <Share2 className="w-4 h-4 text-[var(--text-2)]" />,
           onClick: onCreateShareLink,
         },
-      ],
-    },
-    // Group 2: Actions
-    {
-      items: [
         {
           label: "Download",
-          icon: <Download className="w-3.5 h-3.5 text-[var(--text-2)]" />,
+          icon: <Download className="w-4 h-4 text-[var(--text-2)]" />,
+          shortcut: isFolderOrProject ? "ZIP" : undefined,
           onClick: onDownload,
           show: canDownload,
         },
-        ...(isFile && onUploadNewVersion
-          ? [
-              {
-                label: "Upload new version",
-                icon: <Upload className="w-3.5 h-3.5 text-[var(--text-2)]" />,
-                onClick: onUploadNewVersion,
-                show: canUploadVersion,
-              },
-            ]
-          : []),
+      ],
+    },
+    // Group 2: Copy to, Move to, Duplicate, Rename
+    {
+      items: [
         {
           label: "Copy to",
-          icon: <FolderOutput className="w-3.5 h-3.5 text-[var(--text-2)]" />,
+          icon: <FolderOutput className="w-4 h-4 text-[var(--text-2)]" />,
+          shortcut: "›",
           onClick: onCopyTo,
         },
         {
           label: "Move to",
-          icon: <FolderInput className="w-3.5 h-3.5 text-[var(--text-2)]" />,
+          icon: <FolderInput className="w-4 h-4 text-[var(--text-2)]" />,
+          shortcut: "›",
           onClick: onMoveTo,
         },
         {
           label: "Duplicate",
-          icon: <Copy className="w-3.5 h-3.5 text-[var(--text-2)]" />,
+          icon: <Copy className="w-4 h-4 text-[var(--text-2)]" />,
           onClick: onDuplicate,
         },
         {
           label: "Rename",
-          icon: <Edit3 className="w-3.5 h-3.5 text-[var(--text-2)]" />,
+          icon: <Edit3 className="w-4 h-4 text-[var(--text-2)]" />,
           onClick: onRename,
         },
       ],
     },
-    // Group 3: Delete
+    // Group 3: Delete (red, last)
     {
       items: [
         {
           label: "Delete",
-          icon: <Trash2 className="w-3.5 h-3.5 text-rose-400" />,
+          icon: <Trash2 className="w-4 h-4 text-[#F0506E]" />,
           danger: true,
           onClick: onDelete,
         },

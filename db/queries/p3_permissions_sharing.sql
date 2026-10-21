@@ -101,7 +101,7 @@ ORDER BY g.updated_at DESC;
 
 -- Share Links queries
 -- name: ListProjectShareLinks :many
-SELECT s.id, s.company_id, s.project_id, s.name, s.token_hash, s.access, s.allow_download,
+SELECT s.id, s.company_id, s.project_id, s.item_id, s.audience, s.name, s.token_hash, s.access, s.allow_download,
        s.latest_only, (s.password_hash IS NOT NULL AND s.password_hash != '') as has_password,
        s.expires_at, s.ask_identity, s.upload_limit_bytes, s.uploaded_bytes, s.view_count,
        s.last_opened_at, s.disabled_at, s.created_by, s.created_at, s.updated_at,
@@ -113,7 +113,7 @@ GROUP BY s.id
 ORDER BY s.created_at DESC;
 
 -- name: GetShareLinkByID :one
-SELECT id, company_id, project_id, name, token_hash, access, allow_download, latest_only,
+SELECT id, company_id, project_id, item_id, audience, name, token_hash, access, allow_download, latest_only,
        (password_hash IS NOT NULL AND password_hash != '') as has_password,
        password_version, expires_at, ask_identity, upload_limit_bytes, uploaded_bytes,
        upload_reserved_bytes, view_count,
@@ -122,7 +122,7 @@ FROM share_links
 WHERE id = $1 AND company_id = $2;
 
 -- name: GetShareLinkByTokenHash :one
-SELECT id, company_id, project_id, name, token_hash, access, allow_download, latest_only,
+SELECT id, company_id, project_id, item_id, audience, name, token_hash, access, allow_download, latest_only,
        password_hash, password_version, expires_at, ask_identity, upload_limit_bytes, uploaded_bytes,
        upload_reserved_bytes, view_count,
        last_opened_at, disabled_at, created_by, created_at, updated_at
@@ -131,11 +131,11 @@ WHERE token_hash = $1;
 
 -- name: CreateShareLink :one
 INSERT INTO share_links (
-    company_id, project_id, name, token_hash, access, allow_download, latest_only,
+    company_id, project_id, item_id, audience, name, token_hash, access, allow_download, latest_only,
     password_hash, expires_at, ask_identity, upload_limit_bytes, created_by
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
-) RETURNING id, company_id, project_id, name, token_hash, access, allow_download, latest_only,
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+) RETURNING id, company_id, project_id, item_id, audience, name, token_hash, access, allow_download, latest_only,
             password_version, expires_at, ask_identity, upload_limit_bytes, uploaded_bytes,
             upload_reserved_bytes, view_count, created_at;
 
@@ -153,7 +153,7 @@ WHERE sli.share_link_id = $1 AND i.deleted_at IS NULL;
 
 -- name: UpdateShareLink :one
 UPDATE share_links
-SET name = @name, access = @access, allow_download = @allow_download, latest_only = @latest_only,
+SET name = @name, audience = @audience, access = @access, allow_download = @allow_download, latest_only = @latest_only,
     password_hash = sqlc.narg('password_hash')::text,
     password_version = CASE 
         WHEN sqlc.narg('password_hash')::text IS DISTINCT FROM password_hash THEN password_version + 1 
@@ -162,7 +162,7 @@ SET name = @name, access = @access, allow_download = @allow_download, latest_onl
     expires_at = @expires_at, ask_identity = @ask_identity, upload_limit_bytes = @upload_limit_bytes,
     disabled_at = @disabled_at, updated_at = NOW()
 WHERE id = @id AND company_id = @company_id
-RETURNING id, company_id, project_id, name, token_hash, access, allow_download, latest_only,
+RETURNING id, company_id, project_id, item_id, audience, name, token_hash, access, allow_download, latest_only,
           password_version, expires_at, ask_identity, upload_limit_bytes, disabled_at, updated_at;
 
 -- name: ReserveShareLinkUpload :one

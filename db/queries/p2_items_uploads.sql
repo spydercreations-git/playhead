@@ -58,6 +58,21 @@ WHERE company_id = @company_id
   AND deleted_at IS NULL
 ORDER BY name ASC;
 
+-- name: ListProjectItems :many
+SELECT i.*,
+       COALESCE(fv.storage_key, '') AS latest_storage_key,
+       COALESCE(fv.size_bytes, 0) AS latest_size_bytes,
+       COALESCE(fv.mime, '') AS latest_mime,
+       COALESCE(fv.number, 1) AS latest_version_number
+FROM items i
+LEFT JOIN file_versions fv ON fv.item_id = i.id AND fv.number = (
+    SELECT MAX(number) FROM file_versions WHERE item_id = i.id
+)
+WHERE i.company_id = @company_id
+  AND i.project_id = @project_id
+  AND i.deleted_at IS NULL
+ORDER BY i.name ASC;
+
 -- name: CreateItemWithCounts :one
 INSERT INTO items (
     company_id, project_id, parent_id, kind, name, position, created_by,
@@ -404,4 +419,20 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) fv ON true
 WHERE ft.kind = 'file';
+
+-- name: ListFolderChildrenDirect :many
+SELECT i.id, i.company_id, i.project_id, i.parent_id, i.kind, i.name, i.position,
+       COALESCE(fv.storage_key, '') AS latest_storage_key,
+       COALESCE(fv.size_bytes, 0)::bigint AS latest_size_bytes,
+       COALESCE(fv.mime, '') AS latest_mime
+FROM items i
+LEFT JOIN LATERAL (
+    SELECT storage_key, size_bytes, mime
+    FROM file_versions
+    WHERE item_id = i.id
+    ORDER BY number DESC
+    LIMIT 1
+) fv ON true
+WHERE i.company_id = @company_id AND i.parent_id = @parent_id AND i.deleted_at IS NULL
+ORDER BY CASE WHEN i.kind = 'folder' THEN 0 ELSE 1 END ASC, i.name ASC;
 

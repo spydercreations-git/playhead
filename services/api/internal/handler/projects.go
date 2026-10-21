@@ -58,6 +58,12 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	person := middleware.GetPerson(r.Context())
+	// Editors never create projects (Rule 13)
+	if person.IsEditor() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Editors cannot create projects"})
+		return
+	}
+
 	// Roles with projects.create permission can create projects
 	if !person.HasPermission(authz.PermProjectsCreate) {
 		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Only members with projects.create can create projects"})
@@ -77,7 +83,30 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var clientID pgtype.UUID
-	if err := clientID.Scan(req.ClientID); err != nil || !clientID.Valid {
+	if strings.TrimSpace(req.ClientID) != "" {
+		_ = clientID.Scan(req.ClientID)
+	}
+
+	// Auto-resolve client for clients if not specified (Rule 13: inside their own client only, automatically)
+	if !clientID.Valid && person.IsClient() {
+		contacts, cErr := h.queries.GetClientContactsByEmail(r.Context(), person.Email)
+		if cErr == nil && len(contacts) > 0 {
+			clientID = contacts[0].ClientID
+		}
+	}
+
+	// Auto-fallback to internal client "Idyll Productions" for staff (Rule 3)
+	if !clientID.Valid && !person.IsClient() {
+		idyllClient, iErr := h.queries.GetClientByName(r.Context(), db.GetClientByNameParams{
+			CompanyID: companyID,
+			Name:      "Idyll Productions",
+		})
+		if iErr == nil {
+			clientID = idyllClient.ID
+		}
+	}
+
+	if !clientID.Valid {
 		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_client_id", "message": "Valid client is required"})
 		return
 	}
@@ -92,7 +121,7 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Clients can only create projects inside their own client
+	// Clients can only create projects inside their own client (Rule 13)
 	if person.IsClient() {
 		_, err := h.queries.GetClientContactByClientAndEmail(r.Context(), db.GetClientContactByClientAndEmailParams{
 			ClientID: clientID,

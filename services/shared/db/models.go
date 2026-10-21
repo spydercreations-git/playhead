@@ -362,6 +362,8 @@ type ShareLink struct {
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	PasswordVersion     int32              `json:"password_version"`
 	UploadReservedBytes int64              `json:"upload_reserved_bytes"`
+	Audience            string             `json:"audience"`
+	ItemID              pgtype.UUID        `json:"item_id"`
 }
 
 type ShareLinkItem struct {

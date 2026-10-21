@@ -258,7 +258,7 @@ func (h *ReviewHandler) PlaylistProxy(w http.ResponseWriter, r *http.Request) {
 
 	// Determine playlist target (master or variant)
 	playlistName := chi.URLParam(r, "playlist")
-	if playlistName == "" {
+	if playlistName == "" || playlistName == "playlist.m3u8" {
 		playlistName = "master.m3u8"
 	}
 	if !strings.HasSuffix(playlistName, ".m3u8") {

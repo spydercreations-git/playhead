@@ -535,7 +535,12 @@ export default function LibraryProjectPage() {
                     thumbnail_url: file.thumbnail_url,
                     duration_seconds: file.duration_seconds || 42,
                     uploaded_at: file.created_at || file.updated_at,
-                    status: file.processing_status === "generating" ? "processing" : "ready",
+                    status:
+                      file.preview_status === "generating" ||
+                      file.preview_status === "pending" ||
+                      file.processing_status === "generating"
+                        ? "processing"
+                        : "ready",
                   }}
                   isSelected={isSelected}
                   onToggleSelect={() => {

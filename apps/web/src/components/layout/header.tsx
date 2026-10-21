@@ -45,6 +45,12 @@ export function Header({ onOpenSidebar }: HeaderProps) {
 
     const segments = pathname.split("/").filter(Boolean);
     const labelMap: Record<string, string> = {
+      library: "Library",
+      admin: "Admin",
+      tasks: "Tasks",
+      "quick-links": "Quick Links",
+      onboarding: "Onboarding",
+      activity: "Activity",
       "my-drive": "My Drive",
       clients: "Clients",
       projects: "Projects",
@@ -63,11 +69,21 @@ export function Header({ onOpenSidebar }: HeaderProps) {
       review: "Review",
     };
 
+    const formatSegment = (seg: string): string => {
+      const lower = seg.toLowerCase();
+      if (labelMap[lower]) return labelMap[lower];
+      return seg
+        .replace(/[-_]+/g, " ")
+        .split(" ")
+        .map((w) => (w.length > 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w))
+        .join(" ");
+    };
+
     if (segments.length === 1) {
-      return labelMap[segments[0].toLowerCase()] || segments[0];
+      return formatSegment(segments[0]);
     }
 
-    const first = labelMap[segments[0].toLowerCase()] || segments[0];
+    const first = formatSegment(segments[0]);
     return `${first} / Details`;
   }, [pathname]);
 

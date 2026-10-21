@@ -145,6 +145,7 @@ func main() {
 	}
 	storageUploadsHandler.SetAsynqClient(asynqClient)
 	shareLinksHandler.SetAsynqClient(asynqClient)
+	itemsHandler.SetAsynqClient(asynqClient)
 	reviewHandler.SetAsynqClient(asynqClient)
 	reviewHandler.SetMailer(mailClient)
 

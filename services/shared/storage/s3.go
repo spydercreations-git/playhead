@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -256,6 +257,52 @@ func (c *Client) CopyObject(ctx context.Context, srcKey, destKey string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("copy object from %q to %q: %w", srcKey, destKey, err)
+	}
+	return nil
+}
+
+// ListObjects lists object keys matching a prefix
+func (c *Client) ListObjects(ctx context.Context, prefix string) ([]string, error) {
+	var keys []string
+	var continuationToken *string
+
+	for {
+		out, err := c.S3.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+			Bucket:            aws.String(c.Bucket),
+			Prefix:            aws.String(prefix),
+			ContinuationToken: continuationToken,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("list objects prefix %q: %w", prefix, err)
+		}
+
+		for _, obj := range out.Contents {
+			if obj.Key != nil {
+				keys = append(keys, *obj.Key)
+			}
+		}
+
+		if !aws.ToBool(out.IsTruncated) {
+			break
+		}
+		continuationToken = out.NextContinuationToken
+	}
+
+	return keys, nil
+}
+
+// CopyPrefix copies all objects under srcPrefix to destPrefix server-side
+func (c *Client) CopyPrefix(ctx context.Context, srcPrefix, destPrefix string) error {
+	keys, err := c.ListObjects(ctx, srcPrefix)
+	if err != nil {
+		return err
+	}
+	for _, key := range keys {
+		rel := strings.TrimPrefix(key, srcPrefix)
+		destKey := destPrefix + rel
+		if err := c.CopyObject(ctx, key, destKey); err != nil {
+			return err
+		}
 	}
 	return nil
 }

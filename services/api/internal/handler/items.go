@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -18,14 +20,16 @@ import (
 	"github.com/playhead/playhead/services/api/internal/middleware"
 	"github.com/playhead/playhead/services/shared/authz"
 	"github.com/playhead/playhead/services/shared/db"
+	"github.com/playhead/playhead/services/shared/jobs"
 	"github.com/playhead/playhead/services/shared/storage"
 )
 
 // ItemsHandler handles item (folder & file) operations
 type ItemsHandler struct {
-	queries *db.Queries
-	pool    *pgxpool.Pool
-	storage *storage.Client
+	queries     *db.Queries
+	pool        *pgxpool.Pool
+	storage     *storage.Client
+	asynqClient *asynq.Client
 }
 
 func NewItemsHandler(queries *db.Queries, storage *storage.Client) *ItemsHandler {
@@ -37,6 +41,10 @@ func NewItemsHandler(queries *db.Queries, storage *storage.Client) *ItemsHandler
 
 func (h *ItemsHandler) SetPool(p *pgxpool.Pool) {
 	h.pool = p
+}
+
+func (h *ItemsHandler) SetAsynqClient(c *asynq.Client) {
+	h.asynqClient = c
 }
 
 // ListItems returns non-deleted items in a folder or root of a project
@@ -143,12 +151,14 @@ func (h *ItemsHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 			"storage_key":     item.LatestStorageKey,
 			"size_bytes":      item.LatestSizeBytes,
 			"mime":            item.LatestMime,
-			"version_number":  item.LatestVersionNumber,
-			"created_by":      item.CreatedBy,
-			"created_by_name": item.CreatedByName,
-			"is_starred":      item.IsStarred,
-			"created_at":      item.CreatedAt,
-			"updated_at":      item.UpdatedAt,
+			"version_number":    item.LatestVersionNumber,
+			"preview_status":    item.PreviewStatus,
+			"processing_status": item.PreviewStatus,
+			"created_by":        item.CreatedBy,
+			"created_by_name":   item.CreatedByName,
+			"is_starred":        item.IsStarred,
+			"created_at":        item.CreatedAt,
+			"updated_at":        item.UpdatedAt,
 		}
 		filtered = append(filtered, itemMap)
 	}
@@ -799,7 +809,20 @@ func (h *ItemsHandler) CopyItem(w http.ResponseWriter, r *http.Request) {
 		copyName = item.Name
 	}
 
-	newItem, err := h.queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+	var tx pgx.Tx
+	q := h.queries
+	if h.pool != nil {
+		var txErr error
+		tx, txErr = h.pool.Begin(ctx)
+		if txErr != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_begin_tx"})
+			return
+		}
+		defer tx.Rollback(ctx)
+		q = h.queries.WithTx(tx)
+	}
+
+	newItem, err := q.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
 		CompanyID: companyID,
 		ProjectID: destProjectID,
 		ParentID:  destParentID,
@@ -817,27 +840,165 @@ func (h *ItemsHandler) CopyItem(w http.ResponseWriter, r *http.Request) {
 	if item.Kind == "file" && item.LatestStorageKey != "" {
 		newStorageKey := fmt.Sprintf("companies/%s/items/%s/v1", uuid.UUID(companyID.Bytes).String(), uuid.UUID(newItem.ID.Bytes).String())
 		if h.storage != nil {
-			_ = h.storage.CopyObject(ctx, item.LatestStorageKey, newStorageKey)
+			if cpErr := h.storage.CopyObject(ctx, item.LatestStorageKey, newStorageKey); cpErr != nil {
+				if tx != nil {
+					_ = tx.Rollback(ctx)
+				} else {
+					_ = h.queries.PermanentDeleteItem(ctx, db.PermanentDeleteItemParams{
+						ID:        newItem.ID,
+						CompanyID: companyID,
+					})
+				}
+				respondJSON(w, http.StatusInternalServerError, map[string]string{
+					"error":   "failed_to_copy_storage",
+					"message": fmt.Sprintf("Failed to copy storage object: %v", cpErr),
+				})
+				return
+			}
 		}
 
-		_, _ = h.queries.CreateFileVersion(ctx, db.CreateFileVersionParams{
+		// Retrieve source item's latest file version for preview metadata
+		srcVer, srcVerErr := h.queries.GetLatestFileVersion(ctx, item.ID)
+
+		previewStatus := "none"
+		previewKeys := []byte("{}")
+		durationMs := pgtype.Int4{Valid: false}
+		width := pgtype.Int4{Valid: false}
+		height := pgtype.Int4{Valid: false}
+		fps := pgtype.Numeric{Valid: false}
+
+		isVideoOrAudio := strings.HasPrefix(item.LatestMime, "video/") ||
+			strings.HasPrefix(item.LatestMime, "audio/") ||
+			strings.HasSuffix(strings.ToLower(item.Name), ".mp4") ||
+			strings.HasSuffix(strings.ToLower(item.Name), ".mov") ||
+			strings.HasSuffix(strings.ToLower(item.Name), ".m4v") ||
+			strings.HasSuffix(strings.ToLower(item.Name), ".webm") ||
+			strings.HasSuffix(strings.ToLower(item.Name), ".mp3") ||
+			strings.HasSuffix(strings.ToLower(item.Name), ".wav")
+
+		if srcVerErr == nil && srcVer.ID.Valid {
+			durationMs = srcVer.DurationMs
+			width = srcVer.Width
+			height = srcVer.Height
+			fps = srcVer.Fps
+			previewStatus = srcVer.PreviewStatus
+			previewKeys = srcVer.PreviewKeys
+		} else if isVideoOrAudio {
+			previewStatus = "generating"
+		}
+
+		newVer, verErr := q.CreateFileVersion(ctx, db.CreateFileVersionParams{
 			CompanyID:     companyID,
 			ItemID:        newItem.ID,
 			Number:        1,
 			StorageKey:    newStorageKey,
 			SizeBytes:     item.LatestSizeBytes,
 			Mime:          item.LatestMime,
-			PreviewStatus: "none",
-			PreviewKeys:   []byte("{}"),
+			DurationMs:    durationMs,
+			Width:         width,
+			Height:        height,
+			Fps:           fps,
+			PreviewStatus: previewStatus,
+			PreviewKeys:   previewKeys,
 			UploadedBy:    user.ID,
 		})
+		if verErr != nil {
+			if tx != nil {
+				_ = tx.Rollback(ctx)
+			} else {
+				_ = h.queries.PermanentDeleteItem(ctx, db.PermanentDeleteItemParams{
+					ID:        newItem.ID,
+					CompanyID: companyID,
+				})
+			}
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_version"})
+			return
+		}
 
-		_ = h.queries.CommitCompanyStorage(ctx, db.CommitCompanyStorageParams{
+		// If preview is ready, copy preview objects (HLS playlist, segments, poster thumbnail) server-side!
+		if srcVerErr == nil && srcVer.PreviewStatus == "ready" && h.storage != nil {
+			srcCIDStr := uuid.UUID(companyID.Bytes).String()
+			srcVIDStr := uuid.UUID(srcVer.ID.Bytes).String()
+			newVIDStr := uuid.UUID(newVer.ID.Bytes).String()
+
+			srcPrefix := fmt.Sprintf("previews/%s/%s/", srcCIDStr, srcVIDStr)
+			destPrefix := fmt.Sprintf("previews/%s/%s/", srcCIDStr, newVIDStr)
+
+			if cpPrefixErr := h.storage.CopyPrefix(ctx, srcPrefix, destPrefix); cpPrefixErr == nil {
+				updatedKeys := bytes.ReplaceAll(srcVer.PreviewKeys, []byte(srcVIDStr), []byte(newVIDStr))
+				_, _ = q.UpdateVersionMetadataAndPreview(ctx, db.UpdateVersionMetadataAndPreviewParams{
+					ID:            newVer.ID,
+					CompanyID:     companyID,
+					DurationMs:    srcVer.DurationMs,
+					Width:         srcVer.Width,
+					Height:        srcVer.Height,
+					Fps:           srcVer.Fps,
+					PreviewStatus: "ready",
+					PreviewKeys:   updatedKeys,
+				})
+			} else {
+				// Fallback to generating status and queue processing job
+				_, _ = q.UpdateVersionPreviewStatus(ctx, db.UpdateVersionPreviewStatusParams{
+					ID:            newVer.ID,
+					CompanyID:     companyID,
+					PreviewStatus: "generating",
+				})
+				if isVideoOrAudio && h.asynqClient != nil {
+					task, _ := jobs.NewProcessVideoTask(jobs.ProcessVideoPayload{
+						CompanyID:  srcCIDStr,
+						ItemID:     uuid.UUID(newItem.ID.Bytes).String(),
+						VersionID:  newVIDStr,
+						StorageKey: newStorageKey,
+						Mime:       item.LatestMime,
+					})
+					if task != nil {
+						_, _ = h.asynqClient.Enqueue(task)
+					}
+				}
+			}
+		} else if isVideoOrAudio && previewStatus != "ready" {
+			// Show generating thumbnail state and queue processing
+			if h.asynqClient != nil {
+				task, _ := jobs.NewProcessVideoTask(jobs.ProcessVideoPayload{
+					CompanyID:  uuid.UUID(companyID.Bytes).String(),
+					ItemID:     uuid.UUID(newItem.ID.Bytes).String(),
+					VersionID:  uuid.UUID(newVer.ID.Bytes).String(),
+					StorageKey: newStorageKey,
+					Mime:       item.LatestMime,
+				})
+				if task != nil {
+					_, _ = h.asynqClient.Enqueue(task)
+				}
+			}
+		}
+
+		_ = q.CommitCompanyStorage(ctx, db.CommitCompanyStorageParams{
 			ID:    companyID,
 			Bytes: item.LatestSizeBytes,
 		})
 	} else if item.Kind == "folder" {
-		h.copyFolderChildren(ctx, item.ID, newItem.ID, destProjectID, user.ID, companyID)
+		if fErr := h.copyFolderChildren(ctx, q, item.ID, newItem.ID, destProjectID, user.ID, companyID); fErr != nil {
+			if tx != nil {
+				_ = tx.Rollback(ctx)
+			} else {
+				_ = h.queries.PermanentDeleteItem(ctx, db.PermanentDeleteItemParams{
+					ID:        newItem.ID,
+					CompanyID: companyID,
+				})
+			}
+			respondJSON(w, http.StatusInternalServerError, map[string]string{
+				"error":   "failed_to_copy_storage",
+				"message": fmt.Sprintf("Failed to copy folder child: %v", fErr),
+			})
+			return
+		}
+	}
+
+	if tx != nil {
+		if err := tx.Commit(ctx); err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_commit_tx"})
+			return
+		}
 	}
 
 	_ = h.queries.RecalculateProjectAndFolderCounts(ctx, destProjectID)
@@ -854,17 +1015,17 @@ func (h *ItemsHandler) CopyItem(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusCreated, newItem)
 }
 
-func (h *ItemsHandler) copyFolderChildren(ctx context.Context, srcFolderID, destFolderID, destProjectID pgtype.UUID, userID, companyID pgtype.UUID) {
-	children, err := h.queries.ListFolderChildrenDirect(ctx, db.ListFolderChildrenDirectParams{
+func (h *ItemsHandler) copyFolderChildren(ctx context.Context, q *db.Queries, srcFolderID, destFolderID, destProjectID pgtype.UUID, userID, companyID pgtype.UUID) error {
+	children, err := q.ListFolderChildrenDirect(ctx, db.ListFolderChildrenDirectParams{
 		CompanyID: companyID,
 		ParentID:  srcFolderID,
 	})
 	if err != nil {
-		return
+		return err
 	}
 
 	for _, ch := range children {
-		newChild, cErr := h.queries.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
+		newChild, cErr := q.CreateItemWithCounts(ctx, db.CreateItemWithCountsParams{
 			CompanyID: companyID,
 			ProjectID: destProjectID,
 			ParentID:  destFolderID,
@@ -874,34 +1035,106 @@ func (h *ItemsHandler) copyFolderChildren(ctx context.Context, srcFolderID, dest
 			CreatedBy: userID,
 		})
 		if cErr != nil {
-			continue
+			return cErr
 		}
 
 		if ch.Kind == "file" && ch.LatestStorageKey != "" {
 			newKey := fmt.Sprintf("companies/%s/items/%s/v1", uuid.UUID(companyID.Bytes).String(), uuid.UUID(newChild.ID.Bytes).String())
 			if h.storage != nil {
-				_ = h.storage.CopyObject(ctx, ch.LatestStorageKey, newKey)
+				if cpErr := h.storage.CopyObject(ctx, ch.LatestStorageKey, newKey); cpErr != nil {
+					return fmt.Errorf("failed to copy storage object for %q: %w", ch.Name, cpErr)
+				}
 			}
-			_, _ = h.queries.CreateFileVersion(ctx, db.CreateFileVersionParams{
+
+			srcVer, srcVerErr := h.queries.GetLatestFileVersion(ctx, ch.ID)
+			previewStatus := "none"
+			previewKeys := []byte("{}")
+			durationMs := pgtype.Int4{Valid: false}
+			width := pgtype.Int4{Valid: false}
+			height := pgtype.Int4{Valid: false}
+			fps := pgtype.Numeric{Valid: false}
+
+			isVideoOrAudio := strings.HasPrefix(ch.LatestMime, "video/") ||
+				strings.HasPrefix(ch.LatestMime, "audio/") ||
+				strings.HasSuffix(strings.ToLower(ch.Name), ".mp4") ||
+				strings.HasSuffix(strings.ToLower(ch.Name), ".mov") ||
+				strings.HasSuffix(strings.ToLower(ch.Name), ".m4v") ||
+				strings.HasSuffix(strings.ToLower(ch.Name), ".webm") ||
+				strings.HasSuffix(strings.ToLower(ch.Name), ".mp3") ||
+				strings.HasSuffix(strings.ToLower(ch.Name), ".wav")
+
+			if srcVerErr == nil && srcVer.ID.Valid {
+				durationMs = srcVer.DurationMs
+				width = srcVer.Width
+				height = srcVer.Height
+				fps = srcVer.Fps
+				previewStatus = srcVer.PreviewStatus
+				previewKeys = srcVer.PreviewKeys
+			} else if isVideoOrAudio {
+				previewStatus = "generating"
+			}
+
+			newVer, verErr := q.CreateFileVersion(ctx, db.CreateFileVersionParams{
 				CompanyID:     companyID,
 				ItemID:        newChild.ID,
 				Number:        1,
 				StorageKey:    newKey,
 				SizeBytes:     ch.LatestSizeBytes,
 				Mime:          ch.LatestMime,
-				PreviewStatus: "none",
-				PreviewKeys:   []byte("{}"),
+				DurationMs:    durationMs,
+				Width:         width,
+				Height:        height,
+				Fps:           fps,
+				PreviewStatus: previewStatus,
+				PreviewKeys:   previewKeys,
 				UploadedBy:    userID,
 			})
-			_ = h.queries.CommitCompanyStorage(ctx, db.CommitCompanyStorageParams{
+			if verErr != nil {
+				return verErr
+			}
+
+			if srcVerErr == nil && srcVer.PreviewStatus == "ready" && h.storage != nil {
+				srcCIDStr := uuid.UUID(companyID.Bytes).String()
+				srcVIDStr := uuid.UUID(srcVer.ID.Bytes).String()
+				newVIDStr := uuid.UUID(newVer.ID.Bytes).String()
+
+				srcPrefix := fmt.Sprintf("previews/%s/%s/", srcCIDStr, srcVIDStr)
+				destPrefix := fmt.Sprintf("previews/%s/%s/", srcCIDStr, newVIDStr)
+
+				if cpPrefixErr := h.storage.CopyPrefix(ctx, srcPrefix, destPrefix); cpPrefixErr == nil {
+					updatedKeys := bytes.ReplaceAll(srcVer.PreviewKeys, []byte(srcVIDStr), []byte(newVIDStr))
+					_, _ = q.UpdateVersionMetadataAndPreview(ctx, db.UpdateVersionMetadataAndPreviewParams{
+						ID:            newVer.ID,
+						CompanyID:     companyID,
+						DurationMs:    srcVer.DurationMs,
+						Width:         srcVer.Width,
+						Height:        srcVer.Height,
+						Fps:           srcVer.Fps,
+						PreviewStatus: "ready",
+						PreviewKeys:   updatedKeys,
+					})
+				} else {
+					_, _ = q.UpdateVersionPreviewStatus(ctx, db.UpdateVersionPreviewStatusParams{
+						ID:            newVer.ID,
+						CompanyID:     companyID,
+						PreviewStatus: "generating",
+					})
+				}
+			}
+
+			_ = q.CommitCompanyStorage(ctx, db.CommitCompanyStorageParams{
 				ID:    companyID,
 				Bytes: ch.LatestSizeBytes,
 			})
 		} else if ch.Kind == "folder" {
-			h.copyFolderChildren(ctx, ch.ID, newChild.ID, destProjectID, userID, companyID)
+			if err := h.copyFolderChildren(ctx, q, ch.ID, newChild.ID, destProjectID, userID, companyID); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
+
 
 // DeleteItem soft deletes an item into Trash (recalculating active counts)
 func (h *ItemsHandler) DeleteItem(w http.ResponseWriter, r *http.Request) {

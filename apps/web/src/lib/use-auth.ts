@@ -40,6 +40,9 @@ export interface MeResponse {
   active_role: string;
   role_id?: string;
   role_name?: string;
+  title?: string;
+  is_admin?: boolean;
+  permissions_map?: Record<string, boolean>;
   permissions?: string[];
   role?: RoleDetails;
   is_client: boolean;
@@ -69,17 +72,20 @@ export function useAuth() {
   const company = data?.active_company || null;
   const roleName = data?.role_name || data?.active_role || data?.role?.name || "";
   const roleId = data?.role_id || data?.role?.id || "";
+  const title = data?.title || "";
   const permissions = data?.permissions || data?.role?.permissions || [];
+  const permissionsMap = data?.permissions_map || {};
   const isClient = data?.is_client || false;
 
   const hasPermission = useCallback(
     (perm: string): boolean => {
       if (isClient) return false;
       const lower = roleName.toLowerCase();
-      if (lower === "admin" || lower === "owner") return true;
+      if (data?.is_admin || permissionsMap["admin"] || lower === "admin" || lower === "owner") return true;
+      if (permissionsMap[perm] !== undefined) return permissionsMap[perm];
       return permissions.includes(perm);
     },
-    [isClient, roleName, permissions]
+    [isClient, roleName, permissions, permissionsMap, data?.is_admin]
   );
 
   // Executive roles with full access (Shared My Drive, executive controls)
@@ -93,13 +99,14 @@ export function useAuth() {
     "owner",
   ];
   const isExecutive = !isClient && executiveRoles.includes(roleName.toLowerCase());
-  const canChangeRoles = !isClient && ["ceo", "coo", "owner"].includes(roleName.toLowerCase());
+  const canChangeRoles = !isClient && (data?.is_admin || permissionsMap["admin"] || ["ceo", "coo", "owner"].includes(roleName.toLowerCase()));
 
   // Helper flags mapped directly to granular permissions
-  const isAdmin = hasPermission("admin.settings");
+  const isAdmin = !isClient && (data?.is_admin === true || permissionsMap["admin"] === true || hasPermission("admin.settings"));
+  const isStaff = !isClient && (roleName.toLowerCase() === "staff" || isExecutive || roleName.toLowerCase() === "manager");
   const isManager = hasPermission("team.invite") || isAdmin;
-  const isEditor = !isClient && !isManager;
-  const canCreateClientOrProject = hasPermission("projects.create") || hasPermission("clients.create");
+  const isEditor = !isClient && !isStaff;
+  const canCreateClientOrProject = hasPermission("create_project") || hasPermission("projects.create") || hasPermission("clients.create");
 
   const clientName = data?.client_name || "";
   const clientLogo = data?.client_logo || "";
@@ -112,7 +119,9 @@ export function useAuth() {
     role: roleName,
     roleName,
     roleId,
+    title,
     permissions,
+    permissionsMap,
     isClient,
     clientName,
     clientLogo,
@@ -122,6 +131,7 @@ export function useAuth() {
     isExecutive,
     canChangeRoles,
     isAdmin,
+    isStaff,
     isManager,
     isEditor,
     canCreateClientOrProject,

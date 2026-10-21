@@ -113,6 +113,7 @@ RETURNING *;
 
 -- name: GetMembership :one
 SELECT m.id, m.company_id, m.user_id, m.role, m.role_id, m.created_at, m.updated_at,
+       m.title, m.permissions, m.status,
        r.name as role_name, r.color as role_color, r.permissions as role_permissions, r.is_system as role_is_system
 FROM memberships m
 LEFT JOIN roles r ON r.id = m.role_id
@@ -126,7 +127,11 @@ SELECT
     m.user_id,
     m.role,
     m.role_id,
+    m.title,
+    m.permissions,
+    m.status,
     m.created_at,
+    m.updated_at,
     u.name as user_name,
     u.email as user_email,
     u.avatar_url as user_avatar_url,
@@ -140,6 +145,57 @@ JOIN users u ON m.user_id = u.id
 LEFT JOIN roles r ON r.id = m.role_id
 WHERE m.company_id = $1
 ORDER BY m.created_at ASC;
+
+-- name: CountActiveAdmins :one
+SELECT COUNT(*) as count
+FROM memberships
+WHERE company_id = $1 
+  AND status = 'active'
+  AND (permissions->>'admin')::boolean = true;
+
+-- name: CreateMembershipWithDetails :one
+INSERT INTO memberships (
+    company_id, user_id, role, role_id, title, permissions, status
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7
+)
+RETURNING *;
+
+-- name: UpdateMembershipDetails :exec
+UPDATE memberships
+SET role = $3,
+    role_id = $4,
+    title = $5,
+    permissions = $6,
+    status = $7,
+    updated_at = NOW()
+WHERE company_id = $1 AND user_id = $2;
+
+-- name: CreateAdminAuditLog :one
+INSERT INTO admin_audit_logs (
+    company_id, actor_id, target_user_id, action, details
+) VALUES (
+    $1, $2, $3, $4, $5
+)
+RETURNING *;
+
+-- name: GetAdminAuditLogsForUser :many
+SELECT a.*, u.name as actor_name, u.email as actor_email
+FROM admin_audit_logs a
+JOIN users u ON a.actor_id = u.id
+WHERE a.company_id = $1 AND a.target_user_id = $2
+ORDER BY a.created_at DESC
+LIMIT 50;
+
+-- name: GetMembershipByID :one
+SELECT m.id, m.company_id, m.user_id, m.role, m.role_id, m.title, m.permissions, m.status, m.created_at, m.updated_at,
+       u.name as user_name, u.email as user_email, u.avatar_url as user_avatar_url, u.username as user_username,
+       r.name as role_name, r.color as role_color, r.is_system as role_is_system
+FROM memberships m
+JOIN users u ON m.user_id = u.id
+LEFT JOIN roles r ON r.id = m.role_id
+WHERE m.id = $1 AND m.company_id = $2
+LIMIT 1;
 
 -- name: CountCompanyMembers :one
 SELECT COUNT(*) as count

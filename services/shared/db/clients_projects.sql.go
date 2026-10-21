@@ -380,6 +380,23 @@ func (q *Queries) DeleteGrantByTargetAndEmail(ctx context.Context, arg DeleteGra
 	return err
 }
 
+const deleteGrantsForUserOrEmail = `-- name: DeleteGrantsForUserOrEmail :exec
+DELETE FROM grants
+WHERE company_id = $1 
+  AND (LOWER(email) = LOWER($2) OR ($3::uuid IS NOT NULL AND user_id = $3))
+`
+
+type DeleteGrantsForUserOrEmailParams struct {
+	CompanyID pgtype.UUID `json:"company_id"`
+	Email     string      `json:"email"`
+	UserID    pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) DeleteGrantsForUserOrEmail(ctx context.Context, arg DeleteGrantsForUserOrEmailParams) error {
+	_, err := q.db.Exec(ctx, deleteGrantsForUserOrEmail, arg.CompanyID, arg.Email, arg.UserID)
+	return err
+}
+
 const deleteLoginCodesForEmail = `-- name: DeleteLoginCodesForEmail :exec
 DELETE FROM login_codes
 WHERE email = $1

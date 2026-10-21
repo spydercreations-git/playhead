@@ -109,6 +109,21 @@ func (q *Queries) CompleteUserOnboarding(ctx context.Context, arg CompleteUserOn
 	return i, err
 }
 
+const countActiveAdmins = `-- name: CountActiveAdmins :one
+SELECT COUNT(*) as count
+FROM memberships
+WHERE company_id = $1 
+  AND status = 'active'
+  AND (permissions->>'admin')::boolean = true
+`
+
+func (q *Queries) CountActiveAdmins(ctx context.Context, companyID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveAdmins, companyID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countCompanyMembers = `-- name: CountCompanyMembers :one
 SELECT COUNT(*) as count
 FROM memberships
@@ -120,6 +135,44 @@ func (q *Queries) CountCompanyMembers(ctx context.Context, companyID pgtype.UUID
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const createAdminAuditLog = `-- name: CreateAdminAuditLog :one
+INSERT INTO admin_audit_logs (
+    company_id, actor_id, target_user_id, action, details
+) VALUES (
+    $1, $2, $3, $4, $5
+)
+RETURNING id, company_id, actor_id, target_user_id, action, details, created_at
+`
+
+type CreateAdminAuditLogParams struct {
+	CompanyID    pgtype.UUID `json:"company_id"`
+	ActorID      pgtype.UUID `json:"actor_id"`
+	TargetUserID pgtype.UUID `json:"target_user_id"`
+	Action       string      `json:"action"`
+	Details      []byte      `json:"details"`
+}
+
+func (q *Queries) CreateAdminAuditLog(ctx context.Context, arg CreateAdminAuditLogParams) (AdminAuditLog, error) {
+	row := q.db.QueryRow(ctx, createAdminAuditLog,
+		arg.CompanyID,
+		arg.ActorID,
+		arg.TargetUserID,
+		arg.Action,
+		arg.Details,
+	)
+	var i AdminAuditLog
+	err := row.Scan(
+		&i.ID,
+		&i.CompanyID,
+		&i.ActorID,
+		&i.TargetUserID,
+		&i.Action,
+		&i.Details,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const createCompany = `-- name: CreateCompany :one
@@ -223,7 +276,7 @@ INSERT INTO memberships (
 ) VALUES (
     $1, $2, $3
 )
-RETURNING id, company_id, user_id, role, created_at, updated_at, role_id
+RETURNING id, company_id, user_id, role, created_at, updated_at, role_id, title, permissions, status
 `
 
 type CreateMembershipParams struct {
@@ -243,6 +296,54 @@ func (q *Queries) CreateMembership(ctx context.Context, arg CreateMembershipPara
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RoleID,
+		&i.Title,
+		&i.Permissions,
+		&i.Status,
+	)
+	return i, err
+}
+
+const createMembershipWithDetails = `-- name: CreateMembershipWithDetails :one
+INSERT INTO memberships (
+    company_id, user_id, role, role_id, title, permissions, status
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7
+)
+RETURNING id, company_id, user_id, role, created_at, updated_at, role_id, title, permissions, status
+`
+
+type CreateMembershipWithDetailsParams struct {
+	CompanyID   pgtype.UUID `json:"company_id"`
+	UserID      pgtype.UUID `json:"user_id"`
+	Role        string      `json:"role"`
+	RoleID      pgtype.UUID `json:"role_id"`
+	Title       pgtype.Text `json:"title"`
+	Permissions []byte      `json:"permissions"`
+	Status      string      `json:"status"`
+}
+
+func (q *Queries) CreateMembershipWithDetails(ctx context.Context, arg CreateMembershipWithDetailsParams) (Membership, error) {
+	row := q.db.QueryRow(ctx, createMembershipWithDetails,
+		arg.CompanyID,
+		arg.UserID,
+		arg.Role,
+		arg.RoleID,
+		arg.Title,
+		arg.Permissions,
+		arg.Status,
+	)
+	var i Membership
+	err := row.Scan(
+		&i.ID,
+		&i.CompanyID,
+		&i.UserID,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RoleID,
+		&i.Title,
+		&i.Permissions,
+		&i.Status,
 	)
 	return i, err
 }
@@ -401,6 +502,62 @@ WHERE token_hash = $1
 func (q *Queries) DeleteVerificationToken(ctx context.Context, tokenHash string) error {
 	_, err := q.db.Exec(ctx, deleteVerificationToken, tokenHash)
 	return err
+}
+
+const getAdminAuditLogsForUser = `-- name: GetAdminAuditLogsForUser :many
+SELECT a.id, a.company_id, a.actor_id, a.target_user_id, a.action, a.details, a.created_at, u.name as actor_name, u.email as actor_email
+FROM admin_audit_logs a
+JOIN users u ON a.actor_id = u.id
+WHERE a.company_id = $1 AND a.target_user_id = $2
+ORDER BY a.created_at DESC
+LIMIT 50
+`
+
+type GetAdminAuditLogsForUserParams struct {
+	CompanyID    pgtype.UUID `json:"company_id"`
+	TargetUserID pgtype.UUID `json:"target_user_id"`
+}
+
+type GetAdminAuditLogsForUserRow struct {
+	ID           pgtype.UUID        `json:"id"`
+	CompanyID    pgtype.UUID        `json:"company_id"`
+	ActorID      pgtype.UUID        `json:"actor_id"`
+	TargetUserID pgtype.UUID        `json:"target_user_id"`
+	Action       string             `json:"action"`
+	Details      []byte             `json:"details"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	ActorName    string             `json:"actor_name"`
+	ActorEmail   string             `json:"actor_email"`
+}
+
+func (q *Queries) GetAdminAuditLogsForUser(ctx context.Context, arg GetAdminAuditLogsForUserParams) ([]GetAdminAuditLogsForUserRow, error) {
+	rows, err := q.db.Query(ctx, getAdminAuditLogsForUser, arg.CompanyID, arg.TargetUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetAdminAuditLogsForUserRow{}
+	for rows.Next() {
+		var i GetAdminAuditLogsForUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CompanyID,
+			&i.ActorID,
+			&i.TargetUserID,
+			&i.Action,
+			&i.Details,
+			&i.CreatedAt,
+			&i.ActorName,
+			&i.ActorEmail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getCompaniesForUser = `-- name: GetCompaniesForUser :many
@@ -616,6 +773,7 @@ func (q *Queries) GetInvitesForCompany(ctx context.Context, companyID pgtype.UUI
 
 const getMembership = `-- name: GetMembership :one
 SELECT m.id, m.company_id, m.user_id, m.role, m.role_id, m.created_at, m.updated_at,
+       m.title, m.permissions, m.status,
        r.name as role_name, r.color as role_color, r.permissions as role_permissions, r.is_system as role_is_system
 FROM memberships m
 LEFT JOIN roles r ON r.id = m.role_id
@@ -636,6 +794,9 @@ type GetMembershipRow struct {
 	RoleID          pgtype.UUID        `json:"role_id"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	Title           pgtype.Text        `json:"title"`
+	Permissions     []byte             `json:"permissions"`
+	Status          string             `json:"status"`
 	RoleName        pgtype.Text        `json:"role_name"`
 	RoleColor       pgtype.Text        `json:"role_color"`
 	RolePermissions []byte             `json:"role_permissions"`
@@ -653,9 +814,73 @@ func (q *Queries) GetMembership(ctx context.Context, arg GetMembershipParams) (G
 		&i.RoleID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Title,
+		&i.Permissions,
+		&i.Status,
 		&i.RoleName,
 		&i.RoleColor,
 		&i.RolePermissions,
+		&i.RoleIsSystem,
+	)
+	return i, err
+}
+
+const getMembershipByID = `-- name: GetMembershipByID :one
+SELECT m.id, m.company_id, m.user_id, m.role, m.role_id, m.title, m.permissions, m.status, m.created_at, m.updated_at,
+       u.name as user_name, u.email as user_email, u.avatar_url as user_avatar_url, u.username as user_username,
+       r.name as role_name, r.color as role_color, r.is_system as role_is_system
+FROM memberships m
+JOIN users u ON m.user_id = u.id
+LEFT JOIN roles r ON r.id = m.role_id
+WHERE m.id = $1 AND m.company_id = $2
+LIMIT 1
+`
+
+type GetMembershipByIDParams struct {
+	ID        pgtype.UUID `json:"id"`
+	CompanyID pgtype.UUID `json:"company_id"`
+}
+
+type GetMembershipByIDRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	CompanyID     pgtype.UUID        `json:"company_id"`
+	UserID        pgtype.UUID        `json:"user_id"`
+	Role          string             `json:"role"`
+	RoleID        pgtype.UUID        `json:"role_id"`
+	Title         pgtype.Text        `json:"title"`
+	Permissions   []byte             `json:"permissions"`
+	Status        string             `json:"status"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	UserName      string             `json:"user_name"`
+	UserEmail     string             `json:"user_email"`
+	UserAvatarUrl pgtype.Text        `json:"user_avatar_url"`
+	UserUsername  pgtype.Text        `json:"user_username"`
+	RoleName      pgtype.Text        `json:"role_name"`
+	RoleColor     pgtype.Text        `json:"role_color"`
+	RoleIsSystem  pgtype.Bool        `json:"role_is_system"`
+}
+
+func (q *Queries) GetMembershipByID(ctx context.Context, arg GetMembershipByIDParams) (GetMembershipByIDRow, error) {
+	row := q.db.QueryRow(ctx, getMembershipByID, arg.ID, arg.CompanyID)
+	var i GetMembershipByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.CompanyID,
+		&i.UserID,
+		&i.Role,
+		&i.RoleID,
+		&i.Title,
+		&i.Permissions,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UserName,
+		&i.UserEmail,
+		&i.UserAvatarUrl,
+		&i.UserUsername,
+		&i.RoleName,
+		&i.RoleColor,
 		&i.RoleIsSystem,
 	)
 	return i, err
@@ -668,7 +893,11 @@ SELECT
     m.user_id,
     m.role,
     m.role_id,
+    m.title,
+    m.permissions,
+    m.status,
     m.created_at,
+    m.updated_at,
     u.name as user_name,
     u.email as user_email,
     u.avatar_url as user_avatar_url,
@@ -690,7 +919,11 @@ type GetMembershipsForCompanyRow struct {
 	UserID          pgtype.UUID        `json:"user_id"`
 	Role            string             `json:"role"`
 	RoleID          pgtype.UUID        `json:"role_id"`
+	Title           pgtype.Text        `json:"title"`
+	Permissions     []byte             `json:"permissions"`
+	Status          string             `json:"status"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 	UserName        string             `json:"user_name"`
 	UserEmail       string             `json:"user_email"`
 	UserAvatarUrl   pgtype.Text        `json:"user_avatar_url"`
@@ -716,7 +949,11 @@ func (q *Queries) GetMembershipsForCompany(ctx context.Context, companyID pgtype
 			&i.UserID,
 			&i.Role,
 			&i.RoleID,
+			&i.Title,
+			&i.Permissions,
+			&i.Status,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 			&i.UserName,
 			&i.UserEmail,
 			&i.UserAvatarUrl,
@@ -967,6 +1204,40 @@ func (q *Queries) UpdateInviteToken(ctx context.Context, arg UpdateInviteTokenPa
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateMembershipDetails = `-- name: UpdateMembershipDetails :exec
+UPDATE memberships
+SET role = $3,
+    role_id = $4,
+    title = $5,
+    permissions = $6,
+    status = $7,
+    updated_at = NOW()
+WHERE company_id = $1 AND user_id = $2
+`
+
+type UpdateMembershipDetailsParams struct {
+	CompanyID   pgtype.UUID `json:"company_id"`
+	UserID      pgtype.UUID `json:"user_id"`
+	Role        string      `json:"role"`
+	RoleID      pgtype.UUID `json:"role_id"`
+	Title       pgtype.Text `json:"title"`
+	Permissions []byte      `json:"permissions"`
+	Status      string      `json:"status"`
+}
+
+func (q *Queries) UpdateMembershipDetails(ctx context.Context, arg UpdateMembershipDetailsParams) error {
+	_, err := q.db.Exec(ctx, updateMembershipDetails,
+		arg.CompanyID,
+		arg.UserID,
+		arg.Role,
+		arg.RoleID,
+		arg.Title,
+		arg.Permissions,
+		arg.Status,
+	)
+	return err
 }
 
 const updateMembershipRole = `-- name: UpdateMembershipRole :exec

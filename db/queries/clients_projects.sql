@@ -386,3 +386,8 @@ UPDATE grants
 SET user_id = @user_id,
     updated_at = NOW()
 WHERE LOWER(email) = @email;
+
+-- name: DeleteGrantsForUserOrEmail :exec
+DELETE FROM grants
+WHERE company_id = @company_id 
+  AND (LOWER(email) = LOWER(@email) OR (@user_id::uuid IS NOT NULL AND user_id = @user_id));

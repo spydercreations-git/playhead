@@ -19,6 +19,16 @@ type Activity struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type AdminAuditLog struct {
+	ID           pgtype.UUID        `json:"id"`
+	CompanyID    pgtype.UUID        `json:"company_id"`
+	ActorID      pgtype.UUID        `json:"actor_id"`
+	TargetUserID pgtype.UUID        `json:"target_user_id"`
+	Action       string             `json:"action"`
+	Details      []byte             `json:"details"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
 type Client struct {
 	ID            pgtype.UUID        `json:"id"`
 	CompanyID     pgtype.UUID        `json:"company_id"`
@@ -225,13 +235,16 @@ type LoginCode struct {
 }
 
 type Membership struct {
-	ID        pgtype.UUID        `json:"id"`
-	CompanyID pgtype.UUID        `json:"company_id"`
-	UserID    pgtype.UUID        `json:"user_id"`
-	Role      string             `json:"role"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
-	RoleID    pgtype.UUID        `json:"role_id"`
+	ID          pgtype.UUID        `json:"id"`
+	CompanyID   pgtype.UUID        `json:"company_id"`
+	UserID      pgtype.UUID        `json:"user_id"`
+	Role        string             `json:"role"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	RoleID      pgtype.UUID        `json:"role_id"`
+	Title       pgtype.Text        `json:"title"`
+	Permissions []byte             `json:"permissions"`
+	Status      string             `json:"status"`
 }
 
 type NotificationPref struct {

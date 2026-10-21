@@ -111,6 +111,7 @@ func main() {
 
 	rolesHandler := handler.NewRolesHandler(queries)
 	rolesHandler.SetRedisClient(rdb)
+	adminHandler := handler.NewAdminHandler(queries, mailClient)
 	companyHandler.SetRedisClient(rdb)
 	notifHandler := handler.NewNotificationSettingsHandler(queries)
 	shareLinksHandler := handler.NewShareLinksHandler(queries, storageClient, cfg.SessionSecret, cfg.Environment)
@@ -241,6 +242,23 @@ func main() {
 			protected.Post("/users/onboarding/complete", onboardingHandler.CompleteOnboarding)
 			protected.Post("/users/avatar", onboardingHandler.UploadAvatar)
 			protected.Post("/clients/{id}/picture", onboardingHandler.UploadClientPicture)
+
+			// Admin (Phase 1: Roles and Admin) - protected by PermAdmin switch
+			protected.Route("/admin", func(admin chi.Router) {
+				admin.Use(middleware.RequirePermission(authz.PermAdmin))
+
+				admin.Get("/members", adminHandler.ListMembers)
+				admin.Post("/members", adminHandler.AddMember)
+				admin.Patch("/members/{id}", adminHandler.UpdateMember)
+				admin.Delete("/members/{id}", adminHandler.DeactivateMember)
+				admin.Post("/members/{id}/resend", adminHandler.ResendMemberInvite)
+				admin.Get("/members/{id}/audit", adminHandler.GetMemberAuditLogs)
+
+				admin.Get("/clients", adminHandler.ListClients)
+				admin.Post("/clients/{id}/people", adminHandler.AddClientPerson)
+				admin.Delete("/clients/{id}/people/{person_id}", adminHandler.RemoveClientPerson)
+				admin.Post("/clients/{id}/people/{person_id}/resend", adminHandler.ResendClientPersonInvite)
+			})
 
 			// Company management
 			protected.Post("/companies", companyHandler.Create)

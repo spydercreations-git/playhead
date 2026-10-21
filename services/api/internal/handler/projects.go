@@ -92,6 +92,21 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Clients can only create projects inside their own client
+	if person.IsClient() {
+		_, err := h.queries.GetClientContactByClientAndEmail(r.Context(), db.GetClientContactByClientAndEmailParams{
+			ClientID: clientID,
+			Email:    strings.ToLower(strings.TrimSpace(person.Email)),
+		})
+		if err != nil {
+			respondJSON(w, http.StatusForbidden, map[string]string{
+				"error":   "forbidden",
+				"message": "Clients can only create projects inside their own client",
+			})
+			return
+		}
+	}
+
 	project, err := h.queries.CreateProject(r.Context(), db.CreateProjectParams{
 		CompanyID: companyID,
 		ClientID:  clientID,

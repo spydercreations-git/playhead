@@ -352,6 +352,14 @@ func (h *AuthHandler) VerifyLoginCode(w http.ResponseWriter, r *http.Request) {
 	// Email code proves the email and marks it verified
 	_ = h.queries.VerifyUserEmail(r.Context(), user.ID)
 
+	if h.isUserDeactivated(r.Context(), user.ID) {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "account_deactivated",
+			"message": "Your account has been deactivated. Please contact an administrator.",
+		})
+		return
+	}
+
 	// Link client contacts and grants
 	_ = h.queries.LinkClientContactsToUser(r.Context(), db.LinkClientContactsToUserParams{
 		Email:  email,
@@ -517,6 +525,14 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	user, err := h.queries.GetUserByEmail(r.Context(), email)
 	if err != nil {
 		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials", "message": "Invalid email or password"})
+		return
+	}
+
+	if h.isUserDeactivated(r.Context(), user.ID) {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "account_deactivated",
+			"message": "Your account has been deactivated. Please contact an administrator.",
+		})
 		return
 	}
 
@@ -871,7 +887,10 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 	var roleID string
 	var roleName string
+	var titleStr string
 	permissions := []string{}
+	permissionsMap := make(map[string]bool)
+	isAdmin := false
 
 	if activeCompanyID.Valid {
 		membership, mErr := h.queries.GetMembership(r.Context(), db.GetMembershipParams{
@@ -884,25 +903,22 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 			if membership.RoleName.Valid && membership.RoleName.String != "" {
 				roleName = membership.RoleName.String
 			}
-			if len(membership.RolePermissions) > 0 {
-				_ = json.Unmarshal(membership.RolePermissions, &permissions)
+			if membership.Title.Valid {
+				titleStr = membership.Title.String
 			}
-			if strings.ToLower(membership.Role) == "admin" || strings.ToLower(membership.Role) == "owner" ||
-				strings.ToLower(roleName) == "admin" || strings.ToLower(roleName) == "owner" {
+			if len(membership.Permissions) > 0 {
+				_ = json.Unmarshal(membership.Permissions, &permissionsMap)
+			}
+			if len(permissionsMap) == 0 {
+				permissionsMap = authz.DefaultPermissions(membership.Role)
+			}
+			if permissionsMap[authz.PermAdmin] || authz.IsLegacyAdmin(membership.Role) {
+				isAdmin = true
 				permissions = authz.AllPermissions
-				if roleID == "" {
-					adminRole, err := h.queries.GetRoleByName(r.Context(), db.GetRoleByNameParams{
-						CompanyID: activeCompanyID,
-						Name:      "Admin",
-					})
-					if err == nil {
-						roleID = pgUUIDToString(adminRole.ID)
-						_ = h.queries.UpdateMembershipRole(r.Context(), db.UpdateMembershipRoleParams{
-							CompanyID: activeCompanyID,
-							UserID:    user.ID,
-							Role:      "admin",
-							RoleID:    adminRole.ID,
-						})
+			} else {
+				for k, v := range permissionsMap {
+					if v {
+						permissions = append(permissions, k)
 					}
 				}
 			}
@@ -915,7 +931,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	// A signed-in user with no company must NOT become a client silently.
 	// is_client must only be true if the user's email is explicitly registered in client_contacts.
 	isClient := false
-	if activeRole == "" || strings.ToLower(activeRole) == "guest" {
+	if activeRole == "" || strings.ToLower(activeRole) == "guest" || strings.EqualFold(activeRole, "client") {
 		contacts, err := h.queries.GetClientContactsByEmail(r.Context(), user.Email)
 		if err == nil && len(contacts) > 0 {
 			isClient = true
@@ -972,17 +988,22 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 			"has_temp_password": hasTemp,
 			"email_verified":    user.EmailVerifiedAt.Valid,
 		},
-		"client_name":    clientName,
-		"client_logo":    clientLogo,
-		"active_company": activeCompany,
-		"active_role":    activeRole,
-		"role_id":        roleID,
-		"role_name":      roleName,
-		"permissions":    permissions,
+		"client_name":     clientName,
+		"client_logo":     clientLogo,
+		"active_company":  activeCompany,
+		"active_role":     activeRole,
+		"title":           titleStr,
+		"is_admin":        isAdmin,
+		"permissions_map": permissionsMap,
+		"role_id":         roleID,
+		"role_name":       roleName,
+		"permissions":     permissions,
 		"role": map[string]interface{}{
 			"id":          roleID,
 			"name":        roleName,
+			"title":       titleStr,
 			"permissions": permissions,
+			"is_admin":    isAdmin,
 		},
 		"is_client": isClient,
 		"companies": companies,
@@ -1182,6 +1203,14 @@ func (h *AuthHandler) GoogleOAuthCallback(w http.ResponseWriter, r *http.Request
 	// Google sign in with verified email marks the user's email as verified
 	_ = h.queries.VerifyUserEmail(r.Context(), user.ID)
 
+	if h.isUserDeactivated(r.Context(), user.ID) {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "account_deactivated",
+			"message": "Your account has been deactivated. Please contact an administrator.",
+		})
+		return
+	}
+
 	_ = h.queries.LinkClientContactsToUser(r.Context(), db.LinkClientContactsToUserParams{
 		Email:  email,
 		UserID: user.ID,
@@ -1251,6 +1280,25 @@ func (h *AuthHandler) GoogleOAuthCallback(w http.ResponseWriter, r *http.Request
 			"email_verified": true,
 		},
 	})
+}
+
+func (h *AuthHandler) isUserDeactivated(ctx context.Context, userID pgtype.UUID) bool {
+	memberships, err := h.queries.GetCompaniesForUser(ctx, userID)
+	if err != nil || len(memberships) == 0 {
+		return false
+	}
+	allDeactivated := true
+	for _, comp := range memberships {
+		m, err := h.queries.GetMembership(ctx, db.GetMembershipParams{
+			CompanyID: comp.ID,
+			UserID:    userID,
+		})
+		if err == nil && m.Status != "deactivated" {
+			allDeactivated = false
+			break
+		}
+	}
+	return allDeactivated
 }
 
 func respondJSON(w http.ResponseWriter, status int, data interface{}) {

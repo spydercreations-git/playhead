@@ -18,23 +18,115 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-// Roles at Company Level
+// Roles at Company Level (Phase 1: 3 roles only)
 const (
-	// Full access executive roles ("Admins" internally, no "Admin" word in UI)
-	RoleCEO        = "CEO"
-	RoleCOO        = "COO"
-	RoleCFO        = "CFO"
-	RoleCSO        = "Chief Sales Officer"
-	RoleDesignHead = "Design Head"
+	RoleStaff  = "Staff"
+	RoleEditor = "Editor"
+	RoleClient = "Client"
 
-	// Per-project roles
+	// Legacy role names kept for backward compatibility
+	RoleCEO            = "CEO"
+	RoleCOO            = "COO"
+	RoleCFO            = "CFO"
+	RoleCSO            = "Chief Sales Officer"
+	RoleDesignHead     = "Design Head"
 	RoleProjectManager = "Project Manager"
-	RoleEditor         = "Editor"
 
 	// Access Types
 	AccessTypeFull       = "full_access"
 	AccessTypePerProject = "per_project"
 )
+
+// The 12 exact permission switch keys per person
+const (
+	PermAdmin            = "admin"              // open Admin page
+	PermManageAccess     = "manage_access"     // add/edit/remove people on projects and items
+	PermCreateProject    = "create_project"    // create new project (clients: own client only)
+	PermRenameProject    = "rename_project"    // rename project
+	PermDeleteProject    = "delete_project"    // archive or delete project
+	PermMoveItems        = "move_items"        // move folders and files
+	PermCopyItems        = "copy_items"        // copy folders and files
+	PermDeleteItems      = "delete_items"      // delete folders and files
+	PermCreateTask       = "create_task"       // create task (clients: own client only)
+	PermDeleteTask       = "delete_task"       // delete task
+	PermChangeTaskStatus = "change_task_status" // change task status
+	PermInvitePeople     = "invite_people"     // invite new staff/editors
+)
+
+var SwitchKeys = []string{
+	PermAdmin,
+	PermManageAccess,
+	PermCreateProject,
+	PermRenameProject,
+	PermDeleteProject,
+	PermMoveItems,
+	PermCopyItems,
+	PermDeleteItems,
+	PermCreateTask,
+	PermDeleteTask,
+	PermChangeTaskStatus,
+	PermInvitePeople,
+}
+
+func IsValidPermissionSwitch(key string) bool {
+	for _, k := range SwitchKeys {
+		if k == key {
+			return true
+		}
+	}
+	return false
+}
+
+// DefaultPermissions returns the default switch state for a given role.
+func DefaultPermissions(role string) map[string]bool {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case "editor":
+		return map[string]bool{
+			PermAdmin:            false,
+			PermManageAccess:     false,
+			PermCreateProject:    false,
+			PermRenameProject:    false,
+			PermDeleteProject:    false,
+			PermMoveItems:        true,
+			PermCopyItems:        true,
+			PermDeleteItems:      false,
+			PermCreateTask:       false,
+			PermDeleteTask:       false,
+			PermChangeTaskStatus: true,
+			PermInvitePeople:     false,
+		}
+	case "client":
+		return map[string]bool{
+			PermAdmin:            false,
+			PermManageAccess:     false,
+			PermCreateProject:    true,
+			PermRenameProject:    false,
+			PermDeleteProject:    false,
+			PermMoveItems:        false,
+			PermCopyItems:        false,
+			PermDeleteItems:      false,
+			PermCreateTask:       true,
+			PermDeleteTask:       false,
+			PermChangeTaskStatus: false,
+			PermInvitePeople:     false,
+		}
+	default: // Staff
+		return map[string]bool{
+			PermAdmin:            false,
+			PermManageAccess:     true,
+			PermCreateProject:    true,
+			PermRenameProject:    true,
+			PermDeleteProject:    true,
+			PermMoveItems:        true,
+			PermCopyItems:        true,
+			PermDeleteItems:      true,
+			PermCreateTask:       true,
+			PermDeleteTask:       true,
+			PermChangeTaskStatus: true,
+			PermInvitePeople:     true,
+		}
+	}
+}
 
 var roleHierarchy = map[string]int{
 	"owner":               60,
@@ -46,10 +138,12 @@ var roleHierarchy = map[string]int{
 	"design head":         50,
 	"design_head":         50,
 	"admin":               50,
+	"staff":               50,
 	"project manager":     30,
 	"project_manager":     30,
 	"manager":             30,
 	"editor":              10,
+	"client":              5,
 	"member":              10,
 	"guest":               5,
 }
@@ -103,7 +197,7 @@ func Authorize(userRole, requiredRole string) error {
 	return nil
 }
 
-// Permissions (17 total across 6 categories)
+// Legacy Permissions (17 total across 6 categories, mapped automatically)
 const (
 	PermClientsViewAll   = "clients.view_all"
 	PermClientsCreate    = "clients.create"
@@ -141,18 +235,29 @@ var AllPermissions = []string{
 
 // Person represents an identity acting upon resources.
 type Person struct {
-	UserID      uuid.UUID
-	Email       string
-	Role        string // Role name (e.g. "CEO", "COO", "Project Manager", "Editor")
-	RoleID      uuid.UUID
-	Permissions []string
-	CompanyID   uuid.UUID
+	UserID         uuid.UUID
+	Email          string
+	Role           string // "Staff", "Editor", "Client"
+	RoleID         uuid.UUID
+	Title          string // Custom tag for Staff (e.g. CEO, COO, Design Head)
+	Status         string // "active", "invited", "deactivated"
+	PermissionsMap map[string]bool
+	Permissions    []string // Legacy permissions slice for backward compatibility
+	CompanyID      uuid.UUID
+}
+
+// IsLegacyAdmin checks if role string indicates legacy admin.
+func IsLegacyAdmin(role string) bool {
+	r := strings.ToLower(strings.TrimSpace(role))
+	return r == "ceo" || r == "coo" || r == "admin" || r == "owner"
 }
 
 // IsFullAccess returns true if the role string represents a full access leadership role.
 func IsFullAccess(role string) bool {
 	r := strings.ToLower(strings.TrimSpace(role))
-	return r == "ceo" || r == "coo" || r == "cfo" || r == "cso" || r == "chief sales officer" || r == "chief_sales_officer" || r == "design head" || r == "design_head" || r == "admin" || r == "owner"
+	return r == "ceo" || r == "coo" || r == "cfo" || r == "cso" ||
+		r == "chief sales officer" || r == "chief_sales_officer" ||
+		r == "design head" || r == "design_head" || r == "admin" || r == "owner"
 }
 
 // IsDeprecatedRole checks if the provided role string is a legacy deprecated role.
@@ -161,38 +266,116 @@ func IsDeprecatedRole(role string) bool {
 	return r == "owner" || r == "member" || r == "guest" || r == "admin" || r == "manager"
 }
 
-// CanChangeRoles returns true if the role is authorized to change roles in Team (CEO or COO).
+// CanChangeRoles returns true if the role is authorized to change roles.
 func CanChangeRoles(role string) bool {
-	r := strings.ToLower(strings.TrimSpace(role))
-	return r == "ceo" || r == "coo" || r == "admin" || r == "owner"
+	return IsLegacyAdmin(role)
 }
 
-// IsFullAccess returns true if the person has a full access leadership role.
+// IsFullAccess returns true if the person has executive access (e.g. for My Drive, leadership endpoints).
 func (p Person) IsFullAccess() bool {
-	return IsFullAccess(p.Role)
+	return IsFullAccess(p.Role) || IsFullAccess(p.Title) || p.IsAdmin()
+}
+
+// IsStaff returns true if the person has Staff role.
+func (p Person) IsStaff() bool {
+	r := strings.ToLower(strings.TrimSpace(p.Role))
+	return r == "staff" || IsFullAccess(p.Role) || r == "manager" || r == "project manager" || r == "project_manager"
+}
+
+// IsEditor returns true if the person has Editor role.
+func (p Person) IsEditor() bool {
+	r := strings.ToLower(strings.TrimSpace(p.Role))
+	return r == "editor"
+}
+
+// IsClient returns true if the person is a client.
+func (p Person) IsClient() bool {
+	r := strings.ToLower(strings.TrimSpace(p.Role))
+	return r == "client" || r == ""
+}
+
+// IsAdmin returns true if the person has the admin switch turned on.
+func (p Person) IsAdmin() bool {
+	if p.PermissionsMap != nil && p.PermissionsMap[PermAdmin] {
+		return true
+	}
+	return IsLegacyAdmin(p.Role)
 }
 
 // HasPermission checks if the person possesses the requested permission.
 func (p Person) HasPermission(permission string) bool {
-	if p.IsFullAccess() {
+	// 1. Admin switch has all permissions
+	if p.IsAdmin() {
 		return true
 	}
+
+	// 2. Check direct switch key in PermissionsMap
+	if p.PermissionsMap != nil {
+		if val, exists := p.PermissionsMap[permission]; exists {
+			return val
+		}
+	}
+
+	// 3. Check legacy permissions slice for exact match or equivalent
 	for _, perm := range p.Permissions {
 		if perm == permission {
 			return true
 		}
+		if (permission == PermInvitePeople && perm == PermTeamInvite) ||
+			(permission == PermTeamInvite && perm == PermInvitePeople) {
+			return true
+		}
+		if permission == PermCreateProject && perm == PermProjectsCreate {
+			return true
+		}
+		if permission == PermDeleteProject && (perm == PermProjectsDelete || perm == PermProjectsArchive) {
+			return true
+		}
+		if permission == PermManageAccess && (perm == PermProjectsManagePeople || perm == PermSharingCreatePublicLinks || perm == PermClientsEdit) {
+			return true
+		}
+		if permission == PermDeleteItems && (perm == PermFilesDeleteForever || perm == PermFilesEmptyTrash) {
+			return true
+		}
 	}
+
+	// 4. Backward-compatible mapping from legacy permission names to new switches
+	switch permission {
+	case PermClientsViewAll, PermProjectsViewAll:
+		return p.IsStaff()
+	case PermClientsCreate:
+		if p.IsClient() || p.IsEditor() || strings.EqualFold(p.Role, RoleProjectManager) {
+			return false
+		}
+		return p.IsStaff() && (p.HasPermission(PermCreateProject) || p.HasPermission(PermAdmin))
+	case PermClientsEdit:
+		return p.HasPermission(PermManageAccess)
+	case PermClientsDelete:
+		return p.IsAdmin()
+	case PermProjectsCreate:
+		return p.HasPermission(PermCreateProject)
+	case PermProjectsArchive, PermProjectsDelete:
+		return p.HasPermission(PermDeleteProject)
+	case PermProjectsManagePeople:
+		return p.HasPermission(PermManageAccess)
+	case PermFilesDeleteForever, PermFilesEmptyTrash:
+		return p.HasPermission(PermDeleteItems)
+	case PermFilesDownloadAll:
+		return p.IsStaff() || p.IsEditor()
+	case PermSharingCreatePublicLinks:
+		return p.HasPermission(PermManageAccess)
+	case PermTeamInvite:
+		return p.HasPermission(PermInvitePeople)
+	case PermTeamChangeRoles, PermTeamManageRoles, PermAdminStorage, PermAdminSettings:
+		return p.IsAdmin()
+	}
+
 	return false
 }
 
-// IsAdmin returns true if the person has administrative permissions.
-func (p Person) IsAdmin() bool {
-	return p.IsFullAccess()
-}
-
-// CanChangeRoles returns true if the user is authorized to change roles in Team.
+// CanChangeRoles returns true if the user is authorized to change roles.
 func (p Person) CanChangeRoles() bool {
-	return CanChangeRoles(p.Role)
+	return p.IsAdmin()
 }
 
 // IsTeamMember returns true if the person is an authenticated team member of the company (not a client contact or guest).
@@ -238,16 +421,16 @@ func (a AccessResult) CanManage() bool {
 }
 
 func (a AccessResult) CanDeleteProject(person Person) bool {
-	return person.IsFullAccess() || a.Level == LevelFull
+	return a.Level == LevelFull || person.HasPermission(PermDeleteProject)
 }
 
 func (a AccessResult) CanRenameProject(person Person) bool {
-	return person.IsFullAccess() || a.Level == LevelFull || a.Level == LevelEditor
+	return person.HasPermission(PermRenameProject) || a.Level == LevelFull || a.Level == LevelEditor
 }
 
 // CanModifyItem returns true if the person can rename, move, or delete an item.
 func (a AccessResult) CanModifyItem(person Person, itemCreatedBy uuid.UUID) bool {
-	if person.IsFullAccess() || a.Level == LevelFull || a.Level == LevelEditor {
+	if person.HasPermission(PermMoveItems) || person.HasPermission(PermDeleteItems) || person.IsFullAccess() || a.Level == LevelFull || a.Level == LevelEditor {
 		return true
 	}
 	if a.Level == LevelUploader && person.UserID != uuid.Nil && itemCreatedBy != uuid.Nil && person.UserID == itemCreatedBy {
@@ -258,7 +441,7 @@ func (a AccessResult) CanModifyItem(person Person, itemCreatedBy uuid.UUID) bool
 
 // CanManagePeople checks if a person is allowed to add, edit, or remove members on a project.
 func CanManagePeople(person Person, access AccessResult) bool {
-	if person.IsFullAccess() {
+	if person.HasPermission(PermManageAccess) {
 		return true
 	}
 	r := strings.ToLower(strings.TrimSpace(person.Role))
@@ -270,21 +453,17 @@ func CanManagePeople(person Person, access AccessResult) bool {
 
 // CanCreateProjects checks if a person can create new projects.
 func CanCreateProjects(person Person) bool {
-	if person.IsFullAccess() {
-		return true
-	}
-	r := strings.ToLower(person.Role)
-	return r == strings.ToLower(RoleProjectManager) || r == "manager" || person.HasPermission(PermProjectsCreate)
+	return person.HasPermission(PermCreateProject)
 }
 
 // CanShareItem checks if a person is allowed to add or change people (grants) on an item.
 func CanShareItem(person Person, access AccessResult) bool {
-	return person.IsFullAccess() || access.Level == LevelFull
+	return person.HasPermission(PermManageAccess) || access.Level == LevelFull
 }
 
 // CanCreatePublicShareLink checks if a person can create a public share link for an item.
 func CanCreatePublicShareLink(person Person, access AccessResult) bool {
-	return person.IsFullAccess() || (access.Level == LevelFull && person.HasPermission(PermSharingCreatePublicLinks))
+	return person.HasPermission(PermManageAccess) || access.Level == LevelFull
 }
 
 // ItemTarget represents an item resource being accessed.

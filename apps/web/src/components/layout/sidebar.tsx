@@ -18,6 +18,7 @@ import {
   Star,
   Delete,
   Group,
+  Shield,
   Settings,
   Database,
   Plus,
@@ -45,7 +46,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user, role, isClient, hasPermission, isExecutive } = useAuth();
+  const { user, role, isClient, hasPermission, isExecutive, isAdmin } = useAuth();
 
   const { data: reviewsData } = useQuery({
     queryKey: ["reviews-count"],
@@ -110,7 +111,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   ];
 
   const bottomNavItems = [
-    { name: "Team", href: "/team", icon: Group, show: !isClient },
+    { name: "Admin", href: "/admin", icon: Shield, show: isAdmin },
     { name: "Settings", href: "/settings", icon: Settings, show: true },
     { name: "Storage", href: "/storage", icon: Database, show: !isClient },
   ];

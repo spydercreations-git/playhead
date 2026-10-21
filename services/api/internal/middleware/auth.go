@@ -165,11 +165,20 @@ func (am *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 				UserID:    authUser.ID,
 			})
 			if err == nil {
-				ctx = context.WithValue(ctx, RoleContextKey, membership.Role)
-				var perms []string
-				if len(membership.RolePermissions) > 0 {
-					_ = json.Unmarshal(membership.RolePermissions, &perms)
+				if membership.Status == "deactivated" {
+					rejectForbidden(w, "Account has been deactivated. Please contact an administrator.")
+					return
 				}
+				ctx = context.WithValue(ctx, RoleContextKey, membership.Role)
+
+				permMap := make(map[string]bool)
+				if len(membership.Permissions) > 0 {
+					_ = json.Unmarshal(membership.Permissions, &permMap)
+				}
+				if len(permMap) == 0 {
+					permMap = authz.DefaultPermissions(membership.Role)
+				}
+
 				roleName := membership.Role
 				if membership.RoleName.Valid && membership.RoleName.String != "" {
 					roleName = membership.RoleName.String
@@ -178,26 +187,33 @@ func (am *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 				if membership.RoleID.Valid {
 					roleID = uuid.UUID(membership.RoleID.Bytes)
 				}
-				if strings.ToLower(roleName) == "admin" || strings.ToLower(membership.Role) == "admin" || strings.ToLower(membership.Role) == "owner" {
-					perms = authz.AllPermissions
+
+				titleStr := ""
+				if membership.Title.Valid {
+					titleStr = membership.Title.String
 				}
+
 				person := authz.Person{
-					UserID:      uuid.UUID(authUser.ID.Bytes),
-					Email:       authUser.Email,
-					Role:        roleName,
-					RoleID:      roleID,
-					Permissions: perms,
-					CompanyID:   uuid.UUID(companyID.Bytes),
+					UserID:         uuid.UUID(authUser.ID.Bytes),
+					Email:          authUser.Email,
+					Role:           roleName,
+					RoleID:         roleID,
+					Title:          titleStr,
+					Status:         membership.Status,
+					PermissionsMap: permMap,
+					CompanyID:      uuid.UUID(companyID.Bytes),
 				}
 				ctx = context.WithValue(ctx, PersonContextKey, person)
 			} else {
 				// External client / outside person (no company membership role)
-				ctx = context.WithValue(ctx, RoleContextKey, "")
+				ctx = context.WithValue(ctx, RoleContextKey, "Client")
 				person := authz.Person{
-					UserID:    uuid.UUID(authUser.ID.Bytes),
-					Email:     authUser.Email,
-					Role:      "",
-					CompanyID: uuid.UUID(companyID.Bytes),
+					UserID:         uuid.UUID(authUser.ID.Bytes),
+					Email:          authUser.Email,
+					Role:           authz.RoleClient,
+					Status:         "active",
+					PermissionsMap: authz.DefaultPermissions(authz.RoleClient),
+					CompanyID:      uuid.UUID(companyID.Bytes),
 				}
 				ctx = context.WithValue(ctx, PersonContextKey, person)
 			}

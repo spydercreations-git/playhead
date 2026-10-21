@@ -78,22 +78,25 @@ func TestAllRolesEndpoints(t *testing.T) {
 	r.Post("/clients", clientHandler.Create)
 	r.Get("/projects", projectHandler.List)
 
-	// Roles to test
+	// Roles to test (including Phase 1: Staff, Editor, Client)
 	rolesToTest := []struct {
 		name       string
 		role       string
 		isFull     bool
 		canViewAll bool
 		isClient   bool
+		isAdmin    bool
 	}{
-		{name: "CEO User", role: authz.RoleCEO, isFull: true, canViewAll: true, isClient: false},
-		{name: "COO User", role: authz.RoleCOO, isFull: true, canViewAll: true, isClient: false},
-		{name: "CFO User", role: authz.RoleCFO, isFull: true, canViewAll: true, isClient: false},
-		{name: "CSO User", role: authz.RoleCSO, isFull: true, canViewAll: true, isClient: false},
-		{name: "Design Head", role: authz.RoleDesignHead, isFull: true, canViewAll: true, isClient: false},
-		{name: "Project Manager", role: authz.RoleProjectManager, isFull: false, canViewAll: false, isClient: false},
-		{name: "Editor User", role: authz.RoleEditor, isFull: false, canViewAll: false, isClient: false},
-		{name: "Client Person", role: "client", isFull: false, canViewAll: false, isClient: true},
+		{name: "Staff (Admin)", role: authz.RoleStaff, isFull: true, canViewAll: true, isClient: false, isAdmin: true},
+		{name: "Staff (Regular)", role: authz.RoleStaff, isFull: true, canViewAll: true, isClient: false, isAdmin: false},
+		{name: "CEO User", role: authz.RoleCEO, isFull: true, canViewAll: true, isClient: false, isAdmin: true},
+		{name: "COO User", role: authz.RoleCOO, isFull: true, canViewAll: true, isClient: false, isAdmin: true},
+		{name: "CFO User", role: authz.RoleCFO, isFull: true, canViewAll: true, isClient: false, isAdmin: false},
+		{name: "CSO User", role: authz.RoleCSO, isFull: true, canViewAll: true, isClient: false, isAdmin: false},
+		{name: "Design Head", role: authz.RoleDesignHead, isFull: true, canViewAll: true, isClient: false, isAdmin: false},
+		{name: "Project Manager", role: authz.RoleProjectManager, isFull: false, canViewAll: false, isClient: false, isAdmin: false},
+		{name: "Editor User", role: authz.RoleEditor, isFull: false, canViewAll: false, isClient: false, isAdmin: false},
+		{name: "Client Person", role: "client", isFull: false, canViewAll: false, isClient: true, isAdmin: false},
 	}
 
 	for _, rt := range rolesToTest {
@@ -107,6 +110,10 @@ func TestAllRolesEndpoints(t *testing.T) {
 			}
 
 			var perms []string
+			permMap := authz.DefaultPermissions(rt.role)
+			if rt.isAdmin {
+				permMap["admin"] = true
+			}
 			if rt.isFull {
 				perms = authz.AllPermissions
 			} else if rt.role == authz.RoleProjectManager {
@@ -116,11 +123,12 @@ func TestAllRolesEndpoints(t *testing.T) {
 			}
 
 			person := authz.Person{
-				UserID:      uuid.UUID(testUser.ID.Bytes),
-				Email:       testUser.Email,
-				Role:        rt.role,
-				Permissions: perms,
-				CompanyID:   uuid.UUID(comp.ID.Bytes),
+				UserID:         uuid.UUID(testUser.ID.Bytes),
+				Email:          testUser.Email,
+				Role:           rt.role,
+				Permissions:    perms,
+				PermissionsMap: permMap,
+				CompanyID:      uuid.UUID(comp.ID.Bytes),
 			}
 
 			buildContext := func() context.Context {

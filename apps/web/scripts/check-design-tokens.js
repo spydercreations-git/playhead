@@ -265,6 +265,20 @@ function checkDirectory(dir, results) {
           }
         }
       }
+
+      // 8. Outlined icon set enforcement (UI only, no Google Fonts, no .material-symbols-outlined class, no non-outlined sets)
+      if (/\b(?:material-symbols-outlined|material-icons|material-symbols-rounded)\b/.test(content)) {
+        results.invalidIconOccurrences.push({ file: relPath, reason: 'Font class used instead of shared Icon component' });
+      }
+      if (/fonts\.googleapis\.com\/.*(?:Material\+Symbols|Material\+Icons)/.test(content)) {
+        results.invalidIconOccurrences.push({ file: relPath, reason: 'External Google Fonts icon link found' });
+      }
+      if (/@material-symbols\/svg-300\/(?:rounded|sharp)/.test(content)) {
+        results.invalidIconOccurrences.push({ file: relPath, reason: 'Only @material-symbols/svg-300/outlined is allowed' });
+      }
+      if (/from\s+['"]lucide-react['"]/.test(content)) {
+        results.invalidIconOccurrences.push({ file: relPath, reason: 'lucide-react import disallowed; use @/components/ui/icon' });
+      }
     }
   }
 }
@@ -286,6 +300,7 @@ function runAudit() {
     radiusValues: new Set(),
     invalidRadius: [],
     mockupSampleOccurrences: [],
+    invalidIconOccurrences: [],
   };
 
   checkDirectory(SRC_DIR, results);
@@ -301,6 +316,7 @@ function runAudit() {
   console.log(`Invalid radius values: ${results.invalidRadius.length}`);
   console.log(`Radius values in use: ${JSON.stringify(Array.from(results.radiusValues).sort())}`);
   console.log(`Mockup sample data occurrences: ${results.mockupSampleOccurrences.length}`);
+  console.log(`Icon rule violations (only Outlined set allowed): ${results.invalidIconOccurrences.length}`);
   console.log('====================================================');
 
   if (process.argv.includes('--strict')) {
@@ -312,7 +328,8 @@ function runAudit() {
       results.shadow2xlCount > 0 ||
       results.invalidHexColors.size > 0 ||
       results.invalidRadius.length > 0 ||
-      results.mockupSampleOccurrences.length > 0;
+      results.mockupSampleOccurrences.length > 0 ||
+      results.invalidIconOccurrences.length > 0;
 
     if (hasViolations) {
       console.error('Audit failed strict compliance check.');
@@ -323,6 +340,7 @@ function runAudit() {
       if (results.invalidHexOccurrences.length) console.error('Invalid hex:', results.invalidHexOccurrences.slice(0, 10));
       if (results.invalidRadius.length) console.error('Invalid radius:', results.invalidRadius.slice(0, 10));
       if (results.mockupSampleOccurrences.length) console.error('Mockup sample data:', results.mockupSampleOccurrences.slice(0, 10));
+      if (results.invalidIconOccurrences.length) console.error('Icon rule violations:', results.invalidIconOccurrences.slice(0, 10));
       process.exit(1);
     }
   }

@@ -26,19 +26,20 @@ export type LucideIcon = React.ForwardRefExoticComponent<
 
 /**
  * Universal Icon Component for Playhead
- * Uses Google Material Symbols Rounded (Weight 300) SVGs
+ * Uses Google Material Symbols Outlined (Weight 300) SVGs
  * 
  * Rules:
- * - Outline style by default
+ * - Outline style by default everywhere
  * - Filled only for active states (active sidebar item, starred star, selected tab)
+ * - True weight 300 matching sidebar specification
  * - Color follows text color (currentColor)
  */
 function getIconColor(className: string = "", explicitColor?: string, styleColor?: string): string | undefined {
   if (explicitColor) return explicitColor;
   if (styleColor) return styleColor;
 
-  // Status icons & active/selected state keep their meaningful color
-  const statusRegex = /(text-(?:\[#(?:3FCF8E|3fcf8e|F0506E|f0506e|FFD43B|ffd43b|4876F3|4876f3|3B67E0|3b67e0|3560D6|3560d6)\]|\[var\(--(?:status|accent|success|danger|warning|button-text|text|text-2|text-3)[^)]*\)\]|emerald|green|red|rose|amber|yellow|white|gray|zinc))/i;
+  // Status icons, active/selected states, and text color utilities keep their meaningful color
+  const statusRegex = /(text-(?:\[#(?:[0-9a-fA-F]{3,8})\]|\[var\(--(?:[a-zA-Z0-9_-]+)\)\]|emerald|green|red|rose|amber|yellow|blue|purple|teal|zinc|white|gray))/i;
   
   if (statusRegex.test(className)) {
     return undefined; // Let Tailwind text color class take effect
@@ -86,20 +87,13 @@ export function Icon({
         style={mergedStyle}
         {...props}
       >
-        <path
-          d="M480-280q17 0 28.5-11.5T520-320q0-17-11.5-28.5T480-360q-17 0-28.5 11.5T440-320q0 17 11.5 28.5T480-280Zm-40-160h80v-240h-80v240Zm40 360q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"
-          stroke="currentColor"
-          strokeWidth={typeof _sw === "number" ? _sw : 1}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          style={{ vectorEffect: "non-scaling-stroke", paintOrder: "stroke fill" }}
-        />
+        <path d="M480-280q17 0 28.5-11.5T520-320q0-17-11.5-28.5T480-360q-17 0-28.5 11.5T440-320q0 17 11.5 28.5T480-280Zm-40-160h80v-240h-80v240Zm40 360q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z" />
       </svg>
     );
   }
 
   const pathD = filled ? (data.fill || data.outline) : data.outline;
-  const effectiveStrokeWidth = typeof _sw === "number" ? _sw : 1;
+  const hasCustomStroke = typeof _sw === "number" && _sw > 0;
 
   return (
     <svg
@@ -115,11 +109,15 @@ export function Icon({
     >
       <path
         d={pathD}
-        stroke="currentColor"
-        strokeWidth={effectiveStrokeWidth}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        style={{ vectorEffect: "non-scaling-stroke", paintOrder: "stroke fill" }}
+        {...(hasCustomStroke
+          ? {
+              stroke: "currentColor",
+              strokeWidth: _sw,
+              strokeLinejoin: "round",
+              strokeLinecap: "round",
+              style: { vectorEffect: "non-scaling-stroke", paintOrder: "stroke fill" },
+            }
+          : {})}
       />
     </svg>
   );

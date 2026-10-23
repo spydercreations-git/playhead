@@ -367,6 +367,14 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
   - **Client Isolation**: Client users only ever see their own client's projects and tasks; the multi-select filter button is hidden for client users.
 - **Reason**: Allows studio staff to focus on specific client project subsets across work sessions and devices while enabling instant sharing of filtered views via URL.
 
+## 50. Material Symbols Outlined Icon System (Universal Local SVGs)
+- **Decision**:
+  - Replaced Google Fonts web-font loading with local SVG extraction from `@material-symbols/svg-300/outlined`.
+  - Removed all external font `<link>` tags from `app/layout.tsx` and `.material-symbols-outlined` / `.material-icons` classes from `globals.css`.
+  - Shared `Icon` component (`apps/web/src/components/ui/icon.tsx`) uses precompiled vector paths from `apps/web/src/components/ui/icon-data.ts`, rendering pure SVG with thin line weight 300 at 20px (filled variant used for active sidebar items like Library).
+  - Enforced via strict design auditor (`check-design-tokens.js`): external icon font links, font-icon classes, and non-outlined icon sets (e.g. rounded, sharp, or lucide-react) are strictly forbidden and fail CI.
+- **Reason**: Guarantees zero flash of unstyled icon text (FOIT/FOUT), eliminates external Google server dependencies, preserves offline support, and unifies the exact crisp 20px outlined icon aesthetics across the application.
+
 
 
 

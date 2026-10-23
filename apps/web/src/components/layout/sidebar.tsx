@@ -29,6 +29,7 @@ import {
   UnfoldMore,
   X,
   LogOut,
+  Icon,
 } from "@/components/ui/icon";
 import { Avatar } from "@/components/ui/avatar";
 import { apiRequest } from "@/lib/api";
@@ -245,14 +246,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span
-                      className={`material-symbols-outlined text-[20px] select-none leading-none shrink-0 transition-colors ${
+                    <Icon
+                      name={item.icon}
+                      size={20}
+                      filled={isActive}
+                      className={`shrink-0 transition-colors ${
                         isActive ? "text-white" : "text-[var(--text-2)] group-hover:text-white"
                       }`}
-                      aria-hidden="true"
-                    >
-                      {item.icon}
-                    </span>
+                    />
                     <span>{item.name}</span>
                   </div>
 
@@ -282,14 +283,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       : "text-[var(--text-2)] font-medium hover:bg-[var(--hover)]/60 hover:text-white"
                   }`}
                 >
-                  <span
-                    className={`material-symbols-outlined text-[20px] select-none leading-none shrink-0 transition-colors ${
+                  <Icon
+                    name={item.icon}
+                    size={20}
+                    filled={isActive}
+                    className={`shrink-0 transition-colors ${
                       isActive ? "text-white" : "text-[var(--text-2)] group-hover:text-white"
                     }`}
-                    aria-hidden="true"
-                  >
-                    {item.icon}
-                  </span>
+                  />
                   <span>{item.name}</span>
                 </Link>
               );

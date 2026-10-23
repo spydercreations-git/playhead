@@ -202,7 +202,7 @@ export function AuthShowcase() {
       </div>
 
       {/* Bottom Features with Icons */}
-      <div className="pt-4 flex items-center justify-between gap-4 text-xs text-[var(--text-2)] border-t border-[var(--border)]/50">
+      <div className="pt-4 flex items-center justify-between gap-4 text-xs text-[var(--text-2)] border-t border-[var(--border)]">
         {/* Feature 1 */}
         <div className="flex items-center gap-2">
           <svg

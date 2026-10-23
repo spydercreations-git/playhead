@@ -91,7 +91,21 @@ export default function DocumentsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const [showNewDocDialog, setShowNewDocDialog] = useState(false);
+  // Document 3-dots dropdown menu state
   const [menuOpenDocId, setMenuOpenDocId] = useState<string | null>(null);
+
+  // Close 3-dots menu on outside click
+  useEffect(() => {
+    if (!menuOpenDocId) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-doc-menu]")) {
+        setMenuOpenDocId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpenDocId]);
 
   // Sharing modal state
   const [sharingDoc, setSharingDoc] = useState<DocumentListItem | null>(null);
@@ -465,10 +479,12 @@ export default function DocumentsPage() {
               <div
                 key={doc.id}
                 onClick={() => router.push(`/documents/${doc.id}`)}
-                className="group relative rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3 cursor-pointer hover:border-[var(--border-strong)] transition-all hover:scale-[1.01]"
+                className={`group relative rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3 cursor-pointer hover:border-[var(--border-strong)] transition-all ${
+                  isMenuOpen ? "z-30" : "z-0 hover:scale-[1.01]"
+                }`}
               >
                 {/* Document Preview Box (Dark card with title & simulated text lines matching D1 mockup) */}
-                <div className="aspect-[16/10] rounded-lg bg-[var(--input)] p-3.5 mb-3 flex flex-col justify-between overflow-hidden border border-[var(--border)]/30 group-hover:border-[var(--border)] transition-colors">
+                <div className="aspect-[16/10] rounded-lg bg-[var(--input)] p-3.5 mb-3 flex flex-col justify-between overflow-hidden border border-white/20 transition-colors">
                   <div className="space-y-1.5">
                     <span className="text-xs font-semibold text-[var(--text-2)] truncate block">
                       {doc.title}
@@ -486,7 +502,7 @@ export default function DocumentsPage() {
                     {doc.title}
                   </h3>
 
-                  <div className="relative">
+                  <div className="relative" data-doc-menu>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -499,15 +515,7 @@ export default function DocumentsPage() {
 
                     {/* D1 3-Dots Dropdown Menu */}
                     {isMenuOpen && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-30"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpenDocId(null);
-                          }}
-                        />
-                        <div className="absolute right-0 top-full mt-1 w-36 rounded-lg border border-[var(--border)] bg-[var(--panel-raised)] py-1 shadow-xl z-40 text-xs animate-in fade-in zoom-in-95 duration-100">
+                      <div className="absolute right-0 top-full mt-1 w-36 rounded-lg border border-[var(--border)] bg-[var(--panel-raised)] py-1 shadow-xl z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -559,7 +567,6 @@ export default function DocumentsPage() {
                             <span>Delete</span>
                           </button>
                         </div>
-                      </>
                     )}
                   </div>
                 </div>

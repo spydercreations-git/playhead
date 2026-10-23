@@ -101,7 +101,7 @@ export function ProjectCard({
         <div className="relative h-[150px] w-full">
           <div className="h-[150px] w-full flex gap-1.5">
             {/* Big Slot */}
-            <div className="flex-1 h-[150px] rounded-[8px] bg-[#161618] border border-[var(--border)]/40 overflow-hidden relative flex items-center justify-center">
+            <div className="flex-1 h-[150px] rounded-[8px] bg-[#161618] border border-white/20 overflow-hidden relative flex items-center justify-center">
               {thumbnails[0] ? (
                 <img
                   src={thumbnails[0]}
@@ -109,15 +109,15 @@ export function ProjectCard({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-[var(--text-3)]/50">
-                  <Folder size={26} className="text-[var(--text-3)]/50" />
+                <div className="w-full h-full flex items-center justify-center text-[var(--text-3)] opacity-40">
+                  <Folder size={26} />
                 </div>
               )}
             </div>
 
             {/* Small Slots */}
             <div className="w-[36%] h-[150px] flex flex-col gap-1.5">
-              <div className="h-[72px] rounded-[8px] bg-[#161618] border border-[var(--border)]/40 overflow-hidden relative flex items-center justify-center">
+              <div className="h-[72px] rounded-[8px] bg-[#161618] border border-white/20 overflow-hidden relative flex items-center justify-center">
                 {thumbnails[1] ? (
                   <img
                     src={thumbnails[1]}
@@ -125,12 +125,12 @@ export function ProjectCard({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[var(--text-3)]/50">
-                    <Folder size={18} className="text-[var(--text-3)]/50" />
+                  <div className="w-full h-full flex items-center justify-center text-[var(--text-3)] opacity-40">
+                    <Folder size={18} />
                   </div>
                 )}
               </div>
-              <div className="h-[72px] rounded-[8px] bg-[#161618] border border-[var(--border)]/40 overflow-hidden relative flex items-center justify-center">
+              <div className="h-[72px] rounded-[8px] bg-[#161618] border border-white/20 overflow-hidden relative flex items-center justify-center">
                 {thumbnails[2] ? (
                   <img
                     src={thumbnails[2]}
@@ -138,8 +138,8 @@ export function ProjectCard({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[var(--text-3)]/50">
-                    <Folder size={18} className="text-[var(--text-3)]/50" />
+                  <div className="w-full h-full flex items-center justify-center text-[var(--text-3)] opacity-40">
+                    <Folder size={18} />
                   </div>
                 )}
               </div>

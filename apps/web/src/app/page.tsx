@@ -400,7 +400,7 @@ export default function HomePage() {
                       </div>
 
                       {/* Bottom row: Avatar stack + Review pill */}
-                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--border)]/50">
+                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--border)]">
                         {/* Member avatar stack */}
                         <div className="flex items-center -space-x-1.5 overflow-hidden">
                           {(proj.members && proj.members.length > 0

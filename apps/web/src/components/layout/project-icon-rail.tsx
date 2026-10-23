@@ -229,7 +229,7 @@ export function ProjectIconRail({
                 className="w-full h-10 px-3 rounded-xl bg-[var(--input)] border border-[var(--border)] text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3]"
               />
             </div>
-            <div className="mt-4 flex items-center justify-between text-xs text-[var(--text-3)] pt-2 border-t border-[var(--border)]/50">
+            <div className="mt-4 flex items-center justify-between text-xs text-[var(--text-3)] pt-2 border-t border-[var(--border)]">
               <span>Press ESC to close</span>
               <span>⌘K anywhere to open</span>
             </div>

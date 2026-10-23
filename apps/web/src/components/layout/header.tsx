@@ -11,7 +11,7 @@ import {
   Upload,
   Icon,
 } from "@/components/ui/icon";
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, UserAvatar } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/use-auth";
 import { useUploadStore } from "@/lib/upload-store";
 import { SearchDialog } from "./search-dialog";
@@ -188,7 +188,13 @@ export function Header({ onOpenSidebar }: HeaderProps) {
               aria-label="Profile menu"
               className="flex items-center rounded-full shrink-0 transition-opacity duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
             >
-              <Avatar name={displayName} size="md" />
+              <UserAvatar
+                id={user?.id}
+                name={displayName}
+                email={user?.email}
+                avatarUrl={user?.avatar_url}
+                size="md"
+              />
             </button>
 
             {isProfileMenuOpen && (

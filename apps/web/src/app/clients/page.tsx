@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
 import { ClientCard } from "@/components/clients/client-card";
+import { ClientAvatar } from "@/components/ui/avatar";
 import { Icon } from "@/components/ui/icon";
 
 interface ClientListItem {
@@ -199,17 +200,12 @@ export default function ClientsPage() {
                       href={`/clients/${client.id}`}
                       className="flex items-center gap-3 hover:text-[#4876F3]"
                     >
-                      {client.logo_key?.Valid && client.logo_key.String ? (
-                        <img
-                          src={client.logo_key.String}
-                          alt={client.name}
-                          className="h-8 w-8 rounded-lg object-cover border border-[var(--border)]"
-                        />
-                      ) : (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#4876F3]/20 font-bold text-[#4876F3] text-xs">
-                          {client.name.slice(0, 2).toUpperCase()}
-                        </div>
-                      )}
+                      <ClientAvatar
+                        id={client.id}
+                        name={client.name}
+                        pictureUrl={client.logo_key?.Valid ? client.logo_key.String : undefined}
+                        size={32}
+                      />
                       <div className="flex flex-col">
                         <span>{client.name}</span>
                         {client.website?.Valid && (

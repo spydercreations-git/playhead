@@ -18,6 +18,8 @@ import {
   Building2,
   VideoFileIcon,
 } from "@/components/ui/icon";
+import { ClientAvatar } from "@/components/ui/avatar";
+import { EntityPicker } from "@/components/pickers/entity-picker";
 
 interface ClientItem {
   id: string;
@@ -76,7 +78,7 @@ export function AssignTaskDialog({
   const [descriptionJson, setDescriptionJson] = useState<any>(null);
 
   // Custom Dropdowns open state
-  const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
+  const [showClientPicker, setShowClientPicker] = useState(false);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
 
   // Link addition popover
@@ -88,7 +90,6 @@ export function AssignTaskDialog({
   const [errorMessage, setErrorMessage] = useState("");
   const [mounted, setMounted] = useState(false);
 
-  const clientDropdownRef = useRef<HTMLDivElement>(null);
   const projectDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -117,15 +118,9 @@ export function AssignTaskDialog({
       .catch(() => {});
   }, [open]);
 
-  // Click outside listener for custom dropdowns
+  // Click outside listener for project dropdown
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (
-        clientDropdownRef.current &&
-        !clientDropdownRef.current.contains(e.target as Node)
-      ) {
-        setClientDropdownOpen(false);
-      }
       if (
         projectDropdownRef.current &&
         !projectDropdownRef.current.contains(e.target as Node)
@@ -133,11 +128,11 @@ export function AssignTaskDialog({
         setProjectDropdownOpen(false);
       }
     }
-    if (clientDropdownOpen || projectDropdownOpen) {
+    if (projectDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [clientDropdownOpen, projectDropdownOpen]);
+  }, [projectDropdownOpen]);
 
   if (!open) return null;
 
@@ -296,7 +291,7 @@ export function AssignTaskDialog({
             </div>
 
             {/* CLIENT */}
-            <div className="relative" ref={clientDropdownRef}>
+            <div className="relative">
               <span className="text-[13px] font-semibold tracking-wider text-[var(--text-3)] block mb-2">
                 CLIENT
               </span>
@@ -304,77 +299,35 @@ export function AssignTaskDialog({
               {isClient ? (
                 <div className="h-11 w-full rounded-[10px] bg-[var(--input)]/60 border border-[var(--border)] px-3.5 flex items-center justify-between text-[14px] text-white opacity-85 cursor-not-allowed">
                   <div className="flex items-center gap-2.5 truncate">
-                    <span
-                      className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[13px] font-bold text-white shrink-0"
-                      style={{
-                        backgroundColor: getClientColor(selectedClient?.name || "Client"),
-                      }}
-                    >
-                      {(selectedClient?.name || "C").slice(0, 1).toUpperCase()}
-                    </span>
+                    <ClientAvatar
+                      id={selectedClient?.id}
+                      name={selectedClient?.name || "Client"}
+                      size={20}
+                    />
                     <span className="truncate">{selectedClient?.name || "Your company"}</span>
                   </div>
                   <Building2 size={16} className="text-[var(--text-3)] shrink-0" />
                 </div>
               ) : (
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setClientDropdownOpen((prev) => !prev)}
-                    className={`h-11 w-full rounded-[10px] bg-[var(--input)] border px-3.5 flex items-center justify-between text-[14px] text-white transition-all cursor-pointer ${
-                      clientDropdownOpen
-                        ? "border-[#4876F3] ring-1 ring-[#4876F3]"
-                        : "border-[var(--border)] hover:border-[var(--border-strong)]"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 truncate">
-                      {selectedClient && (
-                        <span
-                          className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[13px] font-bold text-white shrink-0"
-                          style={{ backgroundColor: getClientColor(selectedClient.name) }}
-                        >
-                          {selectedClient.name.slice(0, 1).toUpperCase()}
-                        </span>
-                      )}
-                      <span className="truncate">
-                        {selectedClient?.name || "Select client"}
-                      </span>
-                    </div>
-                    <ChevronDown size={16} className="text-[var(--text-3)] shrink-0" />
-                  </button>
-
-                  {/* Connected Dropdown below field */}
-                  {clientDropdownOpen && (
-                    <div className="absolute top-full mt-1.5 left-0 w-full rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] py-1.5 shadow-xl z-50 animate-in fade-in max-h-56 overflow-y-auto">
-                      {clients.map((cl) => {
-                        const isSelected = cl.id === selectedClientId;
-                        return (
-                          <button
-                            key={cl.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedClientId(cl.id);
-                              setClientDropdownOpen(false);
-                            }}
-                            className={`w-full px-3.5 py-2 flex items-center gap-2.5 text-left text-[14px] transition-colors ${
-                              isSelected
-                                ? "bg-[#4876F3] text-white font-medium"
-                                : "text-white hover:bg-[var(--hover)]"
-                            }`}
-                          >
-                            <span
-                              className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[13px] font-bold text-white shrink-0"
-                              style={{ backgroundColor: getClientColor(cl.name) }}
-                            >
-                              {cl.name.slice(0, 1).toUpperCase()}
-                            </span>
-                            <span className="truncate">{cl.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowClientPicker(true)}
+                  className="h-11 w-full rounded-[10px] bg-[var(--input)] border border-[var(--border)] hover:border-[var(--border-strong)] px-3.5 flex items-center justify-between text-[14px] text-white transition-all cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 truncate">
+                    {selectedClient ? (
+                      <ClientAvatar
+                        id={selectedClient.id}
+                        name={selectedClient.name}
+                        size={20}
+                      />
+                    ) : null}
+                    <span className="truncate">
+                      {selectedClient?.name || "Select client"}
+                    </span>
+                  </div>
+                  <ChevronDown size={16} className="text-[var(--text-3)] shrink-0" />
+                </button>
               )}
             </div>
 
@@ -603,6 +556,23 @@ export function AssignTaskDialog({
         open={showFilePicker}
         onClose={() => setShowFilePicker(false)}
         onSelect={handleAddLibraryItem}
+      />
+
+      {/* Choose a Client Modal (P3) */}
+      <EntityPicker
+        isOpen={showClientPicker}
+        onClose={() => setShowClientPicker(false)}
+        tabs={["clients"]}
+        mode="single"
+        title="Choose a client"
+        subtitle="The task will belong to this client."
+        primaryButtonText="Continue"
+        preselectedIds={selectedClientId ? [selectedClientId] : []}
+        onConfirm={(entities) => {
+          if (entities.length > 0) {
+            setSelectedClientId(entities[0].id);
+          }
+        }}
       />
     </div>,
     document.body

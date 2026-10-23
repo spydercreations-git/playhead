@@ -4,7 +4,9 @@ import React, { useRef } from "react";
 
 export interface CheckboxProps {
   checked: boolean | "indeterminate";
+  indeterminate?: boolean;
   onCheckedChange?: (checked: boolean) => void;
+  onChange?: (checked: boolean) => void;
   className?: string;
   ariaLabel?: string;
   disabled?: boolean;
@@ -24,16 +26,23 @@ export interface CheckboxProps {
  */
 export function Checkbox({
   checked,
+  indeterminate = false,
   onCheckedChange,
+  onChange,
   className = "",
   ariaLabel,
   disabled = false,
   id,
   tabIndex = 0,
 }: CheckboxProps) {
-  const isChecked = checked === true;
-  const isIndeterminate = checked === "indeterminate";
+  const isIndeterminate = checked === "indeterminate" || indeterminate;
+  const isChecked = checked === true && !isIndeterminate;
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const triggerChange = (newChecked: boolean) => {
+    onCheckedChange?.(newChecked);
+    onChange?.(newChecked);
+  };
 
   return (
     <label
@@ -53,7 +62,7 @@ export function Checkbox({
         aria-label={ariaLabel}
         onChange={(e) => {
           if (!disabled) {
-            onCheckedChange?.(e.target.checked);
+            triggerChange(e.target.checked);
           }
         }}
         className="sr-only"

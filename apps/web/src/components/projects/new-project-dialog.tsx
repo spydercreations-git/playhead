@@ -1,553 +1,405 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api";
-import { motion, useReducedMotion } from "framer-motion";
-import {
-  X,
-  Folder,
-  Film,
-  FileSpreadsheet,
-  Check,
-  Plus,
-  Loader2,
-  ChevronDown,
-  Image as ImageIcon,
-} from "@/components/ui/icon";
-import { Select } from "@/components/ui/select";
-import { NewClientDialog } from "@/components/clients/new-client-dialog";
-import { ClientPickerDialog } from "@/components/clients/client-picker-dialog";
+import { motion } from "framer-motion";
+import { X, Image as ImageIcon, Info, Folder, Loader2 } from "@/components/ui/icon";
+import { ClientAvatar } from "@/components/ui/avatar";
+import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
 
-interface Client {
-  id: string;
-  name: string;
-}
-
-interface NewProjectDialogProps {
+export interface NewProjectDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  clientId?: string;
   defaultClientId?: string;
+  clientName?: string;
+  onSuccess?: (newProject: any) => void;
   onClientCreatedPrompt?: () => void;
-}
-
-interface AssignedPerson {
-  email: string;
-  level: "viewer" | "commenter" | "uploader" | "full";
-  can_download: boolean;
 }
 
 export function NewProjectDialog({
   isOpen,
   onClose,
+  clientId: propClientId,
   defaultClientId,
+  clientName: initialClientName,
+  onSuccess,
   onClientCreatedPrompt,
 }: NewProjectDialogProps) {
   const router = useRouter();
-  const shouldReduceMotion = useReducedMotion();
+  const clientId = propClientId || defaultClientId || "";
 
   const [name, setName] = useState("");
-  const [clientId, setClientId] = useState(defaultClientId || "");
-  const [template, setTemplate] = useState<"blank" | "video_project">("video_project");
-  const [people, setPeople] = useState<AssignedPerson[]>([]);
-  const [personEmailInput, setPersonEmailInput] = useState("");
-
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loadingClients, setLoadingClients] = useState(false);
-  const [showNewClientModal, setShowNewClientModal] = useState(false);
-  const [showClientPicker, setShowClientPicker] = useState(false);
-
-  // Setup Step State
-  const [setupStep, setSetupStep] = useState<"form" | "setting_up">("form");
-  const [completedFolders, setCompletedFolders] = useState(false);
-  const [completedTracker, setCompletedTracker] = useState(false);
+  const [template, setTemplate] = useState<"blank" | "video">("blank");
+  const [clientName, setClientName] = useState(initialClientName || "");
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [showCropDialog, setShowCropDialog] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch client details if name wasn't provided
   useEffect(() => {
-    if (!isOpen) {
-      setSetupStep("form");
-      setCompletedFolders(false);
-      setCompletedTracker(false);
-      setError(null);
+    if (isOpen && clientId && !clientName) {
+      apiRequest<{ client?: { name: string }; name?: string }>(`/clients/${clientId}`)
+        .then((res) => {
+          setClientName(res.client?.name || res.name || "Client");
+        })
+        .catch(() => {
+          setClientName("Client");
+        });
+    } else if (initialClientName) {
+      setClientName(initialClientName);
+    }
+  }, [isOpen, clientId, clientName, initialClientName]);
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
       setName("");
-      setPeople([]);
-      setPersonEmailInput("");
+      setTemplate("blank");
+      setCoverUrl(null);
+      setCoverFile(null);
+      setError(null);
+      setSubmitting(false);
+      setTimeout(() => {
+        nameInputRef.current?.focus();
+      }, 80);
+    }
+  }, [isOpen]);
+
+  const handleSelectCoverFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 20 * 1024 * 1024) {
+      setError("Cover image exceeds 20 MB limit.");
       return;
     }
 
-    setLoadingClients(true);
-    apiRequest<{ clients: Client[] }>("/clients")
-      .then((res) => {
-        const clientList = res.clients || [];
-        setClients(clientList);
-        if (!clientId && clientList.length > 0) {
-          setClientId(clientList[0].id);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoadingClients(false));
-  }, [isOpen, clientId]);
+    setCoverFile(file);
+    setShowCropDialog(true);
+    e.target.value = "";
+  };
 
-  function handleAddPersonEmail() {
-    const trimmed = personEmailInput.trim().toLowerCase();
-    if (!trimmed) return;
-    if (people.some((p) => p.email.toLowerCase() === trimmed)) {
-      setPersonEmailInput("");
-      return;
-    }
-    setPeople([...people, { email: trimmed, level: "commenter", can_download: false }]);
-    setPersonEmailInput("");
-  }
+  const handleCropComplete = async (croppedBlob: Blob, croppedDataUrl: string) => {
+    setCoverUrl(croppedDataUrl);
+    setShowCropDialog(false);
+  };
 
-  function handleUpdatePerson(
-    index: number,
-    field: keyof AssignedPerson,
-    value: any
-  ) {
-    const next = [...people];
-    next[index] = { ...next[index], [field]: value };
-    setPeople(next);
-  }
+  const handleRemoveCover = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCoverUrl(null);
+    setCoverFile(null);
+  };
 
-  function handleRemovePerson(index: number) {
-    setPeople(people.filter((_, idx) => idx !== index));
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim() || !clientId) return;
+  const handleCreate = async () => {
+    if (!name.trim() || !clientId || submitting) return;
+    setSubmitting(true);
+    setError(null);
 
     try {
-      setError(null);
-      setSetupStep("setting_up");
-
-      const payload = {
+      const payload: Record<string, any> = {
         name: name.trim(),
         client_id: clientId,
-        template,
-        people: people.filter((p) => p.email.trim().length > 0),
+        template: template, // "blank" or "video"
       };
 
-      const project = await apiRequest<{
-        id: string;
-        folder_count?: number;
-        tracker_item_id?: any;
-      }>("/projects", {
+      const res = await apiRequest<{ id?: string; project?: any }>("/projects", {
         method: "POST",
         body: JSON.stringify(payload),
       });
 
-      if (template === "video_project") {
-        setCompletedFolders(true);
+      const newProj = res.project || res;
+      onSuccess?.(newProj);
+      onClose();
+
+      const projId = newProj.id || res.id;
+      if (projId) {
+        router.push(`/projects/${projId}`);
       }
-      setCompletedTracker(true);
-
-      setTimeout(() => {
-        onClose();
-        router.push(`/projects/${project.id}?new=1`);
-      }, 200);
     } catch (err: any) {
-      setError(err?.error || err?.message || "Failed to create project");
-      setSetupStep("form");
+      setError(err?.message || err?.error || "Failed to create project");
+      setSubmitting(false);
     }
-  }
-
-  const dialogTransition = shouldReduceMotion
-    ? { duration: 0 }
-    : { duration: 0.18, ease: "easeOut" as const };
-
-  const closeTransition = shouldReduceMotion
-    ? { duration: 0 }
-    : { duration: 0.12, ease: "easeIn" as const };
+  };
 
   if (!isOpen) return null;
 
-  const isCreateDisabled = !name.trim() || !clientId;
+  const isCreateDisabled = !name.trim() || submitting;
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in-0 duration-150"
+        onClick={onClose}
+      >
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={closeTransition}
-          onClick={setupStep === "form" ? onClose : undefined}
-          className="fixed inset-0 bg-black/80"
-        />
-
-        {/* Modal Window */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 4 }}
-          transition={dialogTransition}
-          className="relative z-10 w-full max-w-3xl rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-overlay overflow-hidden flex flex-col max-h-[90vh]"
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
+          onClick={(e) => e.stopPropagation()}
+          className="relative w-[880px] h-[600px] rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-xl flex flex-col overflow-hidden select-none"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] bg-[var(--panel)]">
-            <h2 className="text-base font-semibold text-white tracking-tight">
-              New project
-            </h2>
-            {setupStep === "form" && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-1 rounded-lg text-[var(--text-3)] hover:text-white hover:bg-[var(--input)] transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
+          <div className="flex items-start justify-between px-8 pt-7 pb-4">
+            <div className="flex flex-col">
+              <h2 className="text-xl font-bold text-white tracking-tight">New project</h2>
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <span className="text-[13px] text-[var(--text-3)] font-medium">in</span>
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[var(--panel-raised)] border border-[var(--border)] text-xs text-white">
+                  <ClientAvatar id={clientId} name={clientName} size={16} />
+                  <span className="font-semibold text-white truncate max-w-[200px]">
+                    {clientName || "Client"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-[var(--text-3)] hover:text-white hover:bg-[var(--hover)] transition-colors shrink-0"
+              title="Close"
+            >
+              <X size={20} />
+            </button>
           </div>
 
           {error && (
-            <div className="mx-6 mt-4 rounded-[10px] border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
+            <div className="mx-8 mb-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-[13px] text-red-400">
               {error}
             </div>
           )}
 
-          {/* Setup Animation Screen */}
-          {setupStep === "setting_up" ? (
-            <div className="py-16 px-8 flex flex-col items-center justify-center space-y-6">
-              <div className="w-12 h-12 rounded-xl bg-[#4876F3]/10 border border-[#4876F3]/20 flex items-center justify-center">
-                <Loader2 className="w-6 h-6 text-[#4876F3] animate-spin" />
-              </div>
+          {/* Two-Column Body */}
+          <div className="flex-1 grid grid-cols-2 gap-8 px-8 py-2 overflow-hidden">
+            {/* LEFT COLUMN: Start with */}
+            <div className="flex flex-col">
+              <span className="text-[13px] font-semibold text-[var(--text-2)] mb-3">
+                Start with
+              </span>
 
-              <div className="text-center space-y-1">
-                <h3 className="text-sm font-semibold text-white">
-                  Setting up &ldquo;{name}&rdquo;
-                </h3>
-                <p className="text-xs text-[var(--text-2)]">
-                  Configuring project structure and real-time collaboration tracker
-                </p>
-              </div>
-
-              <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--input)] p-4 space-y-3">
-                {template === "video_project" && (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[var(--text-2)] flex items-center gap-2">
-                      <Folder className="w-3.5 h-3.5 text-[#4876F3]" />
-                      <span>Creating folders (Briefs, Raw, Edits, Deliverables)</span>
-                    </span>
-                    {completedFolders ? (
-                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400">
-                        <Check className="w-3 h-3" />
-                      </span>
-                    ) : (
-                      <Loader2 className="w-3.5 h-3.5 text-[var(--text-2)] animate-spin" />
-                    )}
+              <div className="space-y-3">
+                {/* 1. Blank project (Default) */}
+                <div
+                  onClick={() => setTemplate("blank")}
+                  className={`group relative flex items-start justify-between p-4 rounded-xl border transition-colors cursor-pointer ${
+                    template === "blank"
+                      ? "border-[var(--accent)] bg-[var(--panel-raised)]"
+                      : "border-[var(--border)] bg-[var(--panel-raised)]/50 hover:bg-[var(--panel-raised)] hover:border-[var(--border-strong)]"
+                  }`}
+                >
+                  <div className="flex items-start gap-3.5 pr-4">
+                    <div className="w-9 h-9 rounded-lg bg-[var(--hover)] flex items-center justify-center shrink-0 mt-0.5">
+                      <div className="w-4 h-4 rounded-[3px] border border-[var(--text-2)]" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-white">Blank project</span>
+                        <span className="px-1.5 py-0.5 rounded bg-[var(--hover)] text-xs font-semibold text-[var(--text-3)]">
+                          Default
+                        </span>
+                      </div>
+                      <p className="text-[13px] text-[var(--text-3)] mt-0.5">
+                        An empty project. Add your own folders.
+                      </p>
+                    </div>
                   </div>
-                )}
 
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--text-2)] flex items-center gap-2">
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Creating Tracker</span>
-                  </span>
-                  {completedTracker ? (
-                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400">
-                      <Check className="w-3 h-3" />
-                    </span>
-                  ) : (
-                    <Loader2 className="w-3.5 h-3.5 text-[var(--text-2)] animate-spin" />
-                  )}
+                  {/* Radio tick indicator */}
+                  <div
+                    className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-1 transition-colors ${
+                      template === "blank"
+                        ? "border-[var(--accent)] bg-[var(--accent)]"
+                        : "border-[var(--border-strong)] bg-transparent"
+                    }`}
+                  >
+                    {template === "blank" && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  </div>
+                </div>
+
+                {/* 2. Video project */}
+                <div
+                  onClick={() => setTemplate("video")}
+                  className={`group relative flex items-start justify-between p-4 rounded-xl border transition-colors cursor-pointer ${
+                    template === "video"
+                      ? "border-[var(--accent)] bg-[var(--panel-raised)]"
+                      : "border-[var(--border)] bg-[var(--panel-raised)]/50 hover:bg-[var(--panel-raised)] hover:border-[var(--border-strong)]"
+                  }`}
+                >
+                  <div className="flex items-start gap-3.5 pr-4">
+                    <div className="w-9 h-9 rounded-lg bg-[var(--hover)] flex items-center justify-center shrink-0 mt-0.5">
+                      <Folder size={18} className="text-[var(--text-2)]" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-semibold text-white">Video project</span>
+                      <p className="text-[13px] text-[var(--text-3)] mt-0.5">
+                        Starts with two folders:
+                      </p>
+
+                      <div className="flex items-center gap-2 mt-2.5">
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--hover)] border border-[var(--border)] text-xs font-medium text-white">
+                          <Folder size={14} className="text-[var(--text-2)]" />
+                          <span>Raw files</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--hover)] border border-[var(--border)] text-xs font-medium text-white">
+                          <Folder size={14} className="text-[var(--text-2)]" />
+                          <span>Edited files</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Radio tick indicator */}
+                  <div
+                    className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-1 transition-colors ${
+                      template === "video"
+                        ? "border-[var(--accent)] bg-[var(--accent)]"
+                        : "border-[var(--border-strong)] bg-transparent"
+                    }`}
+                  >
+                    {template === "video" && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  </div>
                 </div>
               </div>
             </div>
-          ) : (
-            // Frame.io-style 2-Column Form
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-0 divide-y md:divide-y-0 md:divide-x divide-[var(--border)]">
-                {/* Left Column: Start with (5 cols) */}
-                <div className="md:col-span-5 p-6 space-y-3.5 bg-[var(--bg)]">
-                  <div className="text-[13px] font-medium text-[var(--text-2)]">
-                    Start with
-                  </div>
 
-                  <div className="space-y-3">
-                    {/* Video Project Template */}
-                    <div
-                      onClick={() => setTemplate("video_project")}
-                      className={`cursor-pointer rounded-xl border p-4 transition-all ${
-                        template === "video_project"
-                          ? "border-[#4876F3] bg-[#4876F3]/10"
-                          : "border-[var(--border)] bg-[var(--input)] hover:border-[var(--border)]"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-[var(--panel)] border border-[var(--border)] flex items-center justify-center shrink-0">
-                            <Film className="w-3.5 h-3.5 text-[#4876F3]" />
-                          </div>
-                          <span className="text-sm font-semibold text-white">
-                            Video project
-                          </span>
-                        </div>
-                        {template === "video_project" ? (
-                          <div className="w-4 h-4 rounded-full bg-[#4876F3] flex items-center justify-center">
-                            <Check className="w-2.5 h-2.5 text-white" />
-                          </div>
-                        ) : (
-                          <div className="w-4 h-4 rounded-full border border-[var(--border-strong)]" />
-                        )}
-                      </div>
-                      <p className="text-[13px] text-[var(--text-2)] leading-relaxed">
-                        Standard production workspace with folders and Tracker.
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {["Briefs", "Raw footage", "Edits", "Deliverables"].map((f) => (
-                          <span
-                            key={f}
-                            className="inline-flex items-center gap-1 rounded bg-[var(--panel)] px-2 py-0.5 text-xs text-[var(--text-2)] border border-[var(--border)]"
-                          >
-                            <Folder className="w-2.5 h-2.5 text-[#4876F3]" />
-                            {f}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Blank Project Template */}
-                    <div
-                      onClick={() => setTemplate("blank")}
-                      className={`cursor-pointer rounded-xl border p-4 transition-all ${
-                        template === "blank"
-                          ? "border-[#4876F3] bg-[#4876F3]/10"
-                          : "border-[var(--border)] bg-[var(--input)] hover:border-[var(--border)]"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-[var(--panel)] border border-[var(--border)] flex items-center justify-center shrink-0">
-                            <Folder className="w-3.5 h-3.5 text-zinc-400" />
-                          </div>
-                          <span className="text-sm font-semibold text-white">
-                            Blank project
-                          </span>
-                        </div>
-                        {template === "blank" ? (
-                          <div className="w-4 h-4 rounded-full bg-[#4876F3] flex items-center justify-center">
-                            <Check className="w-2.5 h-2.5 text-white" />
-                          </div>
-                        ) : (
-                          <div className="w-4 h-4 rounded-full border border-[var(--border-strong)]" />
-                        )}
-                      </div>
-                      <p className="text-[13px] text-[var(--text-2)] leading-relaxed">
-                        Clean workspace to organize your own way.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Column: Preview Card, Client, People (7 cols) */}
-                <div className="md:col-span-7 p-6 space-y-4 bg-[var(--panel)]">
-                  {/* Preview Card with Cover + Input inside */}
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
-                    {/* Dashed Add cover area */}
-                    <div className="border border-dashed border-[var(--border)] rounded-lg py-5 px-4 flex items-center justify-center gap-2 text-[13px] text-[var(--text-3)] hover:border-[var(--border)] hover:text-[var(--text-2)] cursor-pointer transition-colors">
-                      <ImageIcon className="w-4 h-4" />
-                      <span>Add cover (optional)</span>
-                    </div>
-
-                    {/* Project Name Input INSIDE Card */}
-                    <div className="mt-3.5 pt-1">
-                      <input
-                        type="text"
-                        required
-                        autoFocus
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Project name"
-                        className="w-full bg-transparent border-0 p-0 text-base font-medium text-white placeholder-[var(--text-3)] focus:outline-none focus:ring-0 transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Client Select */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-[13px] font-medium text-[var(--text-2)]">
-                        Client
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (onClientCreatedPrompt) {
-                            onClientCreatedPrompt();
-                          } else {
-                            setShowNewClientModal(true);
-                          }
-                        }}
-                        className="text-xs text-[var(--accent)] hover:underline flex items-center gap-1"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>New client</span>
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowClientPicker(true)}
-                      className="w-full flex items-center justify-between h-10 px-3 rounded-[10px] bg-[var(--input)] border border-[var(--border)] hover:border-[var(--border-strong)] transition-colors text-left"
-                    >
-                      {clientId ? (
-                        <div className="flex items-center gap-2 text-xs font-semibold text-white">
-                          <div className="w-5 h-5 rounded-[6px] bg-[#0e7490] flex items-center justify-center text-xs font-bold text-white">
-                            {(clients.find((c) => c.id === clientId)?.name || "C").charAt(0).toUpperCase()}
-                          </div>
-                          <span>{clients.find((c) => c.id === clientId)?.name || "Selected Client"}</span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-[var(--text-3)]">
-                          {loadingClients ? "Loading clients..." : "Select client..."}
-                        </span>
-                      )}
-                      <ChevronDown className="w-4 h-4 text-[var(--text-3)]" />
-                    </button>
-                  </div>
-
-                  {/* People Section */}
-                  <div>
-                    <label className="block text-[13px] font-medium text-[var(--text-2)] mb-1.5">
-                      People
-                    </label>
-
-                    {/* Email Input Row */}
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="email"
-                        placeholder="Add team or client emails"
-                        value={personEmailInput}
-                        onChange={(e) => setPersonEmailInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleAddPersonEmail();
-                          }
-                        }}
-                        className="flex-1 h-9 rounded-[10px] border border-[var(--border)] bg-[var(--input)] px-3 text-xs text-white placeholder-[var(--text-3)] focus:border-[#4876F3] focus:outline-none transition-colors"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddPersonEmail}
-                        disabled={!personEmailInput.trim()}
-                        className="h-9 px-3.5 rounded-[10px] bg-[var(--input)] border border-[var(--border)] text-xs font-medium text-white hover:bg-[var(--border)] disabled:opacity-40 transition-colors shrink-0"
-                      >
-                        Add
-                      </button>
-                    </div>
-
-                    {/* Added People List or Grey Line */}
-                    {people.length === 0 ? (
-                      <p className="text-[13px] text-[var(--text-3)] mt-2">
-                        Admins and Managers always have access.
-                      </p>
-                    ) : (
-                      <div className="space-y-2 mt-2.5 max-h-36 overflow-y-auto pr-1">
-                        {people.map((p, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center gap-2 rounded-[10px] bg-[var(--input)] p-2 border border-[var(--border)]"
-                          >
-                            <span className="flex-1 text-xs text-white truncate pl-1">
-                              {p.email}
-                            </span>
-                            <div className="relative">
-                              <select
-                                value={p.level}
-                                onChange={(e) =>
-                                  handleUpdatePerson(idx, "level", e.target.value)
-                                }
-                                className="h-7 rounded-[7px] bg-[var(--panel)] border border-[var(--border)] pl-2 pr-6 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none"
-                              >
-                                <option value="viewer">Viewer</option>
-                                <option value="commenter">Commenter</option>
-                                <option value="uploader">Uploader</option>
-                                <option value="full">Full access</option>
-                              </select>
-                              <ChevronDown className="w-3 h-3 text-[var(--text-3)] absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleRemovePerson(idx)}
-                              className="p-1 text-[var(--text-3)] hover:text-red-400 text-xs transition-colors"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+            {/* RIGHT COLUMN: Cover & Project Name */}
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5 mb-2.5">
+                <span className="text-[13px] font-semibold text-[var(--text-2)]">Cover</span>
+                <span className="text-[13px] text-[var(--text-3)]">Optional</span>
               </div>
 
-              {/* Dialog Footer */}
-              <div className="flex items-center justify-between p-4 px-6 border-t border-[var(--border)] bg-[var(--bg)]">
-                <div className="text-[13px] text-[var(--text-3)]">
-                  {template === "video_project"
-                    ? "Creates 4 folders and a Tracker sheet"
-                    : ""}
-                </div>
+              {/* Fixed 16:9 Cover Box */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={handleSelectCoverFile}
+              />
 
-                <div className="flex items-center gap-3">
+              <div className="w-full h-[184px] rounded-xl overflow-hidden shrink-0 relative bg-[var(--panel-raised)]">
+                {coverUrl ? (
+                  <div className="relative w-full h-full group">
+                    <img
+                      src={coverUrl}
+                      alt="Project cover preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute right-3 bottom-3 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/70 hover:bg-black/90 text-xs font-semibold text-white transition-colors"
+                      >
+                        <ImageIcon size={14} />
+                        <span>Change</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCover}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/70 hover:bg-black/90 text-xs font-semibold text-white transition-colors"
+                      >
+                        <X size={14} />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                   <button
                     type="button"
-                    onClick={onClose}
-                    className="px-3 py-2 text-[14px] font-medium text-[var(--text-2)] hover:text-white transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full h-full border-2 border-dashed border-[var(--border-strong)] rounded-xl flex flex-col items-center justify-center p-4 hover:border-[var(--accent)] hover:bg-[var(--hover)]/30 transition-colors text-center cursor-pointer"
                   >
-                    Cancel
+                    <div className="w-9 h-9 rounded-lg bg-[var(--hover)] flex items-center justify-center mb-2">
+                      <ImageIcon size={20} className="text-[var(--text-2)]" />
+                    </div>
+                    <span className="text-sm font-semibold text-white">Upload a cover image</span>
+                    <span className="text-xs text-[var(--text-3)] mt-0.5">
+                      16:9, PNG, JPG or WebP. You crop it next.
+                    </span>
                   </button>
-                  <button
-                    type="submit"
-                    disabled={isCreateDisabled}
-                    className="rounded-[10px] bg-[#3B67E0] hover:bg-[#3B67E0] px-5 py-2.5 text-[14px] font-medium text-white shadow disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-                  >
-                    <span>Create project</span>
-                  </button>
-                </div>
+                )}
               </div>
-            </form>
-          )}
+
+              {/* Project Name Input */}
+              <div className="mt-5 flex flex-col">
+                <label className="text-[13px] font-semibold text-[var(--text-2)] mb-2">
+                  Project name
+                </label>
+                <input
+                  ref={nameInputRef}
+                  type="text"
+                  required
+                  placeholder={clientName ? `e.g. ${clientName} campaign` : "e.g. November campaign"}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !isCreateDisabled) {
+                      e.preventDefault();
+                      handleCreate();
+                    }
+                  }}
+                  className="h-[52px] w-full rounded-xl bg-[var(--input)] border border-[var(--border)] px-4 text-base text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between px-8 py-5 border-t border-[var(--border)] bg-[var(--panel)] shrink-0">
+            <div className="flex items-center gap-2 text-[13px] text-[var(--text-2)]">
+              <Info size={16} className="text-[var(--text-3)] shrink-0" />
+              <span>
+                {template === "blank"
+                  ? "Starts empty. You can add folders any time."
+                  : "Creates the Raw files and Edited files folders."}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--text-2)] hover:text-white hover:bg-[var(--hover)] transition-colors"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={isCreateDisabled}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white bg-[var(--button)] hover:bg-[var(--button-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {submitting && <Loader2 size={16} className="animate-spin" />}
+                <span>Create project</span>
+              </button>
+            </div>
+          </div>
         </motion.div>
       </div>
 
-      {/* Embedded New Client Dialog */}
-      {showNewClientModal && (
-        <NewClientDialog
-          isOpen={showNewClientModal}
-          onClose={() => setShowNewClientModal(false)}
-          onSuccess={() => {
-            setShowNewClientModal(false);
-            apiRequest<{ clients: Client[] }>("/clients").then((res) => {
-              if (res.clients) {
-                setClients(res.clients);
-                if (res.clients.length > 0) {
-                  setClientId(res.clients[res.clients.length - 1].id);
-                }
-              }
-            });
-          }}
+      {/* 16:9 Cover Cropper */}
+      {showCropDialog && coverFile && (
+        <ImageCropDialog
+          isOpen={showCropDialog}
+          onClose={() => setShowCropDialog(false)}
+          imageFile={coverFile}
+          shape="rect"
+          aspect={16 / 9}
+          title="Crop project cover"
+          onCropComplete={handleCropComplete}
         />
       )}
-
-      {/* Client Picker Dialog */}
-      <ClientPickerDialog
-        isOpen={showClientPicker}
-        onClose={() => setShowClientPicker(false)}
-        selectedClientId={clientId}
-        onSelectClient={(c) => {
-          if (c) {
-            setClientId(c.id);
-            if (!clients.some((item) => item.id === c.id)) {
-              setClients((prev) => [...prev, { id: c.id, name: c.name }]);
-            }
-          }
-          setShowClientPicker(false);
-        }}
-        confirmLabel="Select client"
-      />
     </>
   );
 }

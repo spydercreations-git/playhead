@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
 
@@ -57,6 +57,9 @@ export function ClientCard({
 }: ClientCardProps) {
   const displayName = name.trim() || "Company name";
 
+  const [imgError, setImgError] = useState(false);
+  const effectivePictureUrl = !imgError && (pictureUrl || (id ? `/api/v1/clients/${id}/picture/512.webp` : null));
+
   const cardContent = (
     <div
       className={`relative w-full overflow-hidden rounded-[18px] border border-[var(--border)] bg-[#0f1118] select-none flex flex-col shadow-sm transition-all ${
@@ -65,10 +68,11 @@ export function ClientCard({
     >
       {/* Top Media Area */}
       <div className="relative aspect-[4/3.2] w-full overflow-hidden bg-[var(--panel)] flex items-center justify-center">
-        {pictureUrl ? (
+        {effectivePictureUrl ? (
           <img
-            src={pictureUrl}
+            src={effectivePictureUrl}
             alt={displayName}
+            onError={() => setImgError(true)}
             className="w-full h-full object-cover"
           />
         ) : (

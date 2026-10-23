@@ -15,8 +15,9 @@ import {
   Loader2,
   Calendar,
 } from "@/components/ui/icon";
+import { ClientAvatar } from "@/components/ui/avatar";
+import { EntityPicker } from "@/components/pickers/entity-picker";
 import {
-  SelectClientsModal,
   ClientFilterButton,
   ClientOption,
 } from "@/components/clients/select-clients-modal";
@@ -362,10 +363,10 @@ function TasksContent() {
                         {task.name}
                       </div>
                       <div className="flex items-center gap-1.5 mt-1 text-[12px] text-[var(--text-3)]">
-                        <span
-                          className={`w-2.5 h-2.5 rounded-[2px] shrink-0 ${getClientColor(
-                            task.client_name
-                          )}`}
+                        <ClientAvatar
+                          id={task.client_id}
+                          name={task.client_name}
+                          size={14}
                         />
                         <span className="truncate">{task.client_name}</span>
                       </div>
@@ -472,13 +473,20 @@ function TasksContent() {
         }}
       />
 
-      {/* Select Clients Modal (L7) */}
-      <SelectClientsModal
-        open={showSelectClients}
+      {/* Select Clients Modal (P1) */}
+      <EntityPicker
+        isOpen={showSelectClients}
         onClose={() => setShowSelectClients(false)}
-        selectedClientIds={selectedClientIds}
-        onApply={handleApplyClientFilter}
-        clients={clients}
+        tabs={["clients"]}
+        mode="multi"
+        title="Select clients"
+        subtitle="Show tasks from one, several or all clients."
+        showAll
+        preselectedIds={selectedClientIds}
+        primaryButtonText={(count) =>
+          count > 0 ? `Show ${count} ${count === 1 ? "client" : "clients"}` : "Show all clients"
+        }
+        onConfirm={(_, ids) => handleApplyClientFilter(ids)}
       />
     </div>
   );

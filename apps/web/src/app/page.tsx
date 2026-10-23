@@ -21,6 +21,7 @@ import {
   X,
 } from "@/components/ui/icon";
 import { UploadDestinationDialog } from "@/components/uploads/upload-destination-dialog";
+import { ClientAvatar, UserAvatar } from "@/components/ui/avatar";
 
 interface WaitingReviewItem {
   id: string;
@@ -49,6 +50,7 @@ interface HomeProjectItem {
 
 interface ActivityEventItem {
   id: string;
+  actor_id?: string;
   actor_name: string;
   actor_avatar?: string;
   event_type: string;
@@ -382,12 +384,11 @@ export default function HomePage() {
                         {proj.name}
                       </h3>
                       <div className="flex items-center gap-1.5 mt-1 text-xs text-[var(--text-3)] truncate">
-                        <span
-                          className="w-3.5 h-3.5 rounded flex items-center justify-center text-xs font-bold text-white shrink-0"
-                          style={{ backgroundColor: clientColor }}
-                        >
-                          {clientLetter}
-                        </span>
+                        <ClientAvatar
+                          id={proj.client_id}
+                          name={proj.client_name || proj.name}
+                          size={14}
+                        />
                         <span className="truncate">{proj.client_name || "Idyll Productions"}</span>
                         <span>·</span>
                         <span className="tabular-nums">{proj.file_count || 0} files</span>
@@ -406,18 +407,14 @@ export default function HomePage() {
                           {(proj.members && proj.members.length > 0
                             ? proj.members.slice(0, 3)
                             : [{ name: "Harsh" }]
-                          ).map((m, idx) => {
-                            const initial = (m.name || "U").charAt(0).toUpperCase();
-                            return (
-                              <div
-                                key={idx}
-                                className="w-5 h-5 rounded-full border border-[var(--panel)] flex items-center justify-center text-xs font-bold text-white"
-                                style={{ backgroundColor: getAvatarColor(m.name || initial) }}
-                              >
-                                {initial}
-                              </div>
-                            );
-                          })}
+                          ).map((m, idx) => (
+                            <UserAvatar
+                              key={idx}
+                              name={m.name}
+                              size={20}
+                              ring
+                            />
+                          ))}
                         </div>
 
                         {/* Review pill */}
@@ -485,13 +482,14 @@ export default function HomePage() {
 
                 return (
                   <div key={ev.id} className="flex items-start gap-3 text-xs min-w-0">
-                    {/* Actor Initial Avatar */}
-                    <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 mt-0.5"
-                      style={{ backgroundColor: avatarBg }}
-                    >
-                      {initial}
-                    </div>
+                    {/* Actor Real Avatar */}
+                    <UserAvatar
+                      id={ev.actor_id}
+                      avatarUrl={ev.actor_avatar}
+                      name={ev.actor_name}
+                      size={28}
+                      className="shrink-0 mt-0.5"
+                    />
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">

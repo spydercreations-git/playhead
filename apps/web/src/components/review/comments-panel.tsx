@@ -21,6 +21,7 @@ import {
   User,
 } from "@/components/ui/icon";
 import { formatTimecode, TimecodeFormat } from "./timecode";
+import { UserAvatar } from "@/components/ui/avatar";
 
 export interface CommentItem {
   id: string;
@@ -302,13 +303,12 @@ export function CommentsPanel({
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex items-center gap-2">
                         {/* Avatar */}
-                        <div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shadow ${
-                            isTeam ? "bg-[#FFBB56]" : "bg-[#FFBB56]"
-                          }`}
-                        >
-                          {initial}
-                        </div>
+                        <UserAvatar
+                          id={comment.author_user_id || undefined}
+                          avatarUrl={comment.author_avatar_url || undefined}
+                          name={comment.author_name}
+                          size={24}
+                        />
 
                         <div>
                           <div className="flex items-center gap-1.5">

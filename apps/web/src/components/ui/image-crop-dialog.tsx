@@ -10,7 +10,8 @@ export interface ImageCropDialogProps {
   onClose: () => void;
   imageFile?: File | null;
   imageSrc?: string | null;
-  shape: "circle" | "square";
+  shape?: "circle" | "square" | "rect";
+  aspect?: number;
   title?: string;
   onCropComplete: (croppedBlob: Blob, croppedDataUrl: string) => Promise<void> | void;
   onChooseAnotherImage?: () => void;
@@ -21,7 +22,8 @@ export function ImageCropDialog({
   onClose,
   imageFile,
   imageSrc: initialSrc,
-  shape,
+  shape = "circle",
+  aspect,
   title,
   onCropComplete,
   onChooseAnotherImage,
@@ -212,7 +214,7 @@ export function ImageCropDialog({
                 crop={crop}
                 zoom={zoom}
                 rotation={rotation}
-                aspect={1}
+                aspect={aspect || 1}
                 cropShape={shape === "circle" ? "round" : "rect"}
                 showGrid={true}
                 restrictPosition={true}

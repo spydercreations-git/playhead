@@ -128,6 +128,7 @@ func main() {
 	storageHandler := handler.NewStorageHandler(queries)
 	searchHandler := handler.NewSearchHandler(pgxPool, queries)
 	onboardingHandler := handler.NewOnboardingHandler(queries, storageClient)
+	pickerHandler := handler.NewPickerHandler(pgxPool, queries)
 	if pgxPool != nil {
 		projectHandler.SetPool(pgxPool)
 		clientHandler.SetPool(pgxPool)
@@ -308,6 +309,9 @@ func main() {
 			protected.Post("/contacts/{id}/resend", clientHandler.ResendContactInvite)
 			protected.Get("/users/me/library-client-filter", clientHandler.GetLibraryClientFilter)
 			protected.Put("/users/me/library-client-filter", clientHandler.UpdateLibraryClientFilter)
+
+			// Unified Entity Picker (Clients, Staff, Editors, Client People)
+			protected.Get("/pickers", pickerHandler.GetPickerData)
 
 			// Projects and People (P1 & P3)
 			protected.Get("/projects", projectHandler.List)

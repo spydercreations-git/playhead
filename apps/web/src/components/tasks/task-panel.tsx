@@ -32,6 +32,7 @@ import {
   Building2,
   FolderGit2,
 } from "@/components/ui/icon";
+import { ClientAvatar, UserAvatar } from "@/components/ui/avatar";
 import Link from "next/link";
 
 interface TaskDetail {
@@ -649,7 +650,11 @@ export function TaskPanel({
               {/* Client */}
               <span className="text-[var(--text-3)] font-medium">Client</span>
               <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 rounded-[3px] bg-teal-500 shrink-0" />
+                <ClientAvatar
+                  id={task?.client_id}
+                  name={task?.client_name || "Client"}
+                  size={16}
+                />
                 <span className="font-medium text-white">{task?.client_name}</span>
               </div>
 
@@ -1055,9 +1060,13 @@ export function TaskPanel({
                       {/* Author Header */}
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-[var(--primary)] text-white text-[12px] font-semibold flex items-center justify-center shrink-0">
-                            {c.user_name ? c.user_name.charAt(0).toUpperCase() : "U"}
-                          </div>
+                          <UserAvatar
+                            id={c.user_id}
+                            name={c.user_name}
+                            email={c.user_email}
+                            avatarUrl={c.user_avatar_url}
+                            size={24}
+                          />
                           <span className="text-xs font-semibold text-white">
                             {c.user_name}
                           </span>

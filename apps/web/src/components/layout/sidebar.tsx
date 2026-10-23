@@ -31,7 +31,8 @@ import {
   LogOut,
   Icon,
 } from "@/components/ui/icon";
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, UserAvatar } from "@/components/ui/avatar";
+import { EntityPicker } from "@/components/pickers/entity-picker";
 import { apiRequest } from "@/lib/api";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
@@ -52,6 +53,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const [showNewClient, setShowNewClient] = useState(false);
   const [showNewProject, setShowNewProject] = useState(false);
+  const [showChooseClientPicker, setShowChooseClientPicker] = useState(false);
+  const [chosenProjectClientId, setChosenProjectClientId] = useState<string>("");
+  const [chosenProjectClientName, setChosenProjectClientName] = useState<string>("");
   const [showNewDoc, setShowNewDoc] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -184,7 +188,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <button
                     onClick={() => {
                       setNewMenuOpen(false);
-                      setShowNewProject(true);
+                      setShowChooseClientPicker(true);
                     }}
                     className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
                   >
@@ -304,7 +308,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             className="flex h-14 w-[208px] mx-auto items-center justify-between rounded-[10px] px-2.5 cursor-pointer hover:bg-[var(--hover)] transition-colors duration-150"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <Avatar name={displayName} size="md" />
+              <UserAvatar
+                id={user?.id}
+                name={displayName}
+                email={user?.email}
+                avatarUrl={user?.avatar_url}
+                size="md"
+              />
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-semibold text-white truncate">
                   {displayName}
@@ -363,9 +373,33 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         onClose={() => setShowNewClient(false)}
         onSuccess={() => router.refresh()}
       />
+      {/* Choose a Client Modal (P3) */}
+      <EntityPicker
+        isOpen={showChooseClientPicker}
+        onClose={() => setShowChooseClientPicker(false)}
+        tabs={["clients"]}
+        mode="single"
+        title="Choose a client"
+        subtitle="The new project will belong to this client."
+        primaryButtonText="Continue"
+        onConfirm={(entities) => {
+          if (entities.length > 0) {
+            setChosenProjectClientId(entities[0].id);
+            setChosenProjectClientName(entities[0].name);
+            setShowNewProject(true);
+          }
+        }}
+      />
+
       <NewProjectDialog
         isOpen={showNewProject}
-        onClose={() => setShowNewProject(false)}
+        onClose={() => {
+          setShowNewProject(false);
+          setChosenProjectClientId("");
+          setChosenProjectClientName("");
+        }}
+        clientId={chosenProjectClientId}
+        clientName={chosenProjectClientName}
         onClientCreatedPrompt={() => {
           setShowNewProject(false);
           setShowNewClient(true);

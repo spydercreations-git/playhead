@@ -1,18 +1,14 @@
-import React from "react";
+"use client";
 
-export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
-  name?: string;
-  src?: string | null;
-  size?: "xs" | "sm" | "md" | "lg";
-  color?: string;
-}
+import React, { useState, useEffect } from "react";
 
-const AVATAR_COLORS = [
+export const AVATAR_COLORS = [
   "#C2410C", "#7C3AED", "#0F766E", "#B45309", "#4876F3",
   "#FA457B", "#3FCF8E", "#FFBB56", "#9787FF", "#2A9D8F",
 ];
 
 export function getAvatarColor(name: string): string {
+  if (!name) return AVATAR_COLORS[4];
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -29,46 +25,112 @@ export function getInitials(name: string): string {
   return name.slice(0, 1).toUpperCase();
 }
 
+type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | number;
+
+function resolveSizeInfo(size: AvatarSize, isSquare: boolean) {
+  if (typeof size === "number") {
+    const rx = isSquare ? (size >= 40 ? "rounded-[10px]" : size >= 28 ? "rounded-[8px]" : "rounded-[6px]") : "rounded-full";
+    const textSize = size >= 40 ? "text-base" : size >= 30 ? "text-sm" : "text-xs";
+    return {
+      style: { width: `${size}px`, height: `${size}px` },
+      classes: `${rx} ${textSize}`,
+      px: size,
+    };
+  }
+
+  const map: Record<string, { w: number; rxSquare: string; text: string }> = {
+    xs: { w: 20, rxSquare: "rounded-[5px]", text: "text-xs" },
+    sm: { w: 24, rxSquare: "rounded-[6px]", text: "text-xs" },
+    md: { w: 32, rxSquare: "rounded-[8px]", text: "text-sm" },
+    lg: { w: 40, rxSquare: "rounded-[10px]", text: "text-sm" },
+    xl: { w: 48, rxSquare: "rounded-[12px]", text: "text-base" },
+  };
+
+  const item = map[size] || map.md;
+  return {
+    style: { width: `${item.w}px`, height: `${item.w}px` },
+    classes: `${isSquare ? item.rxSquare : "rounded-full"} ${item.text}`,
+    px: item.w,
+  };
+}
+
+export interface ClientAvatarProps extends React.HTMLAttributes<HTMLDivElement> {
+  name: string;
+  id?: string;
+  pictureUrl?: string | null;
+  size?: AvatarSize;
+  color?: string;
+  className?: string;
+}
+
 /**
- * Playhead Avatar Component
- * Boards/02 Components:
- * - xs: 20x20, text 10 SemiBold
- * - sm: 24x24, text 11 SemiBold
- * - md: 32x32, text 14 SemiBold
- * - lg: 40x40, text 16 SemiBold
+ * Shared ClientAvatar (Square, rounded corners)
+ * Displays real client uploaded picture, with smooth token placeholder while loading,
+ * and graceful fallback to colored initials on 404 or image load error.
  */
-export function Avatar({
-  name = "User",
-  src,
+export function ClientAvatar({
+  name = "Client",
+  id,
+  pictureUrl,
   size = "md",
   color,
   className = "",
   ...props
-}: AvatarProps) {
-  const sizeClasses = {
-    xs: "h-5 w-5 text-xs",
-    sm: "h-6 w-6 text-xs",
-    md: "h-8 w-8 text-sm",
-    lg: "h-10 w-10 text-base",
-  }[size];
+}: ClientAvatarProps) {
+  const { style, classes, px } = resolveSizeInfo(size, true);
+
+  // Compute best image URL: use provided pictureUrl or construct from id
+  let rawUrl = pictureUrl;
+  if (!rawUrl && id) {
+    rawUrl = `/api/v1/clients/${id}/picture/128.webp`;
+  } else if (rawUrl && rawUrl.includes("/512.webp") && px <= 128) {
+    rawUrl = rawUrl.replace("/512.webp", "/128.webp");
+  }
+
+  const [hasError, setHasError] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+    setIsLoaded(false);
+  }, [rawUrl]);
 
   const bgColor = color || getAvatarColor(name);
   const initials = getInitials(name);
 
-  if (src) {
+  if (rawUrl && !hasError) {
     return (
-      <img
-        src={src}
-        alt={name}
-        className={`rounded-full object-cover shrink-0 ring-2 ring-[var(--bg)] ${sizeClasses} ${className}`}
-      />
+      <div
+        style={style}
+        className={`relative shrink-0 overflow-hidden select-none bg-[var(--panel-raised)] ${classes} ${className}`}
+        title={name}
+        {...props}
+      >
+        <img
+          src={rawUrl}
+          alt={name}
+          onLoad={() => setIsLoaded(true)}
+          onError={() => setHasError(true)}
+          className={`h-full w-full object-cover transition-opacity duration-150 ${
+            isLoaded ? "opacity-100" : "opacity-0"
+          }`}
+        />
+        {!isLoaded && (
+          <div
+            style={{ backgroundColor: bgColor }}
+            className="absolute inset-0 flex items-center justify-center font-semibold text-white text-xs opacity-70"
+          >
+            {initials}
+          </div>
+        )}
+      </div>
     );
   }
 
   return (
     <div
-      style={{ backgroundColor: bgColor }}
-      className={`rounded-full shrink-0 flex items-center justify-center font-semibold text-white select-none ring-2 ring-[var(--bg)] ${sizeClasses} ${className}`}
+      style={{ ...style, backgroundColor: bgColor }}
+      className={`shrink-0 flex items-center justify-center font-semibold text-white select-none ${classes} ${className}`}
       title={name}
       {...props}
     >
@@ -76,6 +138,102 @@ export function Avatar({
     </div>
   );
 }
+
+export interface UserAvatarProps extends React.HTMLAttributes<HTMLDivElement> {
+  name?: string;
+  email?: string;
+  id?: string;
+  avatarUrl?: string | null;
+  src?: string | null;
+  size?: AvatarSize;
+  color?: string;
+  ring?: boolean;
+  className?: string;
+}
+
+/**
+ * Shared UserAvatar (Circle)
+ * Displays real user profile photo, with smooth placeholder while loading,
+ * and graceful fallback to colored initials on 404 or image load error.
+ */
+export function UserAvatar({
+  name = "User",
+  email,
+  id,
+  avatarUrl,
+  src,
+  size = "md",
+  color,
+  ring = false,
+  className = "",
+  ...props
+}: UserAvatarProps) {
+  const { style, classes, px } = resolveSizeInfo(size, false);
+
+  let rawUrl = avatarUrl || src;
+  if (!rawUrl && id) {
+    rawUrl = `/api/v1/users/avatar/${id}/128.webp`;
+  } else if (rawUrl && rawUrl.includes("/512.webp") && px <= 128) {
+    rawUrl = rawUrl.replace("/512.webp", "/128.webp");
+  }
+
+  const [hasError, setHasError] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+    setIsLoaded(false);
+  }, [rawUrl]);
+
+  const displayName = name || (email ? email.split("@")[0] : "User");
+  const bgColor = color || getAvatarColor(displayName);
+  const initials = getInitials(displayName);
+  const ringClass = ring ? "ring-2 ring-[var(--bg)]" : "";
+
+  if (rawUrl && !hasError) {
+    return (
+      <div
+        style={style}
+        className={`relative shrink-0 overflow-hidden select-none bg-[var(--panel-raised)] ${classes} ${ringClass} ${className}`}
+        title={displayName}
+        {...props}
+      >
+        <img
+          src={rawUrl}
+          alt={displayName}
+          onLoad={() => setIsLoaded(true)}
+          onError={() => setHasError(true)}
+          className={`h-full w-full object-cover transition-opacity duration-150 ${
+            isLoaded ? "opacity-100" : "opacity-0"
+          }`}
+        />
+        {!isLoaded && (
+          <div
+            style={{ backgroundColor: bgColor }}
+            className="absolute inset-0 flex items-center justify-center font-semibold text-white text-xs opacity-70"
+          >
+            {initials}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{ ...style, backgroundColor: bgColor }}
+      className={`shrink-0 flex items-center justify-center font-semibold text-white select-none ${classes} ${ringClass} ${className}`}
+      title={displayName}
+      {...props}
+    >
+      {initials}
+    </div>
+  );
+}
+
+// Backward-compatibility alias for Avatar -> UserAvatar
+export const Avatar = UserAvatar;
+export type AvatarProps = UserAvatarProps;
 
 export interface AvatarGroupProps {
   users: Array<{ id?: string; name: string; avatar_url?: string | null; color?: string }>;
@@ -85,8 +243,7 @@ export interface AvatarGroupProps {
 }
 
 /**
- * Avatar Stack Component
- * Boards/02 Components: Overlapping avatars with +N overflow bubble
+ * Avatar Stack Component: Overlapping avatars with +N overflow bubble
  */
 export function AvatarStack({
   users,
@@ -106,12 +263,14 @@ export function AvatarStack({
   return (
     <div className={`flex items-center -space-x-1.5 select-none ${className}`}>
       {visible.map((u, i) => (
-        <Avatar
+        <UserAvatar
           key={u.id || `${u.name}-${i}`}
+          id={u.id}
           name={u.name}
-          src={u.avatar_url}
+          avatarUrl={u.avatar_url}
           color={u.color}
           size={size}
+          ring
         />
       ))}
       {overflow > 0 && (
@@ -124,4 +283,3 @@ export function AvatarStack({
     </div>
   );
 }
-

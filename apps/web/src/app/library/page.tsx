@@ -20,8 +20,9 @@ import {
   DownloadFile,
 } from "@/components/downloads/download-tray";
 import { Search, ChevronDown, LayoutGrid, List, Plus, Folder } from "@/components/ui/icon";
+import { ClientAvatar } from "@/components/ui/avatar";
+import { EntityPicker } from "@/components/pickers/entity-picker";
 import {
-  SelectClientsModal,
   ClientFilterButton,
   ClientOption,
 } from "@/components/clients/select-clients-modal";
@@ -50,6 +51,9 @@ export default function LibraryPage() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [showNewProject, setShowNewProject] = useState(false);
   const [showSelectClients, setShowSelectClients] = useState(false);
+  const [showChooseClientPicker, setShowChooseClientPicker] = useState(false);
+  const [newProjectClientId, setNewProjectClientId] = useState<string>("");
+  const [newProjectClientName, setNewProjectClientName] = useState<string>("");
 
   // Modals & Menu State
   const [menuState, setMenuState] = useState<{
@@ -365,7 +369,17 @@ export default function LibraryPage() {
 
         {hasPermission("projects.create") && (
           <button
-            onClick={() => setShowNewProject(true)}
+            onClick={() => {
+              if (selectedClientIds.length === 1) {
+                const cId = selectedClientIds[0];
+                const found = clientOptions.find((c) => c.id === cId);
+                setNewProjectClientId(cId);
+                setNewProjectClientName(found?.name || "");
+                setShowNewProject(true);
+              } else {
+                setShowChooseClientPicker(true);
+              }
+            }}
             className="flex h-9 items-center justify-center gap-1.5 rounded-[8px] bg-[var(--button)] hover:bg-[var(--button-hover)] px-4 text-xs font-semibold text-[var(--button-text)] shadow transition-colors cursor-pointer"
           >
             <Plus size={16} />
@@ -476,9 +490,11 @@ export default function LibraryPage() {
                 {/* Client Section Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center justify-center h-5 w-5 rounded text-xs font-bold ${badgeBg}`}>
-                      {clientInitial}
-                    </span>
+                    <ClientAvatar
+                      id={group.clientId === "internal" && idyllClient ? idyllClient.id : group.clientId}
+                      name={group.clientName}
+                      size={20}
+                    />
                     <span className="text-sm font-semibold text-white">{group.clientName}</span>
                     <span className="text-xs text-[var(--text-3)]">
                       {group.isInternal ? "internal · " : ""}
@@ -486,19 +502,37 @@ export default function LibraryPage() {
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (group.clientId && group.clientId !== "internal") {
-                        handleApplyClientFilter([group.clientId]);
-                      } else if (idyllClient) {
-                        handleApplyClientFilter([idyllClient.id]);
-                      }
-                    }}
-                    className="text-xs font-medium text-[var(--text-3)] hover:text-white transition-colors cursor-pointer"
-                  >
-                    View all
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {hasPermission("projects.create") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cId = group.clientId === "internal" && idyllClient ? idyllClient.id : group.clientId;
+                          setNewProjectClientId(cId);
+                          setNewProjectClientName(group.clientName);
+                          setShowNewProject(true);
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-[6px] text-xs font-semibold text-[var(--text-2)] hover:text-white hover:bg-[var(--hover)] border border-[var(--border)] transition-colors cursor-pointer"
+                      >
+                        <Plus size={14} />
+                        <span>New project</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (group.clientId && group.clientId !== "internal") {
+                          handleApplyClientFilter([group.clientId]);
+                        } else if (idyllClient) {
+                          handleApplyClientFilter([idyllClient.id]);
+                        }
+                      }}
+                      className="text-xs font-medium text-[var(--text-3)] hover:text-white transition-colors cursor-pointer"
+                    >
+                      View all
+                    </button>
+                  </div>
                 </div>
 
                 {/* Active Projects Grid */}
@@ -665,13 +699,38 @@ export default function LibraryPage() {
         onClose={() => setDownloadSession(null)}
       />
 
-      {/* Select Clients Window (L7) */}
-      <SelectClientsModal
-        open={showSelectClients}
+      {/* Select Clients Window (P1) */}
+      <EntityPicker
+        isOpen={showSelectClients}
         onClose={() => setShowSelectClients(false)}
-        selectedClientIds={selectedClientIds}
-        clients={clientOptions}
-        onApply={handleApplyClientFilter}
+        tabs={["clients"]}
+        mode="multi"
+        title="Select clients"
+        subtitle="Show projects from one, several or all clients."
+        showAll
+        preselectedIds={selectedClientIds}
+        primaryButtonText={(count) =>
+          count > 0 ? `Show ${count} ${count === 1 ? "client" : "clients"}` : "Show all clients"
+        }
+        onConfirm={(_, ids) => handleApplyClientFilter(ids)}
+      />
+
+      {/* Choose a Client for New Project (P3) */}
+      <EntityPicker
+        isOpen={showChooseClientPicker}
+        onClose={() => setShowChooseClientPicker(false)}
+        tabs={["clients"]}
+        mode="single"
+        title="Choose a client"
+        subtitle="The new project will belong to this client."
+        primaryButtonText="Continue"
+        onConfirm={(entities) => {
+          if (entities.length > 0) {
+            setNewProjectClientId(entities[0].id);
+            setNewProjectClientName(entities[0].name);
+            setShowNewProject(true);
+          }
+        }}
       />
 
       {/* New Project Dialog */}
@@ -680,9 +739,12 @@ export default function LibraryPage() {
           isOpen={showNewProject}
           onClose={() => {
             setShowNewProject(false);
+            setNewProjectClientId("");
+            setNewProjectClientName("");
             queryClient.invalidateQueries({ queryKey: ["library-projects"] });
           }}
-          defaultClientId={selectedClientIds.length === 1 ? selectedClientIds[0] : ""}
+          clientId={newProjectClientId}
+          clientName={newProjectClientName}
         />
       )}
     </div>

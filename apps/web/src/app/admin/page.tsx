@@ -23,7 +23,7 @@ import {
   ChevronDown,
   Loader2,
 } from "@/components/ui/icon";
-import { Avatar } from "@/components/ui/avatar";
+import { ClientAvatar, UserAvatar } from "@/components/ui/avatar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/lib/toast";
 
@@ -568,9 +568,7 @@ export default function AdminPage() {
                 >
                   <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--panel-raised)] px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[var(--input)] text-base font-semibold text-[var(--text)] border border-[var(--border)]">
-                        {client.name.substring(0, 2).toUpperCase()}
-                      </div>
+                      <ClientAvatar id={client.id} name={client.name} size={40} />
                       <div>
                         <h3 className="text-base font-semibold text-[var(--text)]">{client.name}</h3>
                         {client.website ? (
@@ -599,9 +597,12 @@ export default function AdminPage() {
                           className="flex items-center justify-between px-6 py-3.5 hover:bg-[var(--hover)] transition-colors text-sm"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--panel-raised)] border border-[var(--border)] text-xs font-medium text-[var(--text)]">
-                              {contact.name?.substring(0, 2).toUpperCase() || "CT"}
-                            </div>
+                            <UserAvatar
+                              id={contact.user_id || contact.id}
+                              name={contact.name}
+                              email={contact.email}
+                              size={32}
+                            />
                             <div>
                               <div className="font-medium text-[var(--text)]">{contact.name}</div>
                               <div className="text-xs text-[var(--text-3)]">{contact.email}</div>
@@ -683,10 +684,11 @@ export default function AdminPage() {
                       >
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <Avatar
-                              src={m.avatar_url}
+                            <UserAvatar
+                              id={m.user_id}
+                              avatarUrl={m.avatar_url}
                               name={m.name || m.email}
-                              className="h-8 w-8 border border-[var(--border)]"
+                              size={32}
                             />
                             <div>
                               <div className="flex items-center gap-1.5 font-medium text-[var(--text)]">
@@ -789,10 +791,11 @@ export default function AdminPage() {
             {/* Drawer Header */}
             <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-5 bg-[var(--panel-raised)]">
               <div className="flex items-center gap-3">
-                <Avatar
-                  src={selectedMember.avatar_url}
+                <UserAvatar
+                  id={selectedMember.user_id}
+                  avatarUrl={selectedMember.avatar_url}
                   name={selectedMember.name || selectedMember.email}
-                  className="h-10 w-10 border border-[var(--border)]"
+                  size={40}
                 />
                 <div>
                   <div className="flex items-center gap-2">

@@ -3,6 +3,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { MoreHorizontal, Folder, Check } from "@/components/ui/icon";
+import { ClientAvatar, UserAvatar } from "@/components/ui/avatar";
 
 interface ProjectCardProps {
   id: string;
@@ -176,9 +177,7 @@ export function ProjectCard({
             </h3>
             <div className="flex items-center gap-1.5 text-[13px] text-[var(--text-2)] truncate mt-1">
               {clientName && (
-                <span className={`inline-flex items-center justify-center h-4 w-4 rounded text-xs font-bold ${badgeColor} shrink-0`}>
-                  {clientInitial}
-                </span>
+                <ClientAvatar name={clientName} size={16} />
               )}
               <span className="truncate">
                 {clientName ? `${clientName} · ` : ""}
@@ -192,13 +191,15 @@ export function ProjectCard({
             {/* Member Avatars */}
             <div className="flex -space-x-1.5 overflow-hidden">
               {displayMembers.slice(0, 3).map((m, idx) => (
-                <div
+                <UserAvatar
                   key={m.id || idx}
-                  style={{ backgroundColor: m.color || (idx === 0 ? "#FFBB56" : idx === 1 ? "#FA457B" : "#4876F3") }}
-                  className="inline-flex h-[22px] w-[22px] rounded-full ring-2 ring-[var(--panel)] text-xs font-bold text-white items-center justify-center"
-                >
-                  {(m.name || m.email || "U").slice(0, 1).toUpperCase()}
-                </div>
+                  id={m.id}
+                  name={m.name}
+                  email={m.email}
+                  color={m.color}
+                  size={22}
+                  ring
+                />
               ))}
             </div>
 

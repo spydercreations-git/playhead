@@ -148,6 +148,9 @@ func TestAllRolesEndpoints(t *testing.T) {
 	r.Get("/documents", documentsHandler.List)
 	r.Post("/documents", documentsHandler.Create)
 
+	pickerHandler := NewPickerHandler(pool, queries)
+	r.Get("/pickers", pickerHandler.GetPickerData)
+
 	// Roles to test (including Phase 1: Staff, Editor, Client)
 	rolesToTest := []struct {
 		name       string
@@ -399,6 +402,29 @@ func TestAllRolesEndpoints(t *testing.T) {
 			} else {
 				if docPostW.Code != http.StatusCreated && docPostW.Code != http.StatusOK {
 					t.Errorf("%s: expected 201 on POST /documents, got %d (%s)", rt.name, docPostW.Code, docPostW.Body.String())
+				}
+			}
+
+			// 16. GET /pickers
+			pickerReq := httptest.NewRequest("GET", "/pickers?tab=clients", nil).WithContext(buildContext())
+			pickerW := httptest.NewRecorder()
+			r.ServeHTTP(pickerW, pickerReq)
+			if pickerW.Code != http.StatusOK {
+				t.Errorf("%s: expected 200 on GET /pickers?tab=clients, got %d", rt.name, pickerW.Code)
+			}
+
+			// Test staff tab
+			pickerStaffReq := httptest.NewRequest("GET", "/pickers?tab=staff", nil).WithContext(buildContext())
+			pickerStaffW := httptest.NewRecorder()
+			r.ServeHTTP(pickerStaffW, pickerStaffReq)
+			if pickerStaffW.Code != http.StatusOK {
+				t.Errorf("%s: expected 200 on GET /pickers?tab=staff, got %d", rt.name, pickerStaffW.Code)
+			}
+			if rt.isClient {
+				var pResp PickerResponse
+				_ = json.Unmarshal(pickerStaffW.Body.Bytes(), &pResp)
+				if len(pResp.Items) != 0 {
+					t.Errorf("%s (Client): expected 0 items in staff tab, got %d", rt.name, len(pResp.Items))
 				}
 			}
 		})

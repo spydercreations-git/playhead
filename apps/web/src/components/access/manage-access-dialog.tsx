@@ -7,7 +7,11 @@ import {
   ChevronDown,
   Users,
   Trash2,
+  Plus,
+  UserPlus,
 } from "@/components/ui/icon";
+import { UserAvatar, ClientAvatar } from "@/components/ui/avatar";
+import { EntityPicker, PickerEntity } from "@/components/pickers/entity-picker";
 
 export interface MemberAccess {
   id: string;
@@ -54,6 +58,8 @@ export function ManageAccessDialog({
   isLoading = false,
 }: ManageAccessDialogProps) {
   const [query, setQuery] = useState("");
+  const [chosenPeople, setChosenPeople] = useState<PickerEntity[]>([]);
+  const [showAddPeoplePicker, setShowAddPeoplePicker] = useState(false);
   const [selectedContact, setSelectedContact] = useState<SuggestedContact | null>(null);
   const [accessLevel, setAccessLevel] = useState<"full" | "editor" | "uploader" | "commenter" | "viewer">("commenter");
   const [canDownload, setCanDownload] = useState(true);
@@ -63,18 +69,35 @@ export function ManageAccessDialog({
 
   if (!isOpen) return null;
 
+  const disabledMemberIds = members.map((m) => m.id);
+  const disabledMemberEmails = members.map((m) => m.email.toLowerCase());
+
   const handleAdd = async () => {
-    const targetEmail = selectedContact ? selectedContact.email : query.trim();
-    if (!targetEmail || !onAddMember) return;
+    if (!onAddMember) return;
     setSubmitting(true);
     try {
-      await onAddMember(targetEmail, accessLevel, canDownload, message);
+      if (chosenPeople.length > 0) {
+        for (const person of chosenPeople) {
+          const email = person.email || person.name;
+          await onAddMember(email, accessLevel, canDownload, message);
+        }
+      } else {
+        const targetEmail = selectedContact ? selectedContact.email : query.trim();
+        if (targetEmail) {
+          await onAddMember(targetEmail, accessLevel, canDownload, message);
+        }
+      }
       setQuery("");
+      setChosenPeople([]);
       setSelectedContact(null);
       setMessage("");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleRemoveChosenPerson = (id: string) => {
+    setChosenPeople((prev) => prev.filter((p) => p.id !== id));
   };
 
   const filteredSuggested = suggested.filter(
@@ -85,50 +108,104 @@ export function ManageAccessDialog({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 bg-black/80"
-      />
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="fixed inset-0 bg-black/80"
+        />
 
-      {/* Dialog Body */}
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.15, ease: "easeOut" }}
-        className="relative z-10 w-full max-w-lg rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-overlay flex flex-col overflow-hidden max-h-[90vh]"
-      >
-        {/* Header with Project Logo and "Add to {name}" */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] bg-[var(--panel)]">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-xl bg-[#4876F3]/15 border border-[#4876F3]/30 flex items-center justify-center text-[#4876F3] font-bold text-xs">
-              {targetName.slice(0, 2)}
+        {/* Dialog Body */}
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
+          className="relative z-10 w-full max-w-lg rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-overlay flex flex-col overflow-hidden max-h-[90vh]"
+        >
+          {/* Header with Project Logo and "Add to {name}" */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] bg-[var(--panel)]">
+            <div className="flex items-center gap-3">
+              <ClientAvatar name={targetName} size={32} />
+              <div>
+                <h3 className="text-sm font-bold text-white">Add to {targetName}</h3>
+                <p className="text-xs text-[var(--text-2)]">Manage access and permissions</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-white">Add to {targetName}</h3>
-              <p className="text-xs text-[var(--text-2)]">Manage access and permissions</p>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-[var(--text-2)] hover:text-white hover:bg-[var(--input)] transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-[var(--text-2)] hover:text-white hover:bg-[var(--input)] transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          {/* Name or Email Input + Access Level Dropdown + Can Download switch */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            {/* Add People Row: Button to open P2 Picker + Access Level dropdown */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddPeoplePicker(true)}
+                  className="flex-1 h-9 rounded-xl bg-[var(--input)] border border-[var(--border)] hover:border-[var(--accent)] px-3 text-xs text-left text-[var(--text-2)] hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <UserPlus className="w-4 h-4 text-[var(--accent)] shrink-0" />
+                  <span>Choose team members or client contacts...</span>
+                </button>
+
+                {/* Access Level Dropdown */}
+                <div className="relative shrink-0">
+                  <select
+                    value={accessLevel}
+                    onChange={(e) => setAccessLevel(e.target.value as any)}
+                    className="h-9 rounded-xl bg-[var(--input)] border border-[var(--border)] pl-3 pr-7 text-xs text-white focus:outline-none focus:border-[var(--accent)] appearance-none cursor-pointer"
+                  >
+                    <option value="full">Full</option>
+                    <option value="editor">Editor</option>
+                    <option value="uploader">Uploader</option>
+                    <option value="commenter">Commenter</option>
+                    <option value="viewer">Viewer</option>
+                  </select>
+                  <ChevronDown className="w-3 h-3 text-[var(--text-3)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Chosen People Tags from Picker */}
+              {chosenPeople.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-[var(--bg)] border border-[var(--border)]">
+                  {chosenPeople.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-1.5 pl-1.5 pr-2 py-1 rounded-md bg-[var(--hover)] border border-[var(--border)] text-xs text-white"
+                    >
+                      <UserAvatar
+                        id={p.id}
+                        name={p.name}
+                        email={p.email}
+                        avatarUrl={p.picture_url}
+                        size={18}
+                      />
+                      <span className="max-w-[130px] truncate">{p.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveChosenPerson(p.id)}
+                        className="p-0.5 text-[var(--text-3)] hover:text-white transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* External Email Input (Fallback / Optional) */}
+              <div className="relative">
                 <input
                   type="text"
                   value={selectedContact ? selectedContact.name : query}
@@ -136,54 +213,36 @@ export function ManageAccessDialog({
                     setSelectedContact(null);
                     setQuery(e.target.value);
                   }}
-                  placeholder="Name or email"
-                  className="w-full h-9 rounded-xl bg-[var(--input)] border border-[var(--border)] px-3 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3]"
+                  placeholder="Or invite by email address..."
+                  className="w-full h-8 rounded-lg bg-[var(--input)]/60 border border-[var(--border)] px-3 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[var(--accent)]"
                 />
                 {selectedContact && (
                   <button
                     type="button"
                     onClick={() => setSelectedContact(null)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-3)] hover:text-white"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-3)] hover:text-white"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-3 h-3" />
                   </button>
                 )}
               </div>
 
-              {/* Access Level Dropdown */}
-              <div className="relative">
-                <select
-                  value={accessLevel}
-                  onChange={(e) => setAccessLevel(e.target.value as any)}
-                  className="h-9 rounded-xl bg-[var(--input)] border border-[var(--border)] pl-3 pr-7 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none"
-                >
-                  <option value="full">Full</option>
-                  <option value="editor">Editor</option>
-                  <option value="uploader">Uploader</option>
-                  <option value="commenter">Commenter</option>
-                  <option value="viewer">Viewer</option>
-                </select>
-                <ChevronDown className="w-3 h-3 text-[var(--text-3)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              {/* Hint + Can Download switch */}
+              <div className="flex items-center justify-between text-xs text-[var(--text-2)] px-1 pt-0.5">
+                <span>Add people with chosen access level</span>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={canDownload}
+                    onChange={(e) => setCanDownload(e.target.checked)}
+                    className="rounded border-[var(--border)] text-[var(--accent)] focus:ring-0"
+                  />
+                  <span>Can download</span>
+                </label>
               </div>
             </div>
-
-            {/* Hint + Can Download switch */}
-            <div className="flex items-center justify-between text-xs text-[var(--text-2)] px-1">
-              <span>Add a new or existing member</span>
-              <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={canDownload}
-                  onChange={(e) => setCanDownload(e.target.checked)}
-                  className="rounded border-[var(--border)] text-[#4876F3] focus:ring-0"
-                />
-                <span>Can download</span>
-              </label>
-            </div>
-          </div>
-
           {/* Suggested List (team and client contacts) */}
-          {filteredSuggested.length > 0 && !selectedContact && (
+          {filteredSuggested.length > 0 && !selectedContact && chosenPeople.length === 0 && (
             <div className="space-y-1.5">
               <span className="text-xs font-semibold text-[var(--text-3)]">
                 Suggested
@@ -199,9 +258,7 @@ export function ManageAccessDialog({
                     className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--input)] cursor-pointer transition-colors"
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className="h-6 w-6 rounded-full bg-[#4876F3] text-white text-xs font-bold flex items-center justify-center">
-                        {s.name.slice(0, 1)}
-                      </div>
+                      <UserAvatar id={s.id} name={s.name} email={s.email} size={24} />
                       <div>
                         <p className="text-xs font-semibold text-white leading-none">{s.name}</p>
                         <p className="text-xs text-[var(--text-3)] leading-none mt-1">{s.email}</p>
@@ -225,7 +282,7 @@ export function ManageAccessDialog({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Add a message (optional)"
-              className="w-full rounded-xl bg-[var(--input)] border border-[var(--border)] p-3 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3] resize-none"
+              className="w-full rounded-xl bg-[var(--input)] border border-[var(--border)] p-3 text-xs text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[var(--accent)] resize-none"
             />
           </div>
 
@@ -236,12 +293,12 @@ export function ManageAccessDialog({
               className="flex items-center justify-between cursor-pointer select-none"
             >
               <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#4876F3]" />
+                <Users className="w-4 h-4 text-[var(--accent)]" />
                 <span className="text-xs font-semibold text-white">
                   {members.length} {members.length === 1 ? "member" : "members"}
                 </span>
               </div>
-              <span className="text-xs font-semibold text-[#4876F3] hover:underline">
+              <span className="text-xs font-semibold text-[var(--accent)] hover:underline">
                 {isManagingMembers ? "Collapse" : "Manage"}
               </span>
             </div>
@@ -264,9 +321,7 @@ export function ManageAccessDialog({
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
-                          <div className="h-6 w-6 rounded-full bg-[#4876F3] text-white text-xs font-bold flex items-center justify-center shrink-0">
-                            {(m.name || m.email).slice(0, 1)}
-                          </div>
+                          <UserAvatar id={m.id} name={m.name} email={m.email} size={24} />
                           <div className="truncate">
                             <p className="text-xs font-medium text-white truncate leading-none">
                               {m.name || m.email}
@@ -331,14 +386,41 @@ export function ManageAccessDialog({
           </button>
           <button
             type="button"
-            disabled={submitting || (!selectedContact && !query.trim())}
+            disabled={submitting || (chosenPeople.length === 0 && !selectedContact && !query.trim())}
             onClick={handleAdd}
-            className="h-9 px-5 rounded-xl bg-[#4876F3] text-xs font-semibold text-white hover:bg-[#3B67E0] transition-colors disabled:opacity-50"
+            className="h-9 px-5 rounded-xl bg-[var(--button)] text-xs font-semibold text-white hover:bg-[var(--button-hover)] transition-colors disabled:opacity-50 cursor-pointer"
           >
-            {submitting ? "Adding..." : "Add"}
+            {submitting ? "Adding..." : chosenPeople.length > 0 ? `Add (${chosenPeople.length})` : "Add"}
           </button>
         </div>
       </motion.div>
     </div>
+
+    {/* P2 Picker - Add people */}
+    <EntityPicker
+      isOpen={showAddPeoplePicker}
+      onClose={() => setShowAddPeoplePicker(false)}
+      tabs={["staff", "editors", "client_people"]}
+      mode="multi"
+      title="Add people"
+      subtitle="Choose team members or client contacts to add."
+      disabledIds={[...disabledMemberIds, ...disabledMemberEmails]}
+      disabledReason="Already has access"
+      primaryButtonText={(count) =>
+        count > 0 ? `Add ${count} ${count === 1 ? "person" : "people"}` : "Add people"
+      }
+      onConfirm={(entities) => {
+        setChosenPeople((prev) => {
+          const next = [...prev];
+          for (const ent of entities) {
+            if (!next.some((p) => p.id === ent.id)) {
+              next.push(ent);
+            }
+          }
+          return next;
+        });
+      }}
+    />
+  </>
   );
 }

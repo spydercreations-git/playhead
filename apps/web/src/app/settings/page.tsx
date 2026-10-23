@@ -1,12 +1,72 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/use-auth";
-import { Settings as SettingsIcon, Bell, Database, Building2, User, Shield } from "@/components/ui/icon";
+import {
+  Settings as SettingsIcon,
+  Bell,
+  Database,
+  Building2,
+  User,
+  Shield,
+  Globe,
+  Check,
+} from "@/components/ui/icon";
+import {
+  useUserTimezone,
+  getTimezoneOffsetString,
+  getTimezoneAbbr,
+  formatTimezoneBadge,
+} from "@/lib/timezone";
+import { TimezoneSelect } from "@/components/ui/timezone-select";
 
 export default function SettingsPage() {
   const { user, company, role, hasPermission, isClient } = useAuth();
+  const {
+    preference,
+    effectiveTimezone,
+    detectedTimezone,
+    isAutodetect,
+    setTimezone,
+  } = useUserTimezone();
+
+  const [savedFeedback, setSavedFeedback] = useState(false);
+  const [currentTimeStr, setCurrentTimeStr] = useState("");
+
+  const activeOffset = getTimezoneOffsetString(effectiveTimezone);
+  const activeAbbr = getTimezoneAbbr(effectiveTimezone);
+
+  useEffect(() => {
+    function updateClock() {
+      try {
+        const str = new Intl.DateTimeFormat("en-US", {
+          timeZone: effectiveTimezone,
+          hour: "numeric",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+        }).format(new Date());
+        setCurrentTimeStr(str);
+      } catch {
+        setCurrentTimeStr("");
+      }
+    }
+    updateClock();
+    const interval = setInterval(updateClock, 1000);
+    return () => clearInterval(interval);
+  }, [effectiveTimezone]);
+
+  function handleTimezoneChange(newTz: string) {
+    setTimezone(newTz);
+    setSavedFeedback(true);
+    setTimeout(() => {
+      setSavedFeedback(false);
+    }, 2500);
+  }
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-8">
@@ -36,6 +96,57 @@ export default function SettingsPage() {
               </span>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Timezone & Regional Preferences Card */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5 space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--input)] text-[#4876F3]">
+              <Globe className="w-5 h-5 text-[#4876F3]" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-white">
+                Timezone & Regional Preferences
+              </h2>
+              <p className="text-xs text-[var(--text-2)]">
+                Choose your local timezone for deadlines, task scheduling, and activity timestamps.
+              </p>
+            </div>
+          </div>
+          {savedFeedback && (
+            <span className="flex items-center gap-1.5 text-[13px] text-[#3fcf8e] bg-[#3fcf8e]/10 border border-[#3fcf8e]/20 px-3 py-1 rounded-full font-medium shrink-0 animate-in fade-in duration-200">
+              <Check size={14} className="text-[#3fcf8e]" />
+              <span>Saved</span>
+            </span>
+          )}
+        </div>
+
+        <div className="max-w-md pt-1">
+          <TimezoneSelect
+            value={preference}
+            onChange={handleTimezoneChange}
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px] text-[var(--text-3)] pt-2 border-t border-[var(--border)]">
+          <div>
+            System detected:{" "}
+            <span className="text-white font-medium">{detectedTimezone}</span>
+          </div>
+          <div>
+            Active offset:{" "}
+            <span className="text-white font-medium">
+              {formatTimezoneBadge(effectiveTimezone)}
+            </span>
+          </div>
+          {currentTimeStr && (
+            <div>
+              Current time:{" "}
+              <span className="text-white font-medium">{currentTimeStr}</span>
+            </div>
+          )}
         </div>
       </div>
 

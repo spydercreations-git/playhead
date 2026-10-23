@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -8,10 +8,20 @@ import {
   Clock,
   ChevronDown,
 } from "@/components/ui/icon";
+import {
+  useUserTimezone,
+  zonedToUtc,
+  getZonedParts,
+  formatFriendlyDateInTimezone,
+  resolveEffectiveTimezone,
+} from "@/lib/timezone";
+import { TimezoneSelect } from "@/components/ui/timezone-select";
 
 interface CustomDatePickerProps {
   value?: string; // ISO UTC string, e.g. "2026-10-24T18:00:00Z"
   onChange: (isoString: string) => void;
+  timezone?: string;
+  onTimezoneChange?: (tz: string) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -56,44 +66,15 @@ function generateTimeOptions(): { label: string; value: string }[] {
 
 const TIME_OPTIONS = generateTimeOptions();
 
-export function formatFriendlyDate(isoString?: string): string {
-  if (!isoString) return "";
-  const date = new Date(isoString);
-  if (isNaN(date.getTime())) return "";
-
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const targetDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-  const diffTime = targetDay.getTime() - today.getTime();
-  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-  // Format time (e.g. "6:00 PM")
-  const hours = date.getHours();
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-  const period = hours >= 12 ? "PM" : "AM";
-  const displayHours = hours % 12 === 0 ? 12 : hours % 12;
-  const timeStr = `${displayHours}:${minutes} ${period}`;
-
-  // Month & Day (e.g. "Oct 24")
-  const monthStr = date.toLocaleDateString("en-US", { month: "short" });
-  const dayNum = date.getDate();
-
-  if (diffDays === 0) {
-    return `Today · ${timeStr}`;
-  }
-  if (diffDays === 1) {
-    return `Tomorrow, ${monthStr} ${dayNum} · ${timeStr}`;
-  }
-
-  // e.g. "Fri, Oct 30 · 6:00 PM"
-  const weekdayStr = date.toLocaleDateString("en-US", { weekday: "short" });
-  return `${weekdayStr}, ${monthStr} ${dayNum} · ${timeStr}`;
+export function formatFriendlyDate(isoString?: string, timeZone?: string): string {
+  return formatFriendlyDateInTimezone(isoString, timeZone);
 }
 
 export function CustomDatePicker({
   value,
   onChange,
+  timezone,
+  onTimezoneChange,
   placeholder = "Select deadline",
   disabled = false,
   className = "",
@@ -101,34 +82,57 @@ export function CustomDatePicker({
   const [isOpen, setIsOpen] = useState(false);
   const [timeDropdownOpen, setTimeDropdownOpen] = useState(false);
 
-  // Parse current selected date or fallback to default
-  const parsedDate = value ? new Date(value) : null;
-  const validParsed = parsedDate && !isNaN(parsedDate.getTime()) ? parsedDate : null;
+  const {
+    preference: userTzPref,
+    effectiveTimezone,
+    setTimezone,
+  } = useUserTimezone();
+
+  const activeTz = timezone ? resolveEffectiveTimezone(timezone) : effectiveTimezone;
+  const activeTzPref = timezone || userTzPref;
+
+  // Extract wall-clock values in the active timezone
+  const validParsed = useMemo(() => {
+    if (!value) return null;
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return null;
+    return getZonedParts(d, activeTz);
+  }, [value, activeTz]);
+
+  const nowParts = useMemo(() => getZonedParts(new Date(), activeTz), [activeTz]);
+  const today = useMemo(
+    () => new Date(nowParts.year, nowParts.month, nowParts.day),
+    [nowParts]
+  );
+  const tomorrow = useMemo(
+    () => new Date(nowParts.year, nowParts.month, nowParts.day + 1),
+    [nowParts]
+  );
 
   // Internal state for calendar navigation
-  const [viewYear, setViewYear] = useState<number>(
-    validParsed ? validParsed.getFullYear() : new Date().getFullYear()
+  const [viewYear, setViewYear] = useState<number>(() =>
+    validParsed ? validParsed.year : nowParts.year
   );
-  const [viewMonth, setViewMonth] = useState<number>(
-    validParsed ? validParsed.getMonth() : new Date().getMonth()
+  const [viewMonth, setViewMonth] = useState<number>(() =>
+    validParsed ? validParsed.month : nowParts.month
   );
 
   // Selected date components
-  const [selectedYear, setSelectedYear] = useState<number | null>(
-    validParsed ? validParsed.getFullYear() : null
+  const [selectedYear, setSelectedYear] = useState<number | null>(() =>
+    validParsed ? validParsed.year : null
   );
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(
-    validParsed ? validParsed.getMonth() : null
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(() =>
+    validParsed ? validParsed.month : null
   );
-  const [selectedDay, setSelectedDay] = useState<number | null>(
-    validParsed ? validParsed.getDate() : null
+  const [selectedDay, setSelectedDay] = useState<number | null>(() =>
+    validParsed ? validParsed.day : null
   );
 
   // Selected time: default to 18:00 (6:00 PM)
   const [selectedTime, setSelectedTime] = useState<string>(() => {
     if (validParsed) {
-      const hh = validParsed.getHours().toString().padStart(2, "0");
-      const mm = validParsed.getMinutes().toString().padStart(2, "0");
+      const hh = validParsed.hour.toString().padStart(2, "0");
+      const mm = validParsed.minute.toString().padStart(2, "0");
       return `${hh}:${mm}`;
     }
     return "18:00";
@@ -137,22 +141,23 @@ export function CustomDatePicker({
   const containerRef = useRef<HTMLDivElement>(null);
   const timeListRef = useRef<HTMLDivElement>(null);
 
-  // Sync state if external value changes
+  // Sync state if external value or timezone changes
   useEffect(() => {
-    if (value) {
-      const d = new Date(value);
-      if (!isNaN(d.getTime())) {
-        setSelectedYear(d.getFullYear());
-        setSelectedMonth(d.getMonth());
-        setSelectedDay(d.getDate());
-        setViewYear(d.getFullYear());
-        setViewMonth(d.getMonth());
-        const hh = d.getHours().toString().padStart(2, "0");
-        const mm = d.getMinutes().toString().padStart(2, "0");
-        setSelectedTime(`${hh}:${mm}`);
-      }
+    if (validParsed) {
+      setSelectedYear(validParsed.year);
+      setSelectedMonth(validParsed.month);
+      setSelectedDay(validParsed.day);
+      setViewYear(validParsed.year);
+      setViewMonth(validParsed.month);
+      const hh = validParsed.hour.toString().padStart(2, "0");
+      const mm = validParsed.minute.toString().padStart(2, "0");
+      setSelectedTime(`${hh}:${mm}`);
+    } else if (!value) {
+      setSelectedYear(null);
+      setSelectedMonth(null);
+      setSelectedDay(null);
     }
-  }, [value]);
+  }, [value, validParsed]);
 
   // Click outside listener to close picker
   useEffect(() => {
@@ -179,11 +184,29 @@ export function CustomDatePicker({
   }, [timeDropdownOpen]);
 
   // Commit selected date + time into ISO UTC string
-  function commitSelection(year: number, month: number, day: number, timeStr: string) {
+  function commitSelection(
+    year: number,
+    month: number,
+    day: number,
+    timeStr: string,
+    tz = activeTz
+  ) {
     const [h, m] = timeStr.split(":").map(Number);
-    // Construct in local viewer time, then convert to UTC ISO string
-    const localDate = new Date(year, month, day, h, m, 0, 0);
-    onChange(localDate.toISOString());
+    const utcDate = zonedToUtc(year, month, day, h, m, tz);
+    onChange(utcDate.toISOString());
+  }
+
+  // Handle timezone change inside the picker
+  function handleTimezoneChange(newTz: string) {
+    if (onTimezoneChange) {
+      onTimezoneChange(newTz);
+    } else {
+      setTimezone(newTz);
+    }
+    const resolved = resolveEffectiveTimezone(newTz);
+    if (selectedYear !== null && selectedMonth !== null && selectedDay !== null) {
+      commitSelection(selectedYear, selectedMonth, selectedDay, selectedTime, resolved);
+    }
   }
 
   // Handle day click
@@ -201,21 +224,20 @@ export function CustomDatePicker({
     if (selectedYear !== null && selectedMonth !== null && selectedDay !== null) {
       commitSelection(selectedYear, selectedMonth, selectedDay, timeVal);
     } else {
-      // If no day picked yet, default to Tomorrow or Today
-      const now = new Date();
-      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      // If no day picked yet, default to Tomorrow
       setSelectedYear(tomorrow.getFullYear());
       setSelectedMonth(tomorrow.getMonth());
       setSelectedDay(tomorrow.getDate());
-      commitSelection(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), timeVal);
+      commitSelection(
+        tomorrow.getFullYear(),
+        tomorrow.getMonth(),
+        tomorrow.getDate(),
+        timeVal
+      );
     }
   }
 
   // Quick chips
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-
   function isChipActive(targetDate: Date): boolean {
     if (selectedYear === null || selectedMonth === null || selectedDay === null) return false;
     return (
@@ -291,7 +313,11 @@ export function CustomDatePicker({
     if (e.key === "ArrowLeft") {
       e.preventDefault();
       if (selectedDay !== null) {
-        const prevDate = new Date(selectedYear || viewYear, selectedMonth || viewMonth, selectedDay - 1);
+        const prevDate = new Date(
+          selectedYear || viewYear,
+          selectedMonth || viewMonth,
+          selectedDay - 1
+        );
         if (prevDate >= today) {
           handleSelectChip(prevDate);
         }
@@ -301,7 +327,11 @@ export function CustomDatePicker({
     } else if (e.key === "ArrowRight") {
       e.preventDefault();
       if (selectedDay !== null) {
-        const nextDate = new Date(selectedYear || viewYear, selectedMonth || viewMonth, selectedDay + 1);
+        const nextDate = new Date(
+          selectedYear || viewYear,
+          selectedMonth || viewMonth,
+          selectedDay + 1
+        );
         handleSelectChip(nextDate);
       } else {
         handleSelectChip(today);
@@ -309,7 +339,11 @@ export function CustomDatePicker({
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       if (selectedDay !== null) {
-        const prevWeek = new Date(selectedYear || viewYear, selectedMonth || viewMonth, selectedDay - 7);
+        const prevWeek = new Date(
+          selectedYear || viewYear,
+          selectedMonth || viewMonth,
+          selectedDay - 7
+        );
         if (prevWeek >= today) {
           handleSelectChip(prevWeek);
         }
@@ -317,7 +351,11 @@ export function CustomDatePicker({
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       if (selectedDay !== null) {
-        const nextWeek = new Date(selectedYear || viewYear, selectedMonth || viewMonth, selectedDay + 7);
+        const nextWeek = new Date(
+          selectedYear || viewYear,
+          selectedMonth || viewMonth,
+          selectedDay + 7
+        );
         handleSelectChip(nextWeek);
       } else {
         handleSelectChip(today);
@@ -328,7 +366,7 @@ export function CustomDatePicker({
     }
   }
 
-  const friendlyDisplay = formatFriendlyDate(value);
+  const friendlyDisplay = formatFriendlyDateInTimezone(value, activeTz);
   const currentTimeOption = TIME_OPTIONS.find((t) => t.value === selectedTime) || {
     label: "6:00 PM",
     value: "18:00",
@@ -350,7 +388,13 @@ export function CustomDatePicker({
       >
         <div className="flex items-center gap-2.5 truncate">
           <CalendarIcon size={16} className="text-[var(--text-3)] shrink-0" />
-          <span className={friendlyDisplay ? "text-white truncate" : "text-[var(--text-3)] truncate"}>
+          <span
+            className={
+              friendlyDisplay
+                ? "text-white truncate font-medium"
+                : "text-[var(--text-3)] truncate"
+            }
+          >
             {friendlyDisplay || placeholder}
           </span>
         </div>
@@ -361,7 +405,7 @@ export function CustomDatePicker({
         <div
           tabIndex={-1}
           onKeyDown={handleKeyDown}
-          className="absolute top-full mt-1.5 left-0 w-full rounded-[16px] bg-[#161618] border border-[var(--border)] p-3.5 shadow-xl z-50 text-[13px] animate-in fade-in zoom-in-95 duration-100 select-none"
+          className="absolute top-full mt-1.5 left-0 w-full min-w-[280px] rounded-[16px] bg-[#161618] border border-[var(--border)] p-3.5 shadow-xl z-50 text-[13px] animate-in fade-in zoom-in-95 duration-100 select-none"
         >
           {/* Quick Chips Row */}
           <div className="flex items-center gap-2 mb-3.5">
@@ -399,7 +443,7 @@ export function CustomDatePicker({
                 type="button"
                 onClick={handlePrevMonth}
                 aria-label="Previous month"
-                className="h-7 w-7 rounded-[6px] flex items-center justify-center text-[var(--text-3)] hover:text-white hover:bg-[var(--hover)] transition-colors"
+                className="h-7 w-7 rounded-[6px] flex items-center justify-center text-[var(--text-3)] hover:text-white hover:bg-[var(--hover)] transition-colors cursor-pointer"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -407,7 +451,7 @@ export function CustomDatePicker({
                 type="button"
                 onClick={handleNextMonth}
                 aria-label="Next month"
-                className="h-7 w-7 rounded-[6px] flex items-center justify-center text-[var(--text-3)] hover:text-white hover:bg-[var(--hover)] transition-colors"
+                className="h-7 w-7 rounded-[6px] flex items-center justify-center text-[var(--text-3)] hover:text-white hover:bg-[var(--hover)] transition-colors cursor-pointer"
               >
                 <ChevronRight size={16} />
               </button>
@@ -417,7 +461,10 @@ export function CustomDatePicker({
           {/* Days of Week Row */}
           <div className="grid grid-cols-7 gap-1 text-center mb-2">
             {WEEKDAY_NAMES.map((name, i) => (
-              <span key={i} className="text-[13px] font-medium text-[var(--text-3)]">
+              <span
+                key={i}
+                className="text-[13px] font-medium text-[var(--text-3)]"
+              >
                 {name}
               </span>
             ))}
@@ -450,7 +497,8 @@ export function CustomDatePicker({
                 cellClass +=
                   "border border-white/60 text-white font-medium hover:bg-[var(--hover)] cursor-pointer";
               } else if (isPast) {
-                cellClass += "text-[var(--text-3)]/30 cursor-not-allowed pointer-events-none";
+                cellClass +=
+                  "text-[var(--text-3)]/30 cursor-not-allowed pointer-events-none";
               } else {
                 cellClass += "text-white hover:bg-[var(--hover)] cursor-pointer";
               }
@@ -472,49 +520,59 @@ export function CustomDatePicker({
           {/* Divider */}
           <div className="h-px bg-[var(--border)] -mx-4 mb-3" />
 
-          {/* Time Selector Row */}
-          <div className="flex items-center justify-between relative px-1">
-            <div className="flex items-center gap-2 text-[13px] text-[var(--text-2)]">
-              <Clock size={16} className="text-[var(--text-3)]" />
+          {/* Time & Timezone Row */}
+          <div className="flex items-center justify-between relative px-1 gap-2">
+            <div className="flex items-center gap-1.5 text-[13px] text-[var(--text-2)] shrink-0">
+              <Clock size={15} className="text-[var(--text-3)]" />
               <span>Time</span>
             </div>
 
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setTimeDropdownOpen((prev) => !prev)}
-                className="h-8 px-3 rounded-[8px] bg-[var(--input)] border border-[var(--border)] hover:border-[var(--border-strong)] text-[13px] font-medium text-white flex items-center gap-2 transition-colors"
-              >
-                <span>{currentTimeOption.label}</span>
-                <ChevronDown size={14} className="text-[var(--text-3)]" />
-              </button>
+            <div className="flex items-center gap-2">
+              {/* Compact Timezone Selector */}
+              <TimezoneSelect
+                variant="compact"
+                value={activeTzPref}
+                onChange={handleTimezoneChange}
+              />
 
-              {/* Time Dropdown Menu connected to bottom */}
-              {timeDropdownOpen && (
-                <div
-                  ref={timeListRef}
-                  className="absolute bottom-full mb-1.5 right-0 w-32 max-h-48 overflow-y-auto rounded-[10px] bg-[var(--panel-raised)] border border-[var(--border)] py-1 shadow-xl z-50 text-[13px]"
+              {/* Time Dropdown Trigger */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setTimeDropdownOpen((prev) => !prev)}
+                  className="h-8 px-2.5 rounded-[8px] bg-[var(--input)] border border-[var(--border)] hover:border-[var(--border-strong)] text-[13px] font-medium text-white flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
-                  {TIME_OPTIONS.map((opt) => {
-                    const isSelected = opt.value === selectedTime;
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        data-selected={isSelected}
-                        onClick={() => handleSelectTime(opt.value)}
-                        className={`w-full px-3 py-1.5 text-left text-[13px] transition-colors flex items-center justify-between ${
-                          isSelected
-                            ? "bg-[#4876F3] text-white font-semibold"
-                            : "text-white hover:bg-[var(--hover)]"
-                        }`}
-                      >
-                        <span>{opt.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                  <span>{currentTimeOption.label}</span>
+                  <ChevronDown size={14} className="text-[var(--text-3)]" />
+                </button>
+
+                {/* Time Dropdown Menu connected to bottom */}
+                {timeDropdownOpen && (
+                  <div
+                    ref={timeListRef}
+                    className="absolute bottom-full mb-1.5 right-0 w-32 max-h-48 overflow-y-auto rounded-[10px] bg-[var(--panel-raised)] border border-[var(--border)] py-1 shadow-xl z-50 text-[13px]"
+                  >
+                    {TIME_OPTIONS.map((opt) => {
+                      const isSelected = opt.value === selectedTime;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          data-selected={isSelected}
+                          onClick={() => handleSelectTime(opt.value)}
+                          className={`w-full px-3 py-1.5 text-left text-[13px] transition-colors flex items-center justify-between cursor-pointer ${
+                            isSelected
+                              ? "bg-[#4876F3] text-white font-semibold"
+                              : "text-white hover:bg-[var(--hover)]"
+                          }`}
+                        >
+                          <span>{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

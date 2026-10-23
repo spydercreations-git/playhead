@@ -344,10 +344,10 @@ export function EntityPicker({
               <div
                 key={t.key}
                 title="Not available here"
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-[var(--text-3)] cursor-not-allowed select-none opacity-60"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-[var(--text-3)] cursor-not-allowed select-none opacity-60"
               >
                 <span>{t.label}</span>
-                <Lock size={12} className="shrink-0" />
+                <Lock size={14} className="shrink-0 text-[var(--text-3)]" />
               </div>
             );
           })}

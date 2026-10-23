@@ -129,7 +129,7 @@ export function ClientFilterButton({
         )}
         <span className="font-medium truncate max-w-[280px]">{buttonLabel}</span>
         {isFiltered && (
-          <span className="px-1.5 py-0.5 rounded-full bg-[var(--accent)] text-white text-[12px] font-bold shrink-0">
+          <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--accent)] text-white text-xs font-semibold inline-flex items-center justify-center leading-none tabular-nums shrink-0">
             {selectedClientIds.length}
           </span>
         )}

@@ -114,3 +114,15 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-strong);
 }
+
+/* Google Material Icons utility styling */
+.material-icons, .material-icons-outlined, .material-symbols-rounded {
+  font-display: swap;
+  user-select: none;
+  vertical-align: middle;
+  line-height: 1;
+  display: inline-block;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}

@@ -38,7 +38,7 @@ function getIconColor(className: string = "", explicitColor?: string, styleColor
   if (styleColor) return styleColor;
 
   // Status icons & active/selected state keep their meaningful color
-  const statusRegex = /(text-(?:\[#(?:3FCF8E|3fcf8e|F0506E|f0506e|FFD43B|ffd43b|4876F3|4876f3|3B67E0|3b67e0|3560D6|3560d6)\]|\[var\(--(?:status|accent|success|danger|warning|button-text)[^)]*\)\]|emerald|green|red|rose|amber|yellow))/i;
+  const statusRegex = /(text-(?:\[#(?:3FCF8E|3fcf8e|F0506E|f0506e|FFD43B|ffd43b|4876F3|4876f3|3B67E0|3b67e0|3560D6|3560d6)\]|\[var\(--(?:status|accent|success|danger|warning|button-text|text|text-2|text-3)[^)]*\)\]|emerald|green|red|rose|amber|yellow|white|gray|zinc))/i;
   
   if (statusRegex.test(className)) {
     return undefined; // Let Tailwind text color class take effect

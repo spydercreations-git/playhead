@@ -77,56 +77,30 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     router.push("/login");
   }
 
-function LibraryNavIcon({ size = 20, filled = false, className = "" }: { size?: number; filled?: boolean; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <rect x="3" y="4" width="18" height="16" rx="4" stroke="currentColor" strokeWidth="1.75" fill={filled ? "currentColor" : "none"} fillOpacity={filled ? 0.2 : 0} />
-      <path d="M10 8.5L16 12L10 15.5V8.5Z" fill="currentColor" />
-    </svg>
-  );
-}
-
-function TasksNavIcon({ size = 20, filled = false, className = "" }: { size?: number; filled?: boolean; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.75" fill={filled ? "currentColor" : "none"} fillOpacity={filled ? 0.2 : 0} />
-      <path d="M8.5 12.2L10.8 14.5L15.8 9.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function QuickLinksNavIcon({ size = 20, filled = false, className = "" }: { size?: number; filled?: boolean; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <path d="M9 17H7A5 5 0 0 1 7 7H9M15 7H17A5 5 0 0 1 17 17H15M8 12H16" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
   interface NavItem {
     name: string;
     href: string;
-    icon: any;
+    icon: string;
     show: boolean;
     badge?: number | string;
   }
 
-  // Exact navigation items from L1 Library design
+  // Exact navigation items from L1 Library design with Google Material Icons
   const navItems: NavItem[] = [
-    { name: "Home", href: "/", icon: Home, show: true },
-    { name: "Tasks", href: "/tasks", icon: TasksNavIcon, show: true },
-    { name: "Library", href: "/library", icon: LibraryNavIcon, show: true },
-    { name: "Clients", href: "/clients", icon: Group, show: true },
-    { name: "Documents", href: "/documents", icon: Description, show: true },
-    { name: "Quick links", href: "/quick-links", icon: QuickLinksNavIcon, show: true },
-    { name: "Trash", href: "/trash", icon: Delete, show: true },
+    { name: "Home", href: "/", icon: "home", show: true },
+    { name: "Tasks", href: "/tasks", icon: "task_alt", show: true },
+    { name: "Library", href: "/library", icon: "video_library", show: true },
+    { name: "Clients", href: "/clients", icon: "group", show: true },
+    { name: "Documents", href: "/documents", icon: "description", show: true },
+    { name: "Quick links", href: "/quick-links", icon: "link", show: true },
+    { name: "Trash", href: "/trash", icon: "delete", show: true },
   ];
 
-  // Exact bottom navigation items from L1 Library design: Admin, Storage, Settings
-  const bottomNavItems = [
-    { name: "Admin", href: "/admin", icon: Shield, show: isAdmin },
-    { name: "Storage", href: "/storage", icon: Database, show: !isClient && (role === "Staff" || isAdmin || isExecutive) },
-    { name: "Settings", href: "/settings", icon: Settings, show: true },
+  // Exact bottom navigation items: Admin, Storage, Settings
+  const bottomNavItems: NavItem[] = [
+    { name: "Admin", href: "/admin", icon: "admin_panel_settings", show: isAdmin },
+    { name: "Storage", href: "/storage", icon: "cloud", show: !isClient && (role === "Staff" || isAdmin || isExecutive) },
+    { name: "Settings", href: "/settings", icon: "settings", show: true },
   ];
 
   const displayName = useMemo(() => {
@@ -264,18 +238,21 @@ function QuickLinksNavIcon({ size = 20, filled = false, className = "" }: { size
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex h-9 w-[216px] mx-auto items-center justify-between rounded-[8px] px-3 text-sm transition-colors duration-150 ${
+                  className={`group flex h-9 w-[216px] mx-auto items-center justify-between rounded-[8px] px-3 text-sm transition-colors duration-150 ${
                     isActive
                       ? "bg-[var(--hover)] text-white font-semibold"
                       : "text-[var(--text-2)] font-medium hover:bg-[var(--hover)]/60 hover:text-white"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <item.icon
-                      size={20}
-                      filled={isActive}
-                      className={isActive ? "text-white" : "text-[var(--text-2)]"}
-                    />
+                    <span
+                      className={`material-icons text-[20px] select-none leading-none shrink-0 transition-colors ${
+                        isActive ? "text-white" : "text-[var(--text-2)] group-hover:text-white"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {item.icon}
+                    </span>
                     <span>{item.name}</span>
                   </div>
 
@@ -289,7 +266,7 @@ function QuickLinksNavIcon({ size = 20, filled = false, className = "" }: { size
             })}
         </div>
 
-        {/* Bottom Navigation: Team, Settings, Storage */}
+        {/* Bottom Navigation: Admin, Storage, Settings */}
         <div className="px-2 pt-2 pb-1 border-t border-[var(--border)] shrink-0 space-y-0.5">
           {bottomNavItems
             .filter((item) => item.show)
@@ -299,17 +276,20 @@ function QuickLinksNavIcon({ size = 20, filled = false, className = "" }: { size
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex h-9 w-[216px] mx-auto items-center gap-3 rounded-[8px] px-3 text-sm transition-colors duration-150 ${
+                  className={`group flex h-9 w-[216px] mx-auto items-center gap-3 rounded-[8px] px-3 text-sm transition-colors duration-150 ${
                     isActive
                       ? "bg-[var(--hover)] text-white font-semibold"
                       : "text-[var(--text-2)] font-medium hover:bg-[var(--hover)]/60 hover:text-white"
                   }`}
                 >
-                  <item.icon
-                    size={20}
-                    filled={isActive}
-                    className={isActive ? "text-white" : "text-[var(--text-2)]"}
-                  />
+                  <span
+                    className={`material-icons text-[20px] select-none leading-none shrink-0 transition-colors ${
+                      isActive ? "text-white" : "text-[var(--text-2)] group-hover:text-white"
+                    }`}
+                    aria-hidden="true"
+                  >
+                    {item.icon}
+                  </span>
                   <span>{item.name}</span>
                 </Link>
               );

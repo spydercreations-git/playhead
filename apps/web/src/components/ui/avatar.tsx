@@ -25,32 +25,38 @@ export function getInitials(name: string): string {
   return name.slice(0, 1).toUpperCase();
 }
 
-type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | number;
+export type AvatarSize = 20 | 28 | 32 | 40 | 80 | "xs" | "sm" | "md" | "lg" | "xl" | number;
 
-function resolveSizeInfo(size: AvatarSize, isSquare: boolean) {
+function resolveSizeInfo(size: AvatarSize, isSquare: boolean, cardTop: boolean = false) {
+  let px = 32;
   if (typeof size === "number") {
-    const rx = isSquare ? (size >= 40 ? "rounded-[10px]" : size >= 28 ? "rounded-[8px]" : "rounded-[6px]") : "rounded-full";
-    const textSize = size >= 40 ? "text-base" : size >= 30 ? "text-sm" : "text-xs";
-    return {
-      style: { width: `${size}px`, height: `${size}px` },
-      classes: `${rx} ${textSize}`,
-      px: size,
+    px = size;
+  } else {
+    const map: Record<string, number> = {
+      xs: 20,
+      sm: 28,
+      md: 32,
+      lg: 40,
+      xl: 80,
     };
+    px = map[size] || 32;
   }
 
-  const map: Record<string, { w: number; rxSquare: string; text: string }> = {
-    xs: { w: 20, rxSquare: "rounded-[5px]", text: "text-xs" },
-    sm: { w: 24, rxSquare: "rounded-[6px]", text: "text-xs" },
-    md: { w: 32, rxSquare: "rounded-[8px]", text: "text-sm" },
-    lg: { w: 40, rxSquare: "rounded-[10px]", text: "text-sm" },
-    xl: { w: 48, rxSquare: "rounded-[12px]", text: "text-base" },
-  };
+  // Corner radius rule:
+  // - ClientAvatar (square): Corner radius = size / 4 (16px -> 4px, 28px -> 7px, 40px -> 10px, 64px -> 16px).
+  //   On client cards the picture fills top and uses the card's 12px radius.
+  // - UserAvatar (person): always a perfect circle (border-radius 50%) at every size.
+  const radius = isSquare ? (cardTop ? "12px 12px 0 0" : `${Math.round(px / 4)}px`) : "50%";
+  const textSize = px >= 80 ? "text-xl font-bold" : px >= 40 ? "text-base font-semibold" : "text-xs font-semibold";
 
-  const item = map[size] || map.md;
   return {
-    style: { width: `${item.w}px`, height: `${item.w}px` },
-    classes: `${isSquare ? item.rxSquare : "rounded-full"} ${item.text}`,
-    px: item.w,
+    style: {
+      width: cardTop ? "100%" : `${px}px`,
+      height: `${px}px`,
+      borderRadius: radius,
+    },
+    classes: `${textSize} ${isSquare ? "" : "rounded-full"}`,
+    px,
   };
 }
 
@@ -60,6 +66,7 @@ export interface ClientAvatarProps extends React.HTMLAttributes<HTMLDivElement> 
   pictureUrl?: string | null;
   size?: AvatarSize;
   color?: string;
+  cardTop?: boolean;
   className?: string;
 }
 
@@ -67,6 +74,7 @@ export interface ClientAvatarProps extends React.HTMLAttributes<HTMLDivElement> 
  * Shared ClientAvatar (Square, rounded corners)
  * Displays real client uploaded picture, with smooth token placeholder while loading,
  * and graceful fallback to colored initials on 404 or image load error.
+ * Corner radius = size / 4.
  */
 export function ClientAvatar({
   name = "Client",
@@ -74,10 +82,12 @@ export function ClientAvatar({
   pictureUrl,
   size = "md",
   color,
+  cardTop = false,
   className = "",
+  style: propStyle,
   ...props
 }: ClientAvatarProps) {
-  const { style, classes, px } = resolveSizeInfo(size, true);
+  const { style, classes, px } = resolveSizeInfo(size, true, cardTop);
 
   // Compute best image URL: use provided pictureUrl or construct from id
   let rawUrl = pictureUrl;
@@ -101,7 +111,7 @@ export function ClientAvatar({
   if (rawUrl && !hasError) {
     return (
       <div
-        style={style}
+        style={{ ...style, ...propStyle }}
         className={`relative shrink-0 overflow-hidden select-none bg-[var(--panel-raised)] ${classes} ${className}`}
         title={name}
         {...props}
@@ -129,7 +139,7 @@ export function ClientAvatar({
 
   return (
     <div
-      style={{ ...style, backgroundColor: bgColor }}
+      style={{ ...style, ...propStyle, backgroundColor: bgColor }}
       className={`shrink-0 flex items-center justify-center font-semibold text-white select-none ${classes} ${className}`}
       title={name}
       {...props}
@@ -155,6 +165,7 @@ export interface UserAvatarProps extends React.HTMLAttributes<HTMLDivElement> {
  * Shared UserAvatar (Circle)
  * Displays real user profile photo, with smooth placeholder while loading,
  * and graceful fallback to colored initials on 404 or image load error.
+ * Always a perfect circle (border-radius 50%).
  */
 export function UserAvatar({
   name = "User",
@@ -166,6 +177,7 @@ export function UserAvatar({
   color,
   ring = false,
   className = "",
+  style: propStyle,
   ...props
 }: UserAvatarProps) {
   const { style, classes, px } = resolveSizeInfo(size, false);
@@ -193,7 +205,7 @@ export function UserAvatar({
   if (rawUrl && !hasError) {
     return (
       <div
-        style={style}
+        style={{ ...style, ...propStyle }}
         className={`relative shrink-0 overflow-hidden select-none bg-[var(--panel-raised)] ${classes} ${ringClass} ${className}`}
         title={displayName}
         {...props}
@@ -221,7 +233,7 @@ export function UserAvatar({
 
   return (
     <div
-      style={{ ...style, backgroundColor: bgColor }}
+      style={{ ...style, ...propStyle, backgroundColor: bgColor }}
       className={`shrink-0 flex items-center justify-center font-semibold text-white select-none ${classes} ${ringClass} ${className}`}
       title={displayName}
       {...props}

@@ -19,6 +19,7 @@ import {
   Trash2,
   AlertCircle,
 } from "@/components/ui/icon";
+import { UserAvatar } from "@/components/ui/avatar";
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -366,9 +367,7 @@ export function ShareModal({
                     {grants.map((g: any) => (
                       <div key={g.id} className="flex items-center justify-between p-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-[var(--panel)] flex items-center justify-center text-xs font-bold text-white ">
-                            {g.email.charAt(0)}
-                          </div>
+                          <UserAvatar name={g.email} email={g.email} size={32} />
                           <div>
                             <p className="text-xs font-medium text-white">{g.email}</p>
                             <p className="text-xs text-[var(--text-2)]">

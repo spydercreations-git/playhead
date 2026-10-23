@@ -582,12 +582,13 @@ export default function HomePage() {
 
                   return (
                     <div key={ev.id} className="flex items-start gap-3 text-xs">
-                      <div
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 mt-0.5"
-                        style={{ backgroundColor: avatarBg }}
-                      >
-                        {initial}
-                      </div>
+                      <UserAvatar
+                        id={ev.actor_id}
+                        avatarUrl={ev.actor_avatar}
+                        name={ev.actor_name}
+                        size={28}
+                        className="mt-0.5 shrink-0"
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-1">
                           <p className="text-white truncate">

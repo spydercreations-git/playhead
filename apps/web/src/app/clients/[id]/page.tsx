@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ProjectCard } from "@/components/cards/project-card";
 import { ChevronDown, X, MoreHorizontal, Edit, Trash2, Camera } from "@/components/ui/icon";
 import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
+import { ClientAvatar } from "@/components/ui/avatar";
 import { toast } from "@/lib/toast";
 
 export default function ClientDetailPage() {
@@ -224,17 +225,12 @@ export default function ClientDetailPage() {
                 className="hidden"
                 onChange={handleSelectClientFile}
               />
-              {client?.logo_key?.Valid && client.logo_key.String ? (
-                <img
-                  src={client.logo_key.String}
-                  alt={client?.name || "Client"}
-                  className="h-14 w-14 shrink-0 rounded-xl object-cover border border-[var(--border)]"
-                />
-              ) : (
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#4876F3]/20 text-xl font-bold text-[#4876F3]">
-                  {client?.name ? client.name.slice(0, 2).toUpperCase() : "CL"}
-                </div>
-              )}
+              <ClientAvatar
+                id={client?.id}
+                name={client?.name || "Client"}
+                pictureUrl={client?.logo_key?.Valid ? client.logo_key.String : undefined}
+                size={56}
+              />
               {hasPermission("clients.update") && (
                 <button
                   type="button"

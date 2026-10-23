@@ -142,8 +142,8 @@ const PROHIBITED_MOCKUP_PATTERNS = [
   { pattern: /\bLogo_pack\b/i, label: 'Logo_pack' },
 ];
 
-// Allowed text pixel sizes: 12, 13, 14, 15, 16, 18, 20, 28, 30
-const ALLOWED_TEXT_PX = new Set([12, 13, 14, 15, 16, 18, 20, 28, 30]);
+// Allowed text pixel sizes: 12, 13, 14, 15, 16, 17, 18, 20, 28, 30
+const ALLOWED_TEXT_PX = new Set([12, 13, 14, 15, 16, 17, 18, 20, 28, 30]);
 
 // Allowed radius pixel sizes: only 6, 8, 10, 12, 16, full
 const ALLOWED_RADIUS_PX = new Set([6, 8, 10, 12, 16]);

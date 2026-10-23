@@ -760,13 +760,14 @@ export function TaskPanel({
                         {task?.assigned && task.assigned.length > 0 ? (
                           <div className="flex items-center -space-x-1.5">
                             {task.assigned.map((a) => (
-                              <div
+                              <UserAvatar
                                 key={a.id}
+                                id={a.id}
+                                name={a.name}
+                                size={24}
+                                ring
                                 title={`${a.name} (${a.role})`}
-                                className="w-6 h-6 rounded-full bg-[var(--primary)] text-white text-[12px] font-semibold flex items-center justify-center border-2 border-[var(--panel)] shrink-0"
-                              >
-                                {a.name ? a.name.charAt(0).toUpperCase() : "U"}
-                              </div>
+                              />
                             ))}
                             <span className="text-xs text-white font-medium pl-3">
                               {task.assigned.map((a) => a.name).join(", ")}

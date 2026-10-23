@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import { formatBytes } from "@/lib/utils";
 import { AlertCircle } from "@/components/ui/icon";
+import { ClientAvatar } from "@/components/ui/avatar";
 import Link from "next/link";
 
 interface StorageBreakdown {
@@ -269,12 +270,11 @@ export default function StoragePage() {
                                 href={`/clients/${client.client_id}`}
                                 className="inline-flex items-center gap-3 group"
                               >
-                                <span
-                                  style={{ backgroundColor: badge.bg, color: badge.text }}
-                                  className="w-6 h-6 rounded flex items-center justify-center text-xs font-semibold shrink-0"
-                                >
-                                  {initial}
-                                </span>
+                                <ClientAvatar
+                                  id={client.client_id}
+                                  name={client.client_name}
+                                  size={24}
+                                />
                                 <span className="text-sm font-medium text-white group-hover:text-[#4876f3] transition-colors truncate max-w-xs">
                                   {client.client_name}
                                 </span>

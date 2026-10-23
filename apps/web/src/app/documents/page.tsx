@@ -22,6 +22,7 @@ import {
   User,
 } from "@/components/ui/icon";
 import { NewDocumentDialog } from "@/components/documents/new-document-dialog";
+import { UserAvatar } from "@/components/ui/avatar";
 import { toast } from "@/lib/toast";
 
 interface DocumentListItem {
@@ -577,12 +578,7 @@ export default function DocumentsPage() {
 
                 {/* Bottom Row: Avatar Initial + Time / Shared pill */}
                 <div className="flex items-center gap-1.5 mt-2 text-xs text-[var(--text-2)] truncate">
-                  <span
-                    className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-                    style={{ backgroundColor: avatarColor }}
-                  >
-                    {initial}
-                  </span>
+                  <UserAvatar name={authorName} size={16} />
                   <span className="truncate">
                     Edited {formatRelativeTime(doc.updated_at || doc.created_at)}
                     {doc.is_shared && " · Shared"}
@@ -724,9 +720,11 @@ export default function DocumentsPage() {
               {/* Owner item */}
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-6 h-6 rounded-full bg-[#4876F3] flex items-center justify-center text-xs font-bold text-white shrink-0">
-                    {sharingDoc.created_by_name?.charAt(0).toUpperCase() || "O"}
-                  </div>
+                  <UserAvatar
+                    name={sharingDoc.created_by_name || "Creator"}
+                    email={sharingDoc.created_by_email}
+                    size={24}
+                  />
                   <div className="min-w-0">
                     <p className="text-white truncate font-medium">
                       {sharingDoc.created_by_name || "Creator"}
@@ -743,12 +741,11 @@ export default function DocumentsPage() {
               {sharesList.map((s) => (
                 <div key={s.id} className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-                      style={{ backgroundColor: getAvatarColor(s.name || s.email) }}
-                    >
-                      {(s.name || s.email).charAt(0).toUpperCase()}
-                    </div>
+                    <UserAvatar
+                      name={s.name || s.email}
+                      email={s.email}
+                      size={24}
+                    />
                     <div className="min-w-0">
                       <p className="text-white truncate font-medium">{s.name || s.email}</p>
                       {s.name && <p className="text-xs text-[var(--text-3)] truncate">{s.email}</p>}

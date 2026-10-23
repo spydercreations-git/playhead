@@ -418,24 +418,28 @@ export default function DocumentsPage() {
           </div>
 
           {/* View Toggle */}
-          <div className="flex items-center bg-[var(--input)] rounded-[8px] p-0.5 border border-[var(--border)]">
+          <div className="h-9 p-[3px] rounded-[10px] bg-[var(--input)] border border-[var(--border)] inline-flex items-center gap-0.5 shrink-0">
             <button
+              type="button"
               onClick={() => setViewMode("grid")}
               title="Grid view"
-              className={`p-1.5 rounded-[6px] transition-colors ${
+              aria-label="Grid view"
+              className={`w-[30px] h-[30px] rounded-[7px] flex items-center justify-center transition-colors cursor-pointer ${
                 viewMode === "grid"
-                  ? "bg-[var(--panel)] text-white shadow-sm"
+                  ? "bg-[var(--hover)] text-white shadow-sm"
                   : "text-[var(--text-3)] hover:text-white"
               }`}
             >
               <LayoutGrid size={16} />
             </button>
             <button
+              type="button"
               onClick={() => setViewMode("list")}
               title="List view"
-              className={`p-1.5 rounded-[6px] transition-colors ${
+              aria-label="List view"
+              className={`w-[30px] h-[30px] rounded-[7px] flex items-center justify-center transition-colors cursor-pointer ${
                 viewMode === "list"
-                  ? "bg-[var(--panel)] text-white shadow-sm"
+                  ? "bg-[var(--hover)] text-white shadow-sm"
                   : "text-[var(--text-3)] hover:text-white"
               }`}
             >

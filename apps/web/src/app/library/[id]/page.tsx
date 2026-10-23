@@ -421,20 +421,26 @@ export default function LibraryProjectPage() {
           </div>
 
           {/* Grid / List switch */}
-          <div className="flex rounded-[8px] bg-[var(--panel)] border border-[var(--border)] p-0.5">
+          <div className="h-9 p-[3px] rounded-[10px] bg-[var(--input)] border border-[var(--border)] inline-flex items-center gap-0.5 shrink-0">
             <button
+              type="button"
               onClick={() => setViewMode("grid")}
-              className={`p-1.5 rounded-[6px] transition-colors ${
-                viewMode === "grid" ? "bg-[var(--border)] text-white" : "text-[var(--text-3)] hover:text-white"
+              className={`w-[30px] h-[30px] rounded-[7px] flex items-center justify-center transition-colors cursor-pointer ${
+                viewMode === "grid" ? "bg-[var(--hover)] text-white shadow-sm" : "text-[var(--text-3)] hover:text-white"
               }`}
+              title="Grid view"
+              aria-label="Grid view"
             >
               <LayoutGrid size={16} />
             </button>
             <button
+              type="button"
               onClick={() => setViewMode("list")}
-              className={`p-1.5 rounded-[6px] transition-colors ${
-                viewMode === "list" ? "bg-[var(--border)] text-white" : "text-[var(--text-3)] hover:text-white"
+              className={`w-[30px] h-[30px] rounded-[7px] flex items-center justify-center transition-colors cursor-pointer ${
+                viewMode === "list" ? "bg-[var(--hover)] text-white shadow-sm" : "text-[var(--text-3)] hover:text-white"
               }`}
+              title="List view"
+              aria-label="List view"
             >
               <List size={16} />
             </button>

@@ -143,3 +143,147 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+
+/* Playhead Rich Text Editor Typography & Content Styles */
+.playhead-editor .ProseMirror,
+.playhead-editor.ProseMirror {
+  outline: none;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 24px;
+  color: #FFFFFF;
+}
+
+.playhead-editor p {
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 24px;
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.playhead-editor p:last-child {
+  margin-bottom: 0;
+}
+
+.playhead-editor h1 {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 34px;
+  margin-top: 20px;
+  margin-bottom: 8px;
+  color: #FFFFFF;
+  letter-spacing: -0.02em;
+}
+
+.playhead-editor h1:first-child {
+  margin-top: 0;
+}
+
+.playhead-editor h2 {
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 30px;
+  margin-top: 16px;
+  margin-bottom: 6px;
+  color: #FFFFFF;
+  letter-spacing: -0.015em;
+}
+
+.playhead-editor h2:first-child {
+  margin-top: 0;
+}
+
+.playhead-editor h3 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+  margin-top: 12px;
+  margin-bottom: 4px;
+  color: #FFFFFF;
+  letter-spacing: -0.01em;
+}
+
+.playhead-editor h3:first-child {
+  margin-top: 0;
+}
+
+.playhead-editor ul {
+  font-size: 15px;
+  line-height: 24px;
+  list-style-type: disc;
+  padding-left: 24px;
+  margin-top: 6px;
+  margin-bottom: 8px;
+}
+
+.playhead-editor ol {
+  font-size: 15px;
+  line-height: 24px;
+  list-style-type: decimal;
+  padding-left: 24px;
+  margin-top: 6px;
+  margin-bottom: 8px;
+}
+
+.playhead-editor li {
+  margin-bottom: 4px;
+}
+
+.playhead-editor li p {
+  margin-bottom: 0;
+}
+
+.playhead-editor pre,
+.playhead-editor pre code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.playhead-editor pre {
+  background-color: var(--input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+  color: #FFFFFF;
+}
+
+.playhead-editor code:not(pre code) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
+  background-color: var(--input);
+  padding: 2px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: #9787FF;
+}
+
+.playhead-editor mark {
+  background-color: rgba(255, 212, 59, 0.25);
+  color: #FFFFFF;
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+.playhead-editor blockquote {
+  border-left: 3px solid #4876F3;
+  padding-left: 14px;
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  color: var(--text-2);
+  font-style: italic;
+}
+
+.playhead-editor hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+

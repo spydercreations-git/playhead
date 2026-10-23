@@ -362,10 +362,14 @@ export function DocumentEditor({
 
   // Editor instance
   // 1. Initial content: With Collaboration extension, content must NOT be used
+  const [, setDocumentEditorTick] = useState(0);
+
   const editor = useEditor(
     {
       extensions,
       editable: canEdit && !selectedHistoricalVersion,
+      shouldRerenderOnTransaction: true,
+      immediatelyRender: false,
       content:
         isTeamMember && provider
           ? undefined
@@ -376,7 +380,7 @@ export function DocumentEditor({
       editorProps: {
         attributes: {
           class:
-            "prose dark:prose-invert max-w-none focus:outline-none min-h-[600px] text-foreground leading-relaxed",
+            "playhead-editor focus:outline-none min-h-[600px] text-foreground leading-relaxed",
         },
       },
       onUpdate() {
@@ -387,6 +391,17 @@ export function DocumentEditor({
     },
     [extensions, canEdit]
   );
+
+  useEffect(() => {
+    if (!editor) return;
+    const onTick = () => setDocumentEditorTick((c) => c + 1);
+    editor.on("transaction", onTick);
+    editor.on("selectionUpdate", onTick);
+    return () => {
+      editor.off("transaction", onTick);
+      editor.off("selectionUpdate", onTick);
+    };
+  }, [editor]);
 
   // 2. Version preview: Never call setContent on live collaborative editor.
   // Toggle live editor editable state when historical preview is active.
@@ -894,9 +909,12 @@ export function DocumentEditor({
           {/* Headings */}
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-            className={`p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ${
-              editor.isActive("heading", { level: 1 }) ? "bg-muted text-primary font-bold" : ""
+            className={`p-1.5 rounded-[6px] transition-colors border ${
+              editor.isActive("heading", { level: 1 })
+                ? "bg-[#4876F3]/15 text-[#4876F3] border-[#4876F3]/30 font-bold"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
             title="Heading 1"
           >
@@ -904,9 +922,12 @@ export function DocumentEditor({
           </button>
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-            className={`p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ${
-              editor.isActive("heading", { level: 2 }) ? "bg-muted text-primary font-bold" : ""
+            className={`p-1.5 rounded-[6px] transition-colors border ${
+              editor.isActive("heading", { level: 2 })
+                ? "bg-[#4876F3]/15 text-[#4876F3] border-[#4876F3]/30 font-bold"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
             title="Heading 2"
           >
@@ -914,9 +935,12 @@ export function DocumentEditor({
           </button>
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-            className={`p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ${
-              editor.isActive("heading", { level: 3 }) ? "bg-muted text-primary font-bold" : ""
+            className={`p-1.5 rounded-[6px] transition-colors border ${
+              editor.isActive("heading", { level: 3 })
+                ? "bg-[#4876F3]/15 text-[#4876F3] border-[#4876F3]/30 font-bold"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
             title="Heading 3"
           >
@@ -928,9 +952,12 @@ export function DocumentEditor({
           {/* Text formatting */}
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleBold().run()}
-            className={`p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ${
-              editor.isActive("bold") ? "bg-muted text-primary" : ""
+            className={`p-1.5 rounded-[6px] transition-colors border ${
+              editor.isActive("bold")
+                ? "bg-[#4876F3]/15 text-[#4876F3] border-[#4876F3]/30"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
             title="Bold (Ctrl+B)"
           >
@@ -938,9 +965,12 @@ export function DocumentEditor({
           </button>
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleItalic().run()}
-            className={`p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ${
-              editor.isActive("italic") ? "bg-muted text-primary" : ""
+            className={`p-1.5 rounded-[6px] transition-colors border ${
+              editor.isActive("italic")
+                ? "bg-[#4876F3]/15 text-[#4876F3] border-[#4876F3]/30"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
             title="Italic (Ctrl+I)"
           >
@@ -948,9 +978,12 @@ export function DocumentEditor({
           </button>
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleUnderline().run()}
-            className={`p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ${
-              editor.isActive("underline") ? "bg-muted text-primary" : ""
+            className={`p-1.5 rounded-[6px] transition-colors border ${
+              editor.isActive("underline")
+                ? "bg-[#4876F3]/15 text-[#4876F3] border-[#4876F3]/30"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
             title="Underline (Ctrl+U)"
           >
@@ -958,9 +991,12 @@ export function DocumentEditor({
           </button>
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleStrike().run()}
-            className={`p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ${
-              editor.isActive("strike") ? "bg-muted text-primary" : ""
+            className={`p-1.5 rounded-[6px] transition-colors border ${
+              editor.isActive("strike")
+                ? "bg-[#4876F3]/15 text-[#4876F3] border-[#4876F3]/30"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
             title="Strikethrough"
           >
@@ -968,9 +1004,12 @@ export function DocumentEditor({
           </button>
           <button
             type="button"
-            onClick={() => editor.chain().focus().toggleHighlight({ color: "#FFBB56" }).run()}
-            className={`p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ${
-              editor.isActive("highlight") ? "bg-muted text-amber-400" : ""
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => editor.chain().focus().toggleHighlight({ color: "#FFD43B" }).run()}
+            className={`p-1.5 rounded-[6px] transition-colors border ${
+              editor.isActive("highlight")
+                ? "bg-[#4876F3]/15 text-[#4876F3] border-[#4876F3]/30"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
             title="Highlight text"
           >
@@ -982,9 +1021,12 @@ export function DocumentEditor({
           {/* Lists */}
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className={`p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ${
-              editor.isActive("bulletList") ? "bg-muted text-primary" : ""
+            className={`p-1.5 rounded-[6px] transition-colors border ${
+              editor.isActive("bulletList")
+                ? "bg-[#4876F3]/15 text-[#4876F3] border-[#4876F3]/30"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
             title="Bullet list"
           >
@@ -992,9 +1034,12 @@ export function DocumentEditor({
           </button>
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            className={`p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ${
-              editor.isActive("orderedList") ? "bg-muted text-primary" : ""
+            className={`p-1.5 rounded-[6px] transition-colors border ${
+              editor.isActive("orderedList")
+                ? "bg-[#4876F3]/15 text-[#4876F3] border-[#4876F3]/30"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
             title="Numbered list"
           >
@@ -1002,9 +1047,12 @@ export function DocumentEditor({
           </button>
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleTaskList().run()}
-            className={`p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ${
-              editor.isActive("taskList") ? "bg-muted text-primary" : ""
+            className={`p-1.5 rounded-[6px] transition-colors border ${
+              editor.isActive("taskList")
+                ? "bg-[#4876F3]/15 text-[#4876F3] border-[#4876F3]/30"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
             title="Task checklist"
           >
@@ -1016,9 +1064,12 @@ export function DocumentEditor({
           {/* Alignment */}
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().setTextAlign("left").run()}
-            className={`p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ${
-              editor.isActive({ textAlign: "left" }) ? "bg-muted text-primary" : ""
+            className={`p-1.5 rounded-[6px] transition-colors border ${
+              editor.isActive({ textAlign: "left" })
+                ? "bg-[#4876F3]/15 text-[#4876F3] border-[#4876F3]/30"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
             title="Align left"
           >
@@ -1026,9 +1077,12 @@ export function DocumentEditor({
           </button>
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().setTextAlign("center").run()}
-            className={`p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ${
-              editor.isActive({ textAlign: "center" }) ? "bg-muted text-primary" : ""
+            className={`p-1.5 rounded-[6px] transition-colors border ${
+              editor.isActive({ textAlign: "center" })
+                ? "bg-[#4876F3]/15 text-[#4876F3] border-[#4876F3]/30"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
             title="Align center"
           >
@@ -1036,9 +1090,12 @@ export function DocumentEditor({
           </button>
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().setTextAlign("right").run()}
-            className={`p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ${
-              editor.isActive({ textAlign: "right" }) ? "bg-muted text-primary" : ""
+            className={`p-1.5 rounded-[6px] transition-colors border ${
+              editor.isActive({ textAlign: "right" })
+                ? "bg-[#4876F3]/15 text-[#4876F3] border-[#4876F3]/30"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
             title="Align right"
           >

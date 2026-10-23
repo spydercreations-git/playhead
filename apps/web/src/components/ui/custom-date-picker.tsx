@@ -215,9 +215,6 @@ export function CustomDatePicker({
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-  const dayOfWeek = now.getDay(); // 0 is Sun, 1 is Mon...
-  const daysUntilNextMon = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
-  const nextMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilNextMon);
 
   function isChipActive(targetDate: Date): boolean {
     if (selectedYear === null || selectedMonth === null || selectedDay === null) return false;
@@ -367,7 +364,7 @@ export function CustomDatePicker({
           className="absolute top-full mt-1.5 left-0 w-full rounded-[16px] bg-[#161618] border border-[var(--border)] p-3.5 shadow-xl z-50 text-[13px] animate-in fade-in zoom-in-95 duration-100 select-none"
         >
           {/* Quick Chips Row */}
-          <div className="flex items-center gap-1.5 mb-3.5">
+          <div className="flex items-center gap-2 mb-3.5">
             <button
               type="button"
               onClick={() => handleSelectChip(today)}
@@ -389,17 +386,6 @@ export function CustomDatePicker({
               }`}
             >
               Tomorrow
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSelectChip(nextMonday)}
-              className={`flex-1 py-1.5 px-3 rounded-full text-[13px] font-medium transition-colors text-center ${
-                isChipActive(nextMonday)
-                  ? "bg-[#4876F3] text-white"
-                  : "bg-[var(--input)] text-[var(--text-2)] hover:text-white hover:bg-[var(--hover)]"
-              }`}
-            >
-              Next Monday
             </button>
           </div>
 

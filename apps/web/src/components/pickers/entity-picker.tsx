@@ -77,25 +77,33 @@ export function EntityPicker({
     setMounted(true);
   }, []);
 
-  // Sync activeTab when tabs change or modal opens
+  const prevIsOpenRef = useRef(false);
+  const preselectedIdsRef = useRef(preselectedIds);
+  preselectedIdsRef.current = preselectedIds;
+
+  // Sync activeTab when modal opens
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevIsOpenRef.current) {
       if (tabs.length > 0 && !tabs.includes(activeTab)) {
         setActiveTab(tabs[0]);
       }
       setSearchQuery("");
       setFocusedIndex(0);
     }
+    prevIsOpenRef.current = isOpen;
   }, [isOpen, tabs, activeTab]);
 
-  // Load items from /api/v1/pickers
-  const loadEntities = useCallback(
-    async (tab: PickerTab, query: string) => {
+  // Load items from /api/v1/pickers with debounce and cancellation
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+
+    const timer = setTimeout(async () => {
       setLoading(true);
       try {
         const queryParams = new URLSearchParams({
-          tab,
-          q: query.trim(),
+          tab: activeTab,
+          q: searchQuery.trim(),
           limit: "100",
         });
         if (context) {
@@ -104,15 +112,17 @@ export function EntityPicker({
         const res = await apiRequest<{ items: PickerEntity[]; total: number }>(
           `/pickers?${queryParams.toString()}`
         );
+        if (!active) return;
         const fetched = res.items || [];
         setItems(fetched);
 
         // Prepopulate selectedMap with preselected entities if matching
-        if (preselectedIds.length > 0) {
+        const preselected = preselectedIdsRef.current;
+        if (preselected && preselected.length > 0) {
           setSelectedMap((prev) => {
             const next = new Map(prev);
             for (const item of fetched) {
-              if (preselectedIds.includes(item.id) && !next.has(item.id)) {
+              if (preselected.includes(item.id) && !next.has(item.id)) {
                 next.set(item.id, item);
               }
             }
@@ -120,22 +130,21 @@ export function EntityPicker({
           });
         }
       } catch (err) {
+        if (!active) return;
         console.error("Failed to load picker entities:", err);
         setItems([]);
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
-    },
-    [context, preselectedIds]
-  );
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const timeout = setTimeout(() => {
-      loadEntities(activeTab, searchQuery);
     }, 150);
-    return () => clearTimeout(timeout);
-  }, [isOpen, activeTab, searchQuery, loadEntities]);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [isOpen, activeTab, searchQuery, context]);
 
   // Focus search box on open
   useEffect(() => {

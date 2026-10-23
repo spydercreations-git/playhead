@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { Users, ChevronDown } from "@/components/ui/icon";
+import { Users, ChevronDown, X } from "@/components/ui/icon";
 import { ClientAvatar } from "@/components/ui/avatar";
 import { EntityPicker } from "@/components/pickers/entity-picker";
 
@@ -142,9 +142,10 @@ export function ClientFilterButton({
         <button
           type="button"
           onClick={onClearAll}
-          className="text-xs font-medium text-[var(--accent)] hover:underline cursor-pointer transition-colors"
+          className="h-9 px-3 rounded-[10px] bg-[var(--input)] border border-[var(--border)] hover:bg-[var(--hover)] hover:border-[var(--border-strong)] text-xs font-medium text-[var(--accent)] hover:text-white transition-colors cursor-pointer inline-flex items-center gap-1.5 select-none shrink-0"
         >
-          Show all clients
+          <X size={14} className="text-[var(--text-3)]" />
+          <span>Show all clients</span>
         </button>
       )}
     </div>

@@ -15,6 +15,7 @@ import { Avatar, UserAvatar } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/use-auth";
 import { useUploadStore } from "@/lib/upload-store";
 import { SearchDialog } from "./search-dialog";
+import { useBreadcrumbsStore } from "@/lib/breadcrumbs-store";
 
 interface HeaderProps {
   onOpenSidebar: () => void;
@@ -85,9 +86,10 @@ export function Header({ onOpenSidebar }: HeaderProps) {
       return formatSegment(segments[0]);
     }
 
-    const first = formatSegment(segments[0]);
-    return `${first} / Details`;
+    return formatSegment(segments[0]);
   }, [pathname]);
+
+  const breadcrumbs = useBreadcrumbsStore((state) => state.breadcrumbs);
 
   const displayName = useMemo(() => {
     if (user?.name && user.name.trim()) return user.name;
@@ -113,7 +115,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
   return (
     <>
       <header className="flex h-14 w-full items-center justify-between px-6 border-b border-[var(--border)] bg-[var(--bg)] shrink-0 select-none">
-        {/* Left side: Hamburger (mobile) + Page Title */}
+        {/* Left side: Hamburger (mobile) + Page Title or Breadcrumbs */}
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={onOpenSidebar}
@@ -123,9 +125,34 @@ export function Header({ onOpenSidebar }: HeaderProps) {
             <Menu size={20} />
           </button>
 
-          <h1 className="text-sm font-semibold text-white truncate">
-            {pageTitle}
-          </h1>
+          {breadcrumbs && breadcrumbs.length > 0 ? (
+            <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-[var(--text-3)] font-medium truncate">
+              {breadcrumbs.map((crumb, idx) => {
+                const isLast = idx === breadcrumbs.length - 1;
+                return (
+                  <React.Fragment key={idx}>
+                    {idx > 0 && <span className="text-[var(--text-3)] shrink-0 select-none">›</span>}
+                    {crumb.href ? (
+                      <Link
+                        href={crumb.href}
+                        className={`hover:text-white transition-colors truncate ${
+                          isLast ? "text-white font-medium" : "text-[var(--text-3)]"
+                        }`}
+                      >
+                        {crumb.label}
+                      </Link>
+                    ) : (
+                      <span className="text-white font-medium truncate">{crumb.label}</span>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </nav>
+          ) : (
+            <h1 className="text-sm font-semibold text-white truncate">
+              {pageTitle}
+            </h1>
+          )}
         </div>
 
         {/* Right side: 320px Search Input with ⌘K badge, Help icon, Avatar */}

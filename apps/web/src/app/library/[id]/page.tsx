@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,14 +8,14 @@ import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { toast } from "@/lib/toast";
 import { useUploadStore } from "@/lib/upload-store";
+import { useBreadcrumbsStore, BreadcrumbItem } from "@/lib/breadcrumbs-store";
 import { FolderCard } from "@/components/cards/folder-card";
-import { FileCard, FileCardItem } from "@/components/cards/file-card";
+import { FileCard } from "@/components/cards/file-card";
 import { CopyLinkDialog } from "@/components/sharing/copy-link-dialog";
 import { MoveCopyPanel } from "@/components/panels/move-copy-panel";
 import { ManageAccessDialog } from "@/components/access/manage-access-dialog";
 import { DeleteDialog } from "@/components/dialogs/delete-dialog";
-import { FileViewer, ViewerItem } from "@/components/files/file-viewer";
-import { Menu, MenuGroup, useContextMenu } from "@/components/ui/menu";
+import { useContextMenu } from "@/components/ui/menu";
 import { buildUnifiedItemMenuGroups } from "@/components/items/unified-item-menu";
 import {
   Search,
@@ -23,14 +23,74 @@ import {
   LayoutGrid,
   List,
   Upload,
+  UploadFile,
+  DriveFolderUpload,
   PersonAdd,
   Link2,
   Folder,
-  Info,
-  ChevronRight,
+  FolderPlus,
   Plus,
 } from "@/components/ui/icon";
 import { ClientAvatar, UserAvatar } from "@/components/ui/avatar";
+
+// Helper to recursively read dropped entries preserving paths
+async function readEntry(entry: any, path = ""): Promise<File[]> {
+  if (entry.isFile) {
+    return new Promise((resolve) => {
+      entry.file(
+        (file: File) => {
+          try {
+            Object.defineProperty(file, "webkitRelativePath", {
+              value: path ? `${path}/${file.name}` : file.name,
+              writable: true,
+              configurable: true,
+            });
+          } catch {
+            // Ignore if property definition fails
+          }
+          resolve([file]);
+        },
+        () => resolve([])
+      );
+    });
+  } else if (entry.isDirectory) {
+    const dirReader = entry.createReader();
+    const allEntries: any[] = [];
+    const readBatch = (): Promise<void> => {
+      return new Promise((resolve) => {
+        dirReader.readEntries(
+          (batch: any[]) => {
+            if (!batch || batch.length === 0) {
+              resolve();
+            } else {
+              allEntries.push(...batch);
+              readBatch().then(resolve);
+            }
+          },
+          () => resolve()
+        );
+      });
+    };
+    await readBatch();
+    const files: File[] = [];
+    const currentPath = path ? `${path}/${entry.name}` : entry.name;
+    for (const child of allEntries) {
+      const childFiles = await readEntry(child, currentPath);
+      files.push(...childFiles);
+    }
+    return files;
+  }
+  return [];
+}
+
+async function readAllEntriesRecursively(entries: any[]): Promise<File[]> {
+  const allFiles: File[] = [];
+  for (const entry of entries) {
+    const files = await readEntry(entry);
+    allFiles.push(...files);
+  }
+  return allFiles;
+}
 
 export default function LibraryProjectPage() {
   const params = useParams();
@@ -40,11 +100,16 @@ export default function LibraryProjectPage() {
   const projectId = params.id as string;
   const currentFolderId = searchParams.get("folder") || null;
 
-  const { user, isClient, hasPermission } = useAuth();
+  const { user } = useAuth();
   const { uploads, addUploads } = useUploadStore();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const setBreadcrumbs = useBreadcrumbsStore((state) => state.setBreadcrumbs);
 
-  // Search & Filters
+  // Hidden native inputs
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  const targetFolderForUploadRef = useRef<string | null>(null);
+
+  // Search & Filters (for folder view)
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [sortBy, setSortBy] = useState("date");
@@ -54,6 +119,19 @@ export default function LibraryProjectPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showCopyLink, setShowCopyLink] = useState(false);
   const [showManageAccess, setShowManageAccess] = useState(false);
+  const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [isUploadMenuOpen, setIsUploadMenuOpen] = useState(false);
+  const [isUploadHovered, setIsUploadHovered] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  // Destination folder picker modal (when uploading/dropping files at project level)
+  const [showFolderPicker, setShowFolderPicker] = useState(false);
+  const [selectedFolderForUpload, setSelectedFolderForUpload] = useState<string>("");
+  const [pendingFilesToUpload, setPendingFilesToUpload] = useState<File[] | null>(null);
+  const [isCreatingFolderInline, setIsCreatingFolderInline] = useState(false);
+  const [inlineFolderName, setInlineFolderName] = useState("");
+
   const [moveItemState, setMoveItemState] = useState<{
     isOpen: boolean;
     mode: "move" | "copy";
@@ -63,13 +141,18 @@ export default function LibraryProjectPage() {
     isOpen: boolean;
     item: any;
   } | null>(null);
-  const [viewingFileId, setViewingFileId] = useState<string | null>(null);
 
   // Context Menu
   const { openContextMenu } = useContextMenu();
 
-  // 1. Fetch Project Details & Items
-  const { data: workspaceData, isLoading } = useQuery({
+  // 1. Fetch Project Details
+  const { data: projectDetails } = useQuery<{ project?: any }>({
+    queryKey: ["project-details", projectId],
+    queryFn: () => apiRequest(`/projects/${projectId}`),
+  });
+
+  // 2. Fetch Project Items
+  const { data: workspaceData } = useQuery({
     queryKey: ["project-workspace", projectId, currentFolderId, typeFilter, sortBy],
     queryFn: () =>
       apiRequest<{
@@ -83,18 +166,21 @@ export default function LibraryProjectPage() {
     refetchInterval: 5000,
   });
 
-  const project = workspaceData?.project || { id: projectId, name: "Project" };
-  const rawFolders = workspaceData?.folders || [];
-  const rawFiles = workspaceData?.files || [];
-  const breadcrumbs = workspaceData?.breadcrumbs || [];
+  const rawProject = projectDetails?.project || workspaceData?.project || { id: projectId, name: "Project" };
+  const project = {
+    ...rawProject,
+    ...(workspaceData?.project || {}),
+  };
+  const rawFolders = useMemo(() => workspaceData?.folders || [], [workspaceData?.folders]);
+  const rawFiles = useMemo(() => workspaceData?.files || [], [workspaceData?.files]);
 
-  // 2. Fetch Project Tree (for Move to picker)
+  // 3. Fetch Project Tree (for move/copy picker)
   const { data: treeData } = useQuery<{ folders: any[] }>({
     queryKey: ["project-tree", projectId],
     queryFn: () => apiRequest(`/projects/${projectId}/folders/tree`),
   });
 
-  // 3. Fetch Grants/Members for member avatars stack
+  // 4. Fetch Grants/Members for member avatars stack
   const { data: grantsData } = useQuery<{ grants?: any[]; members?: any[] }>({
     queryKey: ["project-grants", projectId],
     queryFn: () => apiRequest(`/projects/${projectId}/grants`),
@@ -106,6 +192,86 @@ export default function LibraryProjectPage() {
     { email: "karishma@idyllproductions.com", name: "Karishma", color: "#4876F3" },
     { email: "sarah@idyllproductions.com", name: "Sarah", color: "#3FCF8E" },
   ];
+
+  // Current folder item if inside a folder
+  const currentFolder = useMemo(() => {
+    if (!currentFolderId) return null;
+    return (
+      rawFolders.find((f) => f.id === currentFolderId) ||
+      treeData?.folders?.find((f: any) => f.id === currentFolderId) || {
+        id: currentFolderId,
+        name: "Folder",
+      }
+    );
+  }, [currentFolderId, rawFolders, treeData]);
+
+  // Client badge and details
+  const clientName = project.client_name || "Client";
+
+  // Requirement 1: Register Top Bar Breadcrumbs Only (Library > <Client> > <Project> > <Folder>...)
+  useEffect(() => {
+    const crumbs: BreadcrumbItem[] = [{ label: "Library", href: "/library" }];
+
+    if (project.client_name) {
+      crumbs.push({
+        label: project.client_name,
+        href: project.client_id ? `/clients/${project.client_id}` : "/library",
+      });
+    }
+
+    crumbs.push({
+      label: project.name || "Project",
+      href: `/library/${projectId}`,
+    });
+
+    if (currentFolderId && currentFolder) {
+      crumbs.push({
+        label: currentFolder.name,
+        href: `/library/${projectId}?folder=${currentFolderId}`,
+      });
+    }
+
+    setBreadcrumbs(crumbs);
+
+    return () => {
+      setBreadcrumbs(null);
+    };
+  }, [
+    project.client_name,
+    project.client_id,
+    project.name,
+    projectId,
+    currentFolderId,
+    currentFolder,
+    setBreadcrumbs,
+  ]);
+
+  // Requirement 2: Title Row metadata
+  const createdDateText = useMemo(() => {
+    const createdAt = project.created_at ? new Date(project.created_at) : new Date();
+    const now = new Date();
+    const isToday =
+      createdAt.getFullYear() === now.getFullYear() &&
+      createdAt.getMonth() === now.getMonth() &&
+      createdAt.getDate() === now.getDate();
+
+    if (isToday) return "created today";
+
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `created ${monthNames[createdAt.getMonth()]} ${createdAt.getDate()}`;
+  }, [project.created_at]);
+
+  const creatorName = useMemo(() => {
+    if (project.created_by_name) return project.created_by_name;
+    if (project.creator_name) return project.creator_name;
+    if (user?.name) return user.name;
+    return "Harsh";
+  }, [project.created_by_name, project.creator_name, user?.name]);
+
+  const templateLabel =
+    project.template === "video" || project.template === "video_project"
+      ? "Video project"
+      : "Blank project";
 
   // Filtering
   const filteredFolders = useMemo(() => {
@@ -121,21 +287,35 @@ export default function LibraryProjectPage() {
     return list;
   }, [rawFiles, search]);
 
-  // Current folder item if inside a folder
-  const currentFolder = useMemo(() => {
-    if (!currentFolderId) return null;
-    return rawFolders.find((f) => f.id === currentFolderId) ||
-      treeData?.folders?.find((f) => f.id === currentFolderId) || { id: currentFolderId, name: "Folder" };
-  }, [currentFolderId, rawFolders, treeData]);
-
-  // Active uploads in this folder
+  // Active uploads in current folder
   const activeUploadsInFolder = useMemo(() => {
-    return uploads.filter(
-      (u) => (u.parentId || null) === currentFolderId
-    );
+    return uploads.filter((u) => (u.parentId || null) === currentFolderId);
   }, [uploads, currentFolderId]);
 
   // Mutations
+  const createFolderMutation = useMutation({
+    mutationFn: ({ name, parentId }: { name: string; parentId?: string | null }) =>
+      apiRequest<{ item?: any; folder?: any }>("/items/folder", {
+        method: "POST",
+        body: JSON.stringify({
+          project_id: projectId,
+          parent_id: parentId !== undefined ? parentId : currentFolderId || null,
+          name: name.trim(),
+        }),
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["project-workspace", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project-tree", projectId] });
+      setIsNewFolderOpen(false);
+      setNewFolderName("");
+      toast.success("Folder created");
+      return data;
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Failed to create folder");
+    },
+  });
+
   const moveMutation = useMutation({
     mutationFn: ({ id, targetFolderId }: { id: string; targetFolderId: string | null }) =>
       apiRequest(`/items/${id}/move`, {
@@ -154,7 +334,15 @@ export default function LibraryProjectPage() {
   });
 
   const copyMutation = useMutation({
-    mutationFn: ({ id, targetFolderId, targetProjectId }: { id: string; targetFolderId: string | null; targetProjectId?: string }) =>
+    mutationFn: ({
+      id,
+      targetFolderId,
+      targetProjectId,
+    }: {
+      id: string;
+      targetFolderId: string | null;
+      targetProjectId?: string;
+    }) =>
       apiRequest(`/items/${id}/copy`, {
         method: "POST",
         body: JSON.stringify({
@@ -202,32 +390,220 @@ export default function LibraryProjectPage() {
     },
   });
 
-  // Upload handler
-  const handleUploadClick = () => {
-    if (!currentFolderId) {
-      toast.info("Files can only be uploaded inside a folder. Open a folder, then Upload or drop files.");
-      return;
+  // Handler: Upload Folder (Requirement 4)
+  const handleFolderUpload = async (files: File[]) => {
+    if (!files || files.length === 0) return;
+
+    // Track created subfolder IDs relative to the current upload root
+    const folderIdMap = new Map<string, string>();
+    const folderPaths = new Set<string>();
+
+    files.forEach((f) => {
+      const relPath = f.webkitRelativePath || f.name;
+      const parts = relPath.split("/").filter(Boolean);
+      if (parts.length > 1) {
+        let accumulated = "";
+        for (let i = 0; i < parts.length - 1; i++) {
+          accumulated = accumulated ? `${accumulated}/${parts[i]}` : parts[i];
+          folderPaths.add(accumulated);
+        }
+      }
+    });
+
+    // Create shallowest folders first so parents exist before children
+    const sortedPaths = Array.from(folderPaths).sort(
+      (a, b) => a.split("/").length - b.split("/").length
+    );
+
+    toast.info("Uploading folder...");
+
+    for (const dirPath of sortedPaths) {
+      const parts = dirPath.split("/");
+      const folderName = parts[parts.length - 1];
+      const parentDirPath = parts.slice(0, -1).join("/");
+      const parentId = parentDirPath ? folderIdMap.get(parentDirPath) : currentFolderId || null;
+
+      try {
+        const res = await apiRequest<{ item?: any; folder?: any }>("/items/folder", {
+          method: "POST",
+          body: JSON.stringify({
+            project_id: projectId,
+            parent_id: parentId || null,
+            name: folderName,
+          }),
+        });
+        const createdId = res?.item?.id || res?.folder?.id;
+        if (createdId) {
+          folderIdMap.set(dirPath, createdId);
+        }
+      } catch (err: any) {
+        console.error("Failed to create folder:", dirPath, err);
+      }
     }
-    fileInputRef.current?.click();
+
+    // Now upload each file into its folder
+    for (const f of files) {
+      const relPath = f.webkitRelativePath || f.name;
+      const parts = relPath.split("/").filter(Boolean);
+      const parentDirPath = parts.length > 1 ? parts.slice(0, -1).join("/") : "";
+      const parentId = parentDirPath
+        ? folderIdMap.get(parentDirPath) || currentFolderId
+        : currentFolderId;
+
+      await addUploads([f], {
+        projectId,
+        parentId: parentId || null,
+        targetPath: `${project.name || "Project"} / ${parentDirPath || "Folder"}`,
+      });
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["project-workspace", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["project-tree", projectId] });
+    toast.success("Folder upload complete");
   };
 
+  // Handler: Upload Files Menu Click
+  const handleUploadFilesOption = () => {
+    if (currentFolderId) {
+      targetFolderForUploadRef.current = currentFolderId;
+      fileInputRef.current?.click();
+    } else {
+      // At project level: prompt folder picker
+      setPendingFilesToUpload(null);
+      if (rawFolders.length > 0) {
+        setSelectedFolderForUpload(rawFolders[0].id);
+      } else {
+        setSelectedFolderForUpload("");
+      }
+      setShowFolderPicker(true);
+    }
+  };
+
+  // Handler: When files selected via hidden file input
   const handleFilesChosen = async (filesList: FileList | null) => {
     if (!filesList || filesList.length === 0) return;
-    if (!currentFolderId) {
-      toast.info("Files can only be uploaded inside a folder. Open a folder, then Upload or drop files.");
+    const filesArray = Array.from(filesList);
+
+    const destinationFolderId = targetFolderForUploadRef.current || currentFolderId;
+    if (!destinationFolderId) {
+      // Show folder destination picker with these files
+      setPendingFilesToUpload(filesArray);
+      if (rawFolders.length > 0) {
+        setSelectedFolderForUpload(rawFolders[0].id);
+      } else {
+        setSelectedFolderForUpload("");
+      }
+      setShowFolderPicker(true);
       return;
     }
 
-    const filesArray = Array.from(filesList);
+    const destFolder = rawFolders.find((f) => f.id === destinationFolderId) || currentFolder;
     await addUploads(filesArray, {
       projectId,
-      parentId: currentFolderId,
-      targetPath: `${project.name || "Project"} / ${currentFolder?.name || "Folder"}`,
+      parentId: destinationFolderId,
+      targetPath: `${project.name || "Project"} / ${destFolder?.name || "Folder"}`,
     });
     queryClient.invalidateQueries({ queryKey: ["project-workspace", projectId] });
+    toast.success(`Upload started (${filesArray.length} file${filesArray.length > 1 ? "s" : ""})`);
   };
 
-  // Context menu builder matching Screenshot L4
+  // Handler: Confirm Destination Folder from dialog
+  const handleConfirmFolderSelection = async (folderId: string) => {
+    if (pendingFilesToUpload && pendingFilesToUpload.length > 0) {
+      const destFolder = rawFolders.find((f) => f.id === folderId);
+      await addUploads(pendingFilesToUpload, {
+        projectId,
+        parentId: folderId,
+        targetPath: `${project.name || "Project"} / ${destFolder?.name || "Folder"}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["project-workspace", projectId] });
+      toast.success(`Upload started (${pendingFilesToUpload.length} file${pendingFilesToUpload.length > 1 ? "s" : ""})`);
+      setPendingFilesToUpload(null);
+      setShowFolderPicker(false);
+    } else {
+      targetFolderForUploadRef.current = folderId;
+      setShowFolderPicker(false);
+      setTimeout(() => {
+        fileInputRef.current?.click();
+      }, 100);
+    }
+  };
+
+  // Handler: Create Folder Inline inside picker dialog
+  const handleCreateInlineFolder = async () => {
+    if (!inlineFolderName.trim()) return;
+    try {
+      const res = await apiRequest<{ item?: any; folder?: any }>("/items/folder", {
+        method: "POST",
+        body: JSON.stringify({
+          project_id: projectId,
+          parent_id: null,
+          name: inlineFolderName.trim(),
+        }),
+      });
+      const createdId = res?.item?.id || res?.folder?.id;
+      await queryClient.invalidateQueries({ queryKey: ["project-workspace", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["project-tree", projectId] });
+      setInlineFolderName("");
+      setIsCreatingFolderInline(false);
+      if (createdId) {
+        setSelectedFolderForUpload(createdId);
+      }
+      toast.success("Folder created");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to create folder");
+    }
+  };
+
+  // Handler: Drag and Drop (folders vs files)
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const items = e.dataTransfer.items;
+    if (items && items.length > 0) {
+      const entries: any[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (typeof item.webkitGetAsEntry === "function") {
+          const entry = item.webkitGetAsEntry();
+          if (entry) entries.push(entry);
+        }
+      }
+
+      const hasDirectory = entries.some((entry) => entry.isDirectory);
+      if (hasDirectory) {
+        const filesWithPaths = await readAllEntriesRecursively(entries);
+        if (filesWithPaths.length > 0) {
+          await handleFolderUpload(filesWithPaths);
+          return;
+        }
+      }
+    }
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const files = Array.from(e.dataTransfer.files);
+      if (currentFolderId) {
+        await addUploads(files, {
+          projectId,
+          parentId: currentFolderId,
+          targetPath: `${project.name || "Project"} / ${currentFolder?.name || "Folder"}`,
+        });
+        queryClient.invalidateQueries({ queryKey: ["project-workspace", projectId] });
+        toast.success(`Upload started (${files.length} file${files.length > 1 ? "s" : ""})`);
+      } else {
+        setPendingFilesToUpload(files);
+        if (rawFolders.length > 0) {
+          setSelectedFolderForUpload(rawFolders[0].id);
+        } else {
+          setSelectedFolderForUpload("");
+        }
+        setShowFolderPicker(true);
+      }
+    }
+  };
+
+  // Context Menu builder
   const handleItemContextMenu = (e: React.MouseEvent | HTMLElement, item: any, kind: "folder" | "file") => {
     const isFolder = kind === "folder";
     const groups = buildUnifiedItemMenuGroups({
@@ -263,72 +639,54 @@ export default function LibraryProjectPage() {
     openContextMenu(e, groups);
   };
 
-  // Client badge color
-  const clientName = project.client_name || "Client";
-  const clientInitial = clientName.trim()[0]?.toUpperCase() || "C";
-  const isInternal = clientName.toLowerCase().includes("idyll");
-  const badgeColor = isInternal ? "bg-[var(--panel-raised)] text-[var(--text-2)]" : "bg-[#4876F3]/20 text-[#4876F3]";
-
   return (
     <div className="space-y-6">
-      {/* Hidden File Input */}
+      {/* Hidden File and Folder Inputs */}
       <input
         type="file"
         ref={fileInputRef}
         multiple
         className="hidden"
-        onChange={(e) => handleFilesChosen(e.target.files)}
+        onChange={(e) => {
+          handleFilesChosen(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      <input
+        type="file"
+        ref={folderInputRef}
+        {...({ webkitdirectory: "", directory: "" } as any)}
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            handleFolderUpload(Array.from(e.target.files));
+          }
+          e.target.value = "";
+        }}
       />
 
-      {/* Top Breadcrumb Navigation */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-[var(--text-3)]">
-        <Link href="/library" className="hover:text-white transition-colors">
-          Library
-        </Link>
-        <span>›</span>
-        {project.client_id ? (
-          <Link
-            href={`/clients/${project.client_id}`}
-            className="hover:text-white transition-colors"
-          >
-            {clientName}
-          </Link>
-        ) : (
-          <span>{clientName}</span>
-        )}
-        <span>›</span>
-        <Link
-          href={`/library/${projectId}`}
-          className={`hover:text-white transition-colors ${!currentFolderId ? "text-white font-medium" : ""}`}
-        >
-          {project.name}
-        </Link>
-        {currentFolder && (
-          <>
-            <span>›</span>
-            <span className="text-white font-medium">{currentFolder.name}</span>
-          </>
-        )}
-      </nav>
-
-      {/* Main Project Header matching Screenshot L2 */}
+      {/* Requirement 2: TITLE ROW & Requirement 3: BUTTONS */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        {/* Left: Project Title + Client Tag */}
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight text-white">{project.name}</h1>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[var(--panel)] border border-[var(--border)] text-xs text-[var(--text-2)] font-medium">
-            <ClientAvatar
-              id={project.client_id}
-              name={clientName}
-              size={16}
-            />
-            <span>{clientName}</span>
+        {/* Left: Project Title (30px bold) + Client Tag + Subtitle Line */}
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-[30px] font-bold text-white tracking-tight leading-none">
+              {project.name || "Project"}
+            </h1>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[var(--panel)] border border-[var(--border)] text-xs text-[var(--text-2)] font-medium">
+              <ClientAvatar id={project.client_id} name={clientName} size={16} />
+              <span>{clientName}</span>
+            </div>
           </div>
+          <p className="text-xs text-[var(--text-3)] mt-2 font-normal">
+            {templateLabel} · {createdDateText} by {creatorName}
+          </p>
         </div>
 
-        {/* Right Header Buttons matching Screenshot L2 */}
-        <div className="flex items-center gap-2.5">
-          {/* Member Avatars Stack */}
+        {/* Right: Avatars of people with access, Manage access, Copy link, New folder, Upload Split Button */}
+        <div className="flex items-center gap-2">
+          {/* Avatars of people with access */}
           <div className="flex -space-x-1.5 overflow-hidden mr-1">
             {members.slice(0, 4).map((m: any, idx: number) => (
               <UserAvatar
@@ -342,115 +700,180 @@ export default function LibraryProjectPage() {
             ))}
           </div>
 
-          {/* Manage Access Button */}
+          {/* Manage access */}
           <button
             type="button"
             onClick={() => setShowManageAccess(true)}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-[var(--panel)] hover:bg-[var(--hover)] border border-[var(--border)] text-xs font-semibold text-white transition-colors"
+            className="flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-[var(--panel)] hover:bg-[var(--hover)] border border-[var(--border)] text-xs font-semibold text-white transition-colors cursor-pointer"
           >
             <PersonAdd size={16} className="text-[var(--text-2)]" />
             <span>Manage access</span>
           </button>
 
-          {/* Copy Link Button (L5) */}
+          {/* Copy link */}
           <button
             type="button"
             onClick={() => setShowCopyLink(true)}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-[var(--panel)] hover:bg-[var(--hover)] border border-[var(--border)] text-xs font-semibold text-white transition-colors"
+            className="flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-[var(--panel)] hover:bg-[var(--hover)] border border-[var(--border)] text-xs font-semibold text-white transition-colors cursor-pointer"
           >
             <Link2 size={16} className="text-[var(--text-2)]" />
             <span>Copy link</span>
           </button>
 
-          {/* Upload Button (Blue) */}
+          {/* New folder button */}
           <button
             type="button"
-            onClick={handleUploadClick}
-            className="flex items-center gap-1.5 h-8 px-4 rounded-[8px] bg-[var(--button)] hover:bg-[var(--button-hover)] text-xs font-semibold text-[var(--button-text)] transition-colors shadow"
+            onClick={() => setIsNewFolderOpen(true)}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-[var(--panel)] hover:bg-[var(--hover)] border border-[var(--border)] text-xs font-semibold text-white transition-colors cursor-pointer"
           >
-            <Upload size={16} />
-            <span>Upload</span>
+            <FolderPlus size={16} className="text-[var(--text-2)]" />
+            <span>New folder</span>
           </button>
-        </div>
-      </div>
 
-      {/* Filter and Control Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Search */}
-          <div className="flex h-9 w-64 items-center gap-2 rounded-[10px] bg-[var(--input)] border border-[var(--border)] px-3 text-xs text-[var(--text-3)] focus-within:border-[#4876F3] transition-colors">
-            <Search size={16} className="text-[var(--text-3)] shrink-0" />
-            <input
-              type="text"
-              placeholder="Search in this project"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-transparent text-white placeholder-[var(--text-3)] focus:outline-none text-xs"
-            />
-          </div>
+          {/* Requirement 4: Upload Split Button (PR2) */}
+          <div
+            className="relative"
+            onMouseEnter={() => setIsUploadHovered(true)}
+            onMouseLeave={() => setIsUploadHovered(false)}
+          >
+            <div className="inline-flex items-center h-8 rounded-[8px] bg-[var(--button)] hover:bg-[var(--button-hover)] text-xs font-semibold text-white transition-colors shadow select-none">
+              <button
+                type="button"
+                onClick={() => setIsUploadMenuOpen((prev) => !prev)}
+                className="flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-white"
+              >
+                <Upload size={16} />
+                <span>Upload</span>
+              </button>
+              <div className="h-4 w-[1px] bg-white/20" />
+              <button
+                type="button"
+                onClick={() => setIsUploadMenuOpen((prev) => !prev)}
+                className="flex items-center justify-center px-1.5 py-1.5 cursor-pointer hover:bg-white/10 rounded-r-[8px] text-white"
+                title="Upload options"
+              >
+                <ChevronDown
+                  size={14}
+                  className={
+                    isUploadMenuOpen || isUploadHovered
+                      ? "rotate-180 transition-transform"
+                      : "transition-transform"
+                  }
+                />
+              </button>
+            </div>
 
-          {/* Type filter */}
-          <div className="relative">
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="h-9 rounded-[10px] bg-[var(--input)] border border-[var(--border)] pl-3 pr-8 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors cursor-pointer"
-            >
-              <option value="all">Type: All</option>
-              <option value="video">Videos</option>
-              <option value="image">Images</option>
-              <option value="document">Documents</option>
-            </select>
-            <ChevronDown size={16} className="text-[var(--text-3)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Sort dropdown */}
-          <div className="relative">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="h-9 rounded-[10px] bg-[var(--input)] border border-[var(--border)] pl-3 pr-8 text-xs text-white focus:outline-none focus:border-[#4876F3] appearance-none transition-colors cursor-pointer"
-            >
-              <option value="date">Date modified</option>
-              <option value="name">Name</option>
-            </select>
-            <ChevronDown size={16} className="text-[var(--text-3)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-
-          {/* Grid / List switch */}
-          <div className="h-9 p-[3px] rounded-[10px] bg-[var(--input)] border border-[var(--border)] inline-flex items-center gap-0.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => setViewMode("grid")}
-              className={`w-[30px] h-[30px] rounded-[7px] flex items-center justify-center transition-colors cursor-pointer ${
-                viewMode === "grid" ? "bg-[var(--hover)] text-white shadow-sm" : "text-[var(--text-3)] hover:text-white"
-              }`}
-              title="Grid view"
-              aria-label="Grid view"
-            >
-              <LayoutGrid size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("list")}
-              className={`w-[30px] h-[30px] rounded-[7px] flex items-center justify-center transition-colors cursor-pointer ${
-                viewMode === "list" ? "bg-[var(--hover)] text-white shadow-sm" : "text-[var(--text-3)] hover:text-white"
-              }`}
-              title="List view"
-              aria-label="List view"
-            >
-              <List size={16} />
-            </button>
+            {/* Upload Dropdown Menu matching PR2 */}
+            {(isUploadMenuOpen || isUploadHovered) && (
+              <div className="absolute right-0 top-full mt-1.5 w-[160px] rounded-[10px] bg-[var(--panel)] border border-[var(--border)] shadow-xl p-1 z-50 animate-in fade-in zoom-in-95">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUploadMenuOpen(false);
+                    setIsUploadHovered(false);
+                    handleUploadFilesOption();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-xs text-white hover:bg-[var(--hover)] transition-colors text-left cursor-pointer"
+                >
+                  <UploadFile size={16} className="text-[var(--text-2)]" />
+                  <span>Upload files</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUploadMenuOpen(false);
+                    setIsUploadHovered(false);
+                    folderInputRef.current?.click();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[6px] text-xs text-white hover:bg-[var(--hover)] transition-colors text-left cursor-pointer"
+                >
+                  <DriveFolderUpload size={16} className="text-[var(--text-2)]" />
+                  <span>Upload folder</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* VIEW A: PROJECT ROOT LEVEL (Folders 4, banner, "No files at project level") */}
-      {!currentFolderId && (
-        <div className="space-y-6 pt-2">
-          {/* Folders Section matching Screenshot L2 */}
+      {/* Requirement 6: EMPTY PROJECT STATE matching PR1 */}
+      {!currentFolderId && filteredFolders.length === 0 && (
+        <div
+          onDragEnter={(e) => {
+            e.preventDefault();
+            setIsDragOver(true);
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragOver(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            setIsDragOver(false);
+          }}
+          onDrop={handleDrop}
+          className={`rounded-[16px] border border-dashed p-12 flex flex-col items-center justify-center text-center my-6 min-h-[380px] w-full transition-colors ${
+            isDragOver ? "border-[#4876F3] bg-[#4876F3]/5" : "border-[var(--border)] bg-transparent"
+          }`}
+        >
+          {/* Folder Icon in rounded container */}
+          <div className="w-14 h-14 rounded-[12px] bg-[var(--panel)] border border-[var(--border)] flex items-center justify-center mb-5 text-[var(--text-3)]">
+            <FolderPlus size={24} className="text-[var(--text-2)]" />
+          </div>
+
+          {/* Heading */}
+          <h2 className="text-lg font-semibold text-white mb-2">This project is empty</h2>
+
+          {/* Subtitle */}
+          <p className="text-xs text-[var(--text-3)] mb-6 max-w-md">
+            Create a folder, or drop a whole folder here to upload it.
+          </p>
+
+          {/* Primary & Secondary Action Buttons */}
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              type="button"
+              onClick={() => setIsNewFolderOpen(true)}
+              className="flex items-center gap-2 h-9 px-4 rounded-[8px] bg-[var(--button)] hover:bg-[var(--button-hover)] text-xs font-semibold text-white transition-colors shadow cursor-pointer"
+            >
+              <FolderPlus size={16} />
+              <span>New folder</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => folderInputRef.current?.click()}
+              className="flex items-center gap-2 h-9 px-4 rounded-[8px] bg-[var(--panel)] hover:bg-[var(--hover)] border border-[var(--border)] text-xs font-semibold text-white transition-colors cursor-pointer"
+            >
+              <DriveFolderUpload size={16} className="text-[var(--text-2)]" />
+              <span>Upload folder</span>
+            </button>
+          </div>
+
+          {/* Footnote */}
+          <p className="text-xs text-[var(--text-3)]">Files always live inside a folder.</p>
+        </div>
+      )}
+
+      {/* Requirement 7: When project has folders, show the folders grid (no grey info bar) */}
+      {!currentFolderId && filteredFolders.length > 0 && (
+        <div
+          onDragEnter={(e) => {
+            e.preventDefault();
+            setIsDragOver(true);
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragOver(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            setIsDragOver(false);
+          }}
+          onDrop={handleDrop}
+          className={`space-y-6 pt-2 rounded-[12px] transition-colors ${
+            isDragOver ? "ring-2 ring-[#4876F3] ring-dashed p-2" : ""
+          }`}
+        >
           <div className="space-y-3.5">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-white">Folders</span>
@@ -470,7 +893,9 @@ export default function LibraryProjectPage() {
                     isSelected={isSelected}
                     onToggleSelect={() => {
                       setSelectedIds((prev) =>
-                        prev.includes(folder.id) ? prev.filter((x) => x !== folder.id) : [...prev, folder.id]
+                        prev.includes(folder.id)
+                          ? prev.filter((x) => x !== folder.id)
+                          : [...prev, folder.id]
                       );
                     }}
                     onOpen={() => router.push(`/library/${projectId}?folder=${folder.id}`)}
@@ -480,35 +905,80 @@ export default function LibraryProjectPage() {
               })}
             </div>
           </div>
-
-          {/* Info Banner matching Screenshot L2 */}
-          <div className="flex items-center gap-2.5 rounded-[10px] bg-[var(--panel)] border border-[var(--border)] px-4 py-3 text-xs text-[var(--text-2)]">
-            <Info size={16} className="text-[var(--text-3)] shrink-0" />
-            <span>Files can only be uploaded inside a folder. Open a folder, then Upload or drop files.</span>
-          </div>
-
-          {/* Empty files at project level text matching Screenshot L2 */}
-          <div className="py-2 text-xs text-[var(--text-3)]">
-            No files at project level
-          </div>
         </div>
       )}
 
-      {/* VIEW B: INSIDE A FOLDER (Screenshot L3 Upload states in the folder grid) */}
+      {/* INSIDE A FOLDER */}
       {currentFolderId && (
-        <div className="space-y-6 pt-2">
-          {/* Folder Title Header */}
-          <div className="flex items-center gap-2">
-            <Folder size={20} className="text-[var(--text-2)]" />
-            <span className="text-base font-semibold text-white">{currentFolder?.name}</span>
-            <span className="text-xs text-[var(--text-3)]">
-              {filteredFiles.length + activeUploadsInFolder.length} items
-            </span>
+        <div
+          onDragEnter={(e) => {
+            e.preventDefault();
+            setIsDragOver(true);
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragOver(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            setIsDragOver(false);
+          }}
+          onDrop={handleDrop}
+          className={`space-y-6 pt-2 rounded-[12px] transition-colors ${
+            isDragOver ? "ring-2 ring-[#4876F3] ring-dashed p-2" : ""
+          }`}
+        >
+          {/* Folder Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Folder size={20} className="text-[var(--text-2)]" />
+              <span className="text-base font-semibold text-white">{currentFolder?.name}</span>
+              <span className="text-xs text-[var(--text-3)]">
+                {filteredFiles.length + activeUploadsInFolder.length} items
+              </span>
+            </div>
+
+            {/* Filter and View toggles */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-52 items-center gap-2 rounded-[8px] bg-[var(--input)] border border-[var(--border)] px-2.5 text-xs text-[var(--text-3)] focus-within:border-[#4876F3] transition-colors">
+                <Search size={14} className="text-[var(--text-3)] shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search in folder"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-transparent text-white placeholder-[var(--text-3)] focus:outline-none text-xs"
+                />
+              </div>
+
+              <div className="h-8 p-[2px] rounded-[8px] bg-[var(--input)] border border-[var(--border)] inline-flex items-center shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  className={`w-7 h-7 rounded-[6px] flex items-center justify-center transition-colors cursor-pointer ${
+                    viewMode === "grid" ? "bg-[var(--hover)] text-white shadow-sm" : "text-[var(--text-3)] hover:text-white"
+                  }`}
+                  title="Grid view"
+                >
+                  <LayoutGrid size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className={`w-7 h-7 rounded-[6px] flex items-center justify-center transition-colors cursor-pointer ${
+                    viewMode === "list" ? "bg-[var(--hover)] text-white shadow-sm" : "text-[var(--text-3)] hover:text-white"
+                  }`}
+                  title="List view"
+                >
+                  <List size={14} />
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Files Grid with in-place L3 upload states */}
+          {/* Files Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {/* Active Uploads in progress / processing */}
+            {/* Active Uploads in progress */}
             {activeUploadsInFolder.map((u) => (
               <FileCard
                 key={u.id}
@@ -517,7 +987,12 @@ export default function LibraryProjectPage() {
                   name: u.filename,
                   type: u.file?.type || "video/mp4",
                   size_bytes: u.file?.size,
-                  status: u.status === "uploading" ? "uploading" : u.status === "completed" ? "ready" : "processing",
+                  status:
+                    u.status === "uploading"
+                      ? "uploading"
+                      : u.status === "completed"
+                      ? "ready"
+                      : "processing",
                   upload_progress: u.progressPercent,
                   uploaded_bytes: (u.file?.size || 0) * (u.progressPercent / 100),
                   total_bytes: u.file?.size || 0,
@@ -553,7 +1028,7 @@ export default function LibraryProjectPage() {
                       prev.includes(file.id) ? prev.filter((x) => x !== file.id) : [...prev, file.id]
                     );
                   }}
-                  onOpen={() => setViewingFileId(file.id)}
+                  onOpen={() => router.push(`/review/${file.id}`)}
                   onContextMenu={(e) => handleItemContextMenu(e, file, "file")}
                 />
               );
@@ -570,7 +1045,187 @@ export default function LibraryProjectPage() {
         </div>
       )}
 
-      {/* Copy Link Dialog (Screenshot L5) */}
+      {/* Requirement 5: NEW FOLDER MODAL */}
+      {isNewFolderOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+          <div
+            className="fixed inset-0"
+            onClick={() => {
+              setIsNewFolderOpen(false);
+              setNewFolderName("");
+            }}
+            aria-hidden="true"
+          />
+          <div className="relative w-full max-w-[400px] rounded-[14px] bg-[var(--panel)] border border-[var(--border)] p-6 shadow-xl z-10 animate-in fade-in zoom-in-95">
+            <h3 className="text-base font-semibold text-white">New folder</h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (newFolderName.trim()) {
+                  createFolderMutation.mutate({ name: newFolderName });
+                }
+              }}
+              className="mt-4"
+            >
+              <input
+                type="text"
+                autoFocus
+                placeholder="Folder name"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                className="w-full h-10 px-3 rounded-[8px] bg-[var(--input)] border border-[var(--border)] text-sm text-white focus:outline-none focus:border-[#4876F3]"
+              />
+              <div className="flex items-center justify-end gap-2.5 mt-5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsNewFolderOpen(false);
+                    setNewFolderName("");
+                  }}
+                  className="h-8 px-3 rounded-[8px] text-xs font-medium text-[var(--text-2)] hover:text-white hover:bg-[var(--hover)] transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newFolderName.trim() || createFolderMutation.isPending}
+                  className="h-8 px-4 rounded-[8px] bg-[var(--button)] hover:bg-[var(--button-hover)] disabled:opacity-50 text-xs font-semibold text-white transition-colors cursor-pointer shadow"
+                >
+                  {createFolderMutation.isPending ? "Creating..." : "Create folder"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DESTINATION FOLDER PICKER MODAL (Requirement 4) */}
+      {showFolderPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+          <div
+            className="fixed inset-0"
+            onClick={() => {
+              setShowFolderPicker(false);
+              setPendingFilesToUpload(null);
+            }}
+            aria-hidden="true"
+          />
+          <div className="relative w-full max-w-md rounded-[14px] bg-[var(--panel)] border border-[var(--border)] p-6 shadow-xl z-10 animate-in fade-in zoom-in-95">
+            <h3 className="text-base font-semibold text-white">Choose a folder</h3>
+            <p className="text-xs text-[var(--text-3)] mt-1">
+              Files always live inside a folder. Select where to upload.
+            </p>
+
+            {/* Folder list */}
+            <div className="mt-4 max-h-56 overflow-y-auto space-y-1.5">
+              {rawFolders.length === 0 ? (
+                <div className="py-4 text-center text-xs text-[var(--text-3)]">
+                  No folders in this project yet. Create one below to upload.
+                </div>
+              ) : (
+                rawFolders.map((f) => {
+                  const isSelected = selectedFolderForUpload === f.id;
+                  return (
+                    <div
+                      key={f.id}
+                      onClick={() => setSelectedFolderForUpload(f.id)}
+                      className={`flex items-center justify-between p-2.5 rounded-[8px] cursor-pointer border transition-colors ${
+                        isSelected
+                          ? "bg-[var(--hover)] border-[#4876F3] text-white"
+                          : "bg-[var(--input)] border-transparent hover:border-[var(--border)] text-[var(--text-2)] hover:text-white"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Folder
+                          size={18}
+                          className={isSelected ? "text-[#4876F3]" : "text-[var(--text-3)]"}
+                        />
+                        <span className="text-xs font-medium truncate">{f.name}</span>
+                      </div>
+                      <span className="text-xs text-[var(--text-3)] shrink-0">
+                        {f.item_count ?? f.file_count ?? 0} items
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Inline New Folder section */}
+            <div className="mt-4 pt-3 border-t border-[var(--border)]">
+              {isCreatingFolderInline ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="New folder name"
+                    value={inlineFolderName}
+                    onChange={(e) => setInlineFolderName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleCreateInlineFolder();
+                      }
+                    }}
+                    className="flex-1 h-8 px-2.5 rounded-[6px] bg-[var(--input)] border border-[var(--border)] text-xs text-white focus:outline-none focus:border-[#4876F3]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateInlineFolder}
+                    disabled={!inlineFolderName.trim()}
+                    className="h-8 px-3 rounded-[6px] bg-[var(--button)] hover:bg-[var(--button-hover)] disabled:opacity-50 text-xs font-semibold text-white transition-colors cursor-pointer"
+                  >
+                    Create
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCreatingFolderInline(false);
+                      setInlineFolderName("");
+                    }}
+                    className="h-8 px-2 text-xs text-[var(--text-3)] hover:text-white cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingFolderInline(true)}
+                  className="flex items-center gap-2 text-xs font-medium text-[#4876F3] hover:underline cursor-pointer"
+                >
+                  <Plus size={16} />
+                  <span>New folder</span>
+                </button>
+              )}
+            </div>
+
+            {/* Dialog Footer Actions */}
+            <div className="flex items-center justify-end gap-2.5 mt-5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowFolderPicker(false);
+                  setPendingFilesToUpload(null);
+                }}
+                className="h-8 px-3 rounded-[8px] text-xs font-medium text-[var(--text-2)] hover:text-white hover:bg-[var(--hover)] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!selectedFolderForUpload}
+                onClick={() => handleConfirmFolderSelection(selectedFolderForUpload)}
+                className="h-8 px-4 rounded-[8px] bg-[var(--button)] hover:bg-[var(--button-hover)] disabled:opacity-50 text-xs font-semibold text-white transition-colors cursor-pointer shadow"
+              >
+                {pendingFilesToUpload ? "Upload to this folder" : "Select folder"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Copy Link Dialog */}
       {showCopyLink && (
         <CopyLinkDialog
           isOpen={showCopyLink}
@@ -581,7 +1236,7 @@ export default function LibraryProjectPage() {
         />
       )}
 
-      {/* Move to / Copy to Panel (Screenshot L6) */}
+      {/* Move to / Copy to Panel */}
       {moveItemState?.isOpen && (
         <MoveCopyPanel
           isOpen={moveItemState.isOpen}

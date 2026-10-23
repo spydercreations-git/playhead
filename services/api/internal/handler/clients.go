@@ -824,3 +824,67 @@ func (h *ClientHandler) ResendContactInvite(w http.ResponseWriter, r *http.Reque
 		"temp_password": newTempPassword,
 	})
 }
+
+// GetLibraryClientFilter returns the user's saved library client filter
+func (h *ClientHandler) GetLibraryClientFilter(w http.ResponseWriter, r *http.Request) {
+	person := middleware.GetPerson(r.Context())
+	if person.UserID == uuid.Nil {
+		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	filterBytes, err := h.queries.GetUserLibraryClientFilter(r.Context(), pgtype.UUID{Bytes: person.UserID, Valid: true})
+	var clientIDs []string
+	if err == nil && len(filterBytes) > 0 {
+		_ = json.Unmarshal(filterBytes, &clientIDs)
+	}
+	if clientIDs == nil {
+		clientIDs = []string{}
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"client_ids": clientIDs,
+	})
+}
+
+// UpdateLibraryClientFilter updates the user's saved library client filter
+func (h *ClientHandler) UpdateLibraryClientFilter(w http.ResponseWriter, r *http.Request) {
+	person := middleware.GetPerson(r.Context())
+	if person.UserID == uuid.Nil {
+		respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	var req struct {
+		ClientIDs []string `json:"client_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_payload"})
+		return
+	}
+
+	if req.ClientIDs == nil {
+		req.ClientIDs = []string{}
+	}
+
+	filterBytes, err := json.Marshal(req.ClientIDs)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_encode"})
+		return
+	}
+
+	err = h.queries.UpdateUserLibraryClientFilter(r.Context(), db.UpdateUserLibraryClientFilterParams{
+		ID:                  pgtype.UUID{Bytes: person.UserID, Valid: true},
+		LibraryClientFilter: filterBytes,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_update"})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"ok":         true,
+		"client_ids": req.ClientIDs,
+	})
+}
+

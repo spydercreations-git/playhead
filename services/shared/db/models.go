@@ -534,6 +534,7 @@ type User struct {
 	GridSize              string             `json:"grid_size"`
 	LastUploadProjectID   pgtype.UUID        `json:"last_upload_project_id"`
 	LastUploadFolderID    pgtype.UUID        `json:"last_upload_folder_id"`
+	LibraryClientFilter   []byte             `json:"library_client_filter"`
 }
 
 type UserSetting struct {

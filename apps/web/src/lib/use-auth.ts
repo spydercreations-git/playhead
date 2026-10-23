@@ -14,6 +14,7 @@ export interface CurrentUser {
   is_onboarded?: boolean;
   has_temp_password?: boolean;
   email_verified: boolean;
+  library_client_filter?: string[];
 }
 
 export interface CompanyDetails {

@@ -28,7 +28,7 @@ INSERT INTO users (
 ) VALUES (
     $1, $2, $3, $4
 )
-RETURNING id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, grid_size, last_upload_project_id, last_upload_folder_id
+RETURNING id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, grid_size, last_upload_project_id, last_upload_folder_id, library_client_filter
 `
 
 type CreateUserParams struct {
@@ -65,6 +65,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.GridSize,
 		&i.LastUploadProjectID,
 		&i.LastUploadFolderID,
+		&i.LibraryClientFilter,
 	)
 	return i, err
 }
@@ -102,7 +103,7 @@ func (q *Queries) GetCompanyByID(ctx context.Context, id pgtype.UUID) (Company, 
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, grid_size, last_upload_project_id, last_upload_folder_id FROM users
+SELECT id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, grid_size, last_upload_project_id, last_upload_folder_id, library_client_filter FROM users
 WHERE email = $1 LIMIT 1
 `
 
@@ -128,12 +129,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.GridSize,
 		&i.LastUploadProjectID,
 		&i.LastUploadFolderID,
+		&i.LibraryClientFilter,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, grid_size, last_upload_project_id, last_upload_folder_id FROM users
+SELECT id, email, name, avatar_url, password_hash, google_id, email_verified_at, created_at, updated_at, username, temp_password_hash, temp_password_expires_at, temp_password_used, is_onboarded, onboarded_at, grid_size, last_upload_project_id, last_upload_folder_id, library_client_filter FROM users
 WHERE id = $1 LIMIT 1
 `
 
@@ -159,6 +161,36 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.GridSize,
 		&i.LastUploadProjectID,
 		&i.LastUploadFolderID,
+		&i.LibraryClientFilter,
 	)
 	return i, err
+}
+
+const getUserLibraryClientFilter = `-- name: GetUserLibraryClientFilter :one
+SELECT library_client_filter
+FROM users
+WHERE id = $1
+`
+
+func (q *Queries) GetUserLibraryClientFilter(ctx context.Context, id pgtype.UUID) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getUserLibraryClientFilter, id)
+	var library_client_filter []byte
+	err := row.Scan(&library_client_filter)
+	return library_client_filter, err
+}
+
+const updateUserLibraryClientFilter = `-- name: UpdateUserLibraryClientFilter :exec
+UPDATE users
+SET library_client_filter = $2, updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateUserLibraryClientFilterParams struct {
+	ID                  pgtype.UUID `json:"id"`
+	LibraryClientFilter []byte      `json:"library_client_filter"`
+}
+
+func (q *Queries) UpdateUserLibraryClientFilter(ctx context.Context, arg UpdateUserLibraryClientFilterParams) error {
+	_, err := q.db.Exec(ctx, updateUserLibraryClientFilter, arg.ID, arg.LibraryClientFilter)
+	return err
 }

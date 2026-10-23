@@ -358,6 +358,16 @@ This document records all decisions not explicitly defined in the spec (`PLAYHEA
   - **Quick Links**: Stored per-user (`user_id`), validated to `http`/`https` only, supporting instant clipboard copy and private bookmarking.
   - **Native Feature Removals**: Completely removed Spreadsheets (FortuneSheet, spreadsheet tables, formula parser), My Drive, Reviews feed, Shared with me, and Starred features. Permanent 308 redirects guide legacy URLs to Home.
 
+## 49. Library "Select Clients" Multi-Select Filter (UI & Server Persistence)
+- **Decision**:
+  - Replaced single-client dropdowns on Library and Tasks pages with a multi-select "Select clients" button and dialog matching designs L7 and L8.
+  - **The Modal (L7)**: Filterable search input, "All clients" toggle with indeterminate dash state, alphabetically sorted client list with individual checkboxes, avatar/initials, and project counts ("No projects yet" when 0, "internal · X projects" for internal). Keyboard accessible (Arrows, Space, Enter, Esc).
+  - **Button & Bar (L8)**: Button displays up to 2 selected client names, then "+N" badge, with a blue count pill and a "Show all clients" reset link.
+  - **Server Persistence & URL Sharing**: User filter preference stored in `users.library_client_filter` (JSONB array of client IDs, migration `00026_library_client_filter.sql`) via `GET /users/me/library-client-filter` and `PUT /users/me/library-client-filter`, returning with `/auth/me`. URLs synchronize via `?clients=id1,id2` for shareable filtered views.
+  - **Client Isolation**: Client users only ever see their own client's projects and tasks; the multi-select filter button is hidden for client users.
+- **Reason**: Allows studio staff to focus on specific client project subsets across work sessions and devices while enabling instant sharing of filtered views via URL.
+
+
 
 
 

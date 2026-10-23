@@ -306,6 +306,8 @@ func main() {
 			protected.Patch("/contacts/{id}", clientHandler.UpdateContact)
 			protected.Delete("/contacts/{id}", clientHandler.DeleteContact)
 			protected.Post("/contacts/{id}/resend", clientHandler.ResendContactInvite)
+			protected.Get("/users/me/library-client-filter", clientHandler.GetLibraryClientFilter)
+			protected.Put("/users/me/library-client-filter", clientHandler.UpdateLibraryClientFilter)
 
 			// Projects and People (P1 & P3)
 			protected.Get("/projects", projectHandler.List)

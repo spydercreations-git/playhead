@@ -279,3 +279,98 @@ func TestStep5NewClientModalAndPeople(t *testing.T) {
 		}
 	})
 }
+
+func TestLibraryClientFilterEndpoint(t *testing.T) {
+	pool, queries, cleanup := setupTestPool(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	mailClient := mailer.New(mailer.Config{})
+	clientH := NewClientHandler(queries, mailClient)
+	clientH.SetPool(pool)
+
+	r := chi.NewRouter()
+	r.Get("/api/v1/users/me/library-client-filter", clientH.GetLibraryClientFilter)
+	r.Put("/api/v1/users/me/library-client-filter", clientH.UpdateLibraryClientFilter)
+
+	comp, err := queries.CreateCompany(ctx, db.CreateCompanyParams{
+		Name: "Test Agency Filter",
+		Slug: "test-agency-filter-" + time.Now().Format("20060102150405000000"),
+	})
+	if err != nil {
+		t.Fatalf("create company: %v", err)
+	}
+
+	testUser, err := queries.CreateUser(ctx, db.CreateUserParams{
+		Email: fmt.Sprintf("user-%d@filter.com", time.Now().UnixNano()),
+		Name:  "Filter User",
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	testPerson := authz.Person{
+		UserID:    uuid.UUID(testUser.ID.Bytes),
+		Email:     testUser.Email,
+		CompanyID: uuid.UUID(comp.ID.Bytes),
+		Role:      authz.RoleStaff,
+	}
+
+	// 1. Initial GET should return empty list
+	req1 := httptest.NewRequest("GET", "/api/v1/users/me/library-client-filter", nil)
+	req1 = req1.WithContext(contextWithPerson(req1.Context(), testUser, comp.ID, testPerson))
+	w1 := httptest.NewRecorder()
+	r.ServeHTTP(w1, req1)
+
+	if w1.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w1.Code, w1.Body.String())
+	}
+	var res1 struct {
+		ClientIDs []string `json:"client_ids"`
+	}
+	_ = json.Unmarshal(w1.Body.Bytes(), &res1)
+	if len(res1.ClientIDs) != 0 {
+		t.Fatalf("expected 0 initial client ids, got %d", len(res1.ClientIDs))
+	}
+
+	// 2. PUT with 2 client IDs
+	id1 := uuid.New().String()
+	id2 := uuid.New().String()
+	putBody, _ := json.Marshal(map[string]interface{}{
+		"client_ids": []string{id1, id2},
+	})
+	req2 := httptest.NewRequest("PUT", "/api/v1/users/me/library-client-filter", bytes.NewReader(putBody))
+	req2 = req2.WithContext(contextWithPerson(req2.Context(), testUser, comp.ID, testPerson))
+	w2 := httptest.NewRecorder()
+	r.ServeHTTP(w2, req2)
+
+	if w2.Code != http.StatusOK {
+		t.Fatalf("expected 200 on PUT, got %d: %s", w2.Code, w2.Body.String())
+	}
+
+	// 3. GET again should return the 2 client IDs
+	req3 := httptest.NewRequest("GET", "/api/v1/users/me/library-client-filter", nil)
+	req3 = req3.WithContext(contextWithPerson(req3.Context(), testUser, comp.ID, testPerson))
+	w3 := httptest.NewRecorder()
+	r.ServeHTTP(w3, req3)
+
+	if w3.Code != http.StatusOK {
+		t.Fatalf("expected 200 on GET, got %d: %s", w3.Code, w3.Body.String())
+	}
+	var res3 struct {
+		ClientIDs []string `json:"client_ids"`
+	}
+	_ = json.Unmarshal(w3.Body.Bytes(), &res3)
+	if len(res3.ClientIDs) != 2 || res3.ClientIDs[0] != id1 || res3.ClientIDs[1] != id2 {
+		t.Fatalf("expected [%s, %s], got %v", id1, id2, res3.ClientIDs)
+	}
+
+	// 4. Unauthorized without user should return 401
+	unauthReq := httptest.NewRequest("GET", "/api/v1/users/me/library-client-filter", nil)
+	unauthW := httptest.NewRecorder()
+	r.ServeHTTP(unauthW, unauthReq)
+	if unauthW.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 Unauthorized, got %d", unauthW.Code)
+	}
+}
+

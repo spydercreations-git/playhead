@@ -977,17 +977,26 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	var clientFilter []string
+	if len(fullUser.LibraryClientFilter) > 0 {
+		_ = json.Unmarshal(fullUser.LibraryClientFilter, &clientFilter)
+	}
+	if clientFilter == nil {
+		clientFilter = []string{}
+	}
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"user": map[string]interface{}{
-			"id":                user.ID,
-			"email":             user.Email,
-			"name":              user.Name,
-			"avatar":            user.AvatarURL.String,
-			"avatar_url":        user.AvatarURL.String,
-			"username":          fullUser.Username.String,
-			"is_onboarded":      fullUser.IsOnboarded,
-			"has_temp_password": hasTemp,
-			"email_verified":    user.EmailVerifiedAt.Valid,
+			"id":                    user.ID,
+			"email":                 user.Email,
+			"name":                  user.Name,
+			"avatar":                user.AvatarURL.String,
+			"avatar_url":            user.AvatarURL.String,
+			"username":              fullUser.Username.String,
+			"is_onboarded":          fullUser.IsOnboarded,
+			"has_temp_password":     hasTemp,
+			"email_verified":        user.EmailVerifiedAt.Valid,
+			"library_client_filter": clientFilter,
 		},
 		"client_name":     clientName,
 		"client_logo":     clientLogo,

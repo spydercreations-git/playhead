@@ -20,3 +20,14 @@ WHERE id = $1 LIMIT 1;
 
 -- name: CheckDatabaseHealth :one
 SELECT 1 as healthy;
+
+-- name: GetUserLibraryClientFilter :one
+SELECT library_client_filter
+FROM users
+WHERE id = $1;
+
+-- name: UpdateUserLibraryClientFilter :exec
+UPDATE users
+SET library_client_filter = $2, updated_at = NOW()
+WHERE id = $1;
+

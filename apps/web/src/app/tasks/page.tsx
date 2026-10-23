@@ -15,6 +15,11 @@ import {
   Loader2,
   Calendar,
 } from "@/components/ui/icon";
+import {
+  SelectClientsModal,
+  ClientFilterButton,
+  ClientOption,
+} from "@/components/clients/select-clients-modal";
 
 interface TaskItem {
   id: string;
@@ -30,11 +35,6 @@ interface TaskItem {
   is_overdue?: boolean;
   comments_count: number;
   position: any;
-}
-
-interface ClientOption {
-  id: string;
-  name: string;
 }
 
 function getClientColor(clientName: string): string {
@@ -66,16 +66,36 @@ function TasksContent() {
   // Filters
   const [search, setSearch] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
-  const [selectedClientId, setSelectedClientId] = useState("all");
+  const [selectedClientIds, setSelectedClientIds] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      const param = new URLSearchParams(window.location.search).get("clients");
+      if (param) return param.split(",").filter(Boolean);
+    }
+    return [];
+  });
   const [selectedMonth, setSelectedMonth] = useState("all");
 
   // Modals & Panels
   const [activeTaskId, setActiveTaskId] = useState<string | null>(openParam || null);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [showSelectClients, setShowSelectClients] = useState(false);
 
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const handleApplyClientFilter = (ids: string[]) => {
+    setSelectedClientIds(ids);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (ids.length > 0) {
+        url.searchParams.set("clients", ids.join(","));
+      } else {
+        url.searchParams.delete("clients");
+      }
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
 
   const fetchTasks = async () => {
     try {
@@ -117,7 +137,7 @@ function TasksContent() {
         return false;
       }
       // Client filter
-      if (selectedClientId !== "all" && t.client_id !== selectedClientId) {
+      if (selectedClientIds.length > 0 && (!t.client_id || !selectedClientIds.includes(t.client_id))) {
         return false;
       }
       // Month filter (e.g. "2026-10")
@@ -126,7 +146,7 @@ function TasksContent() {
       }
       return true;
     });
-  }, [tasks, search, selectedStatus, selectedClientId, selectedMonth]);
+  }, [tasks, search, selectedStatus, selectedClientIds, selectedMonth]);
 
   // Drag and drop handlers (Rule 10: drag rows to reorder, saved on server)
   function handleDragStart(index: number) {
@@ -271,24 +291,15 @@ function TasksContent() {
             <ChevronDown className="w-3.5 h-3.5 text-[var(--text-3)] absolute right-2.5 top-2.5 pointer-events-none" />
           </div>
 
-          {/* Client Dropdown */}
-          <div className="relative">
-            <select
-              value={selectedClientId}
-              onChange={(e) => setSelectedClientId(e.target.value)}
-              className="bg-[var(--input)] border border-[var(--border)] rounded-[8px] pl-3 pr-8 py-2 text-xs text-white appearance-none focus:outline-none focus:border-[var(--primary)]"
-            >
-              <option value="all" className="bg-[var(--panel-raised)]">
-                All clients
-              </option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id} className="bg-[var(--panel-raised)]">
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-[var(--text-3)] absolute right-2.5 top-2.5 pointer-events-none" />
-          </div>
+          {/* Client Filter Button matching L7 & L8 */}
+          {!isClient && (
+            <ClientFilterButton
+              selectedClientIds={selectedClientIds}
+              clients={clients}
+              onClick={() => setShowSelectClients(true)}
+              onClearAll={() => handleApplyClientFilter([])}
+            />
+          )}
         </div>
 
         {/* Tasks List Table (T1) */}
@@ -459,6 +470,15 @@ function TasksContent() {
           fetchTasks();
           setActiveTaskId(newId);
         }}
+      />
+
+      {/* Select Clients Modal (L7) */}
+      <SelectClientsModal
+        open={showSelectClients}
+        onClose={() => setShowSelectClients(false)}
+        selectedClientIds={selectedClientIds}
+        onApply={handleApplyClientFilter}
+        clients={clients}
       />
     </div>
   );

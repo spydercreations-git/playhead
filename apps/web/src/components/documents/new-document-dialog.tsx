@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   FileText,
   X,
@@ -63,7 +62,6 @@ export function NewDocumentDialog({
   onDocumentCreated,
 }: NewDocumentDialogProps) {
   const router = useRouter();
-  const shouldReduceMotion = useReducedMotion();
 
   const [title, setTitle] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("blank");
@@ -146,32 +144,16 @@ export function NewDocumentDialog({
     }
   }
 
-  const dialogTransition = shouldReduceMotion
-    ? { duration: 0 }
-    : { duration: 0.18, ease: "easeOut" as const };
-
-  const closeTransition = shouldReduceMotion
-    ? { duration: 0 }
-    : { duration: 0.12, ease: "easeIn" as const };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={closeTransition}
+      <div
         onClick={onClose}
         className="fixed inset-0 bg-black/80"
       />
 
       {/* Modal Dialog */}
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 4 }}
-        transition={dialogTransition}
+      <div
         className="relative z-10 bg-[var(--panel)] border border-[var(--border)] rounded-xl max-w-xl w-full p-6 shadow-overlay"
       >
         {/* Close Button */}
@@ -288,7 +270,7 @@ export function NewDocumentDialog({
             </button>
           </div>
         </form>
-      </motion.div>
+      </div>
     </div>
   );
 }

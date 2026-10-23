@@ -214,7 +214,7 @@ export function AssignTaskDialog({
   if (!open || !mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80">
       <div className="w-[1100px] max-w-[95vw] h-[790px] max-h-[94vh] rounded-[20px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-xl overflow-hidden flex flex-col">
         {/* Main 2-Column Body */}
         <div className="flex-1 flex overflow-hidden min-h-0">
@@ -368,7 +368,7 @@ export function AssignTaskDialog({
 
               {/* Connected Dropdown below field */}
               {projectDropdownOpen && (
-                <div className="absolute top-full mt-1.5 left-0 w-full rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] py-1.5 shadow-xl z-50 animate-in fade-in max-h-56 overflow-y-auto">
+                <div className="absolute top-full mt-1.5 left-0 w-full rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] py-1.5 shadow-xl z-50 max-h-56 overflow-y-auto">
                   <button
                     type="button"
                     onClick={() => {
@@ -471,7 +471,7 @@ export function AssignTaskDialog({
 
               {/* Inline Add Link Form */}
               {showAddLink && (
-                <div className="mt-2.5 p-3 rounded-[10px] bg-[#161618] border border-[var(--border)] space-y-2 animate-in fade-in">
+                <div className="mt-2.5 p-3 rounded-[10px] bg-[#161618] border border-[var(--border)] space-y-2">
                   <input
                     type="text"
                     placeholder="Link label (e.g. Raw footage Drive)"

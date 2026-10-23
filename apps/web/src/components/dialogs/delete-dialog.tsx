@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, Trash2 } from "@/components/ui/icon";
 
 interface DeleteDialogProps {
@@ -39,20 +38,13 @@ export function DeleteDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+      <div
         onClick={onClose}
         className="fixed inset-0 bg-black/80"
       />
 
       {/* Dialog Body */}
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 4 }}
-        transition={{ duration: 0.16, ease: "easeOut" }}
+      <div
         className="relative z-10 w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-overlay flex flex-col items-center text-center select-none"
       >
         {/* Round Warning Icon */}
@@ -99,7 +91,7 @@ export function DeleteDialog({
             {isLoading ? "Deleting..." : "Delete"}
           </button>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

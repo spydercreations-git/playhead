@@ -543,8 +543,8 @@ export function TaskPanel({
   const linksCount = task?.links?.length || 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/80 animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl bg-[var(--panel)] border-l border-[var(--border)] shadow-overlay flex flex-col h-full animate-in slide-in-from-right duration-250">
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/80">
+      <div className="w-full max-w-2xl bg-[var(--panel)] border-l border-[var(--border)] shadow-overlay flex flex-col h-full">
         {/* Top Action Bar */}
         <div className="flex items-center justify-between px-6 py-3.5 border-b border-[var(--border)] bg-[var(--panel)] shrink-0">
           <div className="flex items-center gap-2">

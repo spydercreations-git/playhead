@@ -667,7 +667,7 @@ export default function DocumentsPage() {
             onClick={() => setSharingDoc(null)}
             aria-hidden="true"
           />
-          <div className="relative w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in duration-150">
+          <div className="relative w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
               <div>
                 <h2 className="text-base font-semibold text-white">Share document</h2>
@@ -789,7 +789,7 @@ export default function DocumentsPage() {
             onClick={() => setRenameDoc(null)}
             aria-hidden="true"
           />
-          <div className="relative w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in duration-150">
+          <div className="relative w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
               <h2 className="text-sm font-semibold text-white">Rename document</h2>
               <button

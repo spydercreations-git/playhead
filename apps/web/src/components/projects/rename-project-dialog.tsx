@@ -54,11 +54,11 @@ export function RenameProjectDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-xl bg-[var(--panel)] border border-[var(--border)] shadow-xl overflow-hidden p-6 text-white animate-in fade-in duration-150"
+        className="w-full max-w-md rounded-xl bg-[var(--panel)] border border-[var(--border)] shadow-xl overflow-hidden p-6 text-white"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">

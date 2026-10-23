@@ -313,7 +313,7 @@ export default function QuickLinksPage() {
             onClick={() => setShowAddModal(false)}
             aria-hidden="true"
           />
-          <div className="relative w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in duration-150">
+          <div className="relative w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
               <h2 className="text-sm font-semibold text-white">Add quick link</h2>

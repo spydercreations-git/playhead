@@ -289,12 +289,12 @@ export function EntityPicker({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in-0 duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
       onClick={onClose}
       onKeyDown={handleKeyDown}
     >
       <div
-        className="relative w-[520px] max-w-[95vw] rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-150"
+        className="relative w-[520px] max-w-[95vw] rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-xl overflow-hidden flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header */}

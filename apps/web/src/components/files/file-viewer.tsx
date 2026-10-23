@@ -167,7 +167,7 @@ export function FileViewer({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]/95 text-white font-sans animate-in fade-in duration-200 theme-neutral" data-theme-neutral="true">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]/95 text-white font-sans theme-neutral" data-theme-neutral="true">
       {/* Top Header Bar */}
       <div className="flex h-14 items-center justify-between border-b border-[var(--border-strong)]/60 px-6 bg-[var(--bg)]">
         <div className="flex items-center gap-4">

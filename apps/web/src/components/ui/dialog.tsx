@@ -40,7 +40,7 @@ export function Dialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 transition-opacity"
+        className="fixed inset-0"
         onClick={() => onOpenChange(false)}
       />
 
@@ -48,7 +48,7 @@ export function Dialog({
       <div
         role="dialog"
         aria-modal="true"
-        className={`relative z-10 w-full ${maxWidth} rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.35)] text-white animate-in fade-in-0 zoom-in-[0.98] duration-160 ease-out motion-reduce:animate-none ${className}`}
+        className={`relative z-10 w-full ${maxWidth} rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.35)] text-white ${className}`}
       >
         {children}
       </div>

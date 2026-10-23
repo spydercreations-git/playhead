@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion } from "framer-motion";
 import {
   X,
   ChevronDown,
@@ -111,20 +110,13 @@ export function ManageAccessDialog({
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+        <div
           onClick={onClose}
           className="fixed inset-0 bg-black/80"
         />
 
         {/* Dialog Body */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15, ease: "easeOut" }}
+        <div
           className="relative z-10 w-full max-w-lg rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-overlay flex flex-col overflow-hidden max-h-[90vh]"
         >
           {/* Header with Project Logo and "Add to {name}" */}
@@ -393,7 +385,7 @@ export function ManageAccessDialog({
             {submitting ? "Adding..." : chosenPeople.length > 0 ? `Add (${chosenPeople.length})` : "Add"}
           </button>
         </div>
-      </motion.div>
+      </div>
     </div>
 
     {/* P2 Picker - Add people */}

@@ -783,9 +783,9 @@ export default function AdminPage() {
 
       {/* Edit Member Drawer / Slide-Over */}
       {selectedMember && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/80 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/80">
           <div
-            className="flex h-full w-full max-w-xl flex-col bg-[var(--panel)] border-l border-[var(--border)] shadow-lg animate-in slide-in-from-right duration-200"
+            className="flex h-full w-full max-w-xl flex-col bg-[var(--panel)] border-l border-[var(--border)] shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Drawer Header */}
@@ -1062,9 +1062,9 @@ export default function AdminPage() {
 
       {/* Add Member Modal */}
       {showAddMemberModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div
-            className="w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--panel)] shadow-lg overflow-hidden animate-in fade-in duration-150"
+            className="w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--panel)] shadow-lg overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--panel-raised)] px-6 py-4">
@@ -1149,9 +1149,9 @@ export default function AdminPage() {
 
       {/* Add Client Contact Modal */}
       {showAddContactModal && targetClientForContact && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div
-            className="w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--panel)] shadow-lg overflow-hidden animate-in fade-in duration-150"
+            className="w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--panel)] shadow-lg overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--panel-raised)] px-6 py-4">

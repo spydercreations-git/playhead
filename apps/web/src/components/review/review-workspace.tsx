@@ -355,7 +355,7 @@ export function ReviewWorkspace({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)] text-white font-sans animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)] text-white font-sans">
       {/* Top Header Bar */}
       <div className="flex h-14 items-center justify-between border-b border-[var(--panel)] px-6 bg-[var(--bg)]">
         {/* Left: Back button, project breadcrumb, filename, version dropdown, review status chip */}

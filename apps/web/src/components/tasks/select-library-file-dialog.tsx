@@ -64,7 +64,7 @@ export function SelectLibraryFileDialog({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80">
       <div className="w-full max-w-lg rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-overlay overflow-hidden flex flex-col max-h-[80vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">

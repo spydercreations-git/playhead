@@ -2681,7 +2681,7 @@ export default function ProjectWorkspacePage() {
               Array.from(e.dataTransfer.files).forEach((f) => startFileUpload(f));
             }
           }}
-          className="fixed inset-0 z-50 bg-[var(--bg)]/95 border-2 border-dashed border-[#4876F3] flex flex-col items-center justify-center p-6 text-center select-none cursor-copy animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 bg-[var(--bg)]/95 border-2 border-dashed border-[#4876F3] flex flex-col items-center justify-center p-6 text-center select-none cursor-copy"
         >
           <div className="w-16 h-16 rounded-xl bg-[#4876F3]/10 border border-[#4876F3]/30 flex items-center justify-center mb-4 text-[#4876F3] shadow-lg animate-bounce">
             <Upload className="w-8 h-8" />

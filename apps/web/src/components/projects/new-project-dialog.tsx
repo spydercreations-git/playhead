@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api";
-import { motion } from "framer-motion";
 import { X, Image as ImageIcon, Info, Folder, Loader2 } from "@/components/ui/icon";
 import { ClientAvatar } from "@/components/ui/avatar";
 import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
@@ -135,14 +134,10 @@ export function NewProjectDialog({
   return (
     <>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in-0 duration-150"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
         onClick={onClose}
       >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.98 }}
-          transition={{ duration: 0.15, ease: "easeOut" }}
+        <div
           onClick={(e) => e.stopPropagation()}
           className="relative w-[880px] h-[600px] rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-xl flex flex-col overflow-hidden select-none"
         >
@@ -385,7 +380,7 @@ export function NewProjectDialog({
               </button>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* 16:9 Cover Cropper */}

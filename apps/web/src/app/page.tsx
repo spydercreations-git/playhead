@@ -554,7 +554,7 @@ export default function HomePage() {
             onClick={() => setShowAllActivityModal(false)}
             aria-hidden="true"
           />
-          <div className="relative w-full max-w-lg rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in duration-150">
+          <div className="relative w-full max-w-lg rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
               <h2 className="text-base font-semibold text-white">All workspace activity</h2>
               <button

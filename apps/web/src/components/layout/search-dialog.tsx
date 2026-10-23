@@ -156,7 +156,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="relative w-full max-w-2xl rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in duration-150">
+      <div className="relative w-full max-w-2xl rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10">
         {/* Search Input Bar */}
         <div className="flex items-center px-4 py-3.5 border-b border-[var(--border)] gap-3">
           <Search size={20} className="text-[var(--text-3)] shrink-0" />

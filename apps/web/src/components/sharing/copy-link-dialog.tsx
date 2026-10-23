@@ -140,9 +140,9 @@ export function CopyLinkDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in-0 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
       <div
-        className="w-full max-w-[480px] rounded-[14px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-in fade-in duration-150 flex flex-col gap-5 text-white"
+        className="w-full max-w-[480px] rounded-[14px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.6)] flex flex-col gap-5 text-white"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

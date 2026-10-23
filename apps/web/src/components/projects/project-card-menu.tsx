@@ -148,7 +148,7 @@ export function ProjectCardMenu({
         zIndex: 9999,
         width: 210,
       }}
-      className="rounded-xl bg-[#18191d] border border-[#2c2d33] shadow-2xl py-1.5 text-xs text-[#e1e2e6] select-none animate-in fade-in zoom-in-95 duration-100"
+      className="rounded-xl bg-[var(--panel-raised)] border border-[var(--border)] shadow-[0_8px_24px_rgba(0,0,0,0.5)] py-1.5 text-xs text-[var(--text)] select-none animate-in fade-in zoom-in-95 duration-100"
       onClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => {
         e.preventDefault();
@@ -162,15 +162,15 @@ export function ProjectCardMenu({
           onClose();
           onOpen();
         }}
-        className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[#282a32] text-left transition-colors cursor-pointer"
+        className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[var(--hover)] text-left transition-colors cursor-pointer"
       >
-        <Icon name="open_in_new" size={20} className="text-[#a0a2aa] shrink-0" />
+        <Icon name="open_in_new" size={20} className="text-[var(--text-2)] shrink-0" />
         <span>Open</span>
       </button>
 
       {/* Separator 1 (Only show if at least one item below is visible) */}
       {(permissions.canManageAccess || true) && (
-        <div className="h-px bg-[#2c2d33] my-1 mx-1.5" />
+        <div className="h-px bg-[var(--border)] my-1 mx-1.5" />
       )}
 
       {/* 2. Manage access (requires manage_access) */}
@@ -181,9 +181,9 @@ export function ProjectCardMenu({
             onClose();
             onManageAccess();
           }}
-          className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[#282a32] text-left transition-colors cursor-pointer"
+          className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[var(--hover)] text-left transition-colors cursor-pointer"
         >
-          <Icon name="person_add" size={20} className="text-[#a0a2aa] shrink-0" />
+          <Icon name="person_add" size={20} className="text-[var(--text-2)] shrink-0" />
           <span>Manage access</span>
         </button>
       )}
@@ -195,9 +195,9 @@ export function ProjectCardMenu({
           onClose();
           onCopyLink();
         }}
-        className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[#282a32] text-left transition-colors cursor-pointer"
+        className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[var(--hover)] text-left transition-colors cursor-pointer"
       >
-        <Icon name="link" size={20} className="text-[#a0a2aa] shrink-0" />
+        <Icon name="link" size={20} className="text-[var(--text-2)] shrink-0" />
         <span>Copy link</span>
       </button>
 
@@ -208,9 +208,9 @@ export function ProjectCardMenu({
           onClose();
           onDownloadZip();
         }}
-        className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[#282a32] text-left transition-colors cursor-pointer group"
+        className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[var(--hover)] text-left transition-colors cursor-pointer group"
       >
-        <Icon name="download" size={20} className="text-[#a0a2aa] shrink-0" />
+        <Icon name="download" size={20} className="text-[var(--text-2)] shrink-0" />
         <span>Download</span>
         <span className="ml-auto text-xs font-medium tracking-wide text-[var(--text-3)] group-hover:text-white transition-colors">
           ZIP
@@ -219,7 +219,7 @@ export function ProjectCardMenu({
 
       {/* Separator 2 */}
       {(permissions.canCreateProject || permissions.canRenameProject || true) && (
-        <div className="h-px bg-[#2c2d33] my-1 mx-1.5" />
+        <div className="h-px bg-[var(--border)] my-1 mx-1.5" />
       )}
 
       {/* 5. Duplicate (requires create_project) */}
@@ -230,9 +230,9 @@ export function ProjectCardMenu({
             onClose();
             onDuplicate();
           }}
-          className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[#282a32] text-left transition-colors cursor-pointer"
+          className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[var(--hover)] text-left transition-colors cursor-pointer"
         >
-          <Icon name="add_box" size={20} className="text-[#a0a2aa] shrink-0" />
+          <Icon name="add_box" size={20} className="text-[var(--text-2)] shrink-0" />
           <span>Duplicate</span>
         </button>
       )}
@@ -245,9 +245,9 @@ export function ProjectCardMenu({
             onClose();
             onRename();
           }}
-          className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[#282a32] text-left transition-colors cursor-pointer"
+          className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[var(--hover)] text-left transition-colors cursor-pointer"
         >
-          <Icon name="edit" size={20} className="text-[#a0a2aa] shrink-0" />
+          <Icon name="edit" size={20} className="text-[var(--text-2)] shrink-0" />
           <span>Rename</span>
         </button>
       )}
@@ -259,12 +259,12 @@ export function ProjectCardMenu({
           onClose();
           onToggleActive();
         }}
-        className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[#282a32] text-left transition-colors cursor-pointer"
+        className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[var(--hover)] text-left transition-colors cursor-pointer"
       >
         <Icon
           name={isInactive ? "unarchive" : "move_to_inbox"}
           size={20}
-          className="text-[#a0a2aa] shrink-0"
+          className="text-[var(--text-2)] shrink-0"
         />
         <span>{isInactive ? "Mark active" : "Mark inactive"}</span>
       </button>
@@ -272,7 +272,7 @@ export function ProjectCardMenu({
       {/* Separator 3 (Only show if delete permission is granted) */}
       {permissions.canDeleteProject && (
         <>
-          <div className="h-px bg-[#2c2d33] my-1 mx-1.5" />
+          <div className="h-px bg-[var(--border)] my-1 mx-1.5" />
 
           {/* 8. Delete (red, last, goes to trash) */}
           <button
@@ -281,9 +281,9 @@ export function ProjectCardMenu({
               onClose();
               onDelete();
             }}
-            className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg text-[#ff5c5c] hover:bg-red-500/10 text-left transition-colors cursor-pointer"
+            className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg text-[var(--danger)] hover:bg-[var(--danger)]/10 text-left transition-colors cursor-pointer"
           >
-            <Icon name="delete" size={20} className="text-[#ff5c5c] shrink-0" />
+            <Icon name="delete" size={20} className="text-[var(--danger)] shrink-0" />
             <span>Delete</span>
           </button>
         </>

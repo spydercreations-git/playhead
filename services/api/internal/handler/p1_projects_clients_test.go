@@ -134,8 +134,8 @@ func TestP1ProjectsAndClients(t *testing.T) {
 	}
 	var createdVidProj db.Project
 	_ = json.Unmarshal(recVid.Body.Bytes(), &createdVidProj)
-	if createdVidProj.FolderCount != 4 {
-		t.Fatalf("expected folder_count 4 on video_project template, got %d", createdVidProj.FolderCount)
+	if createdVidProj.FolderCount != 2 {
+		t.Fatalf("expected folder_count 2 on video_project template, got %d", createdVidProj.FolderCount)
 	}
 
 	// 6. Extra Test: A client contact with default "Commenter" sees all projects of their client and none of other clients

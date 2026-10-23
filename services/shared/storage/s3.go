@@ -389,3 +389,13 @@ func (c *Client) DeleteObject(ctx context.Context, key string) error {
 	}
 	return nil
 }
+
+// DeletePrefix deletes all objects matching a prefix from storage
+func (c *Client) DeletePrefix(ctx context.Context, prefix string) error {
+	keys, err := c.ListObjects(ctx, prefix)
+	if err != nil {
+		return err
+	}
+	return c.DeleteObjects(ctx, keys)
+}
+

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -147,11 +148,13 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Template handling & Default folders (Addition 1)
-	defaultFolders := []string{"Raw files", "Edited files"}
+	// Template handling & Default folders:
+	// "blank" (default) creates NO folders.
+	// "video" creates exactly "Raw files" and "Edited files".
 	template := strings.ToLower(strings.TrimSpace(req.Template))
-	if template == "video_project" {
-		defaultFolders = []string{"Raw files", "Edited files", "Briefs", "Deliverables"}
+	var defaultFolders []string
+	if template == "video" || template == "video_project" {
+		defaultFolders = []string{"Raw files", "Edited files"}
 	}
 	for i, folderName := range defaultFolders {
 		var pos pgtype.Numeric
@@ -166,11 +169,15 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 			CreatedBy: user.ID,
 		})
 	}
-	_ = h.queries.UpdateProjectFolderCount(r.Context(), db.UpdateProjectFolderCountParams{
-		ID:          project.ID,
-		FolderCount: int32(len(defaultFolders)),
-	})
-	project.FolderCount = int32(len(defaultFolders))
+	if len(defaultFolders) > 0 {
+		_ = h.queries.UpdateProjectFolderCount(r.Context(), db.UpdateProjectFolderCountParams{
+			ID:          project.ID,
+			FolderCount: int32(len(defaultFolders)),
+		})
+		project.FolderCount = int32(len(defaultFolders))
+	} else {
+		project.FolderCount = 0
+	}
 
 
 
@@ -1085,110 +1092,224 @@ func (h *ProjectHandler) Duplicate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newName := fmt.Sprintf("%s copy", srcProj.Name)
-	newProj, err := h.queries.CreateProject(r.Context(), db.CreateProjectParams{
+
+	if h.pool == nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "database_pool_unavailable"})
+		return
+	}
+
+	tx, err := h.pool.Begin(r.Context())
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_begin_transaction", "message": err.Error()})
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	var copiedStorageKeys []string
+	var copiedPrefixes []string
+
+	cleanup := func(failErr error) {
+		_ = tx.Rollback(r.Context())
+		if h.storage != nil {
+			if len(copiedStorageKeys) > 0 {
+				_ = h.storage.DeleteObjects(r.Context(), copiedStorageKeys)
+			}
+			for _, prefix := range copiedPrefixes {
+				_ = h.storage.DeletePrefix(r.Context(), prefix)
+			}
+		}
+		respondJSON(w, http.StatusInternalServerError, map[string]string{
+			"error":   "failed_to_duplicate_project",
+			"message": failErr.Error(),
+		})
+	}
+
+	qTx := h.queries.WithTx(tx)
+
+	newProj, err := qTx.CreateProject(r.Context(), db.CreateProjectParams{
 		CompanyID: companyID,
 		ClientID:  srcProj.ClientID,
 		Name:      newName,
 		CreatedBy: user.ID,
 	})
 	if err != nil {
-		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_project"})
+		cleanup(fmt.Errorf("failed to create project: %w", err))
 		return
 	}
 
-	if h.pool != nil {
-		tx, err := h.pool.Begin(r.Context())
-		if err == nil {
-			defer tx.Rollback(r.Context())
+	// Copy grants
+	_, err = tx.Exec(r.Context(), `
+		INSERT INTO grants (company_id, target_type, target_id, email, user_id, level, can_download, granted_by)
+		SELECT company_id, target_type, $1, email, user_id, level, can_download, $2
+		FROM grants
+		WHERE target_type = 'project' AND target_id = $3
+		ON CONFLICT DO NOTHING
+	`, newProj.ID, user.ID, srcProj.ID)
+	if err != nil {
+		cleanup(fmt.Errorf("failed to copy grants: %w", err))
+		return
+	}
 
-			// Copy grants
-			_, _ = tx.Exec(r.Context(), `
-				INSERT INTO grants (company_id, target_type, target_id, email, user_id, level, can_download, granted_by)
-				SELECT company_id, target_type, $1, email, user_id, level, can_download, $2
-				FROM grants
-				WHERE target_type = 'project' AND target_id = $3
-				ON CONFLICT DO NOTHING
-			`, newProj.ID, user.ID, srcProj.ID)
+	// Fetch items in tree order
+	rows, err := tx.Query(r.Context(), `
+		WITH RECURSIVE item_tree AS (
+			SELECT id, parent_id, kind, name, position, file_count, folder_count, total_bytes, 0 as depth
+			FROM items
+			WHERE project_id = $1 AND parent_id IS NULL AND deleted_at IS NULL
+			UNION ALL
+			SELECT i.id, i.parent_id, i.kind, i.name, i.position, i.file_count, i.folder_count, i.total_bytes, t.depth + 1
+			FROM items i
+			JOIN item_tree t ON i.parent_id = t.id
+			WHERE i.project_id = $1 AND i.deleted_at IS NULL
+		)
+		SELECT id, parent_id, kind, name, position, file_count, folder_count, total_bytes
+		FROM item_tree
+		ORDER BY depth ASC, position ASC, id ASC
+	`, srcProj.ID)
+	if err != nil {
+		cleanup(fmt.Errorf("failed to query item tree: %w", err))
+		return
+	}
 
-			// Fetch items in tree order
-			rows, err := tx.Query(r.Context(), `
-				WITH RECURSIVE item_tree AS (
-					SELECT id, parent_id, kind, name, position, file_count, folder_count, total_bytes, 0 as depth
-					FROM items
-					WHERE project_id = $1 AND parent_id IS NULL AND deleted_at IS NULL
-					UNION ALL
-					SELECT i.id, i.parent_id, i.kind, i.name, i.position, i.file_count, i.folder_count, i.total_bytes, t.depth + 1
-					FROM items i
-					JOIN item_tree t ON i.parent_id = t.id
-					WHERE i.project_id = $1 AND i.deleted_at IS NULL
-				)
-				SELECT id, parent_id, kind, name, position, file_count, folder_count, total_bytes
-				FROM item_tree
-				ORDER BY depth ASC, position ASC, id ASC
-			`, srcProj.ID)
+	type srcItem struct {
+		id          pgtype.UUID
+		parentID    pgtype.UUID
+		kind        string
+		name        string
+		position    pgtype.Numeric
+		fileCount   int32
+		folderCount int32
+		totalBytes  int64
+	}
+	var items []srcItem
+	for rows.Next() {
+		var item srcItem
+		if scanErr := rows.Scan(&item.id, &item.parentID, &item.kind, &item.name, &item.position, &item.fileCount, &item.folderCount, &item.totalBytes); scanErr != nil {
+			rows.Close()
+			cleanup(fmt.Errorf("failed to scan item: %w", scanErr))
+			return
+		}
+		items = append(items, item)
+	}
+	rows.Close()
 
-			if err == nil {
-				type srcItem struct {
-					id          pgtype.UUID
-					parentID    pgtype.UUID
-					kind        string
-					name        string
-					position    pgtype.Numeric
-					fileCount   int32
-					folderCount int32
-					totalBytes  int64
-				}
-				var items []srcItem
-				for rows.Next() {
-					var item srcItem
-					if scanErr := rows.Scan(&item.id, &item.parentID, &item.kind, &item.name, &item.position, &item.fileCount, &item.folderCount, &item.totalBytes); scanErr == nil {
-						items = append(items, item)
-					}
-				}
-				rows.Close()
-
-				oldToNew := make(map[string]pgtype.UUID)
-				for _, itm := range items {
-					var newParentID pgtype.UUID
-					if itm.parentID.Valid {
-						if parentNew, ok := oldToNew[uuid.UUID(itm.parentID.Bytes).String()]; ok {
-							newParentID = parentNew
-						}
-					}
-
-					var newItemID pgtype.UUID
-					err = tx.QueryRow(r.Context(), `
-						INSERT INTO items (company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes)
-						VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-						RETURNING id
-					`, companyID, newProj.ID, newParentID, itm.kind, itm.name, itm.position, user.ID, itm.fileCount, itm.folderCount, itm.totalBytes).Scan(&newItemID)
-					if err != nil {
-						break
-					}
-					oldToNew[uuid.UUID(itm.id.Bytes).String()] = newItemID
-
-					if itm.kind == "file" {
-						_, _ = tx.Exec(r.Context(), `
-							INSERT INTO file_versions (company_id, item_id, number, storage_key, size_bytes, mime, duration_ms, width, height, fps, preview_status, preview_keys, uploaded_by)
-							SELECT $1, $2, number, storage_key, size_bytes, mime, duration_ms, width, height, fps, preview_status, preview_keys, $3
-							FROM file_versions
-							WHERE item_id = $4
-						`, companyID, newItemID, user.ID, itm.id)
-					}
-				}
-
-				// Update folder and file counts on new project
-				_, _ = tx.Exec(r.Context(), `
-					UPDATE projects
-					SET folder_count = (SELECT count(*) FROM items WHERE project_id = $1 AND kind = 'folder' AND deleted_at IS NULL),
-						file_count = (SELECT count(*) FROM items WHERE project_id = $1 AND kind = 'file' AND deleted_at IS NULL),
-						total_bytes = (SELECT coalesce(sum(size_bytes), 0) FROM file_versions fv JOIN items i ON fv.item_id = i.id WHERE i.project_id = $1 AND i.deleted_at IS NULL)
-					WHERE id = $1
-				`, newProj.ID)
-
-				_ = tx.Commit(r.Context())
+	oldToNew := make(map[string]pgtype.UUID)
+	for _, itm := range items {
+		var newParentID pgtype.UUID
+		if itm.parentID.Valid {
+			if parentNew, ok := oldToNew[uuid.UUID(itm.parentID.Bytes).String()]; ok {
+				newParentID = parentNew
 			}
 		}
+
+		var newItemID pgtype.UUID
+		err = tx.QueryRow(r.Context(), `
+			INSERT INTO items (company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			RETURNING id
+		`, companyID, newProj.ID, newParentID, itm.kind, itm.name, itm.position, user.ID, itm.fileCount, itm.folderCount, itm.totalBytes).Scan(&newItemID)
+		if err != nil {
+			cleanup(fmt.Errorf("failed to insert item %s: %w", itm.name, err))
+			return
+		}
+		oldToNew[uuid.UUID(itm.id.Bytes).String()] = newItemID
+
+		if itm.kind == "file" {
+			type srcVersion struct {
+				id            pgtype.UUID
+				number        int32
+				storageKey    string
+				sizeBytes     int64
+				mime          string
+				durationMs    pgtype.Int4
+				width         pgtype.Int4
+				height        pgtype.Int4
+				fps           pgtype.Numeric
+				previewStatus string
+				previewKeys   []byte
+			}
+
+			vRows, vErr := tx.Query(r.Context(), `
+				SELECT id, number, storage_key, size_bytes, mime, duration_ms, width, height, fps, preview_status, preview_keys
+				FROM file_versions
+				WHERE item_id = $1
+				ORDER BY number ASC
+			`, itm.id)
+			if vErr != nil {
+				cleanup(fmt.Errorf("failed to query file versions for item %s: %w", itm.name, vErr))
+				return
+			}
+
+			var versions []srcVersion
+			for vRows.Next() {
+				var v srcVersion
+				if scanErr := vRows.Scan(&v.id, &v.number, &v.storageKey, &v.sizeBytes, &v.mime, &v.durationMs, &v.width, &v.height, &v.fps, &v.previewStatus, &v.previewKeys); scanErr != nil {
+					vRows.Close()
+					cleanup(fmt.Errorf("failed to scan file version: %w", scanErr))
+					return
+				}
+				versions = append(versions, v)
+			}
+			vRows.Close()
+
+			for _, ver := range versions {
+				newVerID := uuid.New()
+				newVerUUID := pgtype.UUID{Bytes: newVerID, Valid: true}
+				newStorageKey := fmt.Sprintf("companies/%s/items/%s/v%d", uuid.UUID(companyID.Bytes).String(), uuid.UUID(newItemID.Bytes).String(), ver.number)
+
+				if h.storage != nil && ver.storageKey != "" {
+					if cpErr := h.storage.CopyObject(r.Context(), ver.storageKey, newStorageKey); cpErr != nil {
+						cleanup(fmt.Errorf("failed to copy storage object %s -> %s: %w", ver.storageKey, newStorageKey, cpErr))
+						return
+					}
+					copiedStorageKeys = append(copiedStorageKeys, newStorageKey)
+				}
+
+				newPreviewKeys := ver.previewKeys
+				if ver.previewStatus == "ready" && h.storage != nil {
+					srcCIDStr := uuid.UUID(companyID.Bytes).String()
+					srcVIDStr := uuid.UUID(ver.id.Bytes).String()
+					newVIDStr := newVerID.String()
+
+					srcPrefix := fmt.Sprintf("previews/%s/%s/", srcCIDStr, srcVIDStr)
+					destPrefix := fmt.Sprintf("previews/%s/%s/", srcCIDStr, newVIDStr)
+
+					if cpPrefixErr := h.storage.CopyPrefix(r.Context(), srcPrefix, destPrefix); cpPrefixErr != nil {
+						cleanup(fmt.Errorf("failed to copy preview prefix %s -> %s: %w", srcPrefix, destPrefix, cpPrefixErr))
+						return
+					}
+					copiedPrefixes = append(copiedPrefixes, destPrefix)
+					newPreviewKeys = bytes.ReplaceAll(ver.previewKeys, []byte(srcVIDStr), []byte(newVIDStr))
+				}
+
+				_, err = tx.Exec(r.Context(), `
+					INSERT INTO file_versions (id, company_id, item_id, number, storage_key, size_bytes, mime, duration_ms, width, height, fps, preview_status, preview_keys, uploaded_by)
+					VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+				`, newVerUUID, companyID, newItemID, ver.number, newStorageKey, ver.sizeBytes, ver.mime, ver.durationMs, ver.width, ver.height, ver.fps, ver.previewStatus, newPreviewKeys, user.ID)
+				if err != nil {
+					cleanup(fmt.Errorf("failed to insert file version: %w", err))
+					return
+				}
+			}
+		}
+	}
+
+	// Update folder and file counts on new project
+	_, err = tx.Exec(r.Context(), `
+		UPDATE projects
+		SET folder_count = (SELECT count(*) FROM items WHERE project_id = $1 AND kind = 'folder' AND deleted_at IS NULL),
+			file_count = (SELECT count(*) FROM items WHERE project_id = $1 AND kind = 'file' AND deleted_at IS NULL),
+			total_bytes = (SELECT coalesce(sum(size_bytes), 0) FROM file_versions fv JOIN items i ON fv.item_id = i.id WHERE i.project_id = $1 AND i.deleted_at IS NULL)
+		WHERE id = $1
+	`, newProj.ID)
+	if err != nil {
+		cleanup(fmt.Errorf("failed to update project counts: %w", err))
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		cleanup(fmt.Errorf("failed to commit project duplication transaction: %w", err))
+		return
 	}
 
 	freshProj, err := h.queries.GetProjectByID(r.Context(), db.GetProjectByIDParams{

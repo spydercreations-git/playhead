@@ -26,12 +26,11 @@ export type LucideIcon = React.ForwardRefExoticComponent<
 
 /**
  * Universal Icon Component for Playhead
- * Uses Google Material Symbols Outlined (Weight 300) SVGs
+ * Uses Google Material Symbols Outlined (Weight 400 - Normal) SVGs
  * 
  * Rules:
- * - Outline style by default everywhere
- * - Filled only for active states (active sidebar item, starred star, selected tab)
- * - True weight 300 matching sidebar specification
+ * - Outline style everywhere
+ * - True weight 400 matching sidebar specification
  * - Color follows text color (currentColor)
  */
 function getIconColor(className: string = "", explicitColor?: string, styleColor?: string): string | undefined {
@@ -321,6 +320,7 @@ export const Redo = createIcon("redo");
 export const ArrowUp = createIcon("ArrowUp");
 export const UserPlus = createIcon("PersonAdd");
 export const ShieldCheck = createIcon("ShieldCheck");
+export const ShieldPerson = createIcon("shield_person");
 export const Globe = createIcon("Globe");
 export const FolderGit2 = createIcon("Folder");
 

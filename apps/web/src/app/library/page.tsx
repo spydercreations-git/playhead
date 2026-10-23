@@ -539,7 +539,7 @@ export default function LibraryPage() {
                 {group.inactiveItems.length > 0 && (
                   <div className="pt-2">
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="text-xs font-semibold text-[var(--text-3)] uppercase tracking-wider">
+                      <span className="text-xs font-semibold text-[var(--text-3)]">
                         Inactive
                       </span>
                       <span className="text-xs text-[var(--text-3)]">

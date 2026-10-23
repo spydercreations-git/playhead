@@ -4,7 +4,8 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
-import { Search, X, Check, Minus, Users, ChevronDown } from "@/components/ui/icon";
+import { Search, X, Users, ChevronDown } from "@/components/ui/icon";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export interface ClientOption {
   id: string;
@@ -235,40 +236,44 @@ export function SelectClientsModal({
           </div>
         </div>
 
-        {/* Scrollable List */}
-        <div ref={listRef} className="px-6 flex-1 overflow-y-auto space-y-1 pb-4 max-h-[380px] custom-scrollbar">
-          {/* "All clients" Row */}
-          {!searchQuery && (
+        {/* "All clients" Row on its own at top with thin divider */}
+        {!searchQuery && (
+          <div className="px-6 pt-1 pb-2 shrink-0">
             <div
               role="button"
               tabIndex={0}
-              onClick={toggleAll}
-              className={`flex items-center justify-between p-2.5 rounded-[10px] cursor-pointer transition-colors select-none ${
-                focusedIndex === 0
-                  ? "bg-[var(--hover)] ring-1 ring-[#4876F3]"
+              onClick={() => {
+                setFocusedIndex(-1);
+                toggleAll();
+              }}
+              className={`h-12 px-3 rounded-[10px] flex items-center justify-between cursor-pointer transition-colors select-none outline-none ${
+                isAllSelected || isPartiallySelected
+                  ? "bg-[var(--accent)]/10"
                   : "hover:bg-[var(--hover)]"
+              } ${
+                focusedIndex === 0
+                  ? "ring-2 ring-[var(--accent)]/40"
+                  : "focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
               }`}
             >
               <div className="flex items-center gap-3">
-                {/* Tick box with Check / Minus / Empty */}
-                <div
-                  className={`w-[18px] h-[18px] rounded-[5px] flex items-center justify-center transition-colors shrink-0 ${
-                    isAllSelected || isPartiallySelected
-                      ? "bg-[#4876F3] text-white"
-                      : "border border-[var(--border-strong)] bg-transparent"
-                  }`}
-                >
-                  {isAllSelected && <Check size={16} strokeWidth={2.5} />}
-                  {isPartiallySelected && <Minus size={16} strokeWidth={2.5} />}
-                </div>
+                <Checkbox
+                  checked={isAllSelected ? true : isPartiallySelected ? "indeterminate" : false}
+                  onCheckedChange={toggleAll}
+                  ariaLabel="Select all clients"
+                />
                 <span className="text-[14px] font-semibold text-white">All clients</span>
               </div>
               <span className="text-[13px] text-[var(--text-3)]">
                 {totalCount} {totalCount === 1 ? "client" : "clients"}
               </span>
             </div>
-          )}
+            <div className="mt-2 border-b border-[var(--border)]" />
+          </div>
+        )}
 
+        {/* Scrollable List */}
+        <div ref={listRef} className="px-6 flex-1 overflow-y-auto space-y-1 pb-4 max-h-[380px] custom-scrollbar">
           {/* Client Rows (A to Z) */}
           {filteredClients.map((client, idx) => {
             const isSelected = tempSelected.has(client.id);
@@ -288,30 +293,30 @@ export function SelectClientsModal({
                 key={client.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => toggleClient(client.id)}
-                className={`flex items-center justify-between p-2.5 rounded-[10px] cursor-pointer transition-colors select-none ${
+                onClick={() => {
+                  setFocusedIndex(-1);
+                  toggleClient(client.id);
+                }}
+                className={`h-12 px-3 rounded-[10px] flex items-center justify-between cursor-pointer transition-colors select-none outline-none ${
                   isSelected
-                    ? "bg-[#4876F3]/12 border border-[#4876F3]/25"
-                    : isFocused
-                    ? "bg-[var(--hover)] border border-transparent ring-1 ring-[#4876F3]"
-                    : "hover:bg-[var(--hover)] border border-transparent"
+                    ? "bg-[var(--accent)]/10"
+                    : "hover:bg-[var(--hover)]"
+                } ${
+                  isFocused
+                    ? "ring-2 ring-[var(--accent)]/40"
+                    : "focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
                 }`}
               >
                 <div className="flex items-center gap-3 truncate pr-3">
-                  {/* Tick box */}
-                  <div
-                    className={`w-[18px] h-[18px] rounded-[5px] flex items-center justify-center transition-colors shrink-0 ${
-                      isSelected
-                        ? "bg-[#4876F3] text-white"
-                        : "border border-[var(--border-strong)] bg-transparent"
-                    }`}
-                  >
-                    {isSelected && <Check size={16} strokeWidth={2.5} />}
-                  </div>
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => toggleClient(client.id)}
+                    ariaLabel={`Select ${client.name}`}
+                  />
 
                   {/* Client Picture or Colored Initials */}
                   <div
-                    className="w-6 h-6 rounded-[6px] flex items-center justify-center text-[12px] font-bold text-white shrink-0 shadow-sm"
+                    className="w-7 h-7 rounded-[7px] flex items-center justify-center text-[12px] font-bold text-white shrink-0 shadow-sm"
                     style={{ backgroundColor: initialBg }}
                   >
                     {initial}

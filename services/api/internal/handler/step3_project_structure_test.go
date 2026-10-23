@@ -81,6 +81,7 @@ func TestStep3ProjectStructureAndRules(t *testing.T) {
 		createPayload := map[string]interface{}{
 			"name":      "Nike Campaign",
 			"client_id": uuid.UUID(client.ID.Bytes).String(),
+			"template":  "video",
 		}
 		body, _ := json.Marshal(createPayload)
 

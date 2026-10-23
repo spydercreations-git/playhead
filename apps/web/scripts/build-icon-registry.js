@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const svgDir = path.resolve(__dirname, '../node_modules/@material-symbols/svg-300/outlined');
+const svgDir = path.resolve(__dirname, '../node_modules/@material-symbols/svg-400/outlined');
 const targetFile = path.resolve(__dirname, '../src/components/ui/icon-data.ts');
 
 const MAPPING = {
@@ -157,6 +157,8 @@ const MAPPING = {
   Delete: 'delete',
   admin_panel_settings: 'admin_panel_settings',
   AdminPanelSettings: 'admin_panel_settings',
+  shield_person: 'shield_person',
+  ShieldPerson: 'shield_person',
   cloud: 'cloud',
   Cloud: 'cloud',
   settings: 'settings',
@@ -313,7 +315,7 @@ for (const sym of uniqueSymbols) {
 
 console.log('Total Material Symbols Outlined compiled:', Object.keys(registry).length);
 
-const output = `// Auto-generated Google Material Symbols Outlined (Weight 300) Icon Data
+const output = `// Auto-generated Google Material Symbols Outlined (Weight 400) Icon Data
 // Single source of truth for SVG paths with zero network latency & zero font flash
 
 export interface IconPathData {

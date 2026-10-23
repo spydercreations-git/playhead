@@ -99,7 +99,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // Exact bottom navigation items: Admin, Storage, Settings
   const bottomNavItems: NavItem[] = [
-    { name: "Admin", href: "/admin", icon: "admin_panel_settings", show: isAdmin },
+    { name: "Admin", href: "/admin", icon: "shield_person", show: isAdmin },
     { name: "Storage", href: "/storage", icon: "cloud", show: !isClient && (role === "Staff" || isAdmin || isExecutive) },
     { name: "Settings", href: "/settings", icon: "settings", show: true },
   ];
@@ -239,17 +239,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`group flex h-10 w-[216px] mx-auto items-center justify-between rounded-[10px] px-3 text-sm transition-colors duration-150 ${
+                  className={`group flex h-10 w-[216px] mx-auto items-center justify-between rounded-[8px] px-3 text-sm transition-colors duration-150 ${
                     isActive
                       ? "bg-[var(--hover)] text-white font-semibold"
-                      : "text-[var(--text-2)] font-medium hover:bg-[var(--hover)]/60 hover:text-white"
+                      : "text-[var(--text-2)] font-medium hover:bg-[var(--hover)] hover:text-white"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <Icon
                       name={item.icon}
                       size={20}
-                      filled={isActive}
+                      filled={false}
                       className={`shrink-0 transition-colors ${
                         isActive ? "text-white" : "text-[var(--text-2)] group-hover:text-white"
                       }`}
@@ -277,16 +277,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`group flex h-10 w-[216px] mx-auto items-center gap-3 rounded-[10px] px-3 text-sm transition-colors duration-150 ${
+                  className={`group flex h-10 w-[216px] mx-auto items-center gap-3 rounded-[8px] px-3 text-sm transition-colors duration-150 ${
                     isActive
                       ? "bg-[var(--hover)] text-white font-semibold"
-                      : "text-[var(--text-2)] font-medium hover:bg-[var(--hover)]/60 hover:text-white"
+                      : "text-[var(--text-2)] font-medium hover:bg-[var(--hover)] hover:text-white"
                   }`}
                 >
                   <Icon
                     name={item.icon}
                     size={20}
-                    filled={isActive}
+                    filled={false}
                     className={`shrink-0 transition-colors ${
                       isActive ? "text-white" : "text-[var(--text-2)] group-hover:text-white"
                     }`}

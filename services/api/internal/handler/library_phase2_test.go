@@ -132,6 +132,7 @@ func TestPhase2LibraryRules(t *testing.T) {
 		payload := map[string]interface{}{
 			"name":      "Editor Project",
 			"client_id": uuid.UUID(clientRecord.ID.Bytes).String(),
+			"template":  "video",
 		}
 		b, _ := json.Marshal(payload)
 		req := httptest.NewRequest("POST", "/api/v1/projects", bytes.NewReader(b))

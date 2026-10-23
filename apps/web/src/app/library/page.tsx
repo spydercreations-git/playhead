@@ -507,22 +507,6 @@ export default function LibraryPage() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    {hasPermission("projects.create") && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const cId = group.clientId === "internal" && idyllClient ? idyllClient.id : group.clientId;
-                          setNewProjectClientId(cId);
-                          setNewProjectClientName(group.clientName);
-                          setShowNewProject(true);
-                        }}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-[6px] text-xs font-semibold text-[var(--text-2)] hover:text-white hover:bg-[var(--hover)] border border-[var(--border)] transition-colors cursor-pointer"
-                      >
-                        <Plus size={14} />
-                        <span>New project</span>
-                      </button>
-                    )}
-
                     <button
                       type="button"
                       onClick={() => {

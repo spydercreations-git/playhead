@@ -30,6 +30,7 @@ import {
   ChevronRight,
   Plus,
 } from "@/components/ui/icon";
+import { ClientAvatar, UserAvatar } from "@/components/ui/avatar";
 
 export default function LibraryProjectPage() {
   const params = useParams();
@@ -279,15 +280,27 @@ export default function LibraryProjectPage() {
         onChange={(e) => handleFilesChosen(e.target.files)}
       />
 
-      {/* Top Breadcrumb Navigation matching Screenshot L2 / L3 */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-[var(--text-3)]">
+      {/* Top Breadcrumb Navigation */}
+      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm text-[var(--text-3)]">
         <Link href="/library" className="hover:text-white transition-colors">
           Library
         </Link>
         <span>›</span>
-        <span>{clientName}</span>
+        {project.client_id ? (
+          <Link
+            href={`/clients/${project.client_id}`}
+            className="hover:text-white transition-colors"
+          >
+            {clientName}
+          </Link>
+        ) : (
+          <span>{clientName}</span>
+        )}
         <span>›</span>
-        <Link href={`/library/${projectId}`} className={`hover:text-white transition-colors ${!currentFolderId ? "text-white font-medium" : ""}`}>
+        <Link
+          href={`/library/${projectId}`}
+          className={`hover:text-white transition-colors ${!currentFolderId ? "text-white font-medium" : ""}`}
+        >
           {project.name}
         </Link>
         {currentFolder && (
@@ -303,10 +316,12 @@ export default function LibraryProjectPage() {
         {/* Left: Project Title + Client Tag */}
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-white">{project.name}</h1>
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-[6px] bg-[var(--panel)] border border-[var(--border)] text-xs text-[var(--text-2)] font-medium">
-            <span className={`inline-flex items-center justify-center h-3.5 w-3.5 rounded text-xs font-bold ${badgeColor}`}>
-              {clientInitial}
-            </span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[var(--panel)] border border-[var(--border)] text-xs text-[var(--text-2)] font-medium">
+            <ClientAvatar
+              id={project.client_id}
+              name={clientName}
+              size={16}
+            />
             <span>{clientName}</span>
           </div>
         </div>
@@ -316,13 +331,14 @@ export default function LibraryProjectPage() {
           {/* Member Avatars Stack */}
           <div className="flex -space-x-1.5 overflow-hidden mr-1">
             {members.slice(0, 4).map((m: any, idx: number) => (
-              <div
+              <UserAvatar
                 key={m.id || idx}
-                style={{ backgroundColor: m.color || (idx === 0 ? "#FFBB56" : idx === 1 ? "#FA457B" : idx === 2 ? "#4876F3" : "#3FCF8E") }}
-                className="inline-flex h-6 w-6 rounded-full ring-2 ring-[var(--panel)] text-xs font-bold text-white items-center justify-center"
-              >
-                {(m.name || m.email || "U").slice(0, 1).toUpperCase()}
-              </div>
+                id={m.id}
+                name={m.name}
+                email={m.email}
+                size={24}
+                ring
+              />
             ))}
           </div>
 
@@ -356,23 +372,6 @@ export default function LibraryProjectPage() {
             <span>Upload</span>
           </button>
         </div>
-      </div>
-
-      {/* Secondary Breadcrumbs */}
-      <div className="text-xs text-[var(--text-3)] flex items-center gap-1.5 pt-0.5">
-        <Link href="/library" className="hover:text-white">Library</Link>
-        <span>›</span>
-        <span>{clientName}</span>
-        <span>›</span>
-        <Link href={`/library/${projectId}`} className={!currentFolderId ? "text-[var(--text-2)] font-medium" : "hover:text-white"}>
-          {project.name}
-        </Link>
-        {currentFolder && (
-          <>
-            <span>›</span>
-            <span className="text-white font-medium">{currentFolder.name}</span>
-          </>
-        )}
       </div>
 
       {/* Filter and Control Bar */}

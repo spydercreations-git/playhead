@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/use-auth";
 import { TaskBriefEditor } from "./task-brief-editor";
 import { SelectLibraryFileDialog } from "./select-library-file-dialog";
 import { ManageTaskAccessDialog } from "./manage-task-access-dialog";
+import { CustomDatePicker } from "@/components/ui/custom-date-picker";
 import {
   X,
   Check,
@@ -354,6 +355,20 @@ export function TaskPanel({
     handleSetStatus(nextStatus);
   }
 
+  async function handleUpdateDeadline(newDeadlineIso: string) {
+    try {
+      await apiRequest(`/tasks/${taskId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ deadline: newDeadlineIso || null }),
+      });
+      setTask((prev) => (prev ? { ...prev, deadline: newDeadlineIso } : prev));
+      onTaskUpdated?.();
+      fetchTask();
+    } catch (err: any) {
+      alert(err.message || "Failed to update deadline");
+    }
+  }
+
   async function handleDeleteTask() {
     if (!task?.can_delete) return;
     if (!confirm("Are you sure you want to move this task to Trash?")) return;
@@ -697,28 +712,38 @@ export function TaskPanel({
 
               {/* Deadline */}
               <span className="text-[var(--text-3)] font-medium">Deadline</span>
-              <div className="flex items-center gap-2 text-xs">
-                <Calendar className="w-3.5 h-3.5 text-[var(--text-3)]" />
-                {task?.deadline_label ? (
-                  <span
-                    className={
-                      task.is_overdue
-                        ? "text-red-400 font-semibold"
-                        : task.deadline_label === "Today" ||
-                          task.deadline_label === "Tomorrow"
-                        ? "text-amber-400 font-medium"
-                        : "text-[var(--text)]"
-                    }
-                  >
-                    {task.deadline_label}{" "}
-                    <span className="text-[var(--text-3)] font-normal ml-1">
-                      {task.deadline_formatted}
+              {!isClient ? (
+                <div className="w-full">
+                  <CustomDatePicker
+                    value={task?.deadline || ""}
+                    onChange={handleUpdateDeadline}
+                    placeholder="No deadline set"
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs">
+                  <Calendar className="w-3.5 h-3.5 text-[var(--text-3)]" />
+                  {task?.deadline_label ? (
+                    <span
+                      className={
+                        task.is_overdue
+                          ? "text-red-400 font-semibold"
+                          : task.deadline_label === "Today" ||
+                            task.deadline_label === "Tomorrow"
+                          ? "text-amber-400 font-medium"
+                          : "text-[var(--text)]"
+                      }
+                    >
+                      {task.deadline_label}{" "}
+                      <span className="text-[var(--text-3)] font-normal ml-1">
+                        {task.deadline_formatted}
+                      </span>
                     </span>
-                  </span>
-                ) : (
-                  <span className="text-[var(--text-3)]">No deadline set</span>
-                )}
-              </div>
+                  ) : (
+                    <span className="text-[var(--text-3)]">No deadline set</span>
+                  )}
+                </div>
+              )}
 
               {/* Assigned (Rule 3: staff & editor only; CLIENTS NEVER SEE ASSIGNED OR MANAGE ACCESS!) */}
               {!isClient && (

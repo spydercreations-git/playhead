@@ -28,6 +28,8 @@ interface TaskBriefEditorProps {
   onChange?: (html: string, json: any) => void;
   readOnly?: boolean;
   placeholder?: string;
+  minHeight?: string;
+  className?: string;
 }
 
 export function TaskBriefEditor({
@@ -35,6 +37,8 @@ export function TaskBriefEditor({
   onChange,
   readOnly = false,
   placeholder = "Describe what you need: formats, length, references...",
+  minHeight = "140px",
+  className = "",
 }: TaskBriefEditorProps) {
   const [styleMenuOpen, setStyleMenuOpen] = useState(false);
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -62,7 +66,8 @@ export function TaskBriefEditor({
     editorProps: {
       attributes: {
         class:
-          "prose prose-invert max-w-none focus:outline-none min-h-[140px] px-3.5 py-3 text-sm text-[var(--text)] leading-relaxed selection:bg-[var(--primary)]/30",
+          "prose prose-invert max-w-none focus:outline-none px-4 py-3 text-[14px] text-white leading-relaxed selection:bg-[#4876F3]/30",
+        style: `min-height: ${minHeight};`,
       },
       handleKeyDown: (view, event) => {
         if (event.key === "/" && !event.shiftKey) {
@@ -137,7 +142,7 @@ export function TaskBriefEditor({
   }
 
   return (
-    <div className="w-full rounded-[8px] border border-[var(--border)] bg-[var(--panel)]/60 overflow-hidden focus-within:border-[var(--border-strong)] transition-colors">
+    <div className={`w-full rounded-[12px] border border-[var(--border)] bg-[var(--panel)] overflow-hidden focus-within:border-[var(--border-strong)] transition-colors ${className}`}>
       {/* Toolbar from T2 */}
       {!readOnly && (
         <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-[var(--border)] bg-[var(--panel)] text-[var(--text-2)] relative">
@@ -181,8 +186,9 @@ export function TaskBriefEditor({
               type="button"
               title="Text style"
               onClick={() => setStyleMenuOpen((prev) => !prev)}
-              className="flex items-center gap-1 px-2 py-1 rounded-[6px] text-xs font-medium hover:bg-[var(--hover)] hover:text-white transition-colors"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-[6px] text-[13px] font-medium text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white transition-colors"
             >
+              <span className="font-semibold text-[13px]">Tt</span>
               <span>{getCurrentStyleName()}</span>
               <ChevronDown className="w-3.5 h-3.5 text-[var(--text-3)]" />
             </button>
@@ -454,7 +460,7 @@ export function TaskBriefEditor({
       <div className="relative">
         <EditorContent editor={editor} />
         {editor.isEmpty && (
-          <div className="absolute top-3 left-3.5 text-xs text-[var(--text-3)] pointer-events-none select-none">
+          <div className="absolute top-3.5 left-4 text-[13px] text-[var(--text-3)] pointer-events-none select-none">
             {placeholder}
           </div>
         )}

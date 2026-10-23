@@ -318,8 +318,8 @@ export const PdfFileIcon = createIcon("description");
 export const AudioFileIcon = createIcon("music_note");
 
 export const Paperclip = createIcon("attach_file");
-export const Undo = RotateCcw;
-export const Redo = RotateCw;
+export const Undo = createIcon("undo");
+export const Redo = createIcon("redo");
 export const ArrowUp = createIcon("ArrowUp");
 export const UserPlus = createIcon("PersonAdd");
 export const ShieldCheck = createIcon("ShieldCheck");

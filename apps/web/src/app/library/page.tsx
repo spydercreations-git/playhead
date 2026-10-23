@@ -1,14 +1,24 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 import { useAuth, AUTH_QUERY_KEY } from "@/lib/use-auth";
 import { toast } from "@/lib/toast";
 import { NewProjectDialog } from "@/components/projects/new-project-dialog";
 import { ProjectCard } from "@/components/cards/project-card";
+import { ProjectCardMenu } from "@/components/projects/project-card-menu";
+import { RenameProjectDialog } from "@/components/projects/rename-project-dialog";
+import { ProjectManageAccessModal } from "@/components/access/project-manage-access-modal";
+import { CopyLinkDialog } from "@/components/sharing/copy-link-dialog";
+import {
+  DownloadTray,
+  startBrowserDownload,
+  DownloadSession,
+  DownloadFile,
+} from "@/components/downloads/download-tray";
 import { Search, ChevronDown, LayoutGrid, List, Plus, Folder } from "@/components/ui/icon";
 import {
   SelectClientsModal,
@@ -31,6 +41,7 @@ interface ProjectItem {
 }
 
 export default function LibraryPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const { user, company, isClient, hasPermission, isLoading: authLoading } = useAuth();
@@ -39,6 +50,28 @@ export default function LibraryPage() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [showNewProject, setShowNewProject] = useState(false);
   const [showSelectClients, setShowSelectClients] = useState(false);
+
+  // Modals & Menu State
+  const [menuState, setMenuState] = useState<{
+    isOpen: boolean;
+    project: ProjectItem | null;
+    anchorRect: DOMRect | null;
+    clickPosition: { x: number; y: number } | null;
+  }>({
+    isOpen: false,
+    project: null,
+    anchorRect: null,
+    clickPosition: null,
+  });
+
+  const [manageAccessProject, setManageAccessProject] = useState<ProjectItem | null>(null);
+  const [copyLinkProject, setCopyLinkProject] = useState<ProjectItem | null>(null);
+  const [renameProject, setRenameProject] = useState<ProjectItem | null>(null);
+
+  // Download tray state
+  const [downloadSession, setDownloadSession] = useState<DownloadSession | null>(null);
+  const downloadPausedRef = useRef(false);
+  const downloadCancelledRef = useRef(false);
 
   // Initialize selectedClientIds from URL query param if present
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>(() => {
@@ -73,10 +106,10 @@ export default function LibraryPage() {
   });
   const clientOptions = clientsData?.clients || [];
 
-  // Fetch all active projects
+  // Fetch all projects (both active and inactive)
   const { data, isLoading } = useQuery<{ projects: ProjectItem[] }>({
     queryKey: ["library-projects"],
-    queryFn: () => apiRequest<{ projects: ProjectItem[] }>("/projects?status=active"),
+    queryFn: () => apiRequest<{ projects: ProjectItem[] }>("/projects"),
   });
 
   const projects = data?.projects || [];
@@ -119,9 +152,17 @@ export default function LibraryPage() {
     return list;
   }, [projects, selectedClientIds, idyllClient, search, sortBy]);
 
-  // Group projects by client matching Screenshot L1 & L8
+  // Group projects by client matching Screenshot L1 & L8, separating active and inactive
   const groupedByClient = useMemo(() => {
-    const groups: { [key: string]: { clientName: string; clientId: string; isInternal: boolean; items: ProjectItem[] } } = {};
+    const groups: {
+      [key: string]: {
+        clientName: string;
+        clientId: string;
+        isInternal: boolean;
+        activeItems: ProjectItem[];
+        inactiveItems: ProjectItem[];
+      };
+    } = {};
 
     filtered.forEach((p) => {
       const cId = p.client_id || (idyllClient?.id ?? "internal");
@@ -133,14 +174,152 @@ export default function LibraryPage() {
           clientName: cName,
           clientId: cId,
           isInternal,
-          items: [],
+          activeItems: [],
+          inactiveItems: [],
         };
       }
-      groups[cId].items.push(p);
+      if (p.status === "inactive") {
+        groups[cId].inactiveItems.push(p);
+      } else {
+        groups[cId].activeItems.push(p);
+      }
     });
 
     return Object.values(groups);
   }, [filtered, idyllClient]);
+
+  // Permissions for Project Card Menu
+  const permissions = useMemo(() => {
+    return {
+      canManageAccess: hasPermission("manage_access") || hasPermission("projects.manage_access"),
+      canCreateProject: hasPermission("create_project") || hasPermission("projects.create"),
+      canRenameProject: hasPermission("rename_project") || hasPermission("projects.rename"),
+      canDeleteProject: hasPermission("delete_project") || hasPermission("projects.delete"),
+    };
+  }, [hasPermission]);
+
+  // Actions
+  const handleOpenProject = (proj: ProjectItem) => {
+    router.push(`/library/${proj.id}`);
+  };
+
+  const handleDownloadProjectZip = async (project: ProjectItem) => {
+    try {
+      const manifestRes = await apiRequest<{
+        files: any[];
+        total_bytes: number;
+        file_count: number;
+        suggested_zip_name: string;
+      }>(`/projects/${project.id}/download`);
+
+      if (!manifestRes.files || manifestRes.files.length === 0) {
+        toast.info("This project has no files to download");
+        return;
+      }
+
+      const files: DownloadFile[] = manifestRes.files.map((f: any) => ({
+        id: f.id,
+        name: f.name,
+        path: f.path || f.name,
+        size_bytes: f.size_bytes,
+        mime: f.mime,
+        download_url: f.download_url,
+      }));
+
+      const progressFiles = files.map((f) => ({
+        id: f.id,
+        name: f.name,
+        path: f.path,
+        sizeBytes: f.size_bytes,
+        downloadedBytes: 0,
+        status: "pending" as const,
+      }));
+
+      const newSession: DownloadSession = {
+        id: Math.random().toString(36).substring(2),
+        name: manifestRes.suggested_zip_name || `${project.name}.zip`,
+        totalBytes: manifestRes.total_bytes,
+        downloadedBytes: 0,
+        speedBytesPerSec: 0,
+        status: "downloading",
+        files: progressFiles,
+        mode: "zip",
+      };
+
+      setDownloadSession(newSession);
+      downloadPausedRef.current = false;
+      downloadCancelledRef.current = false;
+
+      await startBrowserDownload({
+        manifest: { files, total_bytes: manifestRes.total_bytes },
+        mode: "zip",
+        onProgress: (partial) => {
+          setDownloadSession((prev) => (prev ? { ...prev, ...partial } : null));
+        },
+        isPausedRef: downloadPausedRef,
+        isCancelledRef: downloadCancelledRef,
+      });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to initiate download");
+    }
+  };
+
+  const handleDuplicateProject = async (project: ProjectItem) => {
+    try {
+      await apiRequest(`/projects/${project.id}/duplicate`, {
+        method: "POST",
+      });
+      toast.success(`Duplicated "${project.name}"`);
+      queryClient.invalidateQueries({ queryKey: ["library-projects"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to duplicate project");
+    }
+  };
+
+  const handleRenameSubmit = async (newName: string) => {
+    if (!renameProject) return;
+    try {
+      await apiRequest(`/projects/${renameProject.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name: newName }),
+      });
+      toast.success("Project renamed");
+      queryClient.invalidateQueries({ queryKey: ["library-projects"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to rename project");
+      throw err;
+    }
+  };
+
+  const handleToggleActiveProject = async (project: ProjectItem) => {
+    const newStatus = project.status === "inactive" ? "active" : "inactive";
+    try {
+      await apiRequest(`/projects/${project.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: newStatus }),
+      });
+      toast.success(
+        newStatus === "inactive"
+          ? `Marked "${project.name}" as inactive`
+          : `Marked "${project.name}" as active`
+      );
+      queryClient.invalidateQueries({ queryKey: ["library-projects"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update project status");
+    }
+  };
+
+  const handleDeleteProject = async (project: ProjectItem) => {
+    try {
+      await apiRequest(`/projects/${project.id}`, {
+        method: "DELETE",
+      });
+      toast.success(`Moved "${project.name}" to Trash`);
+      queryClient.invalidateQueries({ queryKey: ["library-projects"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete project");
+    }
+  };
 
   // Handler to apply selected clients filter (updates state, URL, and server persistence)
   const handleApplyClientFilter = async (ids: string[]) => {
@@ -210,7 +389,7 @@ export default function LibraryPage() {
             />
           </div>
 
-          {/* New "Select clients" Button (Groups Icon) matching L7 & L8 */}
+          {/* "Select clients" Button (Groups Icon) matching L7 & L8 */}
           {!isClient && (
             <ClientFilterButton
               selectedClientIds={selectedClientIds}
@@ -290,9 +469,10 @@ export default function LibraryPage() {
           {groupedByClient.map((group) => {
             const clientInitial = group.clientName.trim()[0]?.toUpperCase() || "C";
             const badgeBg = group.isInternal ? "bg-[var(--panel-raised)] text-[var(--text-2)]" : "bg-[#4876F3]/20 text-[#4876F3]";
+            const totalCount = group.activeItems.length + group.inactiveItems.length;
 
             return (
-              <div key={group.clientId} className="space-y-3.5">
+              <div key={group.clientId} className="space-y-4">
                 {/* Client Section Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -302,7 +482,7 @@ export default function LibraryPage() {
                     <span className="text-sm font-semibold text-white">{group.clientName}</span>
                     <span className="text-xs text-[var(--text-3)]">
                       {group.isInternal ? "internal · " : ""}
-                      {group.items.length} {group.items.length === 1 ? "project" : "projects"}
+                      {totalCount} {totalCount === 1 ? "project" : "projects"}
                     </span>
                   </div>
 
@@ -321,25 +501,169 @@ export default function LibraryPage() {
                   </button>
                 </div>
 
-                {/* Projects Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {group.items.map((proj) => (
-                    <ProjectCard
-                      key={proj.id}
-                      id={proj.id}
-                      name={proj.name}
-                      clientName={proj.client_name}
-                      videoCount={proj.file_count || proj.video_count || 0}
-                      totalBytes={proj.total_bytes || 0}
-                      waitingReviewCount={proj.waiting_review_count || 0}
-                    />
-                  ))}
-                </div>
+                {/* Active Projects Grid */}
+                {group.activeItems.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {group.activeItems.map((proj) => (
+                      <ProjectCard
+                        key={proj.id}
+                        id={proj.id}
+                        name={proj.name}
+                        clientName={proj.client_name}
+                        videoCount={proj.file_count || proj.video_count || 0}
+                        totalBytes={proj.total_bytes || 0}
+                        waitingReviewCount={proj.waiting_review_count || 0}
+                        onOpenMenu={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuState({
+                            isOpen: true,
+                            project: proj,
+                            anchorRect: rect,
+                            clickPosition: null,
+                          });
+                        }}
+                        onContextMenu={(e) => {
+                          setMenuState({
+                            isOpen: true,
+                            project: proj,
+                            anchorRect: null,
+                            clickPosition: { x: e.clientX, y: e.clientY },
+                          });
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Inactive Section at bottom of client group */}
+                {group.inactiveItems.length > 0 && (
+                  <div className="pt-2">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-xs font-semibold text-[var(--text-3)] uppercase tracking-wider">
+                        Inactive
+                      </span>
+                      <span className="text-xs text-[var(--text-3)]">
+                        ({group.inactiveItems.length})
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 opacity-75 hover:opacity-100 transition-opacity">
+                      {group.inactiveItems.map((proj) => (
+                        <ProjectCard
+                          key={proj.id}
+                          id={proj.id}
+                          name={proj.name}
+                          clientName={proj.client_name}
+                          videoCount={proj.file_count || proj.video_count || 0}
+                          totalBytes={proj.total_bytes || 0}
+                          waitingReviewCount={proj.waiting_review_count || 0}
+                          onOpenMenu={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setMenuState({
+                              isOpen: true,
+                              project: proj,
+                              anchorRect: rect,
+                              clickPosition: null,
+                            });
+                          }}
+                          onContextMenu={(e) => {
+                            setMenuState({
+                              isOpen: true,
+                              project: proj,
+                              anchorRect: null,
+                              clickPosition: { x: e.clientX, y: e.clientY },
+                            });
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
+
+      {/* Project Card Menu (⋯ or Right Click) */}
+      {menuState.isOpen && menuState.project && (
+        <ProjectCardMenu
+          isOpen={menuState.isOpen}
+          onClose={() =>
+            setMenuState((prev) => ({
+              ...prev,
+              isOpen: false,
+              project: null,
+              anchorRect: null,
+              clickPosition: null,
+            }))
+          }
+          anchorRect={menuState.anchorRect}
+          clickPosition={menuState.clickPosition}
+          project={menuState.project}
+          permissions={permissions}
+          onOpen={() => handleOpenProject(menuState.project!)}
+          onManageAccess={() => setManageAccessProject(menuState.project)}
+          onCopyLink={() => setCopyLinkProject(menuState.project)}
+          onDownloadZip={() => handleDownloadProjectZip(menuState.project!)}
+          onDuplicate={() => handleDuplicateProject(menuState.project!)}
+          onRename={() => setRenameProject(menuState.project)}
+          onToggleActive={() => handleToggleActiveProject(menuState.project!)}
+          onDelete={() => handleDeleteProject(menuState.project!)}
+        />
+      )}
+
+      {/* Manage Access Dialog */}
+      {manageAccessProject && (
+        <ProjectManageAccessModal
+          isOpen={!!manageAccessProject}
+          onClose={() => setManageAccessProject(null)}
+          projectId={manageAccessProject.id}
+          projectName={manageAccessProject.name}
+        />
+      )}
+
+      {/* Copy Link Dialog (L5 window) */}
+      {copyLinkProject && (
+        <CopyLinkDialog
+          isOpen={!!copyLinkProject}
+          onClose={() => setCopyLinkProject(null)}
+          projectId={copyLinkProject.id}
+          projectName={copyLinkProject.name}
+          onOpenManageAccess={() => {
+            const p = copyLinkProject;
+            setCopyLinkProject(null);
+            setManageAccessProject(p);
+          }}
+        />
+      )}
+
+      {/* Rename Project Dialog */}
+      {renameProject && (
+        <RenameProjectDialog
+          isOpen={!!renameProject}
+          onClose={() => setRenameProject(null)}
+          projectName={renameProject.name}
+          onRename={handleRenameSubmit}
+        />
+      )}
+
+      {/* Download Tray (for streaming ZIP downloads) */}
+      <DownloadTray
+        session={downloadSession}
+        onPause={() => {
+          downloadPausedRef.current = true;
+          setDownloadSession((prev) => (prev ? { ...prev, status: "paused" } : null));
+        }}
+        onResume={() => {
+          downloadPausedRef.current = false;
+          setDownloadSession((prev) => (prev ? { ...prev, status: "downloading" } : null));
+        }}
+        onCancel={() => {
+          downloadCancelledRef.current = true;
+          setDownloadSession((prev) => (prev ? { ...prev, status: "cancelled" } : null));
+        }}
+        onClose={() => setDownloadSession(null)}
+      />
 
       {/* Select Clients Window (L7) */}
       <SelectClientsModal

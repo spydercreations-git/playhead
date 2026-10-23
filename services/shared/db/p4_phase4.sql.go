@@ -19,6 +19,7 @@ WHERE i.company_id = $1
   AND i.kind = 'file'
   AND i.deleted_at IS NULL
   AND p.deleted_at IS NULL
+  AND p.status = 'active'
   AND i.review_status IN ('needs_review', 'changes_requested')
   AND (
     $2::boolean = TRUE
@@ -183,6 +184,7 @@ FROM projects p
 JOIN clients c ON c.id = p.client_id
 WHERE p.company_id = $1
   AND p.deleted_at IS NULL
+  AND p.status = 'active'
   AND (
     $2::boolean = TRUE
     OR ($3::boolean = TRUE AND p.client_id = $4::uuid)
@@ -373,6 +375,7 @@ WHERE i.company_id = $1
   AND i.kind = 'file'
   AND i.deleted_at IS NULL
   AND p.deleted_at IS NULL
+  AND p.status = 'active'
   AND i.review_status IN ('needs_review', 'changes_requested')
   AND (
     $2::boolean = TRUE

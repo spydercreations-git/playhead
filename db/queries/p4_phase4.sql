@@ -127,6 +127,7 @@ WHERE i.company_id = @company_id
   AND i.kind = 'file'
   AND i.deleted_at IS NULL
   AND p.deleted_at IS NULL
+  AND p.status = 'active'
   AND i.review_status IN ('needs_review', 'changes_requested')
   AND (
     @is_staff::boolean = TRUE
@@ -146,6 +147,7 @@ WHERE i.company_id = @company_id
   AND i.kind = 'file'
   AND i.deleted_at IS NULL
   AND p.deleted_at IS NULL
+  AND p.status = 'active'
   AND i.review_status IN ('needs_review', 'changes_requested')
   AND (
     @is_staff::boolean = TRUE
@@ -166,6 +168,7 @@ FROM projects p
 JOIN clients c ON c.id = p.client_id
 WHERE p.company_id = @company_id
   AND p.deleted_at IS NULL
+  AND p.status = 'active'
   AND (
     @is_staff::boolean = TRUE
     OR (@is_client::boolean = TRUE AND p.client_id = @user_client_id::uuid)

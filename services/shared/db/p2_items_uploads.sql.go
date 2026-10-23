@@ -752,6 +752,70 @@ func (q *Queries) GetLatestFileVersion(ctx context.Context, itemID pgtype.UUID) 
 	return i, err
 }
 
+const getProjectFilesRecursive = `-- name: GetProjectFilesRecursive :many
+WITH RECURSIVE project_tree AS (
+    SELECT i.id, i.parent_id, i.name, i.kind, CAST(i.name AS TEXT) AS relative_path
+    FROM items i
+    WHERE i.project_id = $1 AND i.parent_id IS NULL AND i.deleted_at IS NULL
+    UNION ALL
+    SELECT c.id, c.parent_id, c.name, c.kind, pt.relative_path || '/' || c.name AS relative_path
+    FROM items c
+    JOIN project_tree pt ON c.parent_id = pt.id
+    WHERE c.deleted_at IS NULL
+)
+SELECT pt.id, pt.name, pt.kind, pt.relative_path,
+       COALESCE(fv.storage_key, '') AS storage_key,
+       COALESCE(fv.size_bytes, 0) AS size_bytes,
+       COALESCE(fv.mime, '') AS mime
+FROM project_tree pt
+LEFT JOIN LATERAL (
+    SELECT storage_key, size_bytes, mime
+    FROM file_versions
+    WHERE item_id = pt.id
+    ORDER BY number DESC
+    LIMIT 1
+) fv ON true
+WHERE pt.kind = 'file'
+`
+
+type GetProjectFilesRecursiveRow struct {
+	ID           pgtype.UUID `json:"id"`
+	Name         string      `json:"name"`
+	Kind         string      `json:"kind"`
+	RelativePath string      `json:"relative_path"`
+	StorageKey   string      `json:"storage_key"`
+	SizeBytes    int64       `json:"size_bytes"`
+	Mime         string      `json:"mime"`
+}
+
+func (q *Queries) GetProjectFilesRecursive(ctx context.Context, projectID pgtype.UUID) ([]GetProjectFilesRecursiveRow, error) {
+	rows, err := q.db.Query(ctx, getProjectFilesRecursive, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetProjectFilesRecursiveRow{}
+	for rows.Next() {
+		var i GetProjectFilesRecursiveRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Kind,
+			&i.RelativePath,
+			&i.StorageKey,
+			&i.SizeBytes,
+			&i.Mime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getStorageBreakdownByClientAndProject = `-- name: GetStorageBreakdownByClientAndProject :many
 SELECT 
     c.id AS client_id,

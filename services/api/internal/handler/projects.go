@@ -497,6 +497,11 @@ func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Status != nil && strings.TrimSpace(*req.Status) != "" && !access.CanRenameProject(person) && !access.CanManage() {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Permission required to change project status"})
+		return
+	}
+
 	if req.ClientID != nil {
 		var targetClientID pgtype.UUID
 		if err := targetClientID.Scan(*req.ClientID); err != nil || !targetClientID.Valid {
@@ -653,8 +658,8 @@ func (h *ProjectHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		ClientID:  uuid.UUID(project.ClientID.Bytes),
 	}
 	access, err := authz.Access(r.Context(), h.queries, person, target)
-	if err != nil || (!person.IsFullAccess() && access.Level != authz.LevelFull) {
-		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Full access or full-access role required to delete project"})
+	if err != nil || (!person.IsFullAccess() && !access.CanDeleteProject(person)) {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Full access or delete_project permission required to delete project"})
 		return
 	}
 
@@ -1028,3 +1033,263 @@ func (h *ProjectHandler) RemovePerson(w http.ResponseWriter, r *http.Request) {
 
 	respondJSON(w, http.StatusOK, map[string]string{"status": "removed"})
 }
+
+func (h *ProjectHandler) Duplicate(w http.ResponseWriter, r *http.Request) {
+	user, _ := middleware.GetAuthenticatedUser(r.Context())
+	role, _ := middleware.GetUserRole(r.Context())
+	companyID, ok := middleware.GetActiveCompanyID(r.Context())
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	person := authz.Person{
+		UserID:    uuid.UUID(user.ID.Bytes),
+		Email:     user.Email,
+		Role:      role,
+		CompanyID: uuid.UUID(companyID.Bytes),
+	}
+
+	if !authz.CanCreateProjects(person) {
+		respondJSON(w, http.StatusForbidden, map[string]string{
+			"error":   "forbidden",
+			"message": "Permission create_project required to duplicate project",
+		})
+		return
+	}
+
+	var projectID pgtype.UUID
+	if err := projectID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_project_id"})
+		return
+	}
+
+	srcProj, err := h.queries.GetProjectByID(r.Context(), db.GetProjectByIDParams{
+		CompanyID: companyID,
+		ID:        projectID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	target := authz.ProjectTarget{
+		ID:        uuid.UUID(srcProj.ID.Bytes),
+		CompanyID: uuid.UUID(companyID.Bytes),
+		ClientID:  uuid.UUID(srcProj.ClientID.Bytes),
+	}
+	access, err := authz.Access(r.Context(), h.queries, person, target)
+	if err != nil || !access.CanView() {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	newName := fmt.Sprintf("%s copy", srcProj.Name)
+	newProj, err := h.queries.CreateProject(r.Context(), db.CreateProjectParams{
+		CompanyID: companyID,
+		ClientID:  srcProj.ClientID,
+		Name:      newName,
+		CreatedBy: user.ID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_project"})
+		return
+	}
+
+	if h.pool != nil {
+		tx, err := h.pool.Begin(r.Context())
+		if err == nil {
+			defer tx.Rollback(r.Context())
+
+			// Copy grants
+			_, _ = tx.Exec(r.Context(), `
+				INSERT INTO grants (company_id, target_type, target_id, email, user_id, level, can_download, granted_by)
+				SELECT company_id, target_type, $1, email, user_id, level, can_download, $2
+				FROM grants
+				WHERE target_type = 'project' AND target_id = $3
+				ON CONFLICT DO NOTHING
+			`, newProj.ID, user.ID, srcProj.ID)
+
+			// Fetch items in tree order
+			rows, err := tx.Query(r.Context(), `
+				WITH RECURSIVE item_tree AS (
+					SELECT id, parent_id, kind, name, position, file_count, folder_count, total_bytes, 0 as depth
+					FROM items
+					WHERE project_id = $1 AND parent_id IS NULL AND deleted_at IS NULL
+					UNION ALL
+					SELECT i.id, i.parent_id, i.kind, i.name, i.position, i.file_count, i.folder_count, i.total_bytes, t.depth + 1
+					FROM items i
+					JOIN item_tree t ON i.parent_id = t.id
+					WHERE i.project_id = $1 AND i.deleted_at IS NULL
+				)
+				SELECT id, parent_id, kind, name, position, file_count, folder_count, total_bytes
+				FROM item_tree
+				ORDER BY depth ASC, position ASC, id ASC
+			`, srcProj.ID)
+
+			if err == nil {
+				type srcItem struct {
+					id          pgtype.UUID
+					parentID    pgtype.UUID
+					kind        string
+					name        string
+					position    pgtype.Numeric
+					fileCount   int32
+					folderCount int32
+					totalBytes  int64
+				}
+				var items []srcItem
+				for rows.Next() {
+					var item srcItem
+					if scanErr := rows.Scan(&item.id, &item.parentID, &item.kind, &item.name, &item.position, &item.fileCount, &item.folderCount, &item.totalBytes); scanErr == nil {
+						items = append(items, item)
+					}
+				}
+				rows.Close()
+
+				oldToNew := make(map[string]pgtype.UUID)
+				for _, itm := range items {
+					var newParentID pgtype.UUID
+					if itm.parentID.Valid {
+						if parentNew, ok := oldToNew[uuid.UUID(itm.parentID.Bytes).String()]; ok {
+							newParentID = parentNew
+						}
+					}
+
+					var newItemID pgtype.UUID
+					err = tx.QueryRow(r.Context(), `
+						INSERT INTO items (company_id, project_id, parent_id, kind, name, position, created_by, file_count, folder_count, total_bytes)
+						VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+						RETURNING id
+					`, companyID, newProj.ID, newParentID, itm.kind, itm.name, itm.position, user.ID, itm.fileCount, itm.folderCount, itm.totalBytes).Scan(&newItemID)
+					if err != nil {
+						break
+					}
+					oldToNew[uuid.UUID(itm.id.Bytes).String()] = newItemID
+
+					if itm.kind == "file" {
+						_, _ = tx.Exec(r.Context(), `
+							INSERT INTO file_versions (company_id, item_id, number, storage_key, size_bytes, mime, duration_ms, width, height, fps, preview_status, preview_keys, uploaded_by)
+							SELECT $1, $2, number, storage_key, size_bytes, mime, duration_ms, width, height, fps, preview_status, preview_keys, $3
+							FROM file_versions
+							WHERE item_id = $4
+						`, companyID, newItemID, user.ID, itm.id)
+					}
+				}
+
+				// Update folder and file counts on new project
+				_, _ = tx.Exec(r.Context(), `
+					UPDATE projects
+					SET folder_count = (SELECT count(*) FROM items WHERE project_id = $1 AND kind = 'folder' AND deleted_at IS NULL),
+						file_count = (SELECT count(*) FROM items WHERE project_id = $1 AND kind = 'file' AND deleted_at IS NULL),
+						total_bytes = (SELECT coalesce(sum(size_bytes), 0) FROM file_versions fv JOIN items i ON fv.item_id = i.id WHERE i.project_id = $1 AND i.deleted_at IS NULL)
+					WHERE id = $1
+				`, newProj.ID)
+
+				_ = tx.Commit(r.Context())
+			}
+		}
+	}
+
+	freshProj, err := h.queries.GetProjectByID(r.Context(), db.GetProjectByIDParams{
+		CompanyID: companyID,
+		ID:        newProj.ID,
+	})
+	if err == nil {
+		respondJSON(w, http.StatusCreated, freshProj)
+		return
+	}
+
+	respondJSON(w, http.StatusCreated, newProj)
+}
+
+func (h *ProjectHandler) Download(w http.ResponseWriter, r *http.Request) {
+	user, _ := middleware.GetAuthenticatedUser(r.Context())
+	role, _ := middleware.GetUserRole(r.Context())
+	companyID, ok := middleware.GetActiveCompanyID(r.Context())
+	if !ok || !companyID.Valid {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "no_company_context"})
+		return
+	}
+
+	var projectID pgtype.UUID
+	if err := projectID.Scan(chi.URLParam(r, "id")); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_project_id"})
+		return
+	}
+
+	proj, err := h.queries.GetProjectByID(r.Context(), db.GetProjectByIDParams{
+		CompanyID: companyID,
+		ID:        projectID,
+	})
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	person := authz.Person{
+		UserID:    uuid.UUID(user.ID.Bytes),
+		Email:     user.Email,
+		Role:      role,
+		CompanyID: uuid.UUID(companyID.Bytes),
+	}
+	target := authz.ProjectTarget{
+		ID:        uuid.UUID(proj.ID.Bytes),
+		CompanyID: uuid.UUID(companyID.Bytes),
+		ClientID:  uuid.UUID(proj.ClientID.Bytes),
+	}
+
+	access, err := authz.Access(r.Context(), h.queries, person, target)
+	if err != nil || !access.CanView() {
+		respondJSON(w, http.StatusNotFound, map[string]string{"error": "project_not_found"})
+		return
+	}
+
+	if !access.CanDownload {
+		respondJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "message": "Download permission not granted for this project"})
+		return
+	}
+
+	files, err := h.queries.GetProjectFilesRecursive(r.Context(), proj.ID)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error", "message": "Failed to list project files"})
+		return
+	}
+
+	manifestFiles := make([]downloadManifestItem, 0, len(files))
+	var totalSizeBytes int64
+
+	for _, f := range files {
+		if f.StorageKey == "" {
+			continue
+		}
+		var url string
+		if h.storage != nil {
+			var signErr error
+			url, signErr = h.storage.PresignGetObject(r.Context(), f.StorageKey, f.Name, 24*time.Hour)
+			if signErr != nil {
+				continue
+			}
+		}
+		manifestFiles = append(manifestFiles, downloadManifestItem{
+			ID:          uuid.UUID(f.ID.Bytes).String(),
+			Name:        f.Name,
+			Path:        f.RelativePath,
+			SizeBytes:   f.SizeBytes,
+			Mime:        f.Mime,
+			DownloadURL: url,
+		})
+		totalSizeBytes += f.SizeBytes
+	}
+
+	safeName := strings.ReplaceAll(proj.Name, "/", "-")
+	suggestedZipName := fmt.Sprintf("%s.zip", safeName)
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"files":              manifestFiles,
+		"total_bytes":        totalSizeBytes,
+		"file_count":         len(manifestFiles),
+		"suggested_zip_name": suggestedZipName,
+	})
+}
+

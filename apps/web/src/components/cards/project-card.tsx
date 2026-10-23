@@ -16,6 +16,7 @@ interface ProjectCardProps {
   isSelected?: boolean;
   onToggleSelect?: () => void;
   onContextMenu?: (e: React.MouseEvent) => void;
+  onOpenMenu?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 function formatBytes(bytes?: number): string {
@@ -38,6 +39,7 @@ export function ProjectCard({
   isSelected = false,
   onToggleSelect,
   onContextMenu,
+  onOpenMenu,
 }: ProjectCardProps) {
   const displayMembers = members;
 
@@ -216,7 +218,11 @@ export function ProjectCard({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (onContextMenu) onContextMenu(e);
+                if (onOpenMenu) {
+                  onOpenMenu(e);
+                } else if (onContextMenu) {
+                  onContextMenu(e);
+                }
               }}
               className="h-7 w-7 rounded-md flex items-center justify-center text-[var(--text-2)] hover:text-white hover:bg-[var(--input)] transition-colors"
             >

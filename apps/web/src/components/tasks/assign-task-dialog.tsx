@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { TaskBriefEditor } from "./task-brief-editor";
@@ -85,9 +86,14 @@ export function AssignTaskDialog({
   const [showFilePicker, setShowFilePicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [mounted, setMounted] = useState(false);
 
   const clientDropdownRef = useRef<HTMLDivElement>(null);
   const projectDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -208,11 +214,12 @@ export function AssignTaskDialog({
     ? projects.filter((p) => !p.client_id || p.client_id === selectedClientId)
     : projects;
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
-
   const isSubmitDisabled = !taskName.trim() || !selectedClientId || submitting;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+  if (!open || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="w-[1040px] max-w-[95vw] h-[700px] max-h-[92vh] rounded-[20px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-xl overflow-hidden flex flex-col">
         {/* Main 2-Column Body */}
         <div className="flex-1 flex overflow-hidden min-h-0">
@@ -597,6 +604,7 @@ export function AssignTaskDialog({
         onClose={() => setShowFilePicker(false)}
         onSelect={handleAddLibraryItem}
       />
-    </div>
+    </div>,
+    document.body
   );
 }

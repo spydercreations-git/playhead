@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { apiRequest } from "@/lib/api";
 import { File, Film, Image as ImageIcon, Music, Search, X, Loader2 } from "@/components/ui/icon";
 
@@ -27,6 +28,11 @@ export function SelectLibraryFileDialog({
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -43,7 +49,7 @@ export function SelectLibraryFileDialog({
       });
   }, [open]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   const filtered = items.filter((it) =>
     it.name.toLowerCase().includes(search.toLowerCase())
@@ -57,8 +63,8 @@ export function SelectLibraryFileDialog({
     return <File className="w-4 h-4 text-[var(--text-3)]" />;
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+  return createPortal(
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="w-full max-w-lg rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-overlay overflow-hidden flex flex-col max-h-[80vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
@@ -129,6 +135,7 @@ export function SelectLibraryFileDialog({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

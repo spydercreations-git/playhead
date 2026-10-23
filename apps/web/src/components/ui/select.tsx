@@ -234,7 +234,7 @@ export function Select({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={closeTransition}
-                  className="fixed inset-0 bg-black/60"
+                  className="fixed inset-0 bg-black/80"
                   onClick={() => setIsOpen(false)}
                 />
                 <motion.div
@@ -338,9 +338,9 @@ export function Select({
                 <motion.div
                   ref={refs.setFloating}
                   style={floatingStyles}
-                  initial={{ opacity: 0, scale: 0.98, y: -2 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.98, y: -2 }}
+                  initial={{ opacity: 0, y: -2 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -2 }}
                   transition={openTransition}
                   {...getFloatingProps({
                     onKeyDown: handleKeyDown,
@@ -349,7 +349,7 @@ export function Select({
                 >
                   {shouldSearch && (
                     <div className="relative mb-1.5 px-1 pt-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-3)]" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-3)]" />
                       <input
                         ref={searchInputRef}
                         type="text"
@@ -403,7 +403,7 @@ export function Select({
                                   <span className="truncate">{opt.label}</span>
                                 </div>
                                 {isSelected && (
-                                  <Check className="w-3.5 h-3.5 text-[#4876F3] shrink-0" />
+                                  <Check className="w-4 h-4 text-[#4876F3] shrink-0" />
                                 )}
                               </button>
                             );

@@ -112,9 +112,9 @@ export const RADIUS_SCALE = [6, 8, 10, 12, 16, "full"] as const;
  * Framer Motion Transition Tokens
  */
 export const MOTION = {
-  hover: { scale: 1.015, transition: { duration: 0.15, ease: "easeOut" } },
-  tap: { scale: 0.98, transition: { duration: 0.1 } },
-  dialogEnter: { opacity: 1, scale: 1, transition: { duration: 0.16, ease: "easeOut" } },
-  dialogExit: { opacity: 0, scale: 0.98, transition: { duration: 0.12, ease: "easeIn" } },
+  hover: { transition: { duration: 0.15, ease: "easeOut" } },
+  tap: { transition: { duration: 0.1 } },
+  dialogEnter: { opacity: 1, transition: { duration: 0.16, ease: "easeOut" } },
+  dialogExit: { opacity: 0, transition: { duration: 0.12, ease: "easeIn" } },
   pageEnter: { opacity: 1, transition: { duration: 0.15, ease: "easeOut" } },
 } as const;

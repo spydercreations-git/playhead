@@ -174,14 +174,14 @@ export function NewProjectDialog({
           exit={{ opacity: 0 }}
           transition={closeTransition}
           onClick={setupStep === "form" ? onClose : undefined}
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/80"
         />
 
         {/* Modal Window */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.98, y: 6 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.98, y: 4 }}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 4 }}
           transition={dialogTransition}
           className="relative z-10 w-full max-w-3xl rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-overlay overflow-hidden flex flex-col max-h-[90vh]"
         >

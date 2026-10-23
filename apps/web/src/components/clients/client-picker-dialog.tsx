@@ -123,13 +123,13 @@ export function ClientPickerDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-150">
       <div className="w-full max-w-[480px] rounded-[16px] border border-[var(--border)] bg-[var(--panel)] shadow-overlay flex flex-col overflow-hidden max-h-[85vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[var(--border)]">
           <div>
             <h2 className="text-base font-bold text-white">{title}</h2>
-            <p className="text-xs text-[var(--text-3)] mt-0.5">
+            <p className="text-xs text-[var(--text-2)] mt-0.5">
               Choose a client from your workspace.
             </p>
           </div>
@@ -160,7 +160,7 @@ export function ClientPickerDialog({
                 onClick={() => setSearch("")}
                 className="text-[var(--text-3)] hover:text-white p-1"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -308,7 +308,7 @@ export function ClientPickerTrigger({
           className="flex h-9 items-center gap-1.5 rounded-[10px] bg-[var(--input)] border border-[var(--border)] px-3 text-xs font-medium text-[var(--text-2)] hover:text-white hover:border-[var(--border-strong)] transition-colors"
           title="Back to all clients"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="w-4 h-4" />
           <span>Back to all clients</span>
         </button>
         <button
@@ -320,7 +320,7 @@ export function ClientPickerTrigger({
             {selectedClient.name.charAt(0).toUpperCase()}
           </div>
           <span>{selectedClient.name}</span>
-          <ChevronDown className="w-3 h-3 text-[var(--text-2)]" />
+          <ChevronDown className="w-4 h-4 text-[var(--text-2)]" />
         </button>
       </div>
     );
@@ -333,7 +333,7 @@ export function ClientPickerTrigger({
       className={`flex h-9 items-center gap-2 rounded-[10px] bg-[var(--input)] border border-[var(--border)] px-3 text-xs font-medium text-[var(--text-2)] hover:text-white hover:border-[var(--border-strong)] transition-colors ${className}`}
     >
       <span>Select client</span>
-      <ChevronDown className="w-3.5 h-3.5 text-[var(--text-3)]" />
+      <ChevronDown className="w-4 h-4 text-[var(--text-3)]" />
     </button>
   );
 }

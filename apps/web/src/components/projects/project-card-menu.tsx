@@ -164,7 +164,7 @@ export function ProjectCardMenu({
         }}
         className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[#282a32] text-left transition-colors cursor-pointer"
       >
-        <Icon name="open_in_new" size={17} className="text-[#a0a2aa] shrink-0" />
+        <Icon name="open_in_new" size={20} className="text-[#a0a2aa] shrink-0" />
         <span>Open</span>
       </button>
 
@@ -183,7 +183,7 @@ export function ProjectCardMenu({
           }}
           className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[#282a32] text-left transition-colors cursor-pointer"
         >
-          <Icon name="person_add" size={17} className="text-[#a0a2aa] shrink-0" />
+          <Icon name="person_add" size={20} className="text-[#a0a2aa] shrink-0" />
           <span>Manage access</span>
         </button>
       )}
@@ -197,7 +197,7 @@ export function ProjectCardMenu({
         }}
         className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[#282a32] text-left transition-colors cursor-pointer"
       >
-        <Icon name="link" size={17} className="text-[#a0a2aa] shrink-0" />
+        <Icon name="link" size={20} className="text-[#a0a2aa] shrink-0" />
         <span>Copy link</span>
       </button>
 
@@ -210,9 +210,9 @@ export function ProjectCardMenu({
         }}
         className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[#282a32] text-left transition-colors cursor-pointer group"
       >
-        <Icon name="download" size={17} className="text-[#a0a2aa] shrink-0" />
+        <Icon name="download" size={20} className="text-[#a0a2aa] shrink-0" />
         <span>Download</span>
-        <span className="ml-auto text-[10px] font-medium tracking-wide text-[var(--text-3)] group-hover:text-white transition-colors">
+        <span className="ml-auto text-xs font-medium tracking-wide text-[var(--text-3)] group-hover:text-white transition-colors">
           ZIP
         </span>
       </button>
@@ -232,7 +232,7 @@ export function ProjectCardMenu({
           }}
           className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[#282a32] text-left transition-colors cursor-pointer"
         >
-          <Icon name="add_box" size={17} className="text-[#a0a2aa] shrink-0" />
+          <Icon name="add_box" size={20} className="text-[#a0a2aa] shrink-0" />
           <span>Duplicate</span>
         </button>
       )}
@@ -247,7 +247,7 @@ export function ProjectCardMenu({
           }}
           className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg hover:bg-[#282a32] text-left transition-colors cursor-pointer"
         >
-          <Icon name="edit" size={17} className="text-[#a0a2aa] shrink-0" />
+          <Icon name="edit" size={20} className="text-[#a0a2aa] shrink-0" />
           <span>Rename</span>
         </button>
       )}
@@ -263,7 +263,7 @@ export function ProjectCardMenu({
       >
         <Icon
           name={isInactive ? "unarchive" : "move_to_inbox"}
-          size={17}
+          size={20}
           className="text-[#a0a2aa] shrink-0"
         />
         <span>{isInactive ? "Mark active" : "Mark inactive"}</span>
@@ -283,7 +283,7 @@ export function ProjectCardMenu({
             }}
             className="w-[calc(100%-8px)] mx-1 px-2.5 py-1.5 flex items-center gap-2.5 rounded-lg text-[#ff5c5c] hover:bg-red-500/10 text-left transition-colors cursor-pointer"
           >
-            <Icon name="delete" size={17} className="text-[#ff5c5c] shrink-0" />
+            <Icon name="delete" size={20} className="text-[#ff5c5c] shrink-0" />
             <span>Delete</span>
           </button>
         </>

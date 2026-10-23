@@ -448,7 +448,7 @@ export default function PublicSharePage() {
                     {item.kind === "folder" ? (
                       <Folder className="w-10 h-10 text-[#4876F3]" />
                     ) : isVideo ? (
-                      <Film className="w-10 h-10 text-violet-400 group-hover:scale-[1.015] transition-transform" />
+                      <Film className="w-10 h-10 text-violet-400" />
                     ) : isAudio ? (
                       <Music className="w-10 h-10 text-emerald-400" />
                     ) : (

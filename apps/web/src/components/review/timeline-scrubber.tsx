@@ -191,7 +191,7 @@ export function TimelineScrubber({
                   onSeek(c.timecode_start_ms!);
                   if (onSelectComment) onSelectComment(c.id);
                 }}
-                className="absolute -top-1.5 -translate-x-1/2 z-20 flex flex-col items-center group/marker hover:scale-[1.015] transition-transform"
+                className="absolute -top-1.5 -translate-x-1/2 z-20 flex flex-col items-center group/marker transition-all"
                 style={{ left: `${markerPct}%` }}
                 title={`${c.author_name} (${isTeam ? "Team only" : "Everyone"}): ${c.body.substring(0, 40)}`}
               >
@@ -207,7 +207,7 @@ export function TimelineScrubber({
                 >
                   {initial}
                   {isTeam && (
-                    <Lock className="absolute -top-1 -right-1 w-2.5 h-2.5 text-[#FFBB56] bg-[var(--bg)] rounded-full p-[1px]" />
+                    <Lock className="absolute -top-1 -right-1 w-3 h-3 text-[#FFBB56] bg-[var(--bg)] rounded-full p-[1px]" />
                   )}
                 </div>
               </button>
@@ -216,7 +216,7 @@ export function TimelineScrubber({
 
         {/* Playhead Scrubber Handle */}
         <div
-          className="absolute -top-1.5 w-5 h-5 rounded-full bg-white shadow-lg border-2 border-[#FFBB56] -translate-x-1/2 pointer-events-none scale-0 group-hover:scale-100 transition-transform flex items-center justify-center z-30"
+          className="absolute -top-1.5 w-5 h-5 rounded-full bg-white shadow-lg border-2 border-[#FFBB56] -translate-x-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-30"
           style={{ left: `${progressPercent}%` }}
         >
           <div className="w-1.5 h-1.5 bg-[#FFBB56] rounded-full" />

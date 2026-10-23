@@ -120,7 +120,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
             className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white md:hidden shrink-0"
             title="Open menu"
           >
-            <Menu size={18} />
+            <Menu size={20} />
           </button>
 
           <h1 className="text-sm font-semibold text-white truncate">
@@ -136,7 +136,7 @@ export function Header({ onOpenSidebar }: HeaderProps) {
             className="hidden sm:flex h-9 w-[320px] items-center justify-between rounded-[8px] bg-[var(--input)] px-3 text-[var(--text-3)] cursor-pointer hover:border-[var(--border-strong)] border border-transparent transition-all"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <Search size={18} className="text-[var(--text-3)] shrink-0" />
+              <Search size={20} className="text-[var(--text-3)] shrink-0" />
               <span className="text-sm text-[var(--text-3)] truncate">
                 Search files, projects, clients
               </span>
@@ -186,16 +186,16 @@ export function Header({ onOpenSidebar }: HeaderProps) {
               onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
               title={displayName}
               aria-label="Profile menu"
-              className="flex items-center rounded-full shrink-0 hover:scale-[1.015] active:scale-[0.98] transition-transform duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+              className="flex items-center rounded-full shrink-0 transition-opacity duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
             >
               <Avatar name={displayName} size="md" />
             </button>
 
             {isProfileMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-[var(--border)] bg-[var(--panel)] py-1.5 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-[var(--border)] bg-[var(--panel)] py-1.5 shadow-xl z-50 animate-in fade-in duration-100">
                 <div className="px-3.5 py-2 border-b border-[var(--border)]">
                   <p className="text-sm font-semibold text-[var(--text)] truncate">{displayName}</p>
-                  <p className="text-xs text-[var(--text-3)] truncate mt-0.5">{user?.email}</p>
+                  <p className="text-xs text-[var(--text-2)] truncate mt-0.5">{user?.email}</p>
                 </div>
                 <div className="p-1">
                   <Link

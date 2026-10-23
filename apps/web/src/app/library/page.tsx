@@ -358,7 +358,7 @@ export default function LibraryPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Library</h1>
-          <p className="text-xs text-[var(--text-3)] mt-1">
+          <p className="text-xs text-[var(--text-2)] mt-1">
             Every client project, folder and file.
           </p>
         </div>
@@ -366,7 +366,7 @@ export default function LibraryPage() {
         {hasPermission("projects.create") && (
           <button
             onClick={() => setShowNewProject(true)}
-            className="flex h-9 items-center justify-center gap-1.5 rounded-[8px] bg-[var(--button)] hover:bg-[var(--button-hover)] px-4 text-xs font-semibold text-[var(--button-text)] shadow transition-all active:scale-95 cursor-pointer"
+            className="flex h-9 items-center justify-center gap-1.5 rounded-[8px] bg-[var(--button)] hover:bg-[var(--button-hover)] px-4 text-xs font-semibold text-[var(--button-text)] shadow transition-colors cursor-pointer"
           >
             <Plus size={16} />
             <span>New project</span>
@@ -379,7 +379,7 @@ export default function LibraryPage() {
         <div className="flex flex-wrap items-center gap-3">
           {/* Search projects */}
           <div className="flex h-9 w-64 items-center gap-2 rounded-[10px] bg-[var(--input)] border border-[var(--border)] px-3 text-xs text-[var(--text-3)] focus-within:border-[#4876F3] transition-colors">
-            <Search size={15} className="text-[var(--text-3)] shrink-0" />
+            <Search size={16} className="text-[var(--text-3)] shrink-0" />
             <input
               type="text"
               placeholder="Search projects"
@@ -411,7 +411,7 @@ export default function LibraryPage() {
               <option value="date">Date modified</option>
               <option value="name">Name</option>
             </select>
-            <ChevronDown size={14} className="text-[var(--text-3)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown size={16} className="text-[var(--text-3)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {/* Grid / List switch */}

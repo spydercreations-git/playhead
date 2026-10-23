@@ -129,8 +129,8 @@ function VideoCardView(props: NodeViewProps) {
             <Film className="w-6 h-6 text-muted-foreground" />
           )}
           <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-            <div className="w-7 h-7 rounded-full bg-primary/90 text-primary-foreground flex items-center justify-center shadow-md transform group-hover:scale-[1.015] transition-transform">
-              <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+            <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md">
+              <Play className="w-4 h-4 fill-current ml-0.5" />
             </div>
           </div>
         </div>

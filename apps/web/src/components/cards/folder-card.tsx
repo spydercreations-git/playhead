@@ -117,9 +117,7 @@ export function FolderCard({
         }
       }}
       onContextMenu={onContextMenu}
-      className={`group relative h-[290px] w-full select-none cursor-pointer transition-transform duration-150 hover:scale-[1.015] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4876F3] ${
-        isSelected ? "scale-[1.015]" : ""
-      }`}
+      className="group relative h-[290px] w-full select-none cursor-pointer transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4876F3]"
     >
       {/* SVG Background (from New Cards/folder-card-shape.svg continuous outline) */}
       <svg
@@ -142,7 +140,7 @@ export function FolderCard({
         <div className="relative h-[150px] w-full">
           <div className="h-[150px] w-full flex gap-1.5">
             {/* Big Slot */}
-            <div className="flex-1 h-[150px] rounded-[8px] bg-[#161618] border border-white/20 overflow-hidden relative flex items-center justify-center">
+            <div className="flex-1 h-[150px] rounded-[8px] bg-[#161618] border border-[var(--border)] overflow-hidden relative flex items-center justify-center">
               {thumbnails[0] ? (
                 <img
                   src={thumbnails[0]}
@@ -150,15 +148,15 @@ export function FolderCard({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-[var(--text-3)] opacity-40">
-                  <Folder size={26} />
+                <div className="w-full h-full flex items-center justify-center text-[var(--text-3)]">
+                  <Folder size={24} />
                 </div>
               )}
             </div>
 
             {/* Small Slots */}
             <div className="w-[36%] h-[150px] flex flex-col gap-1.5">
-              <div className="h-[72px] rounded-[8px] bg-[#161618] border border-white/20 overflow-hidden relative flex items-center justify-center">
+              <div className="h-[72px] rounded-[8px] bg-[#161618] border border-[var(--border)] overflow-hidden relative flex items-center justify-center">
                 {thumbnails[1] ? (
                   <img
                     src={thumbnails[1]}
@@ -166,12 +164,12 @@ export function FolderCard({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[var(--text-3)] opacity-40">
-                    <Folder size={18} />
+                  <div className="w-full h-full flex items-center justify-center text-[var(--text-3)]">
+                    <Folder size={16} />
                   </div>
                 )}
               </div>
-              <div className="h-[72px] rounded-[8px] bg-[#161618] border border-white/20 overflow-hidden relative flex items-center justify-center">
+              <div className="h-[72px] rounded-[8px] bg-[#161618] border border-[var(--border)] overflow-hidden relative flex items-center justify-center">
                 {thumbnails[2] ? (
                   <img
                     src={thumbnails[2]}
@@ -179,8 +177,8 @@ export function FolderCard({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[var(--text-3)] opacity-40">
-                    <Folder size={18} />
+                  <div className="w-full h-full flex items-center justify-center text-[var(--text-3)]">
+                    <Folder size={16} />
                   </div>
                 )}
               </div>
@@ -205,15 +203,15 @@ export function FolderCard({
                 onToggleSelect();
               }
             }}
-            className={`folder-checkbox absolute top-2 left-2 h-5 w-5 rounded-[6px] flex items-center justify-center transition-all z-20 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-[#4876F3] ${
+            className={`folder-checkbox absolute top-2 left-2 h-5 w-5 rounded-[6px] flex items-center justify-center transition-colors z-20 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-[#4876F3] ${
               isSelected
                 ? "bg-[#4876F3] border border-[#4876F3] text-white opacity-100"
                 : selectionActive
-                ? "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-100"
-                : "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-0 group-hover:opacity-100"
+                ? "border border-[var(--border-strong)] bg-[var(--panel)] hover:border-white text-transparent opacity-100"
+                : "border border-[var(--border-strong)] bg-[var(--panel)] hover:border-white text-transparent opacity-0 group-hover:opacity-100"
             }`}
           >
-            <Check size={14} className={isSelected ? "text-white" : "opacity-0"} />
+            <Check size={16} className={isSelected ? "text-white" : "opacity-0"} />
           </button>
         </div>
 
@@ -250,7 +248,7 @@ export function FolderCard({
                     {dropLabel || "Move to folder"}
                   </p>
                 ) : (
-                  <p className="text-[13px] text-[var(--text-3)] truncate mt-0.5">
+                  <p className="text-[13px] text-[var(--text-2)] truncate mt-0.5">
                     {itemCount === 0 ? (
                       "Empty"
                     ) : (
@@ -275,7 +273,7 @@ export function FolderCard({
               aria-label="Folder options"
               className="folder-menu-btn flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-2)] hover:bg-[var(--input)] hover:text-white transition-colors shrink-0"
             >
-              <MoreHorizontal size={18} />
+              <MoreHorizontal size={16} />
             </button>
           )}
         </div>

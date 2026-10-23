@@ -143,10 +143,10 @@ export function VersionHistoryDrawer({
       {/* Version List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {versions.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">
-            <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <div className="text-center py-12 text-[var(--text-2)] text-sm">
+            <Clock className="w-8 h-8 mx-auto mb-2 text-[var(--text-3)]" />
             <p>No historical versions recorded yet.</p>
-            <p className="text-xs mt-1 text-muted-foreground/80">
+            <p className="text-xs mt-1 text-[var(--text-2)]">
               Versions are created automatically during editing and upon naming.
             </p>
           </div>

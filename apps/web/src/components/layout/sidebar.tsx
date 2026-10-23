@@ -145,7 +145,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             title="Close menu"
             className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[var(--text-3)] hover:bg-[var(--input)] hover:text-white md:hidden"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
@@ -154,11 +154,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="relative px-4 pt-6 pb-2.5 shrink-0">
             <button
               onClick={() => setNewMenuOpen(!newMenuOpen)}
-              className={`flex h-10 w-[200px] mx-auto items-center justify-center gap-2 rounded-[10px] text-sm font-semibold text-[var(--button-text)] shadow-none transition-all duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] ${
+              className={`flex h-10 w-[200px] mx-auto items-center justify-center gap-2 rounded-[10px] text-sm font-semibold text-[var(--button-text)] shadow-none transition-colors duration-150 ${
                 newMenuOpen ? "bg-[var(--button-hover)]" : "bg-[var(--button)] hover:bg-[var(--button-hover)] active:bg-[var(--button-hover)]"
               }`}
             >
-              <Plus size={18} className="text-[var(--button-text)]" />
+              <Plus size={20} className="text-[var(--button-text)]" />
               <span>New</span>
             </button>
 
@@ -169,7 +169,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   className="fixed inset-0 z-30"
                   onClick={() => setNewMenuOpen(false)}
                 />
-                <div className="absolute left-4 right-4 top-[70px] z-40 rounded-[10px] border border-[var(--border)] bg-[var(--panel-raised)] py-2 shadow-[0_8px_24px_rgba(0,0,0,0.5)] animate-in fade-in-0 zoom-in-[0.98] duration-160 ease-out">
+                <div className="absolute left-4 right-4 top-[70px] z-40 rounded-[10px] border border-[var(--border)] bg-[var(--panel-raised)] py-2 shadow-[0_8px_24px_rgba(0,0,0,0.5)] animate-in fade-in-0 duration-150 ease-out">
                   <button
                     onClick={() => {
                       setNewMenuOpen(false);
@@ -177,7 +177,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     }}
                     className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
                   >
-                    <Description size={18} className="text-[var(--text-2)]" />
+                    <Description size={20} className="text-[var(--text-2)]" />
                     <span>New document</span>
                   </button>
 
@@ -188,7 +188,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     }}
                     className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
                   >
-                    <CreateNewFolder size={18} className="text-[var(--text-2)]" />
+                    <CreateNewFolder size={20} className="text-[var(--text-2)]" />
                     <span>New project</span>
                   </button>
 
@@ -200,7 +200,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       }}
                       className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
                     >
-                      <PersonAdd size={18} className="text-[var(--text-2)]" />
+                      <PersonAdd size={20} className="text-[var(--text-2)]" />
                       <span>New client</span>
                     </button>
                   )}
@@ -214,7 +214,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     }}
                     className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
                   >
-                    <UploadFile size={18} className="text-[var(--text-2)]" />
+                    <UploadFile size={20} className="text-[var(--text-2)]" />
                     <span>Upload files</span>
                   </button>
                 </div>
@@ -315,7 +315,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </div>
             </div>
 
-            <UnfoldMore size={18} className="text-[var(--text-3)] shrink-0" />
+            <UnfoldMore size={20} className="text-[var(--text-3)] shrink-0" />
           </div>
 
           {profileMenuOpen && (
@@ -324,7 +324,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 className="fixed inset-0 z-30"
                 onClick={() => setProfileMenuOpen(false)}
               />
-              <div className="absolute bottom-[72px] left-3 right-3 z-40 rounded-[10px] border border-[var(--border)] bg-[var(--panel-raised)] py-1 shadow-[0_8px_24px_rgba(0,0,0,0.5)] animate-in fade-in-0 zoom-in-[0.98] duration-160 ease-out">
+              <div className="absolute bottom-[72px] left-3 right-3 z-40 rounded-[10px] border border-[var(--border)] bg-[var(--panel-raised)] py-1 shadow-[0_8px_24px_rgba(0,0,0,0.5)] animate-in fade-in-0 duration-150 ease-out">
                 {process.env.NODE_ENV === "development" && (
                   <div className="mx-2 mb-1 p-2 rounded bg-[var(--input)] border border-[var(--border)] text-xs">
                     <div className="flex items-center justify-between text-[var(--text-2)] font-semibold mb-1">
@@ -340,7 +340,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   onClick={() => setProfileMenuOpen(false)}
                   className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-white hover:bg-[var(--hover)] transition-colors"
                 >
-                  <Settings size={18} className="text-[var(--text-2)]" />
+                  <Settings size={20} className="text-[var(--text-2)]" />
                   <span>Settings</span>
                 </Link>
                 <div className="my-1 border-t border-[var(--border)]" />
@@ -348,7 +348,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   onClick={handleLogout}
                   className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm font-normal text-[#F0506E] hover:bg-[var(--hover)] transition-colors"
                 >
-                  <LogOut size={18} className="text-[#F0506E]" />
+                  <LogOut size={20} className="text-[#F0506E]" />
                   <span>Sign out</span>
                 </button>
               </div>

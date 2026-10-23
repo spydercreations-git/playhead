@@ -781,7 +781,7 @@ export default function AdminPage() {
 
       {/* Edit Member Drawer / Slide-Over */}
       {selectedMember && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/80 animate-in fade-in duration-200">
           <div
             className="flex h-full w-full max-w-xl flex-col bg-[var(--panel)] border-l border-[var(--border)] shadow-lg animate-in slide-in-from-right duration-200"
             onClick={(e) => e.stopPropagation()}
@@ -1059,9 +1059,9 @@ export default function AdminPage() {
 
       {/* Add Member Modal */}
       {showAddMemberModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in duration-150">
           <div
-            className="w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--panel)] shadow-lg overflow-hidden animate-in zoom-in-95 duration-150"
+            className="w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--panel)] shadow-lg overflow-hidden animate-in fade-in duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--panel-raised)] px-6 py-4">
@@ -1146,15 +1146,15 @@ export default function AdminPage() {
 
       {/* Add Client Contact Modal */}
       {showAddContactModal && targetClientForContact && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in duration-150">
           <div
-            className="w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--panel)] shadow-lg overflow-hidden animate-in zoom-in-95 duration-150"
+            className="w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--panel)] shadow-lg overflow-hidden animate-in fade-in duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--panel-raised)] px-6 py-4">
               <div>
                 <h2 className="text-base font-semibold text-[var(--text)]">Add Client Contact</h2>
-                <p className="text-xs text-[var(--text-3)]">{targetClientForContact.name}</p>
+                <p className="text-xs text-[var(--text-2)]">{targetClientForContact.name}</p>
               </div>
               <button
                 onClick={() => setShowAddContactModal(false)}

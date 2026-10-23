@@ -79,7 +79,7 @@ export function DriveFolderCard({
     <div
       onClick={onOpen}
       onContextMenu={onContextMenu}
-      className={`group flex items-center justify-between h-[88px] w-full rounded-[12px] bg-[var(--panel)] border border-[var(--border)] hover:border-[var(--border-strong)] p-4 select-none cursor-pointer transition-all duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] ${className}`}
+      className={`group flex items-center justify-between h-[88px] w-full rounded-[12px] bg-[var(--panel)] border border-[var(--border)] hover:border-[var(--border-strong)] p-4 select-none cursor-pointer transition-colors duration-150 ${className}`}
     >
       <div className="flex items-center gap-3.5 min-w-0">
         {/* 40x40 Icon Badge */}
@@ -93,7 +93,7 @@ export function DriveFolderCard({
         {/* Texts */}
         <div className="min-w-0">
           <p className="text-sm font-semibold text-white truncate">{name}</p>
-          <p className="text-xs text-[var(--text-3)] truncate mt-0.5">
+          <p className="text-xs text-[var(--text-2)] truncate mt-0.5">
             {subtitleText}
           </p>
         </div>
@@ -109,7 +109,7 @@ export function DriveFolderCard({
         className="rounded-[6px] p-1.5 text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white transition-colors shrink-0"
         aria-label="Folder options"
       >
-        <MoreHorizontal size={18} />
+        <MoreHorizontal size={16} />
       </button>
     </div>
   );

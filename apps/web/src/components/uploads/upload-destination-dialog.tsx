@@ -134,14 +134,14 @@ export function UploadDestinationDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
       <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
-      <div className="relative w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in duration-150">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
           <div>
             <h2 className="text-base font-semibold text-white">Upload files</h2>
-            <p className="text-xs text-[var(--text-3)] mt-0.5">
+            <p className="text-xs text-[var(--text-2)] mt-0.5">
               Select destination project and folder
             </p>
           </div>
@@ -149,7 +149,7 @@ export function UploadDestinationDialog({
             onClick={onClose}
             className="p-1 rounded-lg text-[var(--text-3)] hover:text-white hover:bg-[var(--hover)] transition-colors"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
@@ -162,7 +162,7 @@ export function UploadDestinationDialog({
             </label>
             {loadingProjects ? (
               <div className="flex items-center gap-2 h-10 px-3 rounded-lg bg-[var(--input)] text-xs text-[var(--text-3)]">
-                <Loader2 size={14} className="animate-spin" />
+                <Loader2 size={16} className="animate-spin" />
                 <span>Loading projects...</span>
               </div>
             ) : (
@@ -187,12 +187,12 @@ export function UploadDestinationDialog({
             </label>
             {loadingFolders ? (
               <div className="flex items-center gap-2 h-10 px-3 rounded-lg bg-[var(--input)] text-xs text-[var(--text-3)]">
-                <Loader2 size={14} className="animate-spin" />
+                <Loader2 size={16} className="animate-spin" />
                 <span>Loading folders...</span>
               </div>
             ) : folders.length === 0 ? (
               <div className="flex items-center gap-2 h-10 px-3 rounded-lg bg-[var(--input)] border border-[var(--border)] text-xs text-[var(--text-3)]">
-                <Folder size={14} />
+                <Folder size={16} />
                 <span>No folders (will upload to project root)</span>
               </div>
             ) : (
@@ -228,7 +228,7 @@ export function UploadDestinationDialog({
             className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
               isDragging
                 ? "border-[var(--accent)] bg-[var(--accent)]/10"
-                : "border-[var(--border)] hover:border-[var(--border-strong)] bg-[var(--input)]/50"
+                : "border-[var(--border)] hover:border-[var(--border-strong)] bg-[var(--input)]"
             }`}
           >
             <input
@@ -243,12 +243,12 @@ export function UploadDestinationDialog({
               }}
             />
             <div className="mx-auto w-10 h-10 rounded-full bg-[var(--panel)] border border-[var(--border)] flex items-center justify-center text-[var(--text-2)] mb-2">
-              <Upload size={18} />
+              <Upload size={20} />
             </div>
             <p className="text-sm font-medium text-white">
               Click to browse or drag files here
             </p>
-            <p className="text-xs text-[var(--text-3)] mt-1">
+            <p className="text-xs text-[var(--text-2)] mt-1">
               Supports video, images, audio, and documents
             </p>
           </div>
@@ -267,7 +267,7 @@ export function UploadDestinationDialog({
             disabled={!selectedProjectId}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--button)] hover:bg-[var(--button-hover)] text-xs font-semibold text-white transition-colors disabled:opacity-50"
           >
-            <Upload size={14} />
+            <Upload size={16} />
             <span>Choose files</span>
           </button>
         </div>

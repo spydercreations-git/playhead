@@ -168,11 +168,11 @@ export function TimezoneSelect({
           } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
           title={currentLabel}
         >
-          <Globe size={14} className="text-[#4876F3] shrink-0" />
+          <Globe size={16} className="text-[#4876F3] shrink-0" />
           <span className="font-medium text-white whitespace-nowrap truncate max-w-[130px]">
             {compactLabel}
           </span>
-          <ChevronDown size={14} className="text-[var(--text-3)] shrink-0" />
+          <ChevronDown size={16} className="text-[var(--text-3)] shrink-0" />
         </button>
       ) : (
         <button
@@ -198,7 +198,7 @@ export function TimezoneSelect({
       {/* Connected Dropdown Popover */}
       {isOpen && (
         <div
-          className={`absolute z-50 rounded-[12px] bg-[#161618] border border-[var(--border)] p-2 shadow-xl animate-in fade-in zoom-in-95 duration-100 ${
+          className={`absolute z-50 rounded-[12px] bg-[#161618] border border-[var(--border)] p-2 shadow-xl animate-in fade-in duration-100 ${
             variant === "compact"
               ? "bottom-full mb-1.5 right-0 w-80 max-w-[90vw]"
               : "top-full mt-1.5 left-0 w-full"
@@ -207,7 +207,7 @@ export function TimezoneSelect({
           {/* Search Bar */}
           <div className="relative mb-2 px-1">
             <Search
-              size={14}
+              size={16}
               className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]"
             />
             <input
@@ -234,7 +234,7 @@ export function TimezoneSelect({
               >
                 <div className="flex items-center gap-2 truncate">
                   <Globe
-                    size={15}
+                    size={16}
                     className={
                       value === "autodetect" ? "text-white" : "text-[#4876F3]"
                     }

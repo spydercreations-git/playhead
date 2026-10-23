@@ -362,7 +362,7 @@ export function NewClientDialog({
   return (
     <>
       {/* Background Backdrop */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-150">
         {/* Main Modal Window (1000 x 680, rounded 20px) */}
         <div className="relative w-full max-w-[560px] min-[900px]:max-w-[1000px] h-auto min-[900px]:h-[680px] rounded-[20px] border border-[var(--border)] bg-[var(--panel)] shadow-xl overflow-hidden flex flex-col min-[900px]:flex-row">
           
@@ -419,7 +419,7 @@ export function NewClientDialog({
               >
                 <Icon
                   name="Camera"
-                  size={18}
+                  size={20}
                   className="text-[var(--button)] group-hover:opacity-90"
                 />
                 <span>
@@ -496,7 +496,7 @@ export function NewClientDialog({
                 <div className="relative">
                   <Icon
                     name="globe"
-                    size={18}
+                    size={20}
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)] pointer-events-none"
                   />
                   <input
@@ -644,7 +644,7 @@ export function NewClientDialog({
                     >
                       <Icon
                         name="person_add"
-                        size={18}
+                        size={20}
                         className="text-[var(--text-2)] group-hover:text-white transition-colors"
                       />
                       <span className="text-[15px] font-medium">
@@ -700,7 +700,7 @@ export function NewClientDialog({
                 >
                   {loading ? (
                     <div className="flex items-center gap-2">
-                      <Icon name="progress_activity" size={18} className="animate-spin text-[var(--button-text)]" />
+                      <Icon name="progress_activity" size={16} className="animate-spin text-[var(--button-text)]" />
                       <span>Saving...</span>
                     </div>
                   ) : (
@@ -715,7 +715,7 @@ export function NewClientDialog({
 
       {/* Discard Confirmation Dialog */}
       {showDiscardConfirm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-100">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-100">
           <div className="w-full max-w-[400px] rounded-[16px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-xl">
             <h3 className="text-[20px] font-bold text-white">
               Discard this client?

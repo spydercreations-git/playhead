@@ -293,7 +293,7 @@ export default function DocumentsPage() {
                     : "Shared with me"}
                 </span>
               </span>
-              <ChevronDown size={14} className="text-[var(--text-3)]" />
+              <ChevronDown size={16} className="text-[var(--text-3)]" />
             </button>
 
             {ownerDropdownOpen && (
@@ -302,7 +302,7 @@ export default function DocumentsPage() {
                   className="fixed inset-0 z-30"
                   onClick={() => setOwnerDropdownOpen(false)}
                 />
-                <div className="absolute right-0 top-full mt-1.5 w-44 rounded-lg border border-[var(--border)] bg-[var(--panel-raised)] py-1 shadow-xl z-40 animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute right-0 top-full mt-1.5 w-44 rounded-lg border border-[var(--border)] bg-[var(--panel-raised)] py-1 shadow-xl z-40 animate-in fade-in duration-100">
                   <button
                     onClick={() => {
                       setOwnerFilter("anyone");
@@ -363,7 +363,7 @@ export default function DocumentsPage() {
                   ? "Date created"
                   : "Title"}
               </span>
-              <ChevronDown size={14} className="text-[var(--text-3)]" />
+              <ChevronDown size={16} className="text-[var(--text-3)]" />
             </button>
 
             {sortDropdownOpen && (
@@ -372,7 +372,7 @@ export default function DocumentsPage() {
                   className="fixed inset-0 z-30"
                   onClick={() => setSortDropdownOpen(false)}
                 />
-                <div className="absolute right-0 top-full mt-1.5 w-40 rounded-lg border border-[var(--border)] bg-[var(--panel-raised)] py-1 shadow-xl z-40 animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute right-0 top-full mt-1.5 w-40 rounded-lg border border-[var(--border)] bg-[var(--panel-raised)] py-1 shadow-xl z-40 animate-in fade-in duration-100">
                   <button
                     onClick={() => {
                       setSortOption("modified");
@@ -428,7 +428,7 @@ export default function DocumentsPage() {
                   : "text-[var(--text-3)] hover:text-white"
               }`}
             >
-              <LayoutGrid size={15} />
+              <LayoutGrid size={16} />
             </button>
             <button
               onClick={() => setViewMode("list")}
@@ -439,7 +439,7 @@ export default function DocumentsPage() {
                   : "text-[var(--text-3)] hover:text-white"
               }`}
             >
-              <List size={15} />
+              <List size={16} />
             </button>
           </div>
         </div>
@@ -479,12 +479,12 @@ export default function DocumentsPage() {
               <div
                 key={doc.id}
                 onClick={() => router.push(`/documents/${doc.id}`)}
-                className={`group relative rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3 cursor-pointer hover:border-[var(--border-strong)] transition-all ${
-                  isMenuOpen ? "z-30" : "z-0 hover:scale-[1.01]"
+                className={`group relative rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3 cursor-pointer hover:border-[var(--border-strong)] transition-colors ${
+                  isMenuOpen ? "z-30" : "z-0"
                 }`}
               >
                 {/* Document Preview Box (Dark card with title & simulated text lines matching D1 mockup) */}
-                <div className="aspect-[16/10] rounded-lg bg-[var(--input)] p-3.5 mb-3 flex flex-col justify-between overflow-hidden border border-white/20 transition-colors">
+                <div className="aspect-[16/10] rounded-lg bg-[var(--input)] p-3.5 mb-3 flex flex-col justify-between overflow-hidden border border-[var(--border)] transition-colors">
                   <div className="space-y-1.5">
                     <span className="text-xs font-semibold text-[var(--text-2)] truncate block">
                       {doc.title}
@@ -510,12 +510,12 @@ export default function DocumentsPage() {
                       }}
                       className="text-[var(--text-3)] hover:text-white p-1 rounded-md hover:bg-[var(--hover)] transition-colors"
                     >
-                      <MoreHorizontal size={14} />
+                      <MoreHorizontal size={16} />
                     </button>
 
                     {/* D1 3-Dots Dropdown Menu */}
                     {isMenuOpen && (
-                      <div className="absolute right-0 top-full mt-1 w-36 rounded-lg border border-[var(--border)] bg-[var(--panel-raised)] py-1 shadow-xl z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                      <div className="absolute right-0 top-full mt-1 w-36 rounded-lg border border-[var(--border)] bg-[var(--panel-raised)] py-1 shadow-xl z-50 text-xs animate-in fade-in duration-100">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -524,7 +524,7 @@ export default function DocumentsPage() {
                             }}
                             className="flex w-full items-center gap-2 px-3 py-1.5 text-white hover:bg-[var(--hover)] transition-colors"
                           >
-                            <UserPlus size={14} className="text-[var(--text-2)]" />
+                            <UserPlus size={16} className="text-[var(--text-2)]" />
                             <span>Share</span>
                           </button>
 
@@ -537,7 +537,7 @@ export default function DocumentsPage() {
                             }}
                             className="flex w-full items-center gap-2 px-3 py-1.5 text-white hover:bg-[var(--hover)] transition-colors"
                           >
-                            <Edit2 size={14} className="text-[var(--text-2)]" />
+                            <Edit2 size={16} className="text-[var(--text-2)]" />
                             <span>Rename</span>
                           </button>
 
@@ -549,7 +549,7 @@ export default function DocumentsPage() {
                             }}
                             className="flex w-full items-center gap-2 px-3 py-1.5 text-white hover:bg-[var(--hover)] transition-colors"
                           >
-                            <Copy size={14} className="text-[var(--text-2)]" />
+                            <Copy size={16} className="text-[var(--text-2)]" />
                             <span>Make a copy</span>
                           </button>
 
@@ -563,7 +563,7 @@ export default function DocumentsPage() {
                             }}
                             className="flex w-full items-center gap-2 px-3 py-1.5 text-[#F0506E] hover:bg-[var(--hover)] transition-colors"
                           >
-                            <Trash2 size={14} className="text-[#F0506E]" />
+                            <Trash2 size={16} className="text-[#F0506E]" />
                             <span>Delete</span>
                           </button>
                         </div>
@@ -572,7 +572,7 @@ export default function DocumentsPage() {
                 </div>
 
                 {/* Bottom Row: Avatar Initial + Time / Shared pill */}
-                <div className="flex items-center gap-1.5 mt-2 text-xs text-[var(--text-3)] truncate">
+                <div className="flex items-center gap-1.5 mt-2 text-xs text-[var(--text-2)] truncate">
                   <span
                     className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
                     style={{ backgroundColor: avatarColor }}
@@ -603,7 +603,7 @@ export default function DocumentsPage() {
                 className="flex items-center justify-between px-4 py-3 hover:bg-[var(--hover)] cursor-pointer transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <FileText size={18} className="text-[#4876F3] shrink-0" />
+                  <FileText size={20} className="text-[#4876F3] shrink-0" />
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-white truncate">{doc.title}</p>
                     <p className="text-xs text-[var(--text-3)] truncate">
@@ -627,7 +627,7 @@ export default function DocumentsPage() {
                     }}
                     className="p-1 rounded text-[var(--text-3)] hover:text-white"
                   >
-                    <UserPlus size={14} />
+                    <UserPlus size={16} />
                   </button>
                   <button
                     onClick={(e) => {
@@ -636,7 +636,7 @@ export default function DocumentsPage() {
                     }}
                     className="p-1 rounded text-[var(--text-3)] hover:text-[#F0506E]"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </div>
@@ -657,17 +657,17 @@ export default function DocumentsPage() {
 
       {/* Share Document Modal */}
       {sharingDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
           <div
             className="fixed inset-0"
             onClick={() => setSharingDoc(null)}
             aria-hidden="true"
           />
-          <div className="relative w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-150">
+          <div className="relative w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in duration-150">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
               <div>
                 <h2 className="text-base font-semibold text-white">Share document</h2>
-                <p className="text-xs text-[var(--text-3)] mt-0.5 truncate max-w-xs">
+                <p className="text-xs text-[var(--text-2)] mt-0.5 truncate max-w-xs">
                   {sharingDoc.title}
                 </p>
               </div>
@@ -675,7 +675,7 @@ export default function DocumentsPage() {
                 onClick={() => setSharingDoc(null)}
                 className="p-1 rounded-lg text-[var(--text-3)] hover:text-white hover:bg-[var(--hover)] transition-colors"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
@@ -706,7 +706,7 @@ export default function DocumentsPage() {
                   disabled={isSubmittingShare}
                   className="h-9 px-3 rounded-lg bg-[var(--button)] hover:bg-[var(--button-hover)] text-xs font-semibold text-white transition-colors disabled:opacity-50 shrink-0"
                 >
-                  {isSubmittingShare ? <Loader2 size={14} className="animate-spin" /> : "Share"}
+                  {isSubmittingShare ? <Loader2 size={16} className="animate-spin" /> : "Share"}
                 </button>
               </div>
             </form>
@@ -758,7 +758,7 @@ export default function DocumentsPage() {
                       onClick={() => handleRemoveShare(s.id)}
                       className="text-[var(--text-3)] hover:text-[#F0506E] p-1 rounded"
                     >
-                      <X size={13} />
+                      <X size={16} />
                     </button>
                   </div>
                 </div>
@@ -779,18 +779,18 @@ export default function DocumentsPage() {
 
       {/* Rename Document Modal */}
       {renameDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
           <div
             className="fixed inset-0"
             onClick={() => setRenameDoc(null)}
             aria-hidden="true"
           />
-          <div className="relative w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-150">
+          <div className="relative w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in duration-150">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
               <h2 className="text-sm font-semibold text-white">Rename document</h2>
               <button
                 onClick={() => setRenameDoc(null)}
-                className="p-1 rounded-lg text-[var(--text-3)] hover:text-white"
+                className="p-1 rounded-lg text-[var(--text-2)] hover:text-white"
               >
                 <X size={16} />
               </button>

@@ -238,7 +238,7 @@ export default function HomePage() {
                       onClick={() =>
                         router.push(`/library/projects/${item.project_id}/items/${item.id}/review`)
                       }
-                      className="group rounded-xl border border-[var(--border)] bg-[var(--panel)] overflow-hidden cursor-pointer hover:border-[var(--border-strong)] transition-all hover:scale-[1.01]"
+                      className="group rounded-xl border border-[var(--border)] bg-[var(--panel)] overflow-hidden cursor-pointer hover:border-[var(--border-strong)] transition-colors"
                     >
                       {/* Video Thumbnail Box */}
                       <div className="relative aspect-[16/10] bg-[var(--input)] overflow-hidden flex items-center justify-center">
@@ -251,7 +251,7 @@ export default function HomePage() {
                           />
                         ) : (
                           <div className="w-full h-full bg-[var(--panel-raised)] flex items-center justify-center">
-                            <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/40">
+                            <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-[var(--text-3)]">
                               <VideoFileIcon size={20} />
                             </div>
                           </div>
@@ -259,19 +259,19 @@ export default function HomePage() {
 
                         {/* Top Right Comment Badge */}
                         {item.comment_count > 0 && (
-                          <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-xs font-medium text-white border border-white/10">
-                            <ChatBubble size={11} className="text-white/80" />
+                          <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/80 text-xs font-medium text-white border border-[var(--border)]">
+                            <ChatBubble size={16} className="text-white" />
                             <span className="tabular-nums">{item.comment_count}</span>
                           </div>
                         )}
 
                         {/* Bottom Left Version Tag */}
-                        <div className="absolute bottom-2.5 left-2.5 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-md text-xs font-medium text-white border border-white/10 tabular-nums">
+                        <div className="absolute bottom-2.5 left-2.5 px-1.5 py-0.5 rounded bg-black/80 text-xs font-medium text-white border border-[var(--border)] tabular-nums">
                           v{item.version_number || 1}
                         </div>
 
                         {/* Bottom Right Duration */}
-                        <div className="absolute bottom-2.5 right-2.5 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-md text-xs font-medium text-white border border-white/10 tabular-nums">
+                        <div className="absolute bottom-2.5 right-2.5 px-1.5 py-0.5 rounded bg-black/80 text-xs font-medium text-white border border-[var(--border)] tabular-nums">
                           {formatDuration(item.duration_ms)}
                         </div>
                       </div>
@@ -288,10 +288,10 @@ export default function HomePage() {
                             }}
                             className="text-[var(--text-3)] hover:text-white p-0.5"
                           >
-                            <MoreHorizontal size={14} />
+                            <MoreHorizontal size={16} />
                           </button>
                         </div>
-                        <p className="text-xs text-[var(--text-3)] truncate mt-0.5">
+                        <p className="text-xs text-[var(--text-2)] truncate mt-0.5">
                           {item.client_name ? `${item.client_name} · ` : ""}
                           v{item.version_number || 1}
                         </p>
@@ -339,7 +339,7 @@ export default function HomePage() {
                     <div
                       key={proj.id}
                       onClick={() => router.push(`/library/projects/${proj.id}`)}
-                      className="group rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4 cursor-pointer hover:border-[var(--border-strong)] transition-all hover:scale-[1.01]"
+                      className="group rounded-xl border border-[var(--border)] bg-[var(--panel)] p-4 cursor-pointer hover:border-[var(--border-strong)] transition-colors"
                     >
                       {/* Project Mosaic Header (4 preview tiles) */}
                       <div className="aspect-[16/9] rounded-lg bg-[var(--input)] overflow-hidden grid grid-cols-3 gap-1 p-1 mb-3">
@@ -352,8 +352,8 @@ export default function HomePage() {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/30">
-                              <Folder size={18} />
+                            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[var(--text-3)]">
+                              <Folder size={20} />
                             </div>
                           )}
                         </div>
@@ -435,7 +435,7 @@ export default function HomePage() {
                             }}
                             className="text-[var(--text-3)] hover:text-white p-0.5"
                           >
-                            <MoreHorizontal size={14} />
+                            <MoreHorizontal size={16} />
                           </button>
                         )}
                       </div>
@@ -550,20 +550,20 @@ export default function HomePage() {
 
       {/* See All Activity Modal */}
       {showAllActivityModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
           <div
             className="fixed inset-0"
             onClick={() => setShowAllActivityModal(false)}
             aria-hidden="true"
           />
-          <div className="relative w-full max-w-lg rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-150">
+          <div className="relative w-full max-w-lg rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in duration-150">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
               <h2 className="text-base font-semibold text-white">All workspace activity</h2>
               <button
                 onClick={() => setShowAllActivityModal(false)}
                 className="p-1 rounded-lg text-[var(--text-3)] hover:text-white hover:bg-[var(--hover)] transition-colors"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 

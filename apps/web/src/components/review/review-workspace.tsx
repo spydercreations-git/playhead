@@ -407,7 +407,7 @@ export function ReviewWorkspace({
                     }`}
                   >
                     <span>Version v{v.number}</span>
-                    <span className="text-xs opacity-70">
+                    <span className="text-xs text-[var(--text-3)]">
                       {new Date(v.created_at).toLocaleDateString()}
                     </span>
                   </button>

@@ -191,7 +191,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
 
   return (
     <>
-      <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md select-none">
+      <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/80 select-none">
         <div
           className="w-full max-w-[680px] bg-[var(--panel)] border border-[var(--border)] rounded-[16px] shadow-xl overflow-hidden flex flex-col"
           role="dialog"
@@ -212,7 +212,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
               >
                 {step === 2 ? (
                   <div className="flex items-center gap-1.5 text-[#3FCF8E]">
-                    <CheckCircle2 size={15} />
+                    <CheckCircle2 size={16} />
                     <span className="text-[var(--text-2)]">Profile</span>
                   </div>
                 ) : (
@@ -268,7 +268,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                     title="Upload photo"
                     className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#4876F3] hover:bg-[#3560D6] rounded-full flex items-center justify-center text-white shadow-md border-2 border-[var(--panel)] transition-colors"
                   >
-                    <Camera size={14} />
+                    <Camera size={16} />
                   </button>
                 </div>
 
@@ -384,7 +384,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                   className="flex items-center gap-2 px-5 py-2.5 bg-[#4876F3] hover:bg-[#3560D6] disabled:opacity-50 disabled:cursor-not-allowed rounded-[8px] text-sm font-semibold text-white transition-colors"
                 >
                   <span>Continue</span>
-                  <ArrowRight size={15} />
+                  <ArrowRight size={16} />
                 </button>
               </div>
             </form>
@@ -434,21 +434,21 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                     <div className="bg-[var(--bg)] border border-[var(--border)] rounded-[10px] p-3 flex flex-col justify-between">
                       <div className="bg-[var(--panel)] rounded-[8px] p-2.5 mb-3 border border-[var(--border)] space-y-1.5">
                         <div className="flex items-center gap-1.5 text-xs text-white font-medium">
-                          <ChevronDown size={14} className="text-[var(--text-2)]" />
-                          <Folder size={14} className="text-[#3FCF8E]" />
+                          <ChevronDown size={16} className="text-[var(--text-2)]" />
+                          <Folder size={16} className="text-[#3FCF8E]" />
                           <span className="truncate">{clientName ? `${clientName} Projects` : "Client Projects"}</span>
                         </div>
                         <div className="pl-5 space-y-1 text-xs text-[var(--text-2)]">
                           <div className="flex items-center gap-1.5">
-                            <Folder size={12} className="text-[var(--text-2)]" />
+                            <Folder size={16} className="text-[var(--text-2)]" />
                             <span>Raw files</span>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <Folder size={12} className="text-[var(--text-2)]" />
+                            <Folder size={16} className="text-[var(--text-2)]" />
                             <span>Edited files</span>
                           </div>
                           <div className="flex items-center gap-1.5 text-[#3FCF8E]">
-                            <TableChart size={12} />
+                            <TableChart size={16} />
                             <span>Project tracker</span>
                           </div>
                         </div>
@@ -505,7 +505,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                         {/* Upload item 1: active */}
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded bg-[var(--input)] flex items-center justify-center text-[#FFBB56]">
-                            <VideoFileIcon size={14} />
+                            <VideoFileIcon size={16} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between text-xs">
@@ -521,7 +521,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                         {/* Upload item 2: done */}
                         <div className="flex items-center gap-2 pt-1 border-t border-[var(--border)]">
                           <div className="w-6 h-6 rounded bg-[var(--input)] flex items-center justify-center text-[#4876F3]">
-                            <PdfFileIcon size={14} />
+                            <PdfFileIcon size={16} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-xs text-white truncate">Brief.pdf</div>
@@ -583,7 +583,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                             type="button"
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#4876F3] rounded-[6px] text-xs font-semibold text-white pointer-events-none"
                           >
-                            <Check size={13} />
+                            <Check size={16} />
                             <span>Approve</span>
                           </button>
                           <span className="text-xs text-[var(--text-3)]">v3</span>
@@ -630,7 +630,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                   onClick={() => setStep(1)}
                   className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-2)] hover:text-white transition-colors"
                 >
-                  <ArrowLeft size={14} />
+                  <ArrowLeft size={16} />
                   <span>Back</span>
                 </button>
 
@@ -640,7 +640,7 @@ export function OnboardingDialog({ isOpen }: OnboardingDialogProps) {
                   disabled={saving}
                   className="flex items-center gap-2 px-6 py-2.5 bg-[#4876F3] hover:bg-[#3560D6] rounded-[8px] text-sm font-semibold text-white transition-colors disabled:opacity-50"
                 >
-                  {saving && <Loader2 size={15} className="animate-spin" />}
+                  {saving && <Loader2 size={16} className="animate-spin" />}
                   <span>Get started</span>
                 </button>
               </div>

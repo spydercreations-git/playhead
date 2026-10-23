@@ -53,18 +53,18 @@ function getFileIcon(item: UploadItem) {
   }
 
   if (mime.startsWith("video/") || name.endsWith(".mp4") || name.endsWith(".mov") || name.endsWith(".mkv")) {
-    return <Film size={18} className="text-[#4876F3]" />;
+    return <Film size={20} className="text-[#4876F3]" />;
   }
   if (mime.startsWith("audio/") || name.endsWith(".mp3") || name.endsWith(".wav") || name.endsWith(".aac")) {
-    return <Music size={18} className="text-[#9787FF]" />;
+    return <Music size={20} className="text-[#9787FF]" />;
   }
   if (mime.startsWith("image/") || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".webp")) {
-    return <ImageIcon size={18} className="text-[#FFBB56]" />;
+    return <ImageIcon size={20} className="text-[#FFBB56]" />;
   }
   if (name.endsWith(".zip") || name.endsWith(".tar") || name.endsWith(".gz") || name.endsWith(".rar")) {
-    return <FolderArchive size={18} className="text-[var(--text-2)]" />;
+    return <FolderArchive size={20} className="text-[var(--text-2)]" />;
   }
-  return <FileText size={18} className="text-[var(--text-2)]" />;
+  return <FileText size={20} className="text-[var(--text-2)]" />;
 }
 
 export function UploadPanel() {
@@ -163,7 +163,7 @@ export function UploadPanel() {
           title="Expand"
           className="p-1 rounded text-[var(--text-2)] hover:text-white transition-colors"
         >
-          <ChevronUp size={18} />
+          <ChevronUp size={20} />
         </button>
 
         {/* Close button */}
@@ -172,7 +172,7 @@ export function UploadPanel() {
           title="Close"
           className="p-1 rounded text-[var(--text-2)] hover:text-white transition-colors"
         >
-          <X size={18} />
+          <X size={20} />
         </button>
       </aside>
     );
@@ -214,14 +214,14 @@ export function UploadPanel() {
               title="Minimize"
               className="p-1 rounded text-[var(--text-2)] hover:text-white transition-colors"
             >
-              <ChevronDown size={18} />
+              <ChevronDown size={20} />
             </button>
             <button
               onClick={() => setOpen(false)}
               title="Close"
               className="p-1 rounded text-[var(--text-2)] hover:text-white transition-colors"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           </div>
         </div>
@@ -349,7 +349,7 @@ export function UploadPanel() {
 
                 {isCompleted && (
                   <div className="p-1 text-[#3FCF8E]" title="Completed">
-                    <CheckCircle2 size={18} />
+                    <CheckCircle2 size={16} />
                   </div>
                 )}
 

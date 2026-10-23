@@ -64,13 +64,13 @@ export function SelectLibraryFileDialog({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-200">
       <div className="w-full max-w-lg rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-overlay overflow-hidden flex flex-col max-h-[80vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
           <div>
             <h2 className="text-base font-semibold text-white">Select file from Playhead</h2>
-            <p className="text-xs text-[var(--text-3)] mt-0.5">
+            <p className="text-xs text-[var(--text-2)] mt-0.5">
               Choose a file from your projects to link to this task.
             </p>
           </div>

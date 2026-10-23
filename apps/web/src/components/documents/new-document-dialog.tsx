@@ -163,14 +163,14 @@ export function NewDocumentDialog({
         exit={{ opacity: 0 }}
         transition={closeTransition}
         onClick={onClose}
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/80"
       />
 
       {/* Modal Dialog */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.98, y: 6 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.98, y: 4 }}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 4 }}
         transition={dialogTransition}
         className="relative z-10 bg-[var(--panel)] border border-[var(--border)] rounded-xl max-w-xl w-full p-6 shadow-overlay"
       >

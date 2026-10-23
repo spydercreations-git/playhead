@@ -203,7 +203,7 @@ export function ProjectIconRail({
 
       {/* Global Quick Search Modal */}
       {showSearchModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/80">
           <div
             className="fixed inset-0"
             onClick={() => setShowSearchModal(false)}

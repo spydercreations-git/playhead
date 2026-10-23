@@ -1107,7 +1107,7 @@ export default function ProjectWorkspacePage() {
         {/* Search on the right */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 h-8 px-2.5 rounded-[10px] bg-[var(--input)] border border-[var(--border)] text-xs text-[var(--text-3)] focus-within:border-[#4876F3] transition-colors w-44 sm:w-60">
-            <Search className="w-3.5 h-3.5 text-[var(--text-3)] shrink-0" />
+            <Search className="w-4 h-4 text-[var(--text-3)] shrink-0" />
             <input
               type="text"
               placeholder="Search in project..."
@@ -1117,7 +1117,7 @@ export default function ProjectWorkspacePage() {
             />
             {searchInProject && (
               <button onClick={() => setSearchInProject("")} className="hover:text-white">
-                <X className="w-3 h-3" />
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -1162,7 +1162,7 @@ export default function ProjectWorkspacePage() {
                     <span className="rounded-full bg-[var(--input)] border border-[var(--border)] px-1.5 py-0.5 text-xs font-medium text-[var(--text-2)]">
                       {membersList.length || 1}
                     </span>
-                    <ChevronsUpDown className="w-3.5 h-3.5 text-[var(--text-3)]" />
+                    <ChevronsUpDown className="w-4 h-4 text-[var(--text-3)]" />
                   </div>
                 </button>
 
@@ -1180,7 +1180,7 @@ export default function ProjectWorkspacePage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 h-8 px-2 rounded-lg bg-[var(--input)] border border-[var(--border)] text-xs text-[var(--text-3)]">
-                        <Search className="w-3.5 h-3.5 shrink-0" />
+                        <Search className="w-4 h-4 shrink-0" />
                         <input
                           type="text"
                           placeholder="Search projects..."
@@ -1216,7 +1216,7 @@ export default function ProjectWorkspacePage() {
                                     </span>
                                   )}
                                 </div>
-                                {isCurrent && <Check className="w-3.5 h-3.5 shrink-0 ml-1.5" />}
+                                {isCurrent && <Check className="w-4 h-4 shrink-0 ml-1.5" />}
                               </button>
                             );
                           })
@@ -1237,7 +1237,7 @@ export default function ProjectWorkspacePage() {
                       title="New folder at root"
                       className="text-[var(--text-3)] hover:text-white transition-colors"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-4 h-4" />
                     </button>
                   )}
                 </div>
@@ -1293,7 +1293,7 @@ export default function ProjectWorkspacePage() {
                         }`}
                       >
                         <div className="flex items-center gap-2 truncate">
-                          <Folder className={`w-3.5 h-3.5 ${isActive || isOver ? "text-[#4876F3]" : "text-[var(--text-3)]"}`} />
+                          <Folder className={`w-4 h-4 ${isActive || isOver ? "text-[#4876F3]" : "text-[var(--text-3)]"}`} />
                           <span className="truncate">{f.name}</span>
                         </div>
                         <span className="text-xs text-[var(--text-3)] tabular-nums">
@@ -1314,7 +1314,7 @@ export default function ProjectWorkspacePage() {
                     title="New document"
                     className="text-[var(--text-3)] hover:text-blue-400 transition-colors"
                   >
-                    <FileText className="w-3.5 h-3.5" />
+                    <FileText className="w-4 h-4" />
                   </button>
                 </div>
 
@@ -1345,7 +1345,7 @@ export default function ProjectWorkspacePage() {
                       title={`Sort: ${shareLinksSort}`}
                       className="text-[var(--text-3)] hover:text-white transition-colors"
                     >
-                      <ArrowUpDown className="w-3 h-3" />
+                      <ArrowUpDown className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => {
@@ -1355,7 +1355,7 @@ export default function ProjectWorkspacePage() {
                       title="New share link"
                       className="text-[var(--text-3)] hover:text-[#4876F3] transition-colors"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -1455,7 +1455,7 @@ export default function ProjectWorkspacePage() {
                     viewMode === "grid" ? "bg-[var(--input)] text-white" : "text-[var(--text-3)] hover:text-white"
                   }`}
                 >
-                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <LayoutGrid className="w-4 h-4" />
                 </button>
                 <button
                   type="button"
@@ -1465,7 +1465,7 @@ export default function ProjectWorkspacePage() {
                     viewMode === "list" ? "bg-[var(--input)] text-white" : "text-[var(--text-3)] hover:text-white"
                   }`}
                 >
-                  <List className="w-3.5 h-3.5" />
+                  <List className="w-4 h-4" />
                 </button>
               </div>
 
@@ -1491,7 +1491,7 @@ export default function ProjectWorkspacePage() {
 
               {/* Sort Selector */}
               <div className="flex items-center gap-1.5 text-xs text-[var(--text-2)]">
-                <ArrowUpDown className="w-3.5 h-3.5 text-[var(--text-3)]" />
+                <ArrowUpDown className="w-4 h-4 text-[var(--text-3)]" />
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
@@ -1514,9 +1514,9 @@ export default function ProjectWorkspacePage() {
                       type="button"
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[#4876F3] hover:bg-[#3B67E0] text-xs font-semibold text-white transition-colors shadow"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-4 h-4" />
                       <span>New</span>
-                      <ChevronDown className="w-3 h-3" />
+                      <ChevronDown className="w-4 h-4" />
                     </button>
                   }
                   groups={newMenuGroups}
@@ -1560,7 +1560,7 @@ export default function ProjectWorkspacePage() {
                 }}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-[8px] bg-[#3B67E0] hover:bg-[#3B67E0] text-xs font-semibold text-white transition-colors shadow"
               >
-                <Share2 className="w-3.5 h-3.5" />
+                <Share2 className="w-4 h-4" />
                 <span>Share</span>
               </button>
             </div>
@@ -1608,9 +1608,9 @@ export default function ProjectWorkspacePage() {
                       {isCreatingInlineFolder && (
                         <motion.div
                           layout
-                          initial={{ opacity: 0, scale: 0.95, y: 6 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
                           transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                         >
                           <FolderCard
@@ -1650,10 +1650,9 @@ export default function ProjectWorkspacePage() {
                               shouldReduceMotion
                                 ? {}
                                 : {
-                                    hidden: { opacity: 0, scale: 0.98, y: 6 },
+                                    hidden: { opacity: 0, y: 6 },
                                     visible: {
                                       opacity: 1,
-                                      scale: 1,
                                       y: 0,
                                       transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] },
                                     },
@@ -1661,7 +1660,6 @@ export default function ProjectWorkspacePage() {
                             }
                             exit={{
                               opacity: 0,
-                              scale: 0.95,
                               y: -6,
                               transition: { duration: 0.12, ease: [0.4, 0, 1, 1] },
                             }}
@@ -1862,9 +1860,9 @@ export default function ProjectWorkspacePage() {
                       <motion.div
                         layout
                         key={upload.id}
-                        initial={{ opacity: 0, scale: 0.96 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
                         className="rounded-xl border border-[#4876F3]/50 bg-[var(--panel)] p-4 flex flex-col justify-between shadow-lg relative overflow-hidden"
                       >
@@ -1911,11 +1909,10 @@ export default function ProjectWorkspacePage() {
                           <motion.div
                             layout
                             key={file.id}
-                            initial={{ opacity: 0, scale: 0.98, y: 6 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
                           exit={{
                             opacity: 0,
-                            scale: 0.95,
                             y: -6,
                             transition: { duration: 0.12, ease: [0.4, 0, 1, 1] },
                           }}
@@ -1998,11 +1995,11 @@ export default function ProjectWorkspacePage() {
                               isSelected
                                 ? "bg-[#4876F3] border border-[#4876F3] text-white opacity-100"
                                 : selectedItemIds.length > 0
-                                ? "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-100"
-                                : "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-0 group-hover:opacity-100"
+                                ? "border border-[var(--border-strong)] bg-black/80 hover:border-white text-transparent opacity-100"
+                                : "border border-[var(--border-strong)] bg-black/80 hover:border-white text-transparent opacity-0 group-hover:opacity-100"
                             }`}
                           >
-                            <Check size={14} className={isSelected ? "text-white" : "opacity-0"} />
+                            <Check size={16} className={isSelected ? "text-white" : "opacity-0"} />
                           </button>
 
                           {/* Preview Area */}
@@ -2019,7 +2016,7 @@ export default function ProjectWorkspacePage() {
                                   01:15
                                 </span>
                                 <div className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/60 text-xs text-white flex items-center gap-1.5 font-medium">
-                                  <MessageSquare className="w-3 h-3 text-zinc-300" />
+                                  <MessageSquare className="w-4 h-4 text-zinc-300" />
                                   <span>5</span>
                                 </div>
                               </>
@@ -2244,9 +2241,9 @@ export default function ProjectWorkspacePage() {
                             <motion.div
                               layout
                               key={doc.id}
-                              initial={{ opacity: 0, scale: 0.98, y: 6 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -6 }}
                               transition={{ duration: 0.2 }}
                               onDoubleClick={() => router.push(`/documents/${doc.id}`)}
                               onClick={() => {
@@ -2313,11 +2310,11 @@ export default function ProjectWorkspacePage() {
                                   isSelected
                                     ? "bg-[#4876F3] border border-[#4876F3] text-white opacity-100"
                                     : selectedItemIds.length > 0
-                                    ? "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-100"
-                                    : "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-0 group-hover:opacity-100"
+                                    ? "border border-[var(--border-strong)] bg-black/80 hover:border-white text-transparent opacity-100"
+                                    : "border border-[var(--border-strong)] bg-black/80 hover:border-white text-transparent opacity-0 group-hover:opacity-100"
                                 }`}
                               >
-                                <Check size={14} className={isSelected ? "text-white" : "opacity-0"} />
+                                <Check size={16} className={isSelected ? "text-white" : "opacity-0"} />
                               </button>
                               <div className="relative h-32 w-full rounded-xl bg-[var(--panel)] border border-[var(--border)] flex flex-col justify-between p-3.5 mb-3">
                                 <div className="flex items-center justify-between">
@@ -2347,7 +2344,7 @@ export default function ProjectWorkspacePage() {
                                     }}
                                     className="item-menu-btn p-1 rounded hover:bg-[var(--input)] text-[var(--text-3)] hover:text-white transition-colors"
                                   >
-                                    <MoreHorizontal className="w-3.5 h-3.5" />
+                                    <MoreHorizontal className="w-4 h-4" />
                                   </button>
                                 </div>
                               </div>
@@ -2463,7 +2460,7 @@ export default function ProjectWorkspacePage() {
                   onClick={triggerInlineNewFolder}
                   className="mt-4 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-[#4876F3] text-white text-xs font-semibold hover:bg-[#3560D6] transition-colors"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-4 h-4" />
                   <span>New folder</span>
                 </button>
               )}
@@ -2684,7 +2681,7 @@ export default function ProjectWorkspacePage() {
               Array.from(e.dataTransfer.files).forEach((f) => startFileUpload(f));
             }
           }}
-          className="fixed inset-0 z-50 bg-[var(--bg)]/90 backdrop-blur-sm border-2 border-dashed border-[#4876F3] flex flex-col items-center justify-center p-6 text-center select-none cursor-copy animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 bg-[var(--bg)]/95 border-2 border-dashed border-[#4876F3] flex flex-col items-center justify-center p-6 text-center select-none cursor-copy animate-in fade-in duration-150"
         >
           <div className="w-16 h-16 rounded-xl bg-[#4876F3]/10 border border-[#4876F3]/30 flex items-center justify-center mb-4 text-[#4876F3] shadow-lg animate-bounce">
             <Upload className="w-8 h-8" />

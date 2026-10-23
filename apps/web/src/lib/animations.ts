@@ -44,62 +44,54 @@ export const staggerContainer = (staggerMs = 0.03) => ({
 });
 
 export const itemFadeSlide = {
-  hidden: { opacity: 0, y: 6, scale: 0.98 },
+  hidden: { opacity: 0, y: 6 },
   visible: {
     opacity: 1,
     y: 0,
-    scale: 1,
     transition: transitions.default,
   },
   exit: {
     opacity: 0,
-    scale: 0.95,
     y: -6,
     transition: transitions.close,
   },
 };
 
 export const cardScaleIn = {
-  hidden: { opacity: 0, scale: 0.96 },
+  hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    scale: 1,
     transition: transitions.default,
   },
   exit: {
     opacity: 0,
-    scale: 0.95,
     transition: transitions.close,
   },
 };
 
 export const dialogAnimation = {
-  hidden: { opacity: 0, scale: 0.98, y: 8 },
+  hidden: { opacity: 0, y: 8 },
   visible: {
     opacity: 1,
-    scale: 1,
     y: 0,
     transition: transitions.default,
   },
   exit: {
     opacity: 0,
-    scale: 0.98,
     y: 4,
     transition: transitions.close,
   },
 };
 
 export const menuAnimation = {
-  hidden: { opacity: 0, scale: 0.97, y: -4 },
+  hidden: { opacity: 0, y: -4 },
   visible: {
     opacity: 1,
-    scale: 1,
     y: 0,
     transition: transitions.fast,
   },
   exit: {
     opacity: 0,
-    scale: 0.97,
     y: -2,
     transition: transitions.close,
   },

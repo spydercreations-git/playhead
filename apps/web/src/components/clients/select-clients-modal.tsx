@@ -181,9 +181,9 @@ export function SelectClientsModal({
   const selectedCount = tempSelected.size;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-150">
       <div
-        className="w-[520px] max-w-[95vw] max-h-[85vh] rounded-[16px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150"
+        className="w-[520px] max-w-[95vw] max-h-[85vh] rounded-[16px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-xl overflow-hidden flex flex-col animate-in fade-in duration-150"
         role="dialog"
         aria-modal="true"
         aria-labelledby="select-clients-title"
@@ -195,7 +195,7 @@ export function SelectClientsModal({
               <h2 id="select-clients-title" className="text-[18px] font-bold text-white tracking-tight">
                 Select clients
               </h2>
-              <p className="text-[13px] text-[var(--text-3)] mt-1">
+              <p className="text-[13px] text-[var(--text-2)] mt-1">
                 Show projects from one, several or all clients.
               </p>
             </div>
@@ -205,13 +205,13 @@ export function SelectClientsModal({
               aria-label="Close"
               className="p-1 rounded-[6px] text-[var(--text-3)] hover:text-white hover:bg-[var(--hover)] transition-colors cursor-pointer -mt-1 -mr-1"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           </div>
 
           {/* Search Box */}
           <div className="mt-4 relative">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)] pointer-events-none" />
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)] pointer-events-none" />
             <input
               ref={searchInputRef}
               type="text"
@@ -229,7 +229,7 @@ export function SelectClientsModal({
                 onClick={() => setSearchQuery("")}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[var(--text-3)] hover:text-white"
               >
-                <X size={14} />
+                <X size={16} />
               </button>
             )}
           </div>
@@ -258,8 +258,8 @@ export function SelectClientsModal({
                       : "border border-[var(--border-strong)] bg-transparent"
                   }`}
                 >
-                  {isAllSelected && <Check size={13} strokeWidth={3} />}
-                  {isPartiallySelected && <Minus size={13} strokeWidth={3} />}
+                  {isAllSelected && <Check size={16} strokeWidth={2.5} />}
+                  {isPartiallySelected && <Minus size={16} strokeWidth={2.5} />}
                 </div>
                 <span className="text-[14px] font-semibold text-white">All clients</span>
               </div>
@@ -306,7 +306,7 @@ export function SelectClientsModal({
                         : "border border-[var(--border-strong)] bg-transparent"
                     }`}
                   >
-                    {isSelected && <Check size={13} strokeWidth={3} />}
+                    {isSelected && <Check size={16} strokeWidth={2.5} />}
                   </div>
 
                   {/* Client Picture or Colored Initials */}
@@ -429,14 +429,14 @@ export function ClientFilterButton({
         onClick={onClick}
         className="h-9 rounded-[10px] bg-[var(--input)] border border-[var(--border)] hover:border-[var(--border-strong)] px-3 flex items-center gap-2 text-xs text-white transition-colors cursor-pointer select-none"
       >
-        <Users size={15} className="text-white shrink-0" />
+        <Users size={16} className="text-white shrink-0" />
         <span className="font-medium truncate max-w-[280px]">{buttonLabel}</span>
         {isFiltered && (
           <span className="px-1.5 py-0.5 rounded-full bg-[#4876f3] text-white text-[12px] font-bold shrink-0">
             {selectedClientIds.length}
           </span>
         )}
-        <ChevronDown size={14} className="text-[var(--text-3)] shrink-0" />
+        <ChevronDown size={16} className="text-[var(--text-3)] shrink-0" />
       </button>
 
       {isFiltered && onClearAll && (

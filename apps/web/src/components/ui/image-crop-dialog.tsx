@@ -179,7 +179,7 @@ export function ImageCropDialog({
   const zoomPercentage = Math.round(zoom * 100);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm select-none">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 select-none">
       <div
         className="w-full max-w-[620px] bg-[var(--panel)] border border-[var(--border)] rounded-[16px] shadow-xl overflow-hidden flex flex-col"
         role="dialog"
@@ -199,7 +199,7 @@ export function ImageCropDialog({
             title="Close dialog"
             className="text-[var(--text-2)] hover:text-white p-1 rounded-[6px] hover:bg-[var(--input)] transition-colors"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 

@@ -216,12 +216,12 @@ export function PdfExportDialog({
             >
               {isExporting ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Generating...</span>
                 </>
               ) : (
                 <>
-                  <Download className="w-3.5 h-3.5" />
+                  <Download className="w-4 h-4" />
                   <span>Download PDF</span>
                 </>
               )}
@@ -301,13 +301,13 @@ export function PdfExportDialog({
                     title={t.label}
                     className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                       themeColor.toLowerCase() === t.hex.toLowerCase()
-                        ? "ring-2 ring-[#4876F3] ring-offset-2 ring-offset-[var(--bg)] scale-[1.015]"
-                        : "hover:scale-[1.015]"
+                        ? "ring-2 ring-[#4876F3] ring-offset-2 ring-offset-[var(--bg)]"
+                        : "hover:ring-1 hover:ring-white/40"
                     }`}
                     style={{ backgroundColor: t.hex }}
                   >
                     {themeColor.toLowerCase() === t.hex.toLowerCase() && (
-                      <Check className="w-3.5 h-3.5 text-white" />
+                      <Check className="w-4 h-4 text-white" />
                     )}
                   </button>
                 ))}
@@ -457,14 +457,14 @@ export function PdfExportDialog({
           {/* Live Preview Panel */}
           <div className="flex-1 bg-[var(--bg)] p-6 flex flex-col items-center justify-center overflow-auto relative">
             <div className="absolute top-4 left-6 flex items-center gap-2 text-xs text-[var(--text-2)]">
-              <Eye className="w-3.5 h-3.5" />
+              <Eye className="w-4 h-4" />
               <span>Live Page Preview</span>
             </div>
 
             {loadingPreview && (
-              <div className="absolute inset-0 bg-[var(--bg)]/60 backdrop-blur-[2px] z-10 flex items-center justify-center">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--bg)] border border-[var(--input)] text-xs text-[var(--text-2)]">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#4876F3]" />
+              <div className="absolute inset-0 bg-[var(--bg)]/80 z-10 flex items-center justify-center">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--panel)] border border-[var(--border)] text-xs text-[var(--text-2)]">
+                  <Loader2 className="w-4 h-4 animate-spin text-[#4876F3]" />
                   <span>Updating preview...</span>
                 </div>
               </div>

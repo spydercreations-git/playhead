@@ -262,9 +262,9 @@ export function Menu({
                     ...floatingStyles,
                     visibility: isPositioned ? "visible" : "hidden",
                   }}
-                  initial={{ opacity: 0, scale: 0.98, y: -2 }}
-                  animate={{ opacity: isPositioned ? 1 : 0, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.98, y: -2 }}
+                  initial={{ opacity: 0, y: -2 }}
+                  animate={{ opacity: isPositioned ? 1 : 0, y: 0 }}
+                  exit={{ opacity: 0, y: -2 }}
                   transition={menuTransition}
                   data-testid="dropdown-menu"
                   {...getFloatingProps({
@@ -684,9 +684,9 @@ export function ContextMenuProvider({ children }: { children: React.ReactNode })
                     ...floatingStyles,
                     visibility: isPositioned ? "visible" : "hidden",
                   }}
-                  initial={{ opacity: 0, scale: 0.98, y: -2 }}
-                  animate={{ opacity: isPositioned ? 1 : 0, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.98, y: -2 }}
+                  initial={{ opacity: 0, y: -2 }}
+                  animate={{ opacity: isPositioned ? 1 : 0, y: 0 }}
+                  exit={{ opacity: 0, y: -2 }}
                   transition={menuTransition}
                   data-testid="item-menu"
                   {...getFloatingProps({

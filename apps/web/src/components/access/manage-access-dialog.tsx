@@ -92,15 +92,15 @@ export function ManageAccessDialog({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/80"
       />
 
       {/* Dialog Body */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.98, y: 6 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.98 }}
-        transition={{ duration: 0.18, ease: "easeOut" }}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
         className="relative z-10 w-full max-w-lg rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-overlay flex flex-col overflow-hidden max-h-[90vh]"
       >
         {/* Header with Project Logo and "Add to {name}" */}
@@ -260,7 +260,7 @@ export function ManageAccessDialog({
                       <div
                         key={m.id}
                         className={`flex items-center justify-between p-2 rounded-lg ${
-                          isInherited ? "opacity-60 bg-[var(--panel)]" : "bg-[var(--input)]"
+                          isInherited ? "bg-[var(--panel)] border border-[var(--border)]" : "bg-[var(--input)]"
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
@@ -272,7 +272,7 @@ export function ManageAccessDialog({
                               {m.name || m.email}
                             </p>
                             {isInherited && (
-                              <p className="text-xs text-[var(--text-3)] leading-none mt-1">
+                              <p className="text-xs text-[var(--text-2)] leading-none mt-1">
                                 Inherited from {m.inherited_from}
                               </p>
                             )}

@@ -74,29 +74,29 @@ export function MoveCopyPanel({
     : `From ${projectName}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in-0 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in-0 duration-150">
       <div
-        className="w-full max-w-[460px] rounded-[14px] border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-in zoom-in-95 duration-150 flex flex-col gap-4 text-white"
+        className="w-full max-w-[460px] rounded-[14px] border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-in fade-in duration-150 flex flex-col gap-4 text-white"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-bold tracking-tight text-white">{title}</h2>
-            <p className="text-xs text-[var(--text-3)] mt-0.5">{fromSubtitle}</p>
+            <p className="text-xs text-[var(--text-2)] mt-0.5">{fromSubtitle}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-[var(--text-3)] hover:bg-[var(--hover)] hover:text-white transition-colors"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
         {/* Search Bar */}
         <div className="flex items-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--input)] px-3 py-2 focus-within:border-[#4876F3] transition-colors">
-          <Search size={15} className="text-[var(--text-3)] shrink-0" />
+          <Search size={16} className="text-[var(--text-3)] shrink-0" />
           <input
             type="text"
             placeholder="Search folders"
@@ -195,7 +195,7 @@ export function MoveCopyPanel({
         {/* L6 Notice Banner */}
         {isMove && (
           <div className="flex items-center gap-2 rounded-[8px] bg-[var(--input)] border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-2)]">
-            <Info size={14} className="text-[var(--text-3)] shrink-0" />
+            <Info size={16} className="text-[var(--text-3)] shrink-0" />
             <span>Files can&apos;t move to another project. Use Copy to instead.</span>
           </div>
         )}
@@ -219,7 +219,7 @@ export function MoveCopyPanel({
             }}
             className={`h-8 px-4 rounded-[8px] text-xs font-semibold text-white transition-all ${
               selectedFolderId && !isLoading
-                ? "bg-[#2563EB] hover:bg-[#3B67E0] shadow-[0_2px_8px_rgba(37,99,235,0.3)] active:scale-95"
+                ? "bg-[#2563EB] hover:bg-[#3B67E0] shadow-[0_2px_8px_rgba(37,99,235,0.3)]"
                 : "bg-[var(--border)] text-[var(--text-3)] cursor-not-allowed"
             }`}
           >

@@ -78,7 +78,7 @@ export function ClientCard({
             )} flex items-center justify-center relative overflow-hidden`}
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(255,255,255,0.08),transparent_65%)]" />
-            <div className="h-16 w-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center justify-center text-xl font-bold text-white shadow-inner z-10">
+            <div className="h-16 w-16 rounded-2xl bg-[var(--panel)] border border-[var(--border)] flex items-center justify-center text-xl font-bold text-white shadow-inner z-10">
               {getClientInitials(displayName)}
             </div>
           </div>
@@ -97,17 +97,17 @@ export function ClientCard({
                 e.stopPropagation();
                 if (onBellClick) onBellClick(e);
               }}
-              className={`h-8 w-8 rounded-full bg-black/40 backdrop-blur-md border border-white/15 flex items-center justify-center transition-colors ${
+              className={`h-8 w-8 rounded-full bg-[var(--panel)] border border-[var(--border)] flex items-center justify-center transition-colors ${
                 isMuted
                   ? "text-amber-400 hover:text-amber-300"
-                  : "text-white/80 hover:text-white"
+                  : "text-[var(--text-2)] hover:text-white"
               }`}
               title={isMuted ? "Unmute notifications" : "Mute notifications"}
             >
               <Icon name="notifications" size={16} />
             </button>
           ) : (
-            <div className="h-8 w-8 rounded-full bg-black/40 backdrop-blur-md border border-white/15 flex items-center justify-center text-white/80 pointer-events-none">
+            <div className="h-8 w-8 rounded-full bg-[var(--panel)] border border-[var(--border)] flex items-center justify-center text-[var(--text-2)] pointer-events-none">
               <Icon name="notifications" size={16} />
             </div>
           )}
@@ -141,14 +141,14 @@ export function ClientCard({
                 e.stopPropagation();
                 if (onMenuClick) onMenuClick(e);
               }}
-              className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-3)] hover:text-white hover:bg-white/5 transition-colors"
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-2)] hover:text-white hover:bg-[var(--hover)] transition-colors"
               title="More options"
             >
-              <Icon name="more_horiz" size={18} />
+              <Icon name="more_horiz" size={20} />
             </button>
           ) : (
-            <div className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-3)] pointer-events-none">
-              <Icon name="more_horiz" size={18} />
+            <div className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-2)] pointer-events-none">
+              <Icon name="more_horiz" size={20} />
             </div>
           )}
         </div>

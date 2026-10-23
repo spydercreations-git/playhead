@@ -38,7 +38,7 @@ export function SelectionBar({
     <div
       role="toolbar"
       aria-label="Selection actions"
-      className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-40 flex items-center h-[52px] px-4 gap-3.5 rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-[0_8px_24px_rgba(0,0,0,0.5)] select-none animate-in fade-in-0 zoom-in-95 duration-150 ${className}`}
+      className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-40 flex items-center h-[52px] px-4 gap-3.5 rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-[0_8px_24px_rgba(0,0,0,0.5)] select-none animate-in fade-in-0 duration-150 ${className}`}
     >
       {/* Clear button */}
       <button
@@ -47,7 +47,7 @@ export function SelectionBar({
         aria-label="Clear selection"
         className="text-[var(--text-2)] hover:text-white transition-colors p-1 -ml-1 rounded-[6px]"
       >
-        <Close size={18} />
+        <Close size={20} />
       </button>
 
       {/* Selected count */}

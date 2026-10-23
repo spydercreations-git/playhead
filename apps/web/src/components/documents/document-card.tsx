@@ -67,7 +67,7 @@ export function DocumentCard({
   return (
     <div
       ref={containerRef}
-      className={`group relative h-[272px] w-full select-none transition-transform duration-150 hover:scale-[1.015] ${
+      className={`group relative h-[272px] w-full select-none transition-colors duration-150 ${
         isNew ? "ring-2 ring-[#4876F3] shadow-[0_0_24px_rgba(72,118,243,0.35)] rounded-[12px]" : ""
       }`}
     >

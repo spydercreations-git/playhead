@@ -126,7 +126,7 @@ export function AuthShowcase() {
           </div>
 
           {/* Pinned Comment Card */}
-          <div className="absolute top-[36%] left-[56%] -translate-x-1/2 rounded-[8px] bg-[#1F2024]/95 border border-[var(--border)] shadow-xl p-3 max-w-[210px] pointer-events-none backdrop-blur-sm">
+          <div className="absolute top-[36%] left-[56%] -translate-x-1/2 rounded-[8px] bg-[#1F2024] border border-[var(--border)] shadow-xl p-3 max-w-[210px] pointer-events-none">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full bg-[#0284C7] text-white text-xs font-bold flex items-center justify-center shrink-0">
                 S
@@ -179,8 +179,8 @@ export function AuthShowcase() {
               return (
                 <div
                   key={pos}
-                  className={`absolute w-2 h-2 rounded-full bg-[#FFBB56] -translate-x-1/2 transition-transform duration-200 ${
-                    isPassing ? "scale-150 shadow-[0_0_8px_#FFBB56]" : "shadow-[0_0_4px_rgba(255,187,86,0.6)]"
+                  className={`absolute rounded-full bg-[#FFBB56] -translate-x-1/2 transition-all duration-200 ${
+                    isPassing ? "w-3 h-3 -top-0.5 shadow-[0_0_8px_#FFBB56]" : "w-2 h-2 top-0 shadow-[0_0_4px_rgba(255,187,86,0.6)]"
                   }`}
                   style={{ left: `${pos}%` }}
                 />

@@ -129,7 +129,7 @@ export function WorkspaceDragGhost({
       )}
 
       {/* Main Ghost Card */}
-      <div className="w-56 p-3 rounded-xl bg-[var(--panel)]/95 border-2 border-[#4876F3] shadow-overlay backdrop-blur-md flex items-center justify-between gap-3 text-white">
+      <div className="w-56 p-3 rounded-xl bg-[var(--panel-raised)] border-2 border-[#4876F3] shadow-overlay flex items-center justify-between gap-3 text-white">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-[var(--input)] border border-[var(--border)] flex items-center justify-center shrink-0">
             {isFolder ? (

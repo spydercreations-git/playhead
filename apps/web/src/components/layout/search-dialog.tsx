@@ -150,16 +150,16 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
   let globalIndexCounter = -1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/80">
       <div
         className="fixed inset-0"
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="relative w-full max-w-2xl rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-2xl rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in duration-150">
         {/* Search Input Bar */}
         <div className="flex items-center px-4 py-3.5 border-b border-[var(--border)] gap-3">
-          <Search size={18} className="text-[var(--text-3)] shrink-0" />
+          <Search size={20} className="text-[var(--text-3)] shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -175,29 +175,29 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
               onClick={() => setQuery("")}
               className="p-1 rounded-md text-[var(--text-3)] hover:text-white"
             >
-              <X size={14} />
+              <X size={16} />
             </button>
           )}
-          <kbd className="px-2 py-0.5 rounded bg-[var(--input)] text-xs text-[var(--text-3)] border border-[var(--border)] select-none">
+          <kbd className="px-2 py-0.5 rounded bg-[var(--input)] text-xs text-[var(--text-2)] border border-[var(--border)] select-none">
             ESC
           </kbd>
         </div>
 
         {/* Results List */}
-        <div className="max-h-[60vh] overflow-y-auto p-2 divide-y divide-[var(--border)]/30">
+        <div className="max-h-[60vh] overflow-y-auto p-2 divide-y divide-[var(--border)]">
           {query.trim() === "" ? (
-            <div className="p-8 text-center text-[var(--text-3)] text-xs">
+            <div className="p-8 text-center text-[var(--text-2)] text-xs">
               Type to search across clients, projects, folders, files, tasks, and documents.
             </div>
           ) : results.length === 0 && !loading ? (
-            <div className="p-8 text-center text-[var(--text-3)] text-xs">
+            <div className="p-8 text-center text-[var(--text-2)] text-xs">
               No results found for &ldquo;{query}&rdquo;
             </div>
           ) : (
             <>
               {clients.length > 0 && (
                 <div className="py-1">
-                  <div className="px-3 py-1 text-xs font-semibold text-[var(--text-3)] tracking-wider">
+                  <div className="px-3 py-1 text-xs font-semibold text-[var(--text-2)] tracking-wider">
                     Clients
                   </div>
                   {clients.map((item) => {
@@ -214,9 +214,9 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
                         <div className="flex items-center gap-2.5 min-w-0">
                           {getItemIcon(item.type)}
                           <span className="font-medium text-white truncate">{item.title}</span>
-                          <span className="text-xs text-[var(--text-3)] truncate">{item.subtitle}</span>
+                          <span className="text-xs text-[var(--text-2)] truncate">{item.subtitle}</span>
                         </div>
-                        <ChevronRight size={14} className="text-[var(--text-3)] shrink-0" />
+                        <ChevronRight size={16} className="text-[var(--text-3)] shrink-0" />
                       </div>
                     );
                   })}
@@ -225,7 +225,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
 
               {projects.length > 0 && (
                 <div className="py-1">
-                  <div className="px-3 py-1 text-xs font-semibold text-[var(--text-3)] tracking-wider">
+                  <div className="px-3 py-1 text-xs font-semibold text-[var(--text-2)] tracking-wider">
                     Projects
                   </div>
                   {projects.map((item) => {
@@ -242,9 +242,9 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
                         <div className="flex items-center gap-2.5 min-w-0">
                           {getItemIcon(item.type)}
                           <span className="font-medium text-white truncate">{item.title}</span>
-                          <span className="text-xs text-[var(--text-3)] truncate">{item.subtitle}</span>
+                          <span className="text-xs text-[var(--text-2)] truncate">{item.subtitle}</span>
                         </div>
-                        <ChevronRight size={14} className="text-[var(--text-3)] shrink-0" />
+                        <ChevronRight size={16} className="text-[var(--text-3)] shrink-0" />
                       </div>
                     );
                   })}
@@ -253,7 +253,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
 
               {items.length > 0 && (
                 <div className="py-1">
-                  <div className="px-3 py-1 text-xs font-semibold text-[var(--text-3)] tracking-wider">
+                  <div className="px-3 py-1 text-xs font-semibold text-[var(--text-2)] tracking-wider">
                     Files & Folders
                   </div>
                   {items.map((item) => {
@@ -270,7 +270,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
                         <div className="flex items-center gap-2.5 min-w-0">
                           {getItemIcon(item.type)}
                           <span className="font-medium text-white truncate">{item.title}</span>
-                          <span className="text-xs text-[var(--text-3)] truncate">{item.subtitle}</span>
+                          <span className="text-xs text-[var(--text-2)] truncate">{item.subtitle}</span>
                         </div>
                         {item.status && item.status !== "none" && (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--input)] text-[var(--text-2)] capitalize shrink-0">
@@ -285,7 +285,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
 
               {tasks.length > 0 && (
                 <div className="py-1">
-                  <div className="px-3 py-1 text-xs font-semibold text-[var(--text-3)] tracking-wider">
+                  <div className="px-3 py-1 text-xs font-semibold text-[var(--text-2)] tracking-wider">
                     Tasks
                   </div>
                   {tasks.map((item) => {
@@ -302,7 +302,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
                         <div className="flex items-center gap-2.5 min-w-0">
                           {getItemIcon(item.type)}
                           <span className="font-medium text-white truncate">{item.title}</span>
-                          <span className="text-xs text-[var(--text-3)] truncate">{item.subtitle}</span>
+                          <span className="text-xs text-[var(--text-2)] truncate">{item.subtitle}</span>
                         </div>
                         {item.status && (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--input)] text-[var(--text-2)] capitalize shrink-0">
@@ -317,7 +317,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
 
               {documents.length > 0 && (
                 <div className="py-1">
-                  <div className="px-3 py-1 text-xs font-semibold text-[var(--text-3)] tracking-wider">
+                  <div className="px-3 py-1 text-xs font-semibold text-[var(--text-2)] tracking-wider">
                     Documents
                   </div>
                   {documents.map((item) => {
@@ -334,9 +334,9 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
                         <div className="flex items-center gap-2.5 min-w-0">
                           {getItemIcon(item.type)}
                           <span className="font-medium text-white truncate">{item.title}</span>
-                          <span className="text-xs text-[var(--text-3)] truncate">{item.subtitle}</span>
+                          <span className="text-xs text-[var(--text-2)] truncate">{item.subtitle}</span>
                         </div>
-                        <ChevronRight size={14} className="text-[var(--text-3)] shrink-0" />
+                        <ChevronRight size={16} className="text-[var(--text-3)] shrink-0" />
                       </div>
                     );
                   })}
@@ -347,7 +347,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
         </div>
 
         {/* Footer shortcuts */}
-        <div className="flex items-center justify-between px-4 py-2 border-t border-[var(--border)] bg-[var(--panel)] text-xs text-[var(--text-3)]">
+        <div className="flex items-center justify-between px-4 py-2 border-t border-[var(--border)] bg-[var(--panel)] text-xs text-[var(--text-2)]">
           <div className="flex items-center gap-3">
             <span>↑↓ Navigate</span>
             <span>↵ Select</span>

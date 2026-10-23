@@ -137,7 +137,7 @@ export function FileCard({
         }
       }}
       onContextMenu={onContextMenu}
-      className={`group relative flex flex-col justify-between h-[224px] w-full rounded-[12px] bg-[var(--panel)] border p-2 select-none cursor-pointer transition-all duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4876F3] ${
+      className={`group relative flex flex-col justify-between h-[224px] w-full rounded-[12px] bg-[var(--panel)] border p-2 select-none cursor-pointer transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4876F3] ${
         isSelected
           ? "border-[#4876F3] ring-1 ring-[#4876F3]"
           : "border-[var(--border)] hover:border-[var(--border-strong)]"
@@ -147,16 +147,16 @@ export function FileCard({
       <div className="relative h-[136px] w-full rounded-[8px] bg-[var(--bg)] overflow-hidden flex items-center justify-center">
         {/* State 1: Uploading */}
         {isUploading && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-3 text-center bg-black/50 backdrop-blur-md">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-3 text-center bg-black/80">
             {file.thumbnail_url && (
               <img
                 src={file.thumbnail_url}
                 alt=""
-                className="absolute inset-0 w-full h-full object-cover -z-10 filter blur-sm opacity-40"
+                className="absolute inset-0 w-full h-full object-cover -z-10 filter blur-sm"
               />
             )}
             <p className="text-sm font-semibold text-white">Uploading {progress}%</p>
-            <p className="text-xs text-[var(--text-3)] mt-0.5">
+            <p className="text-xs text-[var(--text-2)] mt-0.5">
               {file.uploaded_bytes && file.total_bytes
                 ? `${formatBytes(file.uploaded_bytes)} of ${formatBytes(file.total_bytes)} · ${file.seconds_remaining || 40} s left`
                 : `${progress}% complete`}
@@ -181,7 +181,7 @@ export function FileCard({
 
         {/* State 3: Error */}
         {isError && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-3 text-center bg-red-950/40">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-3 text-center bg-red-950/80">
             <AlertCircle className="w-6 h-6 text-red-400 mb-1.5" />
             <p className="text-xs font-semibold text-red-200">Upload failed</p>
             {file.onRetry && (
@@ -193,7 +193,7 @@ export function FileCard({
                 }}
                 className="file-retry-btn mt-2 flex items-center gap-1 px-2.5 py-1 rounded bg-red-500/20 hover:bg-red-500/30 text-xs font-semibold text-red-200 transition-colors"
               >
-                <RotateCw size={12} />
+                <RotateCw size={16} />
                 <span>Retry</span>
               </button>
             )}
@@ -235,15 +235,15 @@ export function FileCard({
 
         {/* Comment count badge top-right */}
         {Boolean(file.comment_count && file.comment_count > 0) && (
-          <div className="absolute top-2 right-2 flex items-center gap-1 h-[22px] px-2 rounded-[6px] bg-black/70 backdrop-blur-sm text-xs font-medium text-white z-20">
-            <ChatBubble size={12} />
+          <div className="absolute top-2 right-2 flex items-center gap-1 h-[22px] px-2 rounded-[6px] bg-black/80 text-xs font-medium text-white z-20">
+            <ChatBubble size={16} />
             <span>{file.comment_count}</span>
           </div>
         )}
 
         {/* Duration badge bottom-right */}
         {durationText && !isUploading && !isProcessing && !isError && (
-          <div className="absolute bottom-2 right-2 flex items-center h-5 px-1.5 rounded-[5px] bg-black/70 backdrop-blur-sm text-xs font-medium text-white font-mono tabular-nums z-20">
+          <div className="absolute bottom-2 right-2 flex items-center h-5 px-1.5 rounded-[5px] bg-black/80 text-xs font-medium text-white font-mono tabular-nums z-20">
             {durationText}
           </div>
         )}
@@ -255,7 +255,7 @@ export function FileCard({
           <p className="text-sm font-semibold text-white truncate" title={file.name}>
             {file.name}
           </p>
-          <p className="text-xs text-[var(--text-3)] truncate mt-0.5">
+          <p className="text-xs text-[var(--text-2)] truncate mt-0.5">
             {subtitle}
           </p>
         </div>
@@ -269,7 +269,7 @@ export function FileCard({
           className="file-menu-btn rounded-[6px] p-1 text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white transition-colors"
           aria-label="More options"
         >
-          <MoreHorizontal size={18} />
+          <MoreHorizontal size={16} />
         </button>
       </div>
     </div>

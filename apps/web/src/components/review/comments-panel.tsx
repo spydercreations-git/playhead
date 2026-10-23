@@ -275,7 +275,7 @@ export function CommentsPanel({
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {filteredComments.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-48 text-[var(--text-2)] text-center">
-                <MessageSquare className="w-8 h-8 mb-2 opacity-30" />
+                <MessageSquare className="w-8 h-8 mb-2 text-[var(--text-3)]" />
                 <p className="text-xs">No comments found</p>
                 <p className="text-xs text-[var(--text-2)]">Be the first to leave a feedback comment!</p>
               </div>
@@ -294,8 +294,8 @@ export function CommentsPanel({
                       isTeam
                         ? "bg-[#FFBB56]/5 border-[#FFBB56]/30 hover:border-[#FFBB56]/50"
                         : isResolved
-                        ? "bg-[var(--bg)]/40 border-[var(--panel)]/40 opacity-70"
-                        : "bg-[var(--bg)] border-[var(--panel)] hover:border-[var(--border-strong)]"
+                        ? "bg-[var(--bg)] border-[var(--border)] text-[var(--text-2)]"
+                        : "bg-[var(--bg)] border-[var(--border)] hover:border-[var(--border-strong)]"
                     }`}
                   >
                     {/* Header: Avatar, Name, Badge, Timecode Chip, Resolve */}

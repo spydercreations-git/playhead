@@ -74,9 +74,7 @@ export function ProjectCard({
   return (
     <div
       ref={containerRef}
-      className={`group relative h-[290px] w-full select-none transition-transform duration-150 hover:scale-[1.015] ${
-        isSelected ? "scale-[1.015]" : ""
-      }`}
+      className="group relative h-[290px] w-full select-none"
     >
       <Link
         href={`/library/${id}`}
@@ -103,7 +101,7 @@ export function ProjectCard({
         <div className="relative h-[150px] w-full">
           <div className="h-[150px] w-full flex gap-1.5">
             {/* Big Slot */}
-            <div className="flex-1 h-[150px] rounded-[8px] bg-[#161618] border border-white/20 overflow-hidden relative flex items-center justify-center">
+            <div className="flex-1 h-[150px] rounded-[8px] bg-[#161618] border border-[var(--border)] overflow-hidden relative flex items-center justify-center">
               {thumbnails[0] ? (
                 <img
                   src={thumbnails[0]}
@@ -111,15 +109,15 @@ export function ProjectCard({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-[var(--text-3)] opacity-40">
-                  <Folder size={26} />
+                <div className="w-full h-full flex items-center justify-center text-[var(--text-3)]">
+                  <Folder size={24} />
                 </div>
               )}
             </div>
 
             {/* Small Slots */}
             <div className="w-[36%] h-[150px] flex flex-col gap-1.5">
-              <div className="h-[72px] rounded-[8px] bg-[#161618] border border-white/20 overflow-hidden relative flex items-center justify-center">
+              <div className="h-[72px] rounded-[8px] bg-[#161618] border border-[var(--border)] overflow-hidden relative flex items-center justify-center">
                 {thumbnails[1] ? (
                   <img
                     src={thumbnails[1]}
@@ -127,12 +125,12 @@ export function ProjectCard({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[var(--text-3)] opacity-40">
-                    <Folder size={18} />
+                  <div className="w-full h-full flex items-center justify-center text-[var(--text-3)]">
+                    <Folder size={16} />
                   </div>
                 )}
               </div>
-              <div className="h-[72px] rounded-[8px] bg-[#161618] border border-white/20 overflow-hidden relative flex items-center justify-center">
+              <div className="h-[72px] rounded-[8px] bg-[#161618] border border-[var(--border)] overflow-hidden relative flex items-center justify-center">
                 {thumbnails[2] ? (
                   <img
                     src={thumbnails[2]}
@@ -140,8 +138,8 @@ export function ProjectCard({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[var(--text-3)] opacity-40">
-                    <Folder size={18} />
+                  <div className="w-full h-full flex items-center justify-center text-[var(--text-3)]">
+                    <Folder size={16} />
                   </div>
                 )}
               </div>
@@ -159,13 +157,13 @@ export function ProjectCard({
                 e.stopPropagation();
                 onToggleSelect();
               }}
-              className={`absolute top-2 left-2 h-5 w-5 rounded-[6px] flex items-center justify-center transition-all z-20 ${
+              className={`absolute top-2 left-2 h-5 w-5 rounded-[6px] flex items-center justify-center transition-colors z-20 ${
                 isSelected
-                  ? "bg-[#4876F3] border border-[#4876F3] text-white opacity-100"
-                  : "border border-[var(--text-3)]/60 bg-black/60 hover:border-white text-transparent opacity-0 group-hover:opacity-100"
+                  ? "bg-[#4876F3] border border-[#4876F3] text-white"
+                  : "border border-[var(--border-strong)] bg-[var(--panel)] hover:border-white text-transparent opacity-0 group-hover:opacity-100"
               }`}
             >
-              <Check size={14} className={isSelected ? "text-white" : "opacity-0"} />
+              <Check size={16} className={isSelected ? "text-white" : "opacity-0"} />
             </button>
           )}
         </div>
@@ -176,7 +174,7 @@ export function ProjectCard({
             <h3 className="text-base font-semibold text-white group-hover:text-[#4876F3] transition-colors truncate">
               {name}
             </h3>
-            <div className="flex items-center gap-1.5 text-[13px] text-[var(--text-3)] truncate mt-1">
+            <div className="flex items-center gap-1.5 text-[13px] text-[var(--text-2)] truncate mt-1">
               {clientName && (
                 <span className={`inline-flex items-center justify-center h-4 w-4 rounded text-xs font-bold ${badgeColor} shrink-0`}>
                   {clientInitial}
@@ -226,7 +224,7 @@ export function ProjectCard({
               }}
               className="h-7 w-7 rounded-md flex items-center justify-center text-[var(--text-2)] hover:text-white hover:bg-[var(--input)] transition-colors"
             >
-              <MoreHorizontal size={18} />
+              <MoreHorizontal size={16} />
             </button>
           </div>
         </div>

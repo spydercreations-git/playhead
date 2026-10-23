@@ -117,7 +117,7 @@ export default function SettingsPage() {
           </div>
           {savedFeedback && (
             <span className="flex items-center gap-1.5 text-[13px] text-[#3fcf8e] bg-[#3fcf8e]/10 border border-[#3fcf8e]/20 px-3 py-1 rounded-full font-medium shrink-0 animate-in fade-in duration-200">
-              <Check size={14} className="text-[#3fcf8e]" />
+              <Check size={16} className="text-[#3fcf8e]" />
               <span>Saved</span>
             </span>
           )}

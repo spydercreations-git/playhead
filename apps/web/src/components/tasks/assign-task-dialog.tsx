@@ -219,7 +219,7 @@ export function AssignTaskDialog({
   if (!open || !mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-200">
       <div className="w-[1100px] max-w-[95vw] h-[790px] max-h-[94vh] rounded-[20px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-xl overflow-hidden flex flex-col">
         {/* Main 2-Column Body */}
         <div className="flex-1 flex overflow-hidden min-h-0">
@@ -231,7 +231,7 @@ export function AssignTaskDialog({
                 <h1 className="text-[28px] font-bold text-white tracking-tight leading-none">
                   Assign new task
                 </h1>
-                <p className="text-[15px] text-[var(--text-3)] mt-2">
+                <p className="text-[15px] text-[var(--text-2)] mt-2">
                   Idyll gets notified as soon as you assign it.
                 </p>
               </div>
@@ -291,7 +291,7 @@ export function AssignTaskDialog({
                 aria-label="Close dialog"
                 className="p-1 rounded-[6px] text-[var(--text-3)] hover:text-white hover:bg-[var(--hover)] transition-colors"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
@@ -340,12 +340,12 @@ export function AssignTaskDialog({
                         {selectedClient?.name || "Select client"}
                       </span>
                     </div>
-                    <ChevronDown size={14} className="text-[var(--text-3)] shrink-0" />
+                    <ChevronDown size={16} className="text-[var(--text-3)] shrink-0" />
                   </button>
 
                   {/* Connected Dropdown below field */}
                   {clientDropdownOpen && (
-                    <div className="absolute top-full mt-1.5 left-0 w-full rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] py-1.5 shadow-xl z-50 animate-in fade-in zoom-in-95 max-h-56 overflow-y-auto">
+                    <div className="absolute top-full mt-1.5 left-0 w-full rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] py-1.5 shadow-xl z-50 animate-in fade-in max-h-56 overflow-y-auto">
                       {clients.map((cl) => {
                         const isSelected = cl.id === selectedClientId;
                         return (
@@ -410,12 +410,12 @@ export function AssignTaskDialog({
                     {selectedProject ? selectedProject.name : "None"}
                   </span>
                 </div>
-                <ChevronDown size={14} className="text-[var(--text-3)] shrink-0" />
+                <ChevronDown size={16} className="text-[var(--text-3)] shrink-0" />
               </button>
 
               {/* Connected Dropdown below field */}
               {projectDropdownOpen && (
-                <div className="absolute top-full mt-1.5 left-0 w-full rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] py-1.5 shadow-xl z-50 animate-in fade-in zoom-in-95 max-h-56 overflow-y-auto">
+                <div className="absolute top-full mt-1.5 left-0 w-full rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] py-1.5 shadow-xl z-50 animate-in fade-in max-h-56 overflow-y-auto">
                   <button
                     type="button"
                     onClick={() => {
@@ -428,7 +428,7 @@ export function AssignTaskDialog({
                         : "text-white hover:bg-[var(--hover)]"
                     }`}
                   >
-                    <VideoFileIcon size={16} className="opacity-60 shrink-0" />
+                    <VideoFileIcon size={16} className="text-[var(--text-3)] shrink-0" />
                     <span>None</span>
                   </button>
                   {filteredProjects.map((p) => {
@@ -447,7 +447,7 @@ export function AssignTaskDialog({
                             : "text-white hover:bg-[var(--hover)]"
                         }`}
                       >
-                        <VideoFileIcon size={16} className="opacity-80 shrink-0" />
+                        <VideoFileIcon size={16} className="text-[var(--text-2)] shrink-0" />
                         <span className="truncate">{p.name}</span>
                       </button>
                     );
@@ -476,9 +476,9 @@ export function AssignTaskDialog({
                   >
                     <div className="flex items-center gap-2 truncate">
                       {link.library_item_id ? (
-                        <FileText size={14} className="text-[#4876F3] shrink-0" />
+                        <FileText size={16} className="text-[#4876F3] shrink-0" />
                       ) : (
-                        <Globe size={14} className="text-[var(--text-3)] shrink-0" />
+                        <Globe size={16} className="text-[var(--text-3)] shrink-0" />
                       )}
                       <span className="truncate">{link.title}</span>
                     </div>
@@ -487,7 +487,7 @@ export function AssignTaskDialog({
                       onClick={() => setLinks((prev) => prev.filter((_, i) => i !== idx))}
                       className="p-0.5 rounded text-[var(--text-3)] hover:text-red-400 transition-colors shrink-0"
                     >
-                      <X size={12} />
+                      <X size={16} />
                     </button>
                   </div>
                 ))}
@@ -499,16 +499,16 @@ export function AssignTaskDialog({
                   <button
                     type="button"
                     onClick={() => setShowAddLink((prev) => !prev)}
-                    className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-[8px] border border-dashed border-[var(--border-strong)] hover:border-white/50 text-[13px] font-medium text-white hover:bg-[var(--hover)] transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-[8px] border border-dashed border-[var(--border-strong)] hover:border-white text-[13px] font-medium text-white hover:bg-[var(--hover)] transition-colors"
                   >
-                    <Plus size={14} />
+                    <Plus size={16} />
                     <span>Add link</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setShowFilePicker(true)}
-                    className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-[8px] border border-dashed border-[var(--border-strong)] hover:border-white/50 text-[13px] font-medium text-white hover:bg-[var(--hover)] transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-[8px] border border-dashed border-[var(--border-strong)] hover:border-white text-[13px] font-medium text-white hover:bg-[var(--hover)] transition-colors"
                   >
                     <VideoFileIcon size={16} />
                     <span>From Library</span>

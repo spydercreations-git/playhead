@@ -231,7 +231,7 @@ export default function ProjectsPage() {
                 }}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
                   isDropTarget
-                    ? "ring-2 ring-[#4876F3] bg-[#4876F3]/30 text-white font-semibold scale-[1.015]"
+                    ? "ring-2 ring-[#4876F3] bg-[#4876F3]/30 text-white font-semibold"
                     : isSelected
                     ? "bg-[#4876F3] text-white font-semibold shadow-sm"
                     : "bg-[var(--panel)] border border-[var(--border)] text-[var(--text-2)] hover:text-white hover:border-[var(--border-strong)]"
@@ -373,7 +373,7 @@ export default function ProjectsPage() {
 
       {/* Move Project to Client Confirmation Modal */}
       {moveConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-150">
           <div className="w-full max-w-md rounded-xl bg-[var(--panel)] border border-[var(--border)] p-6 shadow-overlay space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[#4876F3]/20 border border-[#4876F3]/30 flex items-center justify-center text-[#4876F3]">

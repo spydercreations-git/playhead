@@ -239,12 +239,12 @@ export default function QuickLinksPage() {
               <div
                 key={item.id}
                 onClick={() => handleOpen(item.url)}
-                className="group relative flex items-center justify-between p-3.5 rounded-xl border border-[var(--border)] bg-[var(--panel)] hover:border-[var(--border-strong)] transition-all cursor-pointer hover:scale-[1.01]"
+                className="group relative flex items-center justify-between p-3.5 rounded-xl border border-[var(--border)] bg-[var(--panel)] hover:border-[var(--border-strong)] transition-colors cursor-pointer"
               >
                 {/* Left side: Square Letter Badge + Name & URL */}
                 <div className="flex items-center gap-3.5 min-w-0 pr-2">
                   <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 border border-white/5"
+                    className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 border border-[var(--border)]"
                     style={{ backgroundColor: colors.bg, color: colors.text }}
                   >
                     {initial}
@@ -270,9 +270,9 @@ export default function QuickLinksPage() {
                     className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-[var(--text-3)] hover:text-white hover:bg-[var(--hover)] transition-all"
                   >
                     {isCopied ? (
-                      <Check size={14} className="text-[#3FCF8E]" />
+                      <Check size={16} className="text-[#3FCF8E]" />
                     ) : (
-                      <Copy size={14} />
+                      <Copy size={16} />
                     )}
                   </button>
 
@@ -286,7 +286,7 @@ export default function QuickLinksPage() {
                     title="Open in new tab"
                     className="p-1.5 rounded-md text-[var(--text-3)] group-hover:text-white hover:bg-[var(--hover)] transition-colors"
                   >
-                    <ExternalLink size={14} />
+                    <ExternalLink size={16} />
                   </button>
 
                   {/* Delete button */}
@@ -296,7 +296,7 @@ export default function QuickLinksPage() {
                     title="Delete link"
                     className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-[var(--text-3)] hover:text-[#F0506E] hover:bg-[var(--hover)] transition-all"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </div>
@@ -307,13 +307,13 @@ export default function QuickLinksPage() {
 
       {/* Add Quick Link Modal (Matches Q1 Mockup) */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
           <div
             className="fixed inset-0"
             onClick={() => setShowAddModal(false)}
             aria-hidden="true"
           />
-          <div className="relative w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-150">
+          <div className="relative w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--panel-raised)] shadow-[0_16px_36px_rgba(0,0,0,0.6)] overflow-hidden z-10 animate-in fade-in duration-150">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
               <h2 className="text-sm font-semibold text-white">Add quick link</h2>
@@ -372,7 +372,7 @@ export default function QuickLinksPage() {
                   disabled={isSubmitting}
                   className="px-4 py-1.5 rounded-lg bg-[var(--button)] hover:bg-[var(--button-hover)] text-xs font-semibold text-white transition-colors disabled:opacity-50 flex items-center gap-1.5"
                 >
-                  {isSubmitting && <Loader2 size={12} className="animate-spin" />}
+                  {isSubmitting && <Loader2 size={16} className="animate-spin" />}
                   <span>Save</span>
                 </button>
               </div>

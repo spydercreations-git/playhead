@@ -506,10 +506,10 @@ export function CustomDatePicker({
                 cellClass += "bg-[#4876F3] text-white font-semibold shadow-sm";
               } else if (isToday) {
                 cellClass +=
-                  "border border-white/60 text-white font-medium hover:bg-[var(--hover)] cursor-pointer";
+                  "border border-[var(--border-strong)] text-white font-medium hover:bg-[var(--hover)] cursor-pointer";
               } else if (isPast) {
                 cellClass +=
-                  "text-[var(--text-3)]/30 cursor-not-allowed pointer-events-none";
+                  "text-[var(--text-3)] cursor-not-allowed pointer-events-none";
               } else {
                 cellClass += "text-white hover:bg-[var(--hover)] cursor-pointer";
               }
@@ -548,9 +548,9 @@ export function CustomDatePicker({
                 }`}
                 title="Select time"
               >
-                <Clock size={14} className="text-[#4876F3] shrink-0" />
+                <Clock size={16} className="text-[#4876F3] shrink-0" />
                 <span className="whitespace-nowrap">{currentTimeOption.label}</span>
-                <ChevronDown size={14} className="text-[var(--text-3)] shrink-0" />
+                <ChevronDown size={16} className="text-[var(--text-3)] shrink-0" />
               </button>
 
               {/* Time Dropdown Menu connected to bottom */}

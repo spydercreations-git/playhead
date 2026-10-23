@@ -35,7 +35,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         disabled={disabled || isLoading}
-        className={`inline-flex items-center justify-center rounded-[8px] transition-transform duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:ring-offset-0 disabled:opacity-45 disabled:pointer-events-none disabled:hover:scale-100 disabled:active:scale-100 select-none ${sizeClasses} ${variantClasses} ${className}`}
+        className={`inline-flex items-center justify-center rounded-[8px] transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:ring-offset-0 disabled:opacity-50 disabled:pointer-events-none select-none ${sizeClasses} ${variantClasses} ${className}`}
         {...props}
       >
         {isLoading ? (
@@ -66,7 +66,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
       <button
         ref={ref}
         aria-label={ariaLabel}
-        className={`inline-flex items-center justify-center rounded-[8px] select-none transition-all duration-150 motion-reduce:transition-none hover:scale-[1.015] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#4876F3]/60 disabled:opacity-45 disabled:pointer-events-none ${
+        className={`inline-flex items-center justify-center rounded-[8px] select-none transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-[#4876F3]/60 disabled:opacity-50 disabled:pointer-events-none ${
           active
             ? "bg-[var(--hover)] text-white"
             : "text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-white"

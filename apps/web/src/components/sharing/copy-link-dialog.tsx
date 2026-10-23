@@ -140,22 +140,22 @@ export function CopyLinkDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in-0 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in-0 duration-150">
       <div
-        className="w-full max-w-[480px] rounded-[14px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-in zoom-in-95 duration-150 flex flex-col gap-5 text-white"
+        className="w-full max-w-[480px] rounded-[14px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.6)] animate-in fade-in duration-150 flex flex-col gap-5 text-white"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-xl font-bold tracking-tight text-white">Copy link</h2>
-            <p className="text-xs text-[var(--text-3)] mt-0.5">{itemName || projectName}</p>
+            <p className="text-xs text-[var(--text-2)] mt-0.5">{itemName || projectName}</p>
           </div>
           <button
             onClick={onClose}
             className="rounded-lg p-1.5 text-[var(--text-3)] hover:bg-[var(--hover)] hover:text-white transition-colors"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
@@ -171,11 +171,11 @@ export function CopyLinkDialog({
           <button
             type="button"
             onClick={handleCopy}
-            className="h-8 px-4 rounded-[8px] bg-[#4876F3] hover:bg-[#3B67E0] text-xs font-semibold text-white transition-all shrink-0 active:scale-95 flex items-center gap-1.5 shadow-[0_2px_8px_rgba(72,118,243,0.3)]"
+            className="h-8 px-4 rounded-[8px] bg-[#4876F3] hover:bg-[#3B67E0] text-xs font-semibold text-white transition-colors shrink-0 flex items-center gap-1.5 shadow-[0_2px_8px_rgba(72,118,243,0.3)]"
           >
             {copied ? (
               <>
-                <Check size={14} />
+                <Check size={16} />
                 <span>Copied</span>
               </>
             ) : (
@@ -209,11 +209,11 @@ export function CopyLinkDialog({
               </div>
             </div>
             <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-[var(--panel)] border border-[var(--border)] shrink-0 text-[var(--text-2)]">
-              <Lock size={15} />
+              <Lock size={16} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white">People with access</p>
-              <p className="text-xs text-[var(--text-3)] mt-0.5 leading-relaxed">
+              <p className="text-xs text-[var(--text-2)] mt-0.5 leading-relaxed">
                 Only people added in Manage access. Others see &ldquo;No access&rdquo;.
               </p>
             </div>
@@ -240,11 +240,11 @@ export function CopyLinkDialog({
               </div>
             </div>
             <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-[var(--panel)] border border-[var(--border)] shrink-0 text-[var(--text-2)]">
-              <GlobeIcon size={15} />
+              <GlobeIcon size={16} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white">Anyone with the link (view only)</p>
-              <p className="text-xs text-[var(--text-3)] mt-0.5 leading-relaxed">
+              <p className="text-xs text-[var(--text-2)] mt-0.5 leading-relaxed">
                 Preview without signing in. No comments, no download.
               </p>
             </div>
@@ -264,7 +264,7 @@ export function CopyLinkDialog({
                 </div>
               ))}
             </div>
-            <span className="text-xs text-[var(--text-3)]">
+            <span className="text-xs text-[var(--text-2)]">
               {people.length > 0 ? `${people.length} people have access` : "Project team has access"}
             </span>
           </div>

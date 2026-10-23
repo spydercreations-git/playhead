@@ -103,13 +103,13 @@ export function ManageTaskAccessDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-200">
       <div className="w-full max-w-md rounded-[12px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-overlay overflow-hidden flex flex-col max-h-[85vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
           <div>
             <h2 className="text-base font-semibold text-white">Manage task access</h2>
-            <p className="text-xs text-[var(--text-3)] mt-0.5">
+            <p className="text-xs text-[var(--text-2)] mt-0.5">
               Assign staff and editors to this task. Clients never see this list.
             </p>
           </div>

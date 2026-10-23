@@ -706,13 +706,13 @@ export default function ClientDetailPage() {
       />
 
       {pictureError && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-xl bg-red-500/90 text-white text-xs px-4 py-2.5 shadow-lg backdrop-blur flex items-center gap-2">
+        <div className="fixed bottom-6 right-6 z-50 rounded-xl bg-[#F0506E] text-white text-xs px-4 py-2.5 shadow-lg flex items-center gap-2 border border-rose-600">
           <span>{pictureError}</span>
           <button
             onClick={() => setPictureError(null)}
             className="p-1 hover:bg-white/20 rounded"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       )}

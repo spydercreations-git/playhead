@@ -441,7 +441,7 @@ export function VideoPlayer({
           {/* Play / Pause button */}
           <button
             onClick={togglePlay}
-            className="flex items-center justify-center w-9 h-9 rounded-full bg-[#FFBB56] hover:bg-[#FFBB56] text-white shadow transition-all hover:scale-[1.015]"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-[#FFBB56] hover:bg-[#FFAE33] text-white shadow transition-colors"
             title={isPlaying ? "Pause (Space/K)" : "Play (Space/K)"}
           >
             {isPlaying ? <Pause className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 fill-white ml-0.5" />}

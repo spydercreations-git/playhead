@@ -332,7 +332,7 @@ export default function LibraryProjectPage() {
             onClick={() => setShowManageAccess(true)}
             className="flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-[var(--panel)] hover:bg-[var(--hover)] border border-[var(--border)] text-xs font-semibold text-white transition-colors"
           >
-            <PersonAdd size={14} className="text-[var(--text-2)]" />
+            <PersonAdd size={16} className="text-[var(--text-2)]" />
             <span>Manage access</span>
           </button>
 
@@ -342,7 +342,7 @@ export default function LibraryProjectPage() {
             onClick={() => setShowCopyLink(true)}
             className="flex items-center gap-1.5 h-8 px-3 rounded-[8px] bg-[var(--panel)] hover:bg-[var(--hover)] border border-[var(--border)] text-xs font-semibold text-white transition-colors"
           >
-            <Link2 size={14} className="text-[var(--text-2)]" />
+            <Link2 size={16} className="text-[var(--text-2)]" />
             <span>Copy link</span>
           </button>
 
@@ -350,9 +350,9 @@ export default function LibraryProjectPage() {
           <button
             type="button"
             onClick={handleUploadClick}
-            className="flex items-center gap-1.5 h-8 px-4 rounded-[8px] bg-[var(--button)] hover:bg-[var(--button-hover)] text-xs font-semibold text-[var(--button-text)] transition-all shadow active:scale-95"
+            className="flex items-center gap-1.5 h-8 px-4 rounded-[8px] bg-[var(--button)] hover:bg-[var(--button-hover)] text-xs font-semibold text-[var(--button-text)] transition-colors shadow"
           >
-            <Upload size={14} />
+            <Upload size={16} />
             <span>Upload</span>
           </button>
         </div>
@@ -380,7 +380,7 @@ export default function LibraryProjectPage() {
         <div className="flex flex-wrap items-center gap-3">
           {/* Search */}
           <div className="flex h-9 w-64 items-center gap-2 rounded-[10px] bg-[var(--input)] border border-[var(--border)] px-3 text-xs text-[var(--text-3)] focus-within:border-[#4876F3] transition-colors">
-            <Search size={15} className="text-[var(--text-3)] shrink-0" />
+            <Search size={16} className="text-[var(--text-3)] shrink-0" />
             <input
               type="text"
               placeholder="Search in this project"
@@ -402,7 +402,7 @@ export default function LibraryProjectPage() {
               <option value="image">Images</option>
               <option value="document">Documents</option>
             </select>
-            <ChevronDown size={14} className="text-[var(--text-3)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown size={16} className="text-[var(--text-3)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         </div>
 
@@ -417,7 +417,7 @@ export default function LibraryProjectPage() {
               <option value="date">Date modified</option>
               <option value="name">Name</option>
             </select>
-            <ChevronDown size={14} className="text-[var(--text-3)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown size={16} className="text-[var(--text-3)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {/* Grid / List switch */}
@@ -494,7 +494,7 @@ export default function LibraryProjectPage() {
         <div className="space-y-6 pt-2">
           {/* Folder Title Header */}
           <div className="flex items-center gap-2">
-            <Folder size={18} className="text-[var(--text-2)]" />
+            <Folder size={20} className="text-[var(--text-2)]" />
             <span className="text-base font-semibold text-white">{currentFolder?.name}</span>
             <span className="text-xs text-[var(--text-3)]">
               {filteredFiles.length + activeUploadsInFolder.length} items

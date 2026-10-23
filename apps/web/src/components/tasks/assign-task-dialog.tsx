@@ -220,7 +220,7 @@ export function AssignTaskDialog({
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-[1040px] max-w-[95vw] h-[700px] max-h-[92vh] rounded-[20px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-xl overflow-hidden flex flex-col">
+      <div className="w-[1080px] max-w-[95vw] h-[700px] max-h-[92vh] rounded-[20px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-xl overflow-hidden flex flex-col">
         {/* Main 2-Column Body */}
         <div className="flex-1 flex overflow-hidden min-h-0">
           {/* LEFT COLUMN: Title, Subtitle, Task name, Brief Rich Editor */}
@@ -281,8 +281,8 @@ export function AssignTaskDialog({
             </div>
           </div>
 
-          {/* RIGHT COLUMN: 340px, darker background, divider on left */}
-          <div className="w-[340px] shrink-0 bg-[var(--bg)] border-l border-[var(--border)] p-6 flex flex-col space-y-5 overflow-y-auto relative">
+          {/* RIGHT COLUMN: 360px, darker background, divider on left */}
+          <div className="w-[360px] shrink-0 bg-[var(--bg)] border-l border-[var(--border)] px-5 py-6 flex flex-col space-y-5 overflow-y-auto relative">
             {/* Close button X */}
             <div className="flex items-center justify-end -mt-1 -mr-1 mb-1">
               <button
@@ -532,19 +532,19 @@ export function AssignTaskDialog({
                       placeholder="https://..."
                       value={newLinkUrl}
                       onChange={(e) => setNewLinkUrl(e.target.value)}
-                      className="flex-1 bg-[var(--input)] border border-[var(--border)] rounded-[6px] px-2.5 py-1.5 text-[13px] text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3]"
+                      className="flex-1 min-w-0 bg-[var(--input)] border border-[var(--border)] rounded-[6px] px-2.5 py-1.5 text-[13px] text-white placeholder-[var(--text-3)] focus:outline-none focus:border-[#4876F3]"
                     />
                     <button
                       type="button"
                       onClick={handleAddExternalLink}
-                      className="px-3 py-1.5 bg-[#4876F3] text-white text-[13px] font-medium rounded-[6px] hover:bg-[#3B67E0] transition-colors"
+                      className="shrink-0 px-3.5 py-1.5 bg-[#4876F3] text-white text-[13px] font-medium rounded-[6px] hover:bg-[#3B67E0] transition-colors cursor-pointer"
                     >
                       Add
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowAddLink(false)}
-                      className="px-2 py-1.5 text-[13px] text-[var(--text-3)] hover:text-white transition-colors"
+                      className="shrink-0 px-2.5 py-1.5 text-[13px] text-[var(--text-3)] hover:text-white transition-colors cursor-pointer"
                     >
                       Cancel
                     </button>

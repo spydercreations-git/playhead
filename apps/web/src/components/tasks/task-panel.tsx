@@ -889,19 +889,19 @@ export function TaskPanel({
                       placeholder="https://..."
                       value={newLinkUrl}
                       onChange={(e) => setNewLinkUrl(e.target.value)}
-                      className="flex-1 bg-[var(--input)] border border-[var(--border)] rounded-[6px] px-2.5 py-1 text-xs text-white placeholder-[var(--text-3)] focus:outline-none"
+                      className="flex-1 min-w-0 bg-[var(--input)] border border-[var(--border)] rounded-[6px] px-2.5 py-1 text-xs text-white placeholder-[var(--text-3)] focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={handleAddLink}
-                      className="px-3 py-1 bg-[var(--primary)] text-white text-xs font-medium rounded-[6px]"
+                      className="shrink-0 px-3 py-1 bg-[var(--primary)] text-white text-xs font-medium rounded-[6px] cursor-pointer"
                     >
                       Add
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowAddLink(false)}
-                      className="px-2 py-1 text-xs text-[var(--text-3)] hover:text-white"
+                      className="shrink-0 px-2 py-1 text-xs text-[var(--text-3)] hover:text-white cursor-pointer"
                     >
                       Cancel
                     </button>

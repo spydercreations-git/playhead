@@ -380,10 +380,69 @@ export function getTimezoneOffsetString(timeZone: string, date: Date = new Date(
   }
 }
 
+const TIMEZONE_ABBR_MAP: Record<string, string> = {
+  // South & Central Asia
+  "Asia/Kolkata": "IST",
+  "Asia/Calcutta": "IST",
+  "Asia/Colombo": "IST",
+  "Asia/Karachi": "PKT",
+  "Asia/Dhaka": "BST",
+  "Asia/Kathmandu": "NPT",
+  // Middle East & Africa
+  "Asia/Dubai": "GST",
+  "Asia/Riyadh": "AST",
+  "Asia/Jerusalem": "IDT",
+  "Africa/Cairo": "EET",
+  "Africa/Johannesburg": "SAST",
+  "Africa/Lagos": "WAT",
+  "Africa/Nairobi": "EAT",
+  "Africa/Casablanca": "WET",
+  // East & Southeast Asia
+  "Asia/Bangkok": "ICT",
+  "Asia/Jakarta": "WIB",
+  "Asia/Singapore": "SGT",
+  "Asia/Hong_Kong": "HKT",
+  "Asia/Shanghai": "CST",
+  "Asia/Tokyo": "JST",
+  "Asia/Seoul": "KST",
+  "Asia/Manila": "PHT",
+  "Asia/Taipei": "CST",
+  // Australia & Pacific
+  "Australia/Perth": "AWST",
+  "Australia/Adelaide": "ACST",
+  "Australia/Brisbane": "AEST",
+  "Australia/Sydney": "AEST",
+  "Australia/Melbourne": "AEST",
+  "Pacific/Auckland": "NZST",
+  "Pacific/Honolulu": "HST",
+  // Europe
+  "Europe/London": "GMT",
+  "Europe/Paris": "CET",
+  "Europe/Berlin": "CET",
+  "Europe/Athens": "EET",
+  "Europe/Istanbul": "TRT",
+  "Europe/Moscow": "MSK",
+  // Americas
+  "America/New_York": "ET",
+  "America/Chicago": "CT",
+  "America/Denver": "MT",
+  "America/Phoenix": "MST",
+  "America/Los_Angeles": "PT",
+  "America/Anchorage": "AKT",
+  "America/Halifax": "AT",
+  "America/Sao_Paulo": "BRT",
+  "America/Argentina/Buenos_Aires": "ART",
+  "America/Bogota": "COT",
+  "America/Santiago": "CLT",
+};
+
 /**
  * Returns short abbreviation, e.g. "PDT", "IST", "EDT", "UTC"
  */
 export function getTimezoneAbbr(timeZone: string, date: Date = new Date()): string {
+  if (TIMEZONE_ABBR_MAP[timeZone]) {
+    return TIMEZONE_ABBR_MAP[timeZone];
+  }
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone,

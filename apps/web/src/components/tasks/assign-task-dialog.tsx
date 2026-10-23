@@ -220,7 +220,7 @@ export function AssignTaskDialog({
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-[1080px] max-w-[95vw] h-[700px] max-h-[92vh] rounded-[20px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-xl overflow-hidden flex flex-col">
+      <div className="w-[1100px] max-w-[95vw] h-[790px] max-h-[94vh] rounded-[20px] bg-[var(--panel-raised)] border border-[var(--border)] shadow-xl overflow-hidden flex flex-col">
         {/* Main 2-Column Body */}
         <div className="flex-1 flex overflow-hidden min-h-0">
           {/* LEFT COLUMN: Title, Subtitle, Task name, Brief Rich Editor */}
@@ -258,7 +258,7 @@ export function AssignTaskDialog({
                 />
               </div>
 
-              {/* Brief Editor (tall rich text editor ~360px tall) */}
+              {/* Brief Editor (tall rich text editor ~350px tall) */}
               <div>
                 <div className="flex items-center mb-2">
                   <label className="text-[13px] font-medium text-[var(--text-2)]">
@@ -270,7 +270,7 @@ export function AssignTaskDialog({
                 </div>
                 <TaskBriefEditor
                   initialContent={descriptionHtml}
-                  minHeight="290px"
+                  minHeight="350px"
                   placeholder="What do you need? Formats, length, references."
                   onChange={(html, json) => {
                     setDescriptionHtml(html);
@@ -281,8 +281,8 @@ export function AssignTaskDialog({
             </div>
           </div>
 
-          {/* RIGHT COLUMN: 360px, darker background, divider on left */}
-          <div className="w-[360px] shrink-0 bg-[var(--bg)] border-l border-[var(--border)] px-5 py-6 flex flex-col space-y-5 overflow-y-auto relative">
+          {/* RIGHT COLUMN: 380px, darker background, divider on left */}
+          <div className="w-[380px] shrink-0 bg-[var(--bg)] border-l border-[var(--border)] px-6 py-6 flex flex-col space-y-5 overflow-y-auto relative">
             {/* Close button X */}
             <div className="flex items-center justify-end -mt-1 -mr-1 mb-1">
               <button

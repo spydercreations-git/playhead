@@ -24,6 +24,8 @@ interface TimezoneSelectProps {
   className?: string;
   placeholder?: string;
   disabled?: boolean;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function TimezoneSelect({
@@ -33,8 +35,21 @@ export function TimezoneSelect({
   className = "",
   placeholder = "Select timezone",
   disabled = false,
+  isOpen: controlledIsOpen,
+  onOpenChange,
 }: TimezoneSelectProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isControlled = typeof controlledIsOpen === "boolean";
+  const isOpen = isControlled ? controlledIsOpen : internalIsOpen;
+
+  const setOpen = (next: boolean) => {
+    if (isControlled && onOpenChange) {
+      onOpenChange(next);
+    } else {
+      setInternalIsOpen(next);
+    }
+  };
+
   const [searchQuery, setSearchQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -56,7 +71,7 @@ export function TimezoneSelect({
         containerRef.current &&
         !containerRef.current.contains(e.target as Node)
       ) {
-        setIsOpen(false);
+        setOpen(false);
       }
     }
     if (isOpen) {
@@ -135,7 +150,7 @@ export function TimezoneSelect({
 
   function handleSelect(tzId: string) {
     onChange(tzId);
-    setIsOpen(false);
+    setOpen(false);
   }
 
   return (
@@ -145,22 +160,25 @@ export function TimezoneSelect({
         <button
           type="button"
           disabled={disabled}
-          onClick={() => setIsOpen((prev) => !prev)}
-          className={`h-8 px-2.5 rounded-[8px] bg-[var(--input)] border flex items-center gap-1.5 text-[13px] text-white transition-colors cursor-pointer select-none ${
+          onClick={() => setOpen(!isOpen)}
+          className={`h-8 px-2.5 rounded-[8px] bg-[var(--input)] border flex items-center gap-1.5 text-[13px] text-white transition-colors cursor-pointer select-none whitespace-nowrap shrink-0 ${
             isOpen
               ? "border-[#4876F3] ring-1 ring-[#4876F3]"
               : "border-[var(--border)] hover:border-[var(--border-strong)]"
           } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+          title={currentLabel}
         >
           <Globe size={14} className="text-[#4876F3] shrink-0" />
-          <span className="font-medium text-white">{compactLabel}</span>
+          <span className="font-medium text-white whitespace-nowrap truncate max-w-[130px]">
+            {compactLabel}
+          </span>
           <ChevronDown size={14} className="text-[var(--text-3)] shrink-0" />
         </button>
       ) : (
         <button
           type="button"
           disabled={disabled}
-          onClick={() => setIsOpen((prev) => !prev)}
+          onClick={() => setOpen(!isOpen)}
           className={`h-11 w-full rounded-[10px] bg-[var(--input)] border px-3.5 flex items-center justify-between text-[14px] text-white transition-all text-left select-none ${
             isOpen
               ? "border-[#4876F3] ring-1 ring-[#4876F3]"

@@ -81,6 +81,7 @@ export function CustomDatePicker({
 }: CustomDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [timeDropdownOpen, setTimeDropdownOpen] = useState(false);
+  const [timezoneDropdownOpen, setTimezoneDropdownOpen] = useState(false);
 
   const {
     preference: userTzPref,
@@ -165,6 +166,7 @@ export function CustomDatePicker({
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
         setTimeDropdownOpen(false);
+        setTimezoneDropdownOpen(false);
       }
     }
     if (isOpen) {
@@ -211,6 +213,8 @@ export function CustomDatePicker({
 
   // Handle day click
   function handleSelectDay(day: number) {
+    setTimeDropdownOpen(false);
+    setTimezoneDropdownOpen(false);
     setSelectedYear(viewYear);
     setSelectedMonth(viewMonth);
     setSelectedDay(day);
@@ -248,6 +252,8 @@ export function CustomDatePicker({
   }
 
   function handleSelectChip(targetDate: Date) {
+    setTimeDropdownOpen(false);
+    setTimezoneDropdownOpen(false);
     const y = targetDate.getFullYear();
     const m = targetDate.getMonth();
     const d = targetDate.getDate();
@@ -261,6 +267,8 @@ export function CustomDatePicker({
 
   // Month navigation
   function handlePrevMonth() {
+    setTimeDropdownOpen(false);
+    setTimezoneDropdownOpen(false);
     if (viewMonth === 0) {
       setViewMonth(11);
       setViewYear((prev) => prev - 1);
@@ -270,6 +278,8 @@ export function CustomDatePicker({
   }
 
   function handleNextMonth() {
+    setTimeDropdownOpen(false);
+    setTimezoneDropdownOpen(false);
     if (viewMonth === 11) {
       setViewMonth(0);
       setViewYear((prev) => prev + 1);
@@ -307,6 +317,7 @@ export function CustomDatePicker({
       e.preventDefault();
       setIsOpen(false);
       setTimeDropdownOpen(false);
+      setTimezoneDropdownOpen(false);
       return;
     }
 
@@ -518,62 +529,72 @@ export function CustomDatePicker({
           </div>
 
           {/* Divider */}
-          <div className="h-px bg-[var(--border)] -mx-4 mb-3" />
+          <div className="h-px bg-[var(--border)] -mx-3.5 mb-3" />
 
           {/* Time & Timezone Row */}
-          <div className="flex items-center justify-between relative px-1 gap-2">
-            <div className="flex items-center gap-1.5 text-[13px] text-[var(--text-2)] shrink-0">
-              <Clock size={15} className="text-[var(--text-3)]" />
-              <span>Time</span>
-            </div>
+          <div className="flex items-center justify-between relative px-0.5 gap-2">
+            {/* Time Dropdown Trigger */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setTimeDropdownOpen((prev) => !prev);
+                  setTimezoneDropdownOpen(false);
+                }}
+                className={`h-8 px-2.5 rounded-[8px] bg-[var(--input)] border flex items-center gap-1.5 text-[13px] font-medium text-white transition-colors cursor-pointer select-none whitespace-nowrap ${
+                  timeDropdownOpen
+                    ? "border-[#4876F3] ring-1 ring-[#4876F3]"
+                    : "border-[var(--border)] hover:border-[var(--border-strong)]"
+                }`}
+                title="Select time"
+              >
+                <Clock size={14} className="text-[#4876F3] shrink-0" />
+                <span className="whitespace-nowrap">{currentTimeOption.label}</span>
+                <ChevronDown size={14} className="text-[var(--text-3)] shrink-0" />
+              </button>
 
-            <div className="flex items-center gap-2">
-              {/* Compact Timezone Selector */}
-              <TimezoneSelect
-                variant="compact"
-                value={activeTzPref}
-                onChange={handleTimezoneChange}
-              />
-
-              {/* Time Dropdown Trigger */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setTimeDropdownOpen((prev) => !prev)}
-                  className="h-8 px-2.5 rounded-[8px] bg-[var(--input)] border border-[var(--border)] hover:border-[var(--border-strong)] text-[13px] font-medium text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+              {/* Time Dropdown Menu connected to bottom */}
+              {timeDropdownOpen && (
+                <div
+                  ref={timeListRef}
+                  className="absolute bottom-full mb-1.5 left-0 w-32 max-h-48 overflow-y-auto rounded-[10px] bg-[var(--panel-raised)] border border-[var(--border)] py-1 shadow-xl z-50 text-[13px]"
                 >
-                  <span>{currentTimeOption.label}</span>
-                  <ChevronDown size={14} className="text-[var(--text-3)]" />
-                </button>
-
-                {/* Time Dropdown Menu connected to bottom */}
-                {timeDropdownOpen && (
-                  <div
-                    ref={timeListRef}
-                    className="absolute bottom-full mb-1.5 right-0 w-32 max-h-48 overflow-y-auto rounded-[10px] bg-[var(--panel-raised)] border border-[var(--border)] py-1 shadow-xl z-50 text-[13px]"
-                  >
-                    {TIME_OPTIONS.map((opt) => {
-                      const isSelected = opt.value === selectedTime;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          data-selected={isSelected}
-                          onClick={() => handleSelectTime(opt.value)}
-                          className={`w-full px-3 py-1.5 text-left text-[13px] transition-colors flex items-center justify-between cursor-pointer ${
-                            isSelected
-                              ? "bg-[#4876F3] text-white font-semibold"
-                              : "text-white hover:bg-[var(--hover)]"
-                          }`}
-                        >
-                          <span>{opt.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                  {TIME_OPTIONS.map((opt) => {
+                    const isSelected = opt.value === selectedTime;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        data-selected={isSelected}
+                        onClick={() => handleSelectTime(opt.value)}
+                        className={`w-full px-3 py-1.5 text-left text-[13px] transition-colors flex items-center justify-between cursor-pointer ${
+                          isSelected
+                            ? "bg-[#4876F3] text-white font-semibold"
+                            : "text-white hover:bg-[var(--hover)]"
+                        }`}
+                      >
+                        <span className="whitespace-nowrap">{opt.label}</span>
+                        {isSelected && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 ml-1" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+
+            {/* Compact Timezone Selector */}
+            <TimezoneSelect
+              variant="compact"
+              value={activeTzPref}
+              onChange={handleTimezoneChange}
+              isOpen={timezoneDropdownOpen}
+              onOpenChange={(next) => {
+                setTimezoneDropdownOpen(next);
+                if (next) setTimeDropdownOpen(false);
+              }}
+            />
           </div>
         </div>
       )}

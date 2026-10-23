@@ -129,9 +129,11 @@ export function ClientFilterButton({
         )}
         <span className="font-medium truncate max-w-[280px]">{buttonLabel}</span>
         {isFiltered && (
-          <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--accent)] text-white text-xs font-semibold inline-flex items-center justify-center leading-none tabular-nums shrink-0">
-            {selectedClientIds.length}
-          </span>
+          <span
+            className={`h-[18px] ${
+              selectedClientIds.length > 9 ? "min-w-[18px] px-1.5" : "w-[18px]"
+            } rounded-full bg-[var(--accent)] text-white text-xs font-semibold flex items-center justify-center leading-none text-center select-none shrink-0`}
+          >{selectedClientIds.length}</span>
         )}
         <ChevronDown size={16} className="text-[var(--text-3)] shrink-0" />
       </button>
